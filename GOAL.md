@@ -219,3 +219,11 @@ roundoff fail explicitly. Volume, bounds, pcurves, cap endpoints, closed meshes,
 arc sagitta, microscopic geometry and native/WASM parity are verified. The
 twenty-second browser solid fixture demonstrates tilted negative-normal extrusion.
 See [framed arc extrusion](docs/framed-arc-extrusion.md).
+
+Mixed-profile skew extrusion now succeeds with exact circular translation
+surfaces, retaining arcs, generators and surface parameter boundaries. Both
+normal signs, curved holes, placement, analytic volume/bounds, UV/normals,
+microscopic geometry and closed sagitta-bounded meshes are verified natively
+and in WASM. A twenty-third browser fixture varies tangential offset. Classification,
+intersection and general modeling of these skew walls remain unsupported.
+See [skew extrusion](docs/skew-arc-extrusion.md).

@@ -199,7 +199,9 @@ impl Face {
                 validate_region(&loops[0], &loops[1..], tol)?;
             }
 
-            Surface::Cylinder { height, .. } | Surface::FramedCylinder { height, .. } => {
+            Surface::Cylinder { height, .. }
+            | Surface::FramedCylinder { height, .. }
+            | Surface::ExtrudedCircle { height, .. } => {
                 if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
                     return Err(Error::Unsupported(
                         "cylindrical faces require one rectangular four-coedge wire",
@@ -313,6 +315,25 @@ impl Solid {
                         )
                     {
                         return Err(Error::InvalidTopology("invalid plane basis"));
+                    }
+                }
+                Surface::ExtrudedCircle {
+                    frame,
+                    radius,
+                    height,
+                    drift,
+                } => {
+                    if !radius.is_finite()
+                        || radius <= tol.linear
+                        || !height.is_finite()
+                        || height <= tol.linear
+                        || drift.iter().any(|x| !x.is_finite())
+                        || !drift[0].hypot(drift[1]).is_finite()
+                        || !frame
+                            .point(Vec3::new(drift[0] * height, drift[1] * height, height))
+                            .finite()
+                    {
+                        return Err(Error::InvalidTopology("invalid circular extrusion surface"));
                     }
                 }
                 Surface::FramedCylinder { radius, height, .. } => {
@@ -521,6 +542,23 @@ impl Solid {
                     (origin - reference).dot(u.cross(v))
                         * f.wires.iter().map(wire_area).sum::<f64>()
                         / 3.0
+                }
+                Surface::ExtrudedCircle {
+                    frame,
+                    radius,
+                    height,
+                    drift,
+                } => {
+                    let span = f.cylinder_span()?;
+                    let delta = frame.local_point(reference) * (-1.);
+                    if span == TAU {
+                        TAU * radius * radius * height / 3.
+                    } else {
+                        radius * height / 3.
+                            * (radius * span
+                                + (delta.x - drift[0] * delta.z) * span.sin()
+                                + (delta.y - drift[1] * delta.z) * (1. - span.cos()))
+                    }
                 }
                 Surface::Cylinder { radius, height, .. }
                 | Surface::FramedCylinder { radius, height, .. } => {

@@ -140,22 +140,26 @@ fn microscopic_normal_extrusion_and_single_ring_wrapper() {
     );
 }
 #[test]
-fn invalid_skew_nearly_normal_and_unresolved_span_are_rejected() {
+fn skew_nearly_normal_are_supported_and_unresolved_span_is_rejected() {
     let t = Tolerance::default();
     let f = frame();
     let p = region(1., t);
-    for d in [
-        Vec3::new(1., 0., 4.),
-        Vec3::new(1e-9, 0., 4.),
-        Vec3::new(1., 0., 0.),
-    ] {
-        assert!(matches!(
-            extrude_arc_line_region_in_frame(&p, f.vector(d), f, t),
-            Err(Error::Unsupported(_))
-        ));
+    for d in [Vec3::new(1., 0., 4.), Vec3::new(1e-9, 0., 4.)] {
+        let solid = extrude_arc_line_region_in_frame(&p, f.vector(d), f, t).unwrap();
+        solid.validate(t).unwrap();
+        assert!(solid
+            .shell
+            .faces
+            .iter()
+            .any(|face| matches!(face.surface, Surface::ExtrudedCircle { .. })));
+        assert!(
+            (solid.volume().unwrap() - (108. - (4. - std::f64::consts::PI) * 0.75) * 4.).abs()
+                < 1e-10
+        );
     }
     for d in [
         Vec3::new(0., 0., 0.),
+        Vec3::new(1., 0., 0.),
         Vec3::new(0., 0., t.linear),
         Vec3::new(f64::NAN, 0., 4.),
         Vec3::new(0., 0., f64::INFINITY),

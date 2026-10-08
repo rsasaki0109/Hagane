@@ -145,12 +145,20 @@ Analytic volume/bounds, tiny inputs, signed/winding variants and closed meshes
 are verified, with a twenty-second native/WASM/browser fixture. Skew arc
 extrusion remains unsupported. See [framed extrusion](framed-arc-extrusion.md).
 
+Exact skew mixed-profile extrusion now constructs circular translation surfaces
+with signed vectors, curved holes, arbitrary rigid placement and checked shared
+pcurves. Analytic volume/bounds and sagitta-bounded closed meshes are verified.
+The twenty-third native/WASM/browser fixture varies skew offset at fixed volume.
+Queries and general modeling operations on the new walls remain unsupported.
+See [skew arc extrusion](skew-arc-extrusion.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Broaden mixed-profile skew extrusion and support arbitrary cylindrical
+- Extend intersections, classification and subdivision to skew circular translation
+  surfaces; support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using
   planar arrangements; extend contact handling, surface/surface curves, intersection

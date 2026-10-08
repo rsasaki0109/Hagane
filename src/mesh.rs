@@ -150,7 +150,8 @@ impl Solid {
                     }
                 }
                 Surface::Cylinder { radius, height, .. }
-                | Surface::FramedCylinder { radius, height, .. } => {
+                | Surface::FramedCylinder { radius, height, .. }
+                | Surface::ExtrudedCircle { radius, height, .. } => {
                     let span = f.cylinder_span()?;
                     let n = arc_segments(radius, span, chord_error)?;
                     for i in 0..n {
@@ -241,6 +242,7 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        22 => crate::skew_arc_extrusion_demo(14., radius, -24.)?,
         21 => crate::framed_arc_extrusion_demo(radius)?,
         20 => crate::simplified_contact_demo(radius - 16.0)?,
         19 => crate::reframed_merge_demo(radius - 16.0)?,

@@ -1,4 +1,4 @@
-//! Simple signed line/arc regions, analytic trim validation and normal extrusion.
+//! Simple signed line/arc regions, analytic trim validation and exact vector extrusion.
 use crate::*;
 use std::f64::consts::{PI, TAU};
 type P2 = [f64; 2];
@@ -664,10 +664,9 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
         tol,
     )
 }
-/// Extrude a line/arc profile in a rigid frame along a world-space normal vector.
+/// Extrude a line/arc profile in a rigid frame along a world-space vector.
 /// Coordinates, including `profile.origin`, are frame-local. Either normal sign
-/// is supported. Tangential components beyond binary64 conversion roundoff are
-/// rejected rather than approximating an oblique extrusion with cylinder walls.
+/// is supported, including skew extrusion with exact circular translation walls.
 pub fn extrude_arc_line_in_frame(
     profile: &ArcLineProfile,
     world_direction: Vec3,
@@ -685,11 +684,11 @@ pub fn extrude_arc_line_in_frame(
         tol,
     )
 }
-/// Normal extrusion of a framed region with bounded arcs and disjoint holes.
+/// Vector extrusion of a framed region with bounded arcs and disjoint holes.
 /// Negative direction shifts the construction base to the terminal plane; face
 /// indices have no start/end ordering guarantee. Normal height must exceed ten
-/// linear tolerances. No tangential displacement is accepted except the numerical
-/// roundoff (64 EPSILON times direction length) of rigid-frame conversion.
+/// linear tolerances. Skew vectors retain exact tangential displacement beyond
+/// the existing normal conversion allowance (64 EPSILON times vector length).
 pub fn extrude_arc_line_region_in_frame(
     profile: &ArcLineRegion,
     world_direction: Vec3,
@@ -709,16 +708,13 @@ pub fn extrude_arc_line_region_in_frame(
             "mixed framed direction exceeds finite range",
         ));
     }
-    if local.x.hypot(local.y) > 64. * f64::EPSILON * length {
-        return Err(Error::Unsupported(
-            "mixed framed extrusion requires a normal direction; skew arc extrusion is unsupported",
-        ));
-    }
-    let mut base = profile.clone();
-    if local.z < 0. {
-        base.origin = base.origin + Vec3::new(0., 0., local.z);
-    }
-    extrude_arc_line_region(&base, local.z.abs(), tol)?.transformed(frame, tol)
+    // Preserve the existing normal-direction roundoff contract.
+    let local = if local.x.hypot(local.y) <= 64. * f64::EPSILON * length {
+        Vec3::new(0., 0., local.z)
+    } else {
+        local
+    };
+    extrude_arc_line_region_along(profile, local, tol)?.transformed(frame, tol)
 }
 /// Tilted, negative-normal arc-notch fixture, shared by native and WASM demos.
 pub fn framed_arc_extrusion_demo(radius: f64) -> Result<Solid> {
@@ -729,14 +725,66 @@ pub fn framed_arc_extrusion_demo(radius: f64) -> Result<Solid> {
     profile.origin = Point3::new(0., 0., 12.);
     extrude_arc_line_region_in_frame(&profile, frame.vector(Vec3::new(0., 0., -24.)), frame, tol)
 }
+/// Tilted, signed skew extrusion fixture used by native/WASM and browser checks.
+pub fn skew_arc_extrusion_demo(radius: f64, offset: f64, height: f64) -> Result<Solid> {
+    let tol = Tolerance::default();
+    let frame = Transform::translation(Vec3::new(8., -4., 6.))?
+        .compose(Transform::rotation(Vec3::new(1., 2., 0.5), 0.8)?)?;
+    let mut profile = notched_demo_profile(radius, tol)?;
+    profile.origin = Point3::new(0., 0., 12.);
+    extrude_arc_line_region_in_frame(
+        &profile,
+        frame.vector(Vec3::new(offset, -0.5 * offset, height)),
+        frame,
+        tol,
+    )
+}
+pub fn skew_arc_extrusion_demo_json(radius: f64, offset: f64, height: f64) -> Result<String> {
+    skew_arc_extrusion_demo(radius, offset, height)?.mesh_json(0.05, Tolerance::default())
+}
 /// Exact normal extrusion of a simple region with signed circular arcs and
 /// disjoint holes. Normalizes outer CCW/holes CW; rejects all touch/nesting.
-/// Height must be positive. Skew and negative extrusion remain unsupported.
+/// Height must be positive. Use the vector/frame APIs for signed or skew extrusion.
 pub fn extrude_arc_line_region(
     profile: &ArcLineRegion,
     height: f64,
     tol: Tolerance,
 ) -> Result<Solid> {
+    if !height.is_finite() || height <= 0. {
+        return Err(Error::InvalidInput(
+            "mixed height-only extrusion requires positive finite height",
+        ));
+    }
+    extrude_arc_line_region_along(profile, Vec3::new(0., 0., height), tol)
+}
+/// Exact XY line/arc region extrusion along a finite vector with resolved normal span.
+/// Supports skew and either normal sign; in-plane extrusion is rejected.
+pub fn extrude_arc_line_region_along(
+    profile: &ArcLineRegion,
+    direction: Vec3,
+    tol: Tolerance,
+) -> Result<Solid> {
+    Tolerance::new(tol.linear)?;
+    if !direction.finite() || direction.z.abs() <= 10. * tol.linear {
+        return Err(Error::InvalidInput(
+            "mixed extrusion requires finite direction and normal span exceeding ten tolerances",
+        ));
+    }
+    let mut base = profile.clone();
+    let direction = if direction.z < 0. {
+        base.origin = base.origin + direction;
+        direction * (-1.)
+    } else {
+        direction
+    };
+    extrude_mixed_positive(&base, direction, tol)
+}
+fn extrude_mixed_positive(
+    profile: &ArcLineRegion,
+    direction: Vec3,
+    tol: Tolerance,
+) -> Result<Solid> {
+    let height = direction.z;
     let input: Vec<_> = std::iter::once(&profile.outer)
         .chain(&profile.holes)
         .cloned()
@@ -745,7 +793,7 @@ pub fn extrude_arc_line_region(
     if !profile.origin.finite()
         || !height.is_finite()
         || height <= 10.0 * tol.linear
-        || !(profile.origin + Vec3::new(0.0, 0.0, height)).finite()
+        || !(profile.origin + direction).finite()
     {
         return Err(Error::InvalidInput(
             "mixed extrusion requires finite origin and positive height exceeding ten tolerances",
@@ -774,7 +822,7 @@ pub fn extrude_arc_line_region(
     for z in [0.0, height] {
         for segment in &segments {
             s.vertices.push(Vertex {
-                point: profile.origin + p3(segment.evaluate(0.0)) + Vec3::new(0.0, 0.0, z),
+                point: profile.origin + p3(segment.evaluate(0.0)) + direction * (z / height),
             });
         }
     }
@@ -784,8 +832,8 @@ pub fn extrude_arc_line_region(
         for (offset, z) in [(0, 0.0), (n, height)] {
             let curve = match canonical {
                 PlanarSegment::Line { a, b } => Curve::Line {
-                    a: profile.origin + p3(a) + Vec3::new(0.0, 0.0, z),
-                    b: profile.origin + p3(b) + Vec3::new(0.0, 0.0, z),
+                    a: profile.origin + p3(a) + direction * (z / height),
+                    b: profile.origin + p3(b) + direction * (z / height),
                 },
                 PlanarSegment::Arc {
                     center,
@@ -794,7 +842,7 @@ pub fn extrude_arc_line_region(
                     sweep,
                 } => Curve::Arc {
                     frame: arc_frame(
-                        profile.origin + Vec3::new(0.0, 0.0, z),
+                        profile.origin + direction * (z / height),
                         center,
                         start_angle,
                         tol,
@@ -837,7 +885,7 @@ pub fn extrude_arc_line_region(
         }
         s.shell.faces.push(Face {
             surface: Surface::Plane {
-                origin: profile.origin + Vec3::new(0.0, 0.0, if top { height } else { 0.0 }),
+                origin: profile.origin + direction * if top { 1. } else { 0. },
                 u: Vec3::new(1.0, 0.0, 0.0),
                 v: Vec3::new(0.0, 1.0, 0.0),
             },
@@ -849,27 +897,49 @@ pub fn extrude_arc_line_region(
         let j = next[i];
         let canonical = segment.canonical();
         let (surface, span) = match canonical {
-            PlanarSegment::Line { a, b } => (
-                Surface::Plane {
-                    origin: profile.origin + p3(a),
-                    u: (p3(b) - p3(a)).normalized()?,
-                    v: Vec3::new(0.0, 0.0, 1.0),
-                },
-                distance(a, b),
-            ),
+            PlanarSegment::Line { a, b } => {
+                let u = (p3(b) - p3(a)).normalized()?;
+                let v = (direction - u * direction.dot(u)).normalized()?;
+                (
+                    Surface::Plane {
+                        origin: profile.origin + p3(a),
+                        u,
+                        v,
+                    },
+                    distance(a, b),
+                )
+            }
             PlanarSegment::Arc {
                 center,
                 radius,
                 start_angle,
                 sweep,
             } => (
-                Surface::FramedCylinder {
-                    frame: arc_frame(profile.origin, center, start_angle, tol)?,
-                    radius,
-                    height,
+                {
+                    let frame = arc_frame(profile.origin, center, start_angle, tol)?;
+                    if direction.x == 0. && direction.y == 0. {
+                        Surface::FramedCylinder {
+                            frame,
+                            radius,
+                            height,
+                        }
+                    } else {
+                        let g = frame.local_vector(direction);
+                        Surface::ExtrudedCircle {
+                            frame,
+                            radius,
+                            height,
+                            drift: [g.x / height, g.y / height],
+                        }
+                    }
                 },
                 sweep,
             ),
+        };
+        let shift = if let Surface::Plane { u, v, .. } = surface {
+            [direction.dot(u), direction.dot(v)]
+        } else {
+            [0., height]
         };
         let direction = if matches!(canonical, PlanarSegment::Line { .. }) {
             span
@@ -892,9 +962,9 @@ pub fn extrude_arc_line_region(
             wires: vec![Wire {
                 coedges: vec![
                     coedge(3 * i, true, [0.0, 0.0], [direction, 0.0]),
-                    coedge(3 * end + 2, true, [span, 0.0], [0.0, height]),
-                    coedge(3 * i + 1, false, [0.0, height], [direction, 0.0]),
-                    coedge(3 * start + 2, false, [0.0, 0.0], [0.0, height]),
+                    coedge(3 * end + 2, true, [span, 0.0], shift),
+                    coedge(3 * i + 1, false, shift, [direction, 0.0]),
+                    coedge(3 * start + 2, false, [0.0, 0.0], shift),
                 ],
             }],
         });

@@ -77,6 +77,15 @@ pub enum Surface {
         u: Vec3,
         v: Vec3,
     },
+    /// Exact circular-profile translation surface. In frame coordinates:
+    /// S(u,v) = (radius*cos(u)+drift[0]*v, radius*sin(u)+drift[1]*v, v).
+    /// Drift is tangential displacement per unit normal span, not a unit vector.
+    ExtrudedCircle {
+        frame: Frame3,
+        radius: f64,
+        height: f64,
+        drift: [f64; 2],
+    },
     FramedCylinder {
         frame: Frame3,
         radius: f64,
@@ -104,6 +113,17 @@ impl Surface {
                     v: transform.vector(v),
                 }
             }
+            Self::ExtrudedCircle {
+                frame,
+                radius,
+                height,
+                drift,
+            } => Self::ExtrudedCircle {
+                frame: transform.compose(frame)?,
+                radius,
+                height,
+                drift,
+            },
             Self::Cylinder {
                 center,
                 radius,
@@ -131,6 +151,16 @@ impl Surface {
                 u: du,
                 v: dv,
             } => origin + du * u + dv * v,
+            Self::ExtrudedCircle {
+                frame,
+                radius,
+                drift,
+                ..
+            } => frame.point(Vec3::new(
+                radius * u.cos() + drift[0] * v,
+                radius * u.sin() + drift[1] * v,
+                v,
+            )),
             Self::FramedCylinder { frame, radius, .. } => {
                 frame.point(Vec3::new(radius * u.cos(), radius * u.sin(), v))
             }
@@ -142,6 +172,18 @@ impl Surface {
     pub fn normal(&self, u: f64) -> Vec3 {
         match *self {
             Self::Plane { u, v, .. } => u.cross(v),
+            Self::ExtrudedCircle { frame, drift, .. } => {
+                let scale = drift[0].abs().max(drift[1].abs()).max(1.);
+                let n = Vec3::new(
+                    u.cos() / scale,
+                    u.sin() / scale,
+                    -(drift[0] / scale) * u.cos() - (drift[1] / scale) * u.sin(),
+                );
+                frame.vector(
+                    n.normalized()
+                        .unwrap_or(Vec3::new(f64::NAN, f64::NAN, f64::NAN)),
+                )
+            }
             Self::Cylinder { .. } => Vec3::new(u.cos(), u.sin(), 0.0),
             Self::FramedCylinder { frame, .. } => frame.vector(Vec3::new(u.cos(), u.sin(), 0.0)),
         }
@@ -149,6 +191,15 @@ impl Surface {
     pub fn parameters(&self, p: Point3) -> [f64; 2] {
         match *self {
             Self::Plane { origin, u, v } => [(p - origin).dot(u), (p - origin).dot(v)],
+            Self::ExtrudedCircle { frame, drift, .. } => {
+                let p = frame.local_point(p);
+                [
+                    (p.y - drift[1] * p.z)
+                        .atan2(p.x - drift[0] * p.z)
+                        .rem_euclid(TAU),
+                    p.z,
+                ]
+            }
             Self::FramedCylinder { frame, .. } => {
                 let p = frame.local_point(p);
                 [p.y.atan2(p.x).rem_euclid(TAU), p.z]

@@ -120,7 +120,8 @@ impl CylinderTrim<'_> {
 }
 /// Classify validated planar line/circle/arc trims and rectangular cylinder walls.
 /// Euclidean boundary distance uses a local budget. Two resolved rays must agree.
-/// General cylinder trims and general self-intersection detection are unsupported.
+/// Skew circular translation surfaces, general cylinder trims and general
+/// self-intersection detection are unsupported.
 /// No display mesh is consulted; full-periodic seams do not duplicate crossings.
 pub fn classify_point_in_solid(
     solid: &Solid,
@@ -137,6 +138,11 @@ pub fn classify_point_in_solid(
     let mut cylinders = Vec::new();
     for face in &solid.shell.faces {
         match face.surface {
+            Surface::ExtrudedCircle { .. } => {
+                return Err(Error::Unsupported(
+                    "solid classification of skew circular extrusion surfaces is unsupported",
+                ))
+            }
             Surface::Cylinder {
                 center,
                 radius,

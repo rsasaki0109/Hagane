@@ -186,6 +186,7 @@ fabricate the demo image.
 - Structured length/angular/relative policy and filtered exact 2D orientation,
   segment intersection, and inside/boundary/outside polygon classification.
 - Lines, XY and framed circles; arbitrary orthonormal planes and Z/framed cylinders.
+- Exact circular translation surfaces for [skew line/arc extrusion](docs/skew-arc-extrusion.md), including evaluation, UV, normals, volume and bounded display meshes.
 - Checked rigid B-rep placement, inverse/composed frames and exact placed bounds.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
   homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
@@ -315,8 +316,9 @@ nested/touching holes, and extrusion within the profile plane. Limits are
 cutters. Tube walls must exceed 10 tolerances. Mixed line/arc regions accept
 2..1,024 segments per ring, at most 256 holes and 4,096 total segments. Their
 [supported domain](docs/mixed-profiles.md) includes positive XY extrusion and
-[framed normal extrusion](docs/framed-arc-extrusion.md) with either sign. Skew
-arc extrusion, nested holes and unresolved cusps are rejected. Arbitrary
+[framed extrusion](docs/framed-arc-extrusion.md) with either sign and exact skew
+translation surfaces. Nested holes and unresolved cusps are rejected. Queries
+and general modeling operations on skew walls remain unsupported. Arbitrary
 curved trims, scale/shear/reflection transforms, and general CSG are not implemented.
 Rigid placement and arbitrary-plane polygon extrusion are documented in
 [frames](docs/frames.md); the restricted Boolean constructor and cylinder/plane
@@ -351,7 +353,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all twenty-two solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all twenty-three solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

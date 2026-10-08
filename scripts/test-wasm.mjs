@@ -10,7 +10,7 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42}];
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42}];
 for(let id=0;id<expected.length;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
@@ -25,7 +25,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 22 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 23 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -244,3 +244,12 @@ for(const radius of [8,14,24]){const {status,result}=preset(21,radius);assert.eq
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(21,radius).status,1);
 assert.equal(preset(21,14,0).status,1);assert.equal(preset(21).status,0);
 console.log('Framed mixed extrusion: tilted negative normal, analytic volume, native/WASM meshes, invalid input and recovery passed.');
+
+function skewArc(radius,offset,height){const status=k.hagane_skew_arc_extrusion_demo(radius,offset,height);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [radius,offset,height] of [[8,8,-24],[14,14,-24],[24,24,-24],[14,-14,24],[14,1e-9,24],[14,0,-24]]){
+ const {status,result}=skewArc(radius,offset,height);assert.equal(status,0);assert.ok(Math.abs(result.volume-(4600+(4-Math.PI)*9-Math.PI*radius**2/2)*Math.abs(height))<1e-8);assert.equal(result.faces,16);assert.equal(result.edges,42);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','skew_arc_extrusion','--',String(radius),String(offset),String(height)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+}
+for(const args of [[0,14,-24],[30,14,-24],[NaN,14,-24],[14,NaN,-24],[14,Infinity,-24],[14,14,0],[14,14,1e-9],[14,14,Infinity],[14,14,NaN]]){const {status,result}=skewArc(...args);assert.equal(status,1);assert.ok(result.error);}
+assert.equal(skewArc(14,14,-24).status,0);
+console.log('Skew arc extrusion: exact walls, signed spans, analytic volume, native/WASM geometry, errors and recovery passed.');

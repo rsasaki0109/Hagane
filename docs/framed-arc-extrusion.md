@@ -31,12 +31,12 @@ The material extends from the original profile plane to the requested terminal
 plane. Face indices do not promise that the first cap is the input plane.
 Analytic geometry, topology and volume survive this change of construction base.
 
-The local tangential component must be no greater than
-`64 * f64::EPSILON * world_direction.norm()`, solely to admit roundoff when a
-normal vector is converted between rigid frames. Larger components return
-`Unsupported`, even if smaller than the model's linear tolerance. This API does
-not approximate skew arc extrusion with cylinder walls. Zero/near-zero spans,
-nonfinite input, overflow and invalid/touching/nested holes return errors.
+Skew vectors are now supported with exact circular translation walls; see
+[skew extrusion](skew-arc-extrusion.md). The previous normal conversion allowance
+of `64 * f64::EPSILON * world_direction.norm()` is retained for vectors differing
+from normal only by rigid-frame roundoff. Larger tangential components are kept
+in the exact skew surface. Zero/near-zero spans, nonfinite input, overflow and
+invalid/touching/nested holes return errors.
 The legacy height-only XY builders continue requiring positive height.
 
 Run `cargo run --locked --example framed_arc_extrusion -- 14` for the B-rep-derived
@@ -55,4 +55,4 @@ The mathematical basis is rigid orthonormal coordinate conversion (inverse is
 the transposed basis), translation of a normal extrusion interval, and
 `volume = profile_area * abs(normal_span)`. Profile-area and tessellation
 references remain in [mixed profiles](mixed-profiles.md) and
-[frames](frames.md). Skew arc extrusion and general surface trims remain future work.
+[frames](frames.md). General surface trims and queries on skew walls remain future work.

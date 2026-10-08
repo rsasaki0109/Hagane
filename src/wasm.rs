@@ -13,6 +13,10 @@ mod exports {
         generate(crate::demo_preset_json(preset, radius, chord_error))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_skew_arc_extrusion_demo(radius: f64, offset: f64, height: f64) -> i32 {
+        generate(crate::skew_arc_extrusion_demo_json(radius, offset, height))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_nurbs(weight: f64, parameter: f64) -> i32 {
         generate(crate::nurbs_demo_json(weight, parameter))
     }
