@@ -51,6 +51,7 @@ cargo run --locked --example rounded
 cargo run --locked --example region
 cargo run --locked --example part -- 6
 cargo run --locked --example intersections
+cargo run --locked --example face_clipping
 ```
 
 Use the local kernel as a dependency during development:
@@ -159,6 +160,9 @@ fabricate the demo image.
   horizontal-plane/bounded-Z-cylinder intersections.
 - Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
   hits with original line parameters, UV, tangency and bounded generator intervals.
+- Transverse line clipping against planar B-rep trims, including concavity,
+  circular/arc boundaries and holes; planar-face intersection segments with
+  normalized pcurves and boundary-event provenance.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
 - Exact axis-aligned boxes, Z cylinders, and hollow tubes with annular caps.
@@ -176,9 +180,13 @@ fabricate the demo image.
 - The same Rust library on native and WASM targets; interactive browser demo.
 
 Analytic [intersection APIs](docs/intersections.md) return typed results and
-parameters for future trim clipping and face splitting. Run
+parameters for further face splitting. [Planar face clipping](docs/face-intersections.md)
+now returns exact-trim interior intervals and finite intersection segments. Run
 `cargo run --locked --example intersections` for the native JSON fixture; the
-same fixture is exported in WASM. These APIs do not yet split B-rep faces.
+same fixture is exported in WASM. Run `cargo run --locked --example face_clipping`
+for the trim-clipping fixture. These APIs do not yet split B-rep faces. Planar
+clipping tangencies, vertex cuts, overlapping boundaries and coplanar overlays
+remain explicitly unsupported.
 
 ## NURBS curves
 

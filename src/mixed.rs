@@ -440,7 +440,11 @@ fn arc_frame(origin: Point3, center: P2, start: f64, tol: Tolerance) -> Result<F
         tol,
     )
 }
-fn point_location(p: P2, segments: &[PlanarSegment], tol: Tolerance) -> Result<PointLocation> {
+pub(crate) fn point_location(
+    p: P2,
+    segments: &[PlanarSegment],
+    tol: Tolerance,
+) -> Result<PointLocation> {
     if p.iter().any(|x| !x.is_finite()) {
         return Err(Error::InvalidInput(
             "mixed point classification requires finite coordinates",

@@ -103,8 +103,9 @@ successful empty results.
 
 These are checked f64 calculations, not certified exact 3D predicates. Neither
 API applies a face's polygon, hole, arc, or partial-cylinder angular trims.
-Plane/cylinder curves, cylinder/cylinder intersections, NURBS intersections,
-trim clipping, intersection graphs, face splitting and general sewing remain
+[Transverse planar trim clipping](face-intersections.md) now works separately.
+Broader plane/cylinder curves, cylinder/cylinder intersections, NURBS
+intersections, intersection graphs, face splitting and general sewing remain
 future work. The earlier `cylinder_plane` horizontal Z-cylinder helper retains
 its existing restricted contract.
 

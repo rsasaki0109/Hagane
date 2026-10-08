@@ -25,6 +25,11 @@ claim compatibility with its data structures or APIs.
   Line/cylinder roots use radial closest approach and the Cartesian circle
   equation; axial generators use a linear height interval. Implemented
   independently from mathematical formulas, without reference source code.
+- Planar face clipping: analytic line/line and line/circle roots, ordered
+  boundary events, midpoint region classification and sorted interval
+  intersection. Surface pcurves use shared parameters; finite line segments
+  reparameterize both UV curves to [0,1]. Implemented independently from these
+  standard equations and interval operations, without new dependencies.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision

@@ -51,6 +51,10 @@ mod exports {
     pub extern "C" fn hagane_generate_intersections(mode: u32, offset: f64, placement: f64) -> i32 {
         generate(crate::intersections_demo_json(mode, offset, placement))
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_generate_face_clipping(offset: f64, placement: f64) -> i32 {
+        generate(crate::face_clipping_demo_json(offset, placement))
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

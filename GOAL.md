@@ -92,10 +92,16 @@ See [mixed profiles](docs/mixed-profiles.md).
 Typed plane/plane intersections now provide unit-speed lines and affine UV
 curves on both planes. Line/Z-or-framed-cylinder intersections provide sorted
 hits, parameters, UV, tangency and bounded generator overlap, with checked
-contact/axial ambiguity errors and native/WASM examples. These operate on
-surfaces and do not clip face trims. See [intersections](docs/intersections.md).
+contact/axial ambiguity errors and native/WASM examples. These foundational APIs operate on
+surfaces; separate planar face clipping now applies supported trims. See [intersections](docs/intersections.md).
 
-The next development task is to clip intersection lines against supported
-planar face trims, preserving exact boundary events and parameter intervals,
-then use that infrastructure for face splitting. General cylindrical trims and
-NURBS B-rep integration remain incomplete; the latter is stage 2 work.
+Transverse line clipping now preserves analytic planar boundaries, original
+edge parameters and interior intervals, including concavity and curved holes.
+Two planar faces produce finite intersection segments with shared normalized
+pcurves, verified natively and in WASM. Contact/vertex/overlap/coplanar cases
+remain unsupported. See [face intersections](docs/face-intersections.md).
+
+The next development task is to turn supported transverse cuts into consistent
+planar face splits while preserving boundary edges, pcurves and oriented shared
+topology. Broader contact graphs, general cylindrical trims and NURBS B-rep
+integration remain incomplete; the latter is stage 2 work.

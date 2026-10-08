@@ -41,8 +41,14 @@ Typed plane/plane intersection now returns lines with pcurves on both planes.
 Line/Z-or-framed-cylinder intersection returns checked lateral hits, original
 parameters, UV, tangency and axial generator intervals, with native/WASM
 fixtures. Near contacts and unrepresentable calculations fail explicitly.
-Face trim clipping/splitting is not implemented; see
-[intersections](intersections.md).
+See [intersections](intersections.md).
+
+Transverse planar face clipping now returns original-parameter boundary events
+and material intervals for polygon, circle and line/arc trims with holes.
+Planar-face pairs return finite segments and normalized pcurves on both faces.
+Native/WASM fixtures verify analytic intervals, provenance and volume preservation.
+Tangent/vertex/overlap/coplanar cases and face splitting remain unsupported;
+see [face intersections](face-intersections.md).
 
 ## Next: broaden analytic B-rep operations
 
@@ -51,9 +57,9 @@ Face trim clipping/splitting is not implemented; see
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Clip intersection lines against supported planar face trims; then broaden
-  surface/surface curves, intersection graphs, face splitting, sewing and
-  Boolean dispatch.
+- Build consistent planar face splits from supported transverse cut intervals;
+  then broaden contact handling, surface/surface curves, intersection graphs,
+  sewing and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
 - A stable browser API and versioned serialization.
 

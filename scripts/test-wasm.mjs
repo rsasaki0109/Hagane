@@ -98,3 +98,20 @@ for(const mode of [0,1,2])for(const offset of (mode===0?[-3,-1.5,0,1,2,3]:mode==
 for(const args of [[0,2+1e-9,0],[0,2-1e-9,0],[2,2+1e-9,0],[3,1,0],[0,NaN,0],[0,1,Infinity]]){const {status,result}=intersections(...args);assert.equal(status,1);assert.equal(typeof result.error,'string');}
 assert.equal(intersections(0,1,0.7).status,0);
 console.log(`Intersections: ${intersectionCases} native/WASM plane/line-cylinder cases, independent roots, UV, classifications, errors and recovery passed.`);
+function faceClipping(offset,placement=0){const status=k.hagane_generate_face_clipping(offset,placement);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+let clippingCases=0;
+for(const offset of [0,0.5,0.9,1.5,2.5,3.5,4.5,-0.5,-2.5])for(const placement of [0,0.7]){
+ const {status,result}=faceClipping(offset,placement);assert.equal(status,0,JSON.stringify({offset,placement,result}));
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','face_clipping','--',String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ const insideHole=Math.abs(offset)<1,insideCap=Math.abs(offset)<3;
+ assert.equal(result.intervals.length,insideHole?2:insideCap?1:0);assert.equal(result.events.length,insideHole?4:insideCap?2:0);
+ const expected=insideHole?[[3,(10-Math.sqrt(1-offset**2))/2],[(10+Math.sqrt(1-offset**2))/2,7]]:insideCap?[[3,7]]:[];compareIntersection(result.intervals,expected);
+ result.events.forEach((e,i)=>{assert.ok(e.edge_parameter>=0);assert.ok(Number.isInteger(e.edge)&&Number.isInteger(e.wire)&&Number.isInteger(e.coedge));if(i)assert.ok(e.parameter>result.events[i-1].parameter);});
+ assert.equal(result.segments.length,Math.abs(offset)<1?2:Math.abs(offset)<4?1:0);
+ const length=result.segments.reduce((sum,s)=>sum+Math.hypot(...s.start.map((v,i)=>s.end[i]-v)),0);const expectedLength=Math.abs(offset)<1?4-2*Math.sqrt(1-offset**2):Math.abs(offset)<4?4:0;assert.ok(Math.abs(length-expectedLength)<1e-10);
+ for(const segment of result.segments){assert.ok(segment.range[1]>segment.range[0]);for(const pc of [segment.first_uv,segment.second_uv])assert.ok(Math.abs(Math.hypot(...pc.direction)-(segment.range[1]-segment.range[0]))<1e-10);}
+ assert.ok(Math.abs(result.volume-(96-2*Math.PI))<1e-10);clippingCases++;
+}
+for(const [offset,placement] of [[1,0],[1+1e-9,0],[1-1e-9,0],[3,0],[4,0],[NaN,0],[0,Infinity]]){const {status,result}=faceClipping(offset,placement);assert.equal(status,1);assert.equal(typeof result.error,'string');}
+assert.equal(faceClipping(0.5,0.7).status,0);
+console.log(`Face clipping: ${clippingCases} native/WASM analytic intervals, boundary provenance, finite pcurves, volume preservation, unsupported contacts and recovery passed.`);

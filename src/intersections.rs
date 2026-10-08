@@ -137,7 +137,7 @@ fn cylinder_angle(x: f64, y: f64) -> f64 {
         angle
     }
 }
-fn line_parameter(travel: f64, direction: Vec3) -> Result<f64> {
+pub(crate) fn line_parameter(travel: f64, direction: Vec3) -> Result<f64> {
     let scale = direction
         .x
         .abs()
