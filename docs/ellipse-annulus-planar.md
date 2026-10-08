@@ -1,5 +1,12 @@
 # Planar ellipse caps with concentric holes
 
+This document describes the original homothetic subdomain and its fixtures.
+The current validator also accepts unequal-axis/rotated complete ellipse holes
+under a conservative enclosing-circle certificate; see
+[the expanded supported domain](tilted-bore.md). Homothety requirements below
+apply to the original fixtures, not to every currently supported planar hole.
+
+
 ![Actual WASM ellipse cap and hole clipping demo](ellipse-annulus-planar.png)
 
 A planar B-rep face can contain one complete outer ellipse and one strictly

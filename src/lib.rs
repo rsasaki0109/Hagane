@@ -24,6 +24,7 @@ mod predicates;
 mod sewing;
 mod skew_boundary;
 mod solid_split;
+mod tilted_bore;
 mod topology;
 mod wasm;
 pub use booleans::*;
@@ -48,6 +49,7 @@ pub use operations::*;
 pub use predicates::*;
 pub use sewing::*;
 pub use solid_split::*;
+pub use tilted_bore::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

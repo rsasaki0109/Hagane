@@ -29,7 +29,7 @@ including the [half ellipse and diameter](half-ellipse-planar.md), are also supp
 [Concentric homothetic full-ellipse holes](ellipse-annulus-planar.md) are supported.
 [Offset homothetic ellipse holes](ellipse-eccentric-planar.md) are supported too.
 [Multiple disjoint homothetic holes](ellipse-multi-hole-planar.md) are supported.
-Other mixed loops, nonhomothetic holes, more general arc partitions and
+Other mixed loops, more general arc partitions and
 ellipse-face subdivision are not yet supported. Invalid topology and unsupported
 trim domains fail before query/bounds shortcuts. Independent ellipse pcurve
 values do not imply support for arbitrary ellipse-trimmed modeling operations.
@@ -104,3 +104,6 @@ coordinates, Cartesian line/circle roots, Green's theorem, Taylor interpolation
 error and the Hausdorff-distance inequality, recorded in
 [provenance](references.md). General capped partitions and curved Booleans remain
 future work.
+
+[Unequal-axis ellipse holes and tilted through bores](tilted-bore.md) now provide
+a certified extension, with an interactive closed-solid preset and cap queries.

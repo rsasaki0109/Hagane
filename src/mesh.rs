@@ -294,6 +294,18 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        25 => {
+            if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
+                return Err(Error::Unsupported("tilted bore control must be in 8..24"));
+            }
+            crate::tilted_bore_demo_solid(
+                24.,
+                radius * 0.5,
+                16.,
+                0.5,
+                crate::GeometryTolerance::default(),
+            )?
+        }
         23 => crate::skew_face_subdivision_demo(radius / 32., 0.)?,
         22 => crate::skew_arc_extrusion_demo(14., radius, -24.)?,
         21 => crate::framed_arc_extrusion_demo(radius)?,

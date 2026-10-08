@@ -170,7 +170,7 @@ pub(crate) fn has_ellipse(f: &Face) -> bool {
         .flat_map(|w| &w.coedges)
         .any(|c| matches!(c.pcurve, PCurve::EllipseArc { .. }))
 }
-/// Validated ellipse material: one outer wire and disjoint aligned homothetic holes.
+/// Validated ellipse material with holes certified by normalized enclosing circles.
 pub(crate) struct EllipseRegion {
     rings: Vec<EllipseRing>,
 }
@@ -224,23 +224,28 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
                 "ellipse holes require complete ellipse wires",
             ));
         }
-        let ratio = norm(hole.cosine) / norm(outer.cosine);
-        if !ratio.is_finite() || ratio <= 0. || ratio >= 1. {
+        // The largest singular value encloses any affine ellipse in a circle
+        // in outer normalized coordinates, including rotated/nonorthogonal axes.
+        let x = outer.inverse_vector(hole.cosine)?;
+        let y = outer.inverse_vector(hole.sine)?;
+        let matrix_scale = norm(x).max(norm(y));
+        if !matrix_scale.is_finite() || matrix_scale == 0. {
+            return Err(Error::Unsupported("ellipse hole envelope is unresolved"));
+        }
+        let x = x.map(|v| v / matrix_scale);
+        let y = y.map(|v| v / matrix_scale);
+        let a = dot(x, x);
+        let b = dot(x, y);
+        let c = dot(y, y);
+        let ratio = matrix_scale
+            * ((a + c + (a - c).hypot(2. * b)) / 2.).sqrt()
+            * (1. + 512. * f64::EPSILON);
+        if !ratio.is_finite() || ratio >= 1. {
             return Err(Error::Unsupported(
-                "ellipse hole must be strictly smaller than its outer wire",
+                "ellipse hole envelope is not strictly smaller than the outer ellipse",
             ));
         }
-        let mismatch = |sign: f64| {
-            norm(sub(hole.cosine, outer.cosine.map(|x| x * ratio * sign)))
-                + norm(sub(hole.sine, outer.sine.map(|x| x * ratio * sign)))
-        };
-        let error = mismatch(1.).min(mismatch(-1.));
-        if !error.is_finite() || error > 512. * f64::EPSILON * (outer.scale() + norm(outer.center))
-        {
-            return Err(Error::Unsupported(
-                "ellipse hole must have aligned homothetic axes at checked precision",
-            ));
-        }
+        let error = hole.coherence_error + outer.coherence_error;
         let scale = outer.scale();
         let a = outer.cosine.map(|x| x / scale);
         let b = outer.sine.map(|x| x / scale);
@@ -258,7 +263,7 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
             let clearance = (norm(sub(center, other_center)) - radius - other_radius) * sigma;
             if !clearance.is_finite() || clearance <= 10. * tol.linear + error + other_error {
                 return Err(Error::Unsupported(
-                    "ellipse holes overlap, nest, touch or have unresolved separation",
+                    "ellipse hole enclosing circles are not separated at required precision",
                 ));
             }
         }
@@ -1066,7 +1071,7 @@ pub fn ellipse_multi_hole_planar_demo_json(
     };
     ellipse_planar_query_json(&solid, face, origin - u * 34. + v * offset, u * 2.)
 }
-fn ellipse_planar_query_json(
+pub(crate) fn ellipse_planar_query_json(
     solid: &Solid,
     face: usize,
     anchor: Point3,
@@ -1187,6 +1192,52 @@ mod tests {
         for (ratio, offset) in [(0.5, 2.), (1., 0.), (1. - 1e-9, 0.), (1.1, 0.)] {
             assert!(ring(&face(ratio, offset), tolerance).is_err());
         }
+    }
+    #[test]
+    fn unequal_rotated_axes_and_conservative_circle_rejection() {
+        let wire = |center, cosine: P2, sine: P2, forward| Wire {
+            coedges: [1., -1.]
+                .into_iter()
+                .map(|sign| Coedge {
+                    edge: 0,
+                    forward,
+                    pcurve: PCurve::EllipseArc {
+                        center,
+                        cosine: cosine.map(|v| v * sign),
+                        sine: sine.map(|v| v * sign),
+                        sweep: PI,
+                    },
+                })
+                .collect(),
+        };
+        let mut face = Face {
+            surface: Surface::Plane {
+                origin: Point3::new(0., 0., 0.),
+                u: Vec3::new(1., 0., 0.),
+                v: Vec3::new(0., 1., 0.),
+            },
+            orientation: 1,
+            wires: vec![
+                wire([10., -2.], [2., 0.], [1., 1.], true),
+                wire([10.5, -2.], [0.4, 0.1], [-0.1, 0.2], false),
+            ],
+        };
+        let tol = Tolerance::new(1e-8).unwrap();
+        let region = ring(&face, tol).unwrap();
+        assert_eq!(
+            region.location([10.5, -2.]).unwrap(),
+            PointLocation::Outside
+        );
+        assert_eq!(region.location([10., -2.]).unwrap(), PointLocation::Inside);
+        assert!(region.within_boundary([10.9, -1.9], 1e-5).unwrap());
+        // Actual skinny ellipses are disjoint, but their enclosing circles
+        // overlap. The sufficient certificate must reject this valid geometry.
+        face.wires = vec![
+            wire([0., 0.], [3., 0.], [0., 3.], true),
+            wire([0., -0.3], [0.6, 0.], [0., 0.1], false),
+            wire([0., 0.3], [0.6, 0.], [0., 0.1], false),
+        ];
+        assert!(matches!(ring(&face, tol), Err(Error::Unsupported(_))));
     }
     #[test]
     fn minor_segment_nonorthogonal_membership_and_physical_chord_bands() {

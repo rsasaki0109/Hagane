@@ -351,7 +351,7 @@ in oblique-cut volume. Native checks cover XY offsets, tilt signs, rotation,
 tiny dimensions, independent volume/roots, nonorthogonal trims, containment,
 corrupt pcurves and oriented meshes with no filled hole. Native/WASM parity and
 an actual browser demo are verified. The multiple-hole extension follows below;
-nonhomothetic holes, arbitrary mixed loops and general capped partitions remain unsupported. See
+arbitrary mixed loops and general capped partitions remain unsupported. See
 [offset ellipse holes](docs/ellipse-eccentric-planar.md).
 
 Multiple disjoint aligned homothetic ellipse holes now extend full-ellipse
@@ -365,5 +365,14 @@ every hole. Native tests cover three-hole roots/volume/material, reordered and
 reversed queries, rotated/tiny solids, nonorthogonal trims, all-wall chord errors,
 closed meshes without filled holes, four polygon/cap intersection segments and
 the sixteen-hole limit. Native/WASM parity and a two-hole browser demo are verified.
-Nonhomothetic holes, holes in arc/chord loops, arbitrary mixed loops and general
+Holes in arc/chord loops, arbitrary mixed loops and general
 capped partitions remain unsupported. See [multiple ellipse holes](docs/ellipse-multi-hole-planar.md).
+
+Unequal-axis complete ellipse holes now support conservative normalized-circle
+containment and separation certificates. A closed circular plate with a tilted
+true cylindrical through bore preserves exact ellipse rims, shared edges and
+harmonic cylinder pcurves. Native/WASM and browser checks cover analytic volume,
+classification, bounded tessellation and invalid inputs. Main solid preset 25
+and a cap intersection demo expose the implementation. Overlapping enclosing
+circles, arc/chord holes and general curved Boolean operations remain unsupported.
+See [tilted through bores](docs/tilted-bore.md).

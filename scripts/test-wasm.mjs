@@ -10,7 +10,14 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:22,edges:58},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:34,edges:80}];
+for(const control of [8,14,24]){
+ const {status,result}=preset(25,control);assert.equal(status,0);
+ assert.ok(Math.abs(result.volume-Math.PI*(576-(control/2)**2/Math.cos(.5))*16)<1e-8);
+ assert.equal(result.faces,6);assert.equal(result.edges,12);
+}
+for(const control of [0,7,25,NaN,Infinity])assert.equal(preset(25,control).status,1);
+assert.equal(preset(25,14,0).status,1);assert.equal(preset(25).status,0);
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:22,edges:58},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:34,edges:80},{volume:Math.PI*(576-49/Math.cos(.5))*16,faces:6,edges:12}];
 for(let id=0;id<expected.length;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
@@ -25,7 +32,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 25 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 26 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -452,3 +459,21 @@ for(const spread of [0,5,5.5,5.5+1e-9,18,NaN,Infinity])assert.equal(multiHoleEll
 for(const [offset,placement] of [[0,0],[5,0],[5+1e-9,0],[6,0],[24,0],[NaN,0],[2,Infinity]])assert.equal(multiHoleEllipse(9,offset,placement).status,1);
 assert.equal(multiHoleEllipse(9,2).status,0);
 console.log('Multiple ellipse holes: independent roots/first moments, one/two/three material intervals, hole wire provenance, native/WASM parity, separation/contact errors and recovery passed.');
+
+function tiltedBore(tilt,offset,placement=0){
+ const status=k.hagane_tilted_bore_demo(tilt,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const tilt of [-0.9,-0.5,0,0.5,0.9])for(const placement of [0,0.37])for(const offset of [3,14,30]){
+ const {status,result}=tiltedBore(tilt,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','tilted_bore','--',String(tilt),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ const outer=Math.sqrt(576-offset**2),inner=Math.sqrt(36-offset**2)/Math.cos(tilt),center=8*Math.tan(tilt);
+ const expected=offset===30?[]:offset>6?[(34-outer)/2,(34+outer)/2]:[(34-outer)/2,(34+center-inner)/2,(34+center+inner)/2,(34+outer)/2];
+ assert.equal(result.intersection.hits.length,expected.length);assert.equal(result.intersection.intervals.length,expected.length/2);
+ result.intersection.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-expected[i])<1e-10));
+ assert.equal(result.mesh.faces,6);assert.equal(result.mesh.edges,12);assert.ok(Math.abs(result.mesh.volume-Math.PI*(576-36/Math.cos(tilt))*16)<1e-8);
+}
+for(const tilt of [1.04,Math.PI/3+0.01,NaN,Infinity])assert.equal(tiltedBore(tilt,3).status,1);
+for(const [offset,placement] of [[0,0],[6,0],[6+1e-9,0],[24,0],[NaN,0],[3,Infinity]])assert.equal(tiltedBore(0.5,offset,placement).status,1);
+assert.equal(tiltedBore(0.5,3).status,0);
+console.log('Unequal-axis ellipse hole/tilted bore: independent roots/volume, native/WASM parity, tilt placement, contacts/containment errors and recovery passed.');

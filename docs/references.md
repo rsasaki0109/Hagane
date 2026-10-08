@@ -338,3 +338,11 @@ orientation. Signed circle areas and first moments sum each removed column's
 contribution to exact oblique-cap volume. Existing shared topology, ray and chord
 bounds apply to all wires. This is independently authored MIT OR Apache-2.0 Rust
 code, with no added dependency or OCCT source consultation, copying or translation.
+
+## Unequal-axis ellipse hole certification
+
+Independently derived affine unit-disk normalization, 2×2 Gram-matrix
+eigenvalues (spectral norm), enclosing-circle triangle inequality clearance,
+and direct oblique plane/cylinder substitution underpin the
+[tilted-bore implementation](tilted-bore.md). No new dependencies or OCCT source
+were used. Original implementation remains MIT OR Apache-2.0.

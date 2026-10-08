@@ -241,7 +241,8 @@ fabricate the demo image.
   displaced roots and the correct oblique-cut volume.
   [Multiple disjoint homothetic holes](docs/ellipse-multi-hole-planar.md) support
   up to sixteen holes and ordered material intervals. Other mixed loops,
-  nonhomothetic ellipse holes and general capped partitions remain unsupported.
+  general capped partitions remain unsupported. Unequal-axis ellipse holes now
+  have a [conservative certified domain](docs/tilted-bore.md).
 - [Harmonic circular face line queries](docs/harmonic-face-intersections.md):
   analytic height clipping, bounded generator overlaps, certified shared ellipse
   contacts and browser selection of faces above/below an oblique section.
@@ -418,3 +419,6 @@ orientation comparisons, 204 segment cases, and explicit angle/relative policies
 
 See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and
 [references and dependency licenses](docs/references.md).
+
+[Unequal-axis ellipse holes and tilted through bores](docs/tilted-bore.md) now provide
+a certified extension, with an interactive closed-solid preset and cap queries.

@@ -190,6 +190,19 @@ try {
  if(process.argv.includes('--capture-oblique-boundary')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/oblique-boundary.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
 
+ await page.locator('#preset').selectOption('25');
+ assert.deepEqual(await page.locator('.range-label span').allTextContents(),['4 mm','12 mm']);
+ assert.match(await page.locator('#radius-label').textContent(),/7.0/);
+ for(const control of [8,14,24]){
+  await page.locator('#radius').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input'));},control);
+  const bore=await page.evaluate(()=>window.haganeDemo.mesh);
+  assert.equal(bore.faces,6);assert.equal(bore.edges,12);
+  assert.ok(Math.abs(bore.volume-Math.PI*(576-(control/2)**2/Math.cos(.5))*16)<1e-8);
+ }
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+ await page.locator('#reset').click();
+ if(process.argv.includes('--capture-tilted-bore-solid'))await page.screenshot({path:new URL('../docs/tilted-bore-solid.png',import.meta.url).pathname});
+
 
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
@@ -387,5 +400,18 @@ try {
  const multiView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),multiView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: multiple ellipse holes, one/two/three intervals, six roots with wire provenance, contacts, empty results, recovery and orbit passed.');
- console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ await page.locator('#scope').selectOption('tiltedBorePlane');assert.equal(await page.locator('#hits').textContent(),'4');
+ const tiltedData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.equal(tiltedData.intersection.intervals.length,2);assert.deepEqual(tiltedData.intersection.hits.map(h=>h.boundaries[0].wire),[0,1,1,0]);
+ assert.ok(Math.abs(tiltedData.mesh.volume-Math.PI*(576-36/Math.cos(0.5))*16)<1e-8);
+ const unequalHole=tiltedData.intersection.hits.filter(h=>h.boundaries[0].wire===1);assert.ok(Math.abs((unequalHole[1].parameter-unequalHole[0].parameter)-Math.sqrt(27)/Math.cos(0.5))<1e-10);
+ await page.locator('#offset').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#hits').textContent(),'2');
+ await page.locator('#offset').evaluate(e=>{e.value=6;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('empty');assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'4');await page.locator('#reset').click();
+ if(process.argv.includes('--capture-tilted-bore'))await page.screenshot({path:new URL('../docs/tilted-bore.png',import.meta.url).pathname});
+ const tiltedView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),tiltedView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: tilted through-bore cap, unequal-axis hole roots/volume, empty/tangent errors, recovery and orbit passed.');
+ console.log('Browser: 26 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}
