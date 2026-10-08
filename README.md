@@ -314,8 +314,9 @@ nested/touching holes, and extrusion within the profile plane. Limits are
 4,096 total profile corners, 256 polygon holes, or 256 independent cylinder
 cutters. Tube walls must exceed 10 tolerances. Mixed line/arc regions accept
 2..1,024 segments per ring, at most 256 holes and 4,096 total segments. Their
-[supported domain](docs/mixed-profiles.md) requires positive normal extrusion;
-negative/skew extrusion, nested holes and unresolved cusps are rejected. Arbitrary
+[supported domain](docs/mixed-profiles.md) includes positive XY extrusion and
+[framed normal extrusion](docs/framed-arc-extrusion.md) with either sign. Skew
+arc extrusion, nested holes and unresolved cusps are rejected. Arbitrary
 curved trims, scale/shear/reflection transforms, and general CSG are not implemented.
 Rigid placement and arbitrary-plane polygon extrusion are documented in
 [frames](docs/frames.md); the restricted Boolean constructor and cylinder/plane
@@ -350,7 +351,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all twenty-one solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all twenty-two solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

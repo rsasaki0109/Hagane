@@ -664,6 +664,71 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
         tol,
     )
 }
+/// Extrude a line/arc profile in a rigid frame along a world-space normal vector.
+/// Coordinates, including `profile.origin`, are frame-local. Either normal sign
+/// is supported. Tangential components beyond binary64 conversion roundoff are
+/// rejected rather than approximating an oblique extrusion with cylinder walls.
+pub fn extrude_arc_line_in_frame(
+    profile: &ArcLineProfile,
+    world_direction: Vec3,
+    frame: Frame3,
+    tol: Tolerance,
+) -> Result<Solid> {
+    extrude_arc_line_region_in_frame(
+        &ArcLineRegion {
+            origin: profile.origin,
+            outer: profile.segments.clone(),
+            holes: Vec::new(),
+        },
+        world_direction,
+        frame,
+        tol,
+    )
+}
+/// Normal extrusion of a framed region with bounded arcs and disjoint holes.
+/// Negative direction shifts the construction base to the terminal plane; face
+/// indices have no start/end ordering guarantee. Normal height must exceed ten
+/// linear tolerances. No tangential displacement is accepted except the numerical
+/// roundoff (64 EPSILON times direction length) of rigid-frame conversion.
+pub fn extrude_arc_line_region_in_frame(
+    profile: &ArcLineRegion,
+    world_direction: Vec3,
+    frame: Frame3,
+    tol: Tolerance,
+) -> Result<Solid> {
+    Tolerance::new(tol.linear)?;
+    if !world_direction.finite() {
+        return Err(Error::InvalidInput(
+            "mixed framed extrusion requires a finite direction",
+        ));
+    }
+    let local = frame.local_vector(world_direction);
+    let length = world_direction.norm();
+    if !local.finite() || !length.is_finite() {
+        return Err(Error::InvalidInput(
+            "mixed framed direction exceeds finite range",
+        ));
+    }
+    if local.x.hypot(local.y) > 64. * f64::EPSILON * length {
+        return Err(Error::Unsupported(
+            "mixed framed extrusion requires a normal direction; skew arc extrusion is unsupported",
+        ));
+    }
+    let mut base = profile.clone();
+    if local.z < 0. {
+        base.origin = base.origin + Vec3::new(0., 0., local.z);
+    }
+    extrude_arc_line_region(&base, local.z.abs(), tol)?.transformed(frame, tol)
+}
+/// Tilted, negative-normal arc-notch fixture, shared by native and WASM demos.
+pub fn framed_arc_extrusion_demo(radius: f64) -> Result<Solid> {
+    let tol = Tolerance::default();
+    let frame = Transform::translation(Vec3::new(8., -4., 6.))?
+        .compose(Transform::rotation(Vec3::new(1., 2., 0.5), 0.8)?)?;
+    let mut profile = notched_demo_profile(radius, tol)?;
+    profile.origin = Point3::new(0., 0., 12.);
+    extrude_arc_line_region_in_frame(&profile, frame.vector(Vec3::new(0., 0., -24.)), frame, tol)
+}
 /// Exact normal extrusion of a simple region with signed circular arcs and
 /// disjoint holes. Normalizes outer CCW/holes CW; rejects all touch/nesting.
 /// Height must be positive. Skew and negative extrusion remain unsupported.

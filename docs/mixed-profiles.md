@@ -68,10 +68,10 @@ curve is required. Rigid placement preserves indices, pcurves and orientation.
   each other. Touching, crossing, overlapping, nested and near-touching holes
   are rejected. Separation uses the linear tolerance plus a conservative
   `64 * epsilon * local segment scale` floating calculation allowance.
-- Extrusion follows positive local Z. For an arbitrary plane, construct the
-  solid first and use checked `Solid::transformed` placement.
+- Height-only extrusion follows positive local Z. The [framed APIs](framed-arc-extrusion.md)
+  accept world-space normal vectors with either sign on arbitrary rigid planes.
 
-Negative/skew mixed-region extrusion, nested islands, unresolved cusps and
+Skew mixed-region extrusion, nested islands, unresolved cusps and
 arbitrary cylindrical trims remain unsupported. Existing polygon-only extrusion
 retains its separate arbitrary-plane/holes/skew/reversed support. Errors never
 substitute a polygonized model or a silently repaired boundary.

@@ -212,3 +212,10 @@ geometry, Euclidean arc-rim bands and periodic subdivision invariance are tested
 The native/WASM/browser query demo includes rounded plates and concave arc notches
 with rounded through-holes. General cylinder trims and geometric self-intersection
 detection remain unsupported. See [arc classification](docs/arc-classification.md).
+
+Framed mixed-profile APIs now extrude line/arc regions with holes on arbitrary
+rigid planes along either normal direction. Skew vectors beyond frame-conversion
+roundoff fail explicitly. Volume, bounds, pcurves, cap endpoints, closed meshes,
+arc sagitta, microscopic geometry and native/WASM parity are verified. The
+twenty-second browser solid fixture demonstrates tilted negative-normal extrusion.
+See [framed arc extrusion](docs/framed-arc-extrusion.md).

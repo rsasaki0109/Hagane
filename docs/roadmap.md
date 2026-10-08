@@ -139,12 +139,18 @@ Euclidean bands, periodic seams, placement and tiny dimensions are verified.
 4950 independent analytic grid samples accompany native/WASM probes/mesh parity;
 the browser query page offers six solid models, including bounded arc trims and rectangular partial cylinder walls. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
 
+Framed line/arc region extrusion now accepts either world-space normal sign on
+arbitrary rigid planes, preserving exact walls, holes and shared pcurves.
+Analytic volume/bounds, tiny inputs, signed/winding variants and closed meshes
+are verified, with a twenty-second native/WASM/browser fixture. Skew arc
+extrusion remains unsupported. See [framed extrusion](framed-arc-extrusion.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
+- Broaden mixed-profile skew extrusion and support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using
   planar arrangements; extend contact handling, surface/surface curves, intersection
