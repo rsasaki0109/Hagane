@@ -48,6 +48,7 @@ cargo run --locked --example part -- 4
 cargo run --locked --example placement
 cargo run --locked --example part -- 5
 cargo run --locked --example rounded
+cargo run --locked --example region
 ```
 
 Use the local kernel as a dependency during development:
@@ -121,7 +122,8 @@ python3 -m http.server 8000 --directory web
 Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
 slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
 a concave polygon extrusion with a polygon hole, a hollow tube, or a rotated
-four-bore part, or a rounded line/arc extrusion with a corner-radius control. The polygon
+four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
+a rounded hole. The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
 auto rotation. Arrow keys orbit and `+` / `-` zoom when the canvas is focused.
 The renderer uses WebGL directly, with no CDN assets or JavaScript CAD library.
@@ -161,8 +163,9 @@ fabricate the demo image.
   frame-based polygon extrusion also accepts arbitrary planes and world-space directions.
 - Restricted box-minus-through-cylinders difference, including off-center and
   multiple disjoint holes, with contact/overlap/nesting rejection.
-- Convex tangent-connected line/arc profile extrusion (rounded rectangles and
-  capsules), exact bounded arcs and rectangular partial-cylinder walls.
+- Simple convex/concave line/arc region extrusion with sharp joins, signed arcs,
+  multiple curved/polygon holes and either winding; exact bounded arcs and
+  rectangular partial-cylinder walls.
 - Simple planar polygon and circular trim containment/separation predicates.
 - Structural/geometry validation, connected manifold shells, analytic volume,
   exact bounds for supported solids, and face-indexed display tessellation.
@@ -224,16 +227,17 @@ coordinate offsets, IEEE-754 spacing can exceed the tolerance; construction
 then fails validation rather than accepting inconsistent geometry.
 
 Current planar trims support straight-line polygons and disks with disjoint
-polygonal/circular inner wires, or a single convex tangent line/arc outer wire.
+polygonal/circular inner wires, or simple line/arc outer and inner wires.
 Cylindrical trims support full periodic and bounded angular rectangles.
 `extrude_polygon` takes a `PolygonProfile` in an XY plane and a vector with
 `abs(direction.z) > 10 × tolerance`. It accepts either winding, but rejects
 self-intersections, redundant/near-collinear corners, repeated closing points,
 nested/touching holes, and extrusion within the profile plane. Limits are
 4,096 total profile corners, 256 polygon holes, or 256 independent cylinder
-cutters. Tube walls must exceed 10 tolerances. Convex tangent line/arc profiles
-and rectangular partial-cylinder walls now work; their [supported domain](docs/mixed-profiles.md)
-excludes concave/holed mixed profiles, sharp joins and skew extrusion. Arbitrary
+cutters. Tube walls must exceed 10 tolerances. Mixed line/arc regions accept
+2..1,024 segments per ring, at most 256 holes and 4,096 total segments. Their
+[supported domain](docs/mixed-profiles.md) requires positive normal extrusion;
+negative/skew extrusion, nested holes and unresolved cusps are rejected. Arbitrary
 curved trims, scale/shear/reflection transforms, and general CSG are not implemented.
 Rigid placement and arbitrary-plane polygon extrusion are documented in
 [frames](docs/frames.md); the restricted Boolean constructor and cylinder/plane
@@ -245,7 +249,9 @@ engine for arbitrary imported B-reps.
 
 Tessellation approximates circles with a conservative sagitta bound. The exact
 B-rep and analytic volume remain independent of display tolerance. Segment
-counts are capped at 65,536; finer requests return `Tessellation`. Mesh vertices
+counts are capped at 65,536, with 4,096 total trim samples per mixed planar
+face. Unresolved/intersecting sampled trims and finer requests return
+`Tessellation`; coarse sampling may require a smaller chord error. Mesh vertices
 are split at face boundaries for normals; equal positions still form a closed
 oriented mesh. Broad numerical robustness and industrial tolerancing remain
 ongoing work. [Exact planar predicates and the tolerance policy](docs/tolerances.md)
@@ -266,8 +272,10 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all six presets. Mixed-profile tests verify exact rounded/capsule volume,
-partial bounds, shared arcs and walls, closed mesh seams, and rejected inputs. Rigid-placement tests check analytic volume, transformed
+and WASM generation/error recovery with native geometry parity for all seven solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
+either winding, analytic point classification, closed mesh seams, coarse-trim
+rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed
 geometry/normals, exact tilted bounds, unchanged topology/pcurves, inverse
 round trips, preserved sagitta bounds, and rejected loss of coordinate precision.
 NURBS tests cover analytic quarter circles/lines, independent basis/Bezier

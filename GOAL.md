@@ -81,10 +81,14 @@ Stage 1 also includes explicit length/angular/relative policies, classified
 line/plane intersection and filtered exact 2D predicates integrated with planar
 validation. See [tolerances](docs/tolerances.md) for scope and verified cases.
 
-Stage 1 now includes scoped convex tangent line/arc profiles, exact normal
-extrusion, bounded arcs, and rectangular partial-cylinder trims, with analytic
-metrics and native/WASM/browser validation. See [mixed profiles](docs/mixed-profiles.md).
+Stage 1 now includes simple convex/concave line/arc regions with sharp joins,
+signed circular arcs, multiple curved/polygon holes and either input winding.
+Positive normal extrusion retains exact edges, pcurves and cylinder walls;
+analytic classification and trim separation protect construction. Checked
+sampled trims and conforming cap triangles protect display. A seventh solid
+preset exercises the concave arc-notch and rounded hole in native/WASM/browser.
+See [mixed profiles](docs/mixed-profiles.md).
 
-The next development task is to extend mixed profiles and trim validation toward
-sharp joins, concavity and holes, then broaden surface trims and intersections
-needed for face splitting. NURBS B-rep integration remains stage 2 work.
+The next development task is to broaden analytic surface intersections and
+trim handling needed for face splitting. General cylindrical trims and NURBS
+B-rep integration remain incomplete; the latter is stage 2 work.

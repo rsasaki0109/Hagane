@@ -29,11 +29,12 @@ now underpin planar validation. Native integer and WASM BigInt reference corpora
 verify signs independently. Metric distances and 3D predicates remain floating
 calculations; see [tolerances](tolerances.md).
 
-Convex tangent line/arc profiles now extrude into closed exact solids, including
-rounded rectangles/capsules and bounded circular arcs with partial-cylinder
-walls. Analytic area/volume and placed arc bounds accompany seam-matched
-tessellation and a sixth native/WASM browser fixture. Concave/holed mixed
-profiles, sharp joins and arbitrary curved trims remain unsupported; see
+Simple line/arc regions now support sharp joins, concavity, signed arcs,
+multiple curved/polygon holes and either winding, with exact positive normal
+extrusion. Analytic point classification, adjacent/nonadjacent intersection
+checks, hole containment/separation, normalized oriented topology, and checked
+conforming cap tessellation accompany a seventh native/WASM/browser solid
+fixture. General curved surface trims remain unsupported; see
 [mixed profiles](mixed-profiles.md).
 
 ## Next: broaden analytic B-rep operations
@@ -41,8 +42,8 @@ profiles, sharp joins and arbitrary curved trims remain unsupported; see
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates and robust curve/surface intersections.
-- Broaden mixed profiles to sharp joins, concavity and holes; support arbitrary
-  cylindrical trim loops and general face splits.
+- Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
+  trim loops and general face splits.
 - Typed intersection results, curve/surface classification, intersection graph
   construction, face splitting, consistent sewing, and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

@@ -109,23 +109,60 @@ impl Face {
                     .flat_map(|w| &w.coedges)
                     .any(|c| matches!(c.pcurve, PCurve::Arc { .. }))
                 {
-                    if self.wires.len() != 1 {
-                        return Err(Error::Unsupported("mixed arc-line planar trims currently support one convex outer wire, without holes"));
+                    let mut loops = Vec::new();
+                    for wire in &self.wires {
+                        let mut segments = Vec::new();
+                        for c in &wire.coedges {
+                            let segment = match c.pcurve {
+                                PCurve::Affine { .. } => PlanarSegment::Line {
+                                    a: c.pcurve.evaluate(0.0),
+                                    b: c.pcurve.evaluate(1.0),
+                                },
+                                PCurve::Arc {
+                                    center,
+                                    radius,
+                                    start_angle,
+                                    sweep,
+                                } => PlanarSegment::Arc {
+                                    center,
+                                    radius,
+                                    start_angle,
+                                    sweep,
+                                },
+                                PCurve::Circle { center, radius } => {
+                                    let arcs = [
+                                        PlanarSegment::Arc {
+                                            center,
+                                            radius,
+                                            start_angle: 0.0,
+                                            sweep: std::f64::consts::PI,
+                                        },
+                                        PlanarSegment::Arc {
+                                            center,
+                                            radius,
+                                            start_angle: std::f64::consts::PI,
+                                            sweep: std::f64::consts::PI,
+                                        },
+                                    ];
+                                    if c.forward {
+                                        segments.extend(arcs);
+                                    } else {
+                                        segments.extend(
+                                            arcs.into_iter().rev().map(PlanarSegment::reversed),
+                                        );
+                                    }
+                                    continue;
+                                }
+                            };
+                            segments.push(if c.forward {
+                                segment
+                            } else {
+                                segment.reversed()
+                            });
+                        }
+                        loops.push(segments);
                     }
-                    let mut segments = Vec::new();
-                    for c in &self.wires[0].coedges {
-                        segments.push(match c.pcurve {
-                            PCurve::Affine { .. } => PlanarSegment::Line {
-                                a: c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }),
-                                b: c.pcurve.evaluate(if c.forward { 1.0 } else { 0.0 }),
-                            },
-                            PCurve::Arc { center, radius, start_angle, sweep } if c.forward => {
-                                PlanarSegment::Arc { center, radius, start_angle, sweep }
-                            },
-                            _ => return Err(Error::Unsupported("mixed trim arcs must be counterclockwise and cannot use full-circle coedges")),
-                        });
-                    }
-                    crate::mixed::validate_mixed(&segments, tol)?;
+                    crate::mixed::validate_mixed_region(&loops, tol)?;
                     return Ok(());
                 }
                 use crate::planar::{validate_polygon, validate_region, PlanarLoop};

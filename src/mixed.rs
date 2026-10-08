@@ -1,4 +1,4 @@
-//! Scoped convex, tangent line/arc profiles and exact normal extrusion.
+//! Simple signed line/arc regions, analytic trim validation and normal extrusion.
 use crate::*;
 use std::f64::consts::{PI, TAU};
 type P2 = [f64; 2];
@@ -8,7 +8,7 @@ pub enum PlanarSegment {
         a: P2,
         b: P2,
     },
-    /// Counterclockwise circular arc; angles are radians in the profile XY plane.
+    /// Signed circular arc: positive CCW, negative CW; angles in radians.
     Arc {
         center: P2,
         radius: f64,
@@ -44,12 +44,39 @@ impl PlanarSegment {
                 start_angle, sweep, ..
             } => {
                 let a = start_angle + if end { sweep } else { 0.0 };
-                Ok(Vec3::new(-a.sin(), a.cos(), 0.0))
+                Ok(Vec3::new(-a.sin(), a.cos(), 0.0) * sweep.signum())
             }
         }
     }
+    /// Reverses traversal without replacing the circular geometry by segments.
+    pub fn reversed(self) -> Self {
+        match self {
+            Self::Line { a, b } => Self::Line { a: b, b: a },
+            Self::Arc {
+                center,
+                radius,
+                start_angle,
+                sweep,
+            } => Self::Arc {
+                center,
+                radius,
+                start_angle: (start_angle + sweep).rem_euclid(TAU),
+                sweep: -sweep,
+            },
+        }
+    }
+    fn forward(self) -> bool {
+        !matches!(self,Self::Arc { sweep,.. } if sweep<0.0)
+    }
+    fn canonical(self) -> Self {
+        if self.forward() {
+            self
+        } else {
+            self.reversed()
+        }
+    }
     fn pcurve(&self) -> PCurve {
-        match *self {
+        match self.canonical() {
             Self::Line { a, b } => PCurve::Affine {
                 origin: a,
                 direction: [b[0] - a[0], b[1] - a[1]],
@@ -70,9 +97,16 @@ impl PlanarSegment {
 }
 #[derive(Clone, Debug)]
 pub struct ArcLineProfile {
-    /// Local XY origin; ring coordinates are offsets. No holes in this first API.
+    /// Local XY origin; ring coordinates are offsets. See ArcLineRegion for holes.
     pub origin: Point3,
     pub segments: Vec<PlanarSegment>,
+}
+/// One simple line/arc outer boundary with disjoint, strictly interior holes.
+#[derive(Clone, Debug)]
+pub struct ArcLineRegion {
+    pub origin: Point3,
+    pub outer: Vec<PlanarSegment>,
+    pub holes: Vec<Vec<PlanarSegment>>,
 }
 fn p3(p: P2) -> Point3 {
     Point3::new(p[0], p[1], 0.0)
@@ -87,8 +121,8 @@ fn has_angle(segment: PlanarSegment, angle: f64) -> bool {
     else {
         return false;
     };
-    let t = (angle - start_angle).rem_euclid(TAU);
-    t <= sweep + 1e-10 || TAU - t <= 1e-10
+    let t = ((angle - start_angle) * sweep.signum()).rem_euclid(TAU);
+    t <= sweep.abs() + 1e-10 || TAU - t <= 1e-10
 }
 fn radial(segment: PlanarSegment, angle: f64) -> P2 {
     let PlanarSegment::Arc { center, radius, .. } = segment else {
@@ -116,18 +150,54 @@ fn point_distance(p: P2, segment: PlanarSegment) -> Result<f64> {
         }
     }
 }
-// Analytic candidate extrema/intersections; never validate from a display polygon.
-fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
-    let mut minimum = f64::INFINITY;
-    for t in [0.0, 1.0] {
-        minimum = minimum
-            .min(point_distance(a.evaluate(t), b)?)
-            .min(point_distance(b.evaluate(t), a)?);
+fn nearest_point(p: P2, segment: PlanarSegment) -> Result<P2> {
+    let result = match segment {
+        PlanarSegment::Line { a, b } => {
+            let len = distance(a, b);
+            let u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+            let along = ((p[0] - a[0]) * u[0] + (p[1] - a[1]) * u[1]).clamp(0.0, len);
+            [a[0] + along * u[0], a[1] + along * u[1]]
+        }
+        PlanarSegment::Arc { center, .. } => {
+            let angle = (p[1] - center[1]).atan2(p[0] - center[0]);
+            if has_angle(segment, angle) {
+                radial(segment, angle)
+            } else if distance(p, segment.evaluate(0.0)) < distance(p, segment.evaluate(1.0)) {
+                segment.evaluate(0.0)
+            } else {
+                segment.evaluate(1.0)
+            }
+        }
+    };
+    if result.iter().any(|v| !v.is_finite()) {
+        return Err(Error::InvalidInput(
+            "closest trim point exceeds finite range",
+        ));
+    }
+    Ok(result)
+}
+// Endpoints, stationary-distance pairs and intersections of the actual curves.
+// Candidate calculations are checked f64 geometry, not display sampling.
+fn pair_features(a: PlanarSegment, b: PlanarSegment) -> Result<Vec<(P2, P2)>> {
+    let mut pairs = Vec::new();
+    for t in [0.0, 0.5, 1.0] {
+        let p = a.evaluate(t);
+        pairs.push((p, nearest_point(p, b)?));
+        let q = b.evaluate(t);
+        pairs.push((nearest_point(q, a)?, q));
     }
     match (a, b) {
-        (PlanarSegment::Line { a, b }, PlanarSegment::Line { a: c, b: d }) => {
-            if segments_intersect2d(a, b, c, d)? {
-                minimum = 0.0;
+        (PlanarSegment::Line { a: p, b: q }, PlanarSegment::Line { a: r, b: s }) => {
+            if segments_intersect2d(p, q, r, s)? {
+                let ua = (p3(q) - p3(p)).normalized()?;
+                let ub = (p3(s) - p3(r)).normalized()?;
+                let den = ua.cross(ub).z;
+                if den != 0.0 {
+                    let travel = (p3(r) - p3(p)).cross(ub).z / den;
+                    let hit = p3(p) + ua * travel;
+                    pairs.push(([hit.x, hit.y], [hit.x, hit.y]));
+                }
+                // Collinear overlap is covered by endpoint and midpoint pairs.
             }
         }
         (
@@ -150,7 +220,8 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
             }
             for angle in [u[0].atan2(-u[1]), u[0].atan2(-u[1]) + PI] {
                 if has_angle(arc, angle) {
-                    minimum = minimum.min(point_distance(radial(arc, angle), line)?);
+                    let hit = radial(arc, angle);
+                    pairs.push((hit, nearest_point(hit, line)?));
                 }
             }
             if signed.abs() <= radius {
@@ -159,7 +230,7 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
                     if t >= 0.0 && t <= len {
                         let hit = [p[0] + t * u[0], p[1] + t * u[1]];
                         if has_angle(arc, (hit[1] - center[1]).atan2(hit[0] - center[0])) {
-                            minimum = 0.0;
+                            pairs.push((hit, hit));
                         }
                     }
                 }
@@ -173,12 +244,12 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
             },
             PlanarSegment::Arc {
                 center: d,
-                radius: s,
+                radius: t,
                 ..
             },
         ) => {
             let span = distance(c, d);
-            if !span.is_finite() || !(r + s).is_finite() {
+            if !span.is_finite() || !(r + t).is_finite() {
                 return Err(Error::InvalidInput(
                     "arc/arc separation exceeds finite range",
                 ));
@@ -188,12 +259,12 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
                 for x in [angle, angle + PI] {
                     for y in [angle, angle + PI] {
                         if has_angle(a, x) && has_angle(b, y) {
-                            minimum = minimum.min(distance(radial(a, x), radial(b, y)));
+                            pairs.push((radial(a, x), radial(b, y)));
                         }
                     }
                 }
-                if span >= (r - s).abs() && span <= r + s {
-                    let x = span * 0.5 + ((r - s) / span) * ((r + s) * 0.5);
+                if span >= (r - t).abs() && span <= r + t {
+                    let x = span * 0.5 + ((r - t) / span) * ((r + t) * 0.5);
                     let h = r * (1.0 - (x / r).powi(2)).max(0.0).sqrt();
                     let u = [(d[0] - c[0]) / span, (d[1] - c[1]) / span];
                     for sign in [-1.0, 1.0] {
@@ -204,19 +275,46 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
                         if has_angle(a, (hit[1] - c[1]).atan2(hit[0] - c[0]))
                             && has_angle(b, (hit[1] - d[1]).atan2(hit[0] - d[0]))
                         {
-                            minimum = 0.0;
+                            pairs.push((hit, hit));
                         }
                     }
                 }
             }
         }
     }
-    if !minimum.is_finite() {
+    if pairs
+        .iter()
+        .any(|(a, b)| a.iter().chain(b).any(|v| !v.is_finite()) || !distance(*a, *b).is_finite())
+    {
         return Err(Error::InvalidInput(
-            "mixed boundary distance exceeds finite range",
+            "trim candidate exceeds finite coordinate range",
         ));
     }
-    Ok(minimum)
+    Ok(pairs)
+}
+fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
+    if let (PlanarSegment::Line { a: p, b: q }, PlanarSegment::Line { a: r, b: s }) = (a, b) {
+        if segments_intersect2d(p, q, r, s)? {
+            return Ok(0.0);
+        }
+    }
+    Ok(pair_features(a, b)?
+        .into_iter()
+        .map(|(p, q)| distance(p, q))
+        .fold(f64::INFINITY, f64::min))
+}
+fn loop_area(segments: &[PlanarSegment]) -> f64 {
+    crate::topology::wire_area(&Wire {
+        coedges: segments
+            .iter()
+            .enumerate()
+            .map(|(edge, s)| Coedge {
+                edge,
+                forward: s.forward(),
+                pcurve: s.pcurve(),
+            })
+            .collect(),
+    })
 }
 pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Result<()> {
     Tolerance::new(tol.linear)?;
@@ -225,7 +323,7 @@ pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Resu
             "mixed profiles require 2..1024 segments",
         ));
     }
-    let mut turn = 0.0;
+
     for segment in segments {
         match *segment {
             PlanarSegment::Line { a, b } => {
@@ -250,12 +348,12 @@ pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Resu
                     || !start_angle.is_finite()
                     || start_angle.abs() > TAU
                     || !sweep.is_finite()
-                    || sweep <= 0.0
-                    || sweep > PI
-                    || !((radius * sweep).is_finite())
-                    || radius * sweep <= 10.0 * tol.linear
+                    || sweep == 0.0
+                    || sweep.abs() > PI
+                    || !((radius * sweep.abs()).is_finite())
+                    || radius * sweep.abs() <= 10.0 * tol.linear
                 {
-                    return Err(Error::InvalidInput("arc requires finite center/radius, start in [-2pi,2pi], CCW sweep in (0,pi], and size exceeding ten tolerances"));
+                    return Err(Error::InvalidInput("arc requires finite center/radius, start in [-2pi,2pi], signed nonzero sweep with abs(sweep)<=pi, and size exceeding ten tolerances"));
                 }
                 if !((center[0].abs() + radius).is_finite()
                     && (center[1].abs() + radius).is_finite())
@@ -267,14 +365,8 @@ pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Resu
                         "arc endpoints are unresolved at this tolerance",
                     ));
                 }
-                turn += sweep;
             }
         }
-    }
-    if (turn - TAU).abs() > 64.0 * f64::EPSILON * TAU * segments.len() as f64 {
-        return Err(Error::Unsupported(
-            "convex tangent profile arcs must turn exactly once counterclockwise",
-        ));
     }
     for i in 0..segments.len() {
         let a = segments[i];
@@ -282,45 +374,57 @@ pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Resu
         if distance(a.evaluate(1.0), b.evaluate(0.0)) > tol.linear {
             return Err(Error::InvalidInput("mixed profile is not closed"));
         }
-        if (a.tangent(true)? - b.tangent(false)?).norm() > 1e-10 {
-            return Err(Error::Unsupported(
-                "mixed profile joins must be tangent and consistently oriented",
+        let incoming = a.tangent(true)?;
+        let outgoing = b.tangent(false)?;
+        if (incoming + outgoing).norm() <= 1e-10 {
+            return Err(Error::InvalidInput(
+                "mixed profile has an unresolved cusp/backtracking join",
             ));
         }
         if matches!(
             (a, b),
             (PlanarSegment::Line { .. }, PlanarSegment::Line { .. })
         ) {
-            return Err(Error::Unsupported(
-                "merge consecutive straight segments before extrusion",
-            ));
+            let length = distance(a.evaluate(0.0), a.evaluate(1.0))
+                .min(distance(b.evaluate(0.0), b.evaluate(1.0)));
+            if incoming.cross(outgoing).norm() * length <= tol.linear {
+                return Err(Error::InvalidInput(
+                    "merge redundant or near-collinear straight corners",
+                ));
+            }
         }
         for j in i + 1..segments.len() {
-            if j == i + 1 || (i == 0 && j == segments.len() - 1) {
-                continue;
-            }
-            if boundary_distance(a, segments[j])? <= tol.linear {
+            let adjacent = j == i + 1 || (i == 0 && j == segments.len() - 1);
+            if adjacent {
+                let mut joins = Vec::new();
+                if j == i + 1 {
+                    joins.push(a.evaluate(1.0));
+                }
+                if i == 0 && j == segments.len() - 1 {
+                    joins.push(a.evaluate(0.0));
+                }
+                for (p, q) in pair_features(a, segments[j])? {
+                    if distance(p, q) <= tol.linear
+                        && !joins.iter().any(|&joint| {
+                            distance(p, joint) <= tol.linear && distance(q, joint) <= tol.linear
+                        })
+                    {
+                        return Err(Error::InvalidInput("adjacent mixed segments overlap, recross or nearly touch away from their join"));
+                    }
+                }
+            } else if boundary_distance(a, segments[j])?
+                <= separation_budget(&[a], &[segments[j]], tol)
+            {
                 return Err(Error::InvalidInput(
                     "mixed profile crosses, touches or nearly touches itself",
                 ));
             }
         }
     }
-    let wire = Wire {
-        coedges: segments
-            .iter()
-            .enumerate()
-            .map(|(edge, s)| Coedge {
-                edge,
-                forward: true,
-                pcurve: s.pcurve(),
-            })
-            .collect(),
-    };
-    let area = crate::topology::wire_area(&wire);
-    if !area.is_finite() || area <= tol.linear * tol.linear {
+    let area = loop_area(segments);
+    if !area.is_finite() || area.abs() <= tol.linear * tol.linear {
         return Err(Error::InvalidInput(
-            "mixed profile has no finite positive area",
+            "mixed profile has no finite nonzero area",
         ));
     }
     Ok(())
@@ -336,11 +440,210 @@ fn arc_frame(origin: Point3, center: P2, start: f64, tol: Tolerance) -> Result<F
         tol,
     )
 }
-/// Exact positive-normal extrusion of one convex, CCW, tangent line/arc loop.
-/// No holes, concavity, clockwise arcs, corner joins or skew extrusion. Place
-/// the resulting solid with `Solid::transformed` for arbitrary planes.
+fn point_location(p: P2, segments: &[PlanarSegment], tol: Tolerance) -> Result<PointLocation> {
+    if p.iter().any(|x| !x.is_finite()) {
+        return Err(Error::InvalidInput(
+            "mixed point classification requires finite coordinates",
+        ));
+    }
+    for &segment in segments {
+        if point_distance(p, segment)? <= tol.linear {
+            return Ok(PointLocation::Boundary);
+        }
+    }
+    // The boundary check supplies a boundary-free ball of radius `linear`.
+    // Shift the analytic ray within that ball to avoid floating endpoint seams.
+    let mut p = p;
+    let critical: Vec<f64> = segments
+        .iter()
+        .flat_map(|s| {
+            let mut ys = vec![s.evaluate(0.0)[1], s.evaluate(1.0)[1]];
+            if let PlanarSegment::Arc { center, radius, .. } = *s {
+                ys.extend([center[1] - radius, center[1] + radius]);
+            }
+            ys
+        })
+        .collect();
+    let seams: Vec<_> = segments
+        .iter()
+        .enumerate()
+        .map(|(i, s)| {
+            let a = s.evaluate(1.0)[1];
+            let b = segments[(i + 1) % segments.len()].evaluate(0.0)[1];
+            [a.min(b), a.max(b)]
+        })
+        .collect();
+    let y = [0.25, -0.25, 0.5, -0.5, 0.75, -0.75]
+        .into_iter()
+        .map(|f| p[1] + f * tol.linear)
+        .find(|y| {
+            y.is_finite()
+                && seams.iter().all(|s| *y < s[0] || *y > s[1])
+                && critical.iter().all(|c| {
+                    (y - c).abs() > 64.0 * f64::EPSILON * y.abs().max(c.abs()).max(tol.linear)
+                })
+        })
+        .ok_or(Error::InvalidInput(
+            "unresolved ray at endpoint levels; increase model tolerance",
+        ))?;
+    p[1] = y;
+    let mut inside = false;
+    for &segment in segments {
+        match segment {
+            PlanarSegment::Line { a, b } => {
+                if (a[1] > p[1]) != (b[1] > p[1]) {
+                    let side = orient2d(a, b, p)?;
+                    if (b[1] > a[1] && side == Orientation::CounterClockwise)
+                        || (b[1] < a[1] && side == Orientation::Clockwise)
+                    {
+                        inside = !inside;
+                    }
+                }
+            }
+            PlanarSegment::Arc {
+                center,
+                radius,
+                start_angle,
+                sweep,
+            } => {
+                let mut fractions = vec![0.0, 1.0];
+                for angle in [PI * 0.5, PI * 1.5] {
+                    let step = ((angle - start_angle) * sweep.signum()).rem_euclid(TAU);
+                    if step > 0.0 && step < sweep.abs() {
+                        fractions.push(step / sweep.abs());
+                    }
+                }
+                fractions.sort_by(f64::total_cmp);
+                for pair in fractions.windows(2) {
+                    let a = segment.evaluate(pair[0]);
+                    let b = segment.evaluate(pair[1]);
+                    if (a[1] > p[1]) != (b[1] > p[1]) {
+                        let ratio = (p[1] - center[1]) / radius;
+                        if !ratio.is_finite() || ratio.abs() > 1.0 + 64.0 * f64::EPSILON {
+                            return Err(Error::InvalidInput(
+                                "unresolved horizontal ray/arc classification",
+                            ));
+                        }
+                        let middle = start_angle + sweep * (pair[0] + pair[1]) * 0.5;
+                        let x = center[0]
+                            + middle.cos().signum()
+                                * radius
+                                * (1.0 - ratio * ratio).max(0.0).sqrt();
+                        if !x.is_finite() {
+                            return Err(Error::InvalidInput("ray/arc root exceeds finite range"));
+                        }
+                        if p[0] < x {
+                            inside = !inside;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(if inside {
+        PointLocation::Inside
+    } else {
+        PointLocation::Outside
+    })
+}
+/// Checks a simple ring, then classifies a point using analytic ray/circle roots
+/// and exact line signs. Boundary means within the absolute linear tolerance.
+pub fn classify_arc_line_point(
+    p: P2,
+    segments: &[PlanarSegment],
+    tol: Tolerance,
+) -> Result<PointLocation> {
+    validate_mixed(segments, tol)?;
+    point_location(p, segments, tol)
+}
+fn loops_distance(a: &[PlanarSegment], b: &[PlanarSegment]) -> Result<f64> {
+    let mut distance = f64::INFINITY;
+    for &x in a {
+        for &y in b {
+            distance = distance.min(boundary_distance(x, y)?);
+        }
+    }
+    Ok(distance)
+}
+fn separation_budget(a: &[PlanarSegment], b: &[PlanarSegment], tol: Tolerance) -> f64 {
+    let scale = a
+        .iter()
+        .chain(b)
+        .map(|s| match *s {
+            PlanarSegment::Line { a, b } => distance(a, b),
+            PlanarSegment::Arc { radius, .. } => radius,
+        })
+        .fold(tol.linear, f64::max);
+    tol.linear + 64.0 * f64::EPSILON * scale
+}
+pub(crate) fn validate_mixed_region(loops: &[Vec<PlanarSegment>], tol: Tolerance) -> Result<()> {
+    Tolerance::new(tol.linear)?;
+    if loops.is_empty() || loops.len() > 257 || loops.iter().map(Vec::len).sum::<usize>() > 4096 {
+        return Err(Error::Unsupported(
+            "mixed regions support one outer ring, at most 256 holes and 4096 total segments",
+        ));
+    }
+    for ring in loops {
+        validate_mixed(ring, tol)?;
+    }
+    for hole in &loops[1..] {
+        if loops_distance(&loops[0], hole)? <= separation_budget(&loops[0], hole, tol)
+            || point_location(hole[0].evaluate(0.0), &loops[0], tol)? != PointLocation::Inside
+        {
+            return Err(Error::InvalidInput(
+                "mixed hole touches, crosses or leaves the outer ring",
+            ));
+        }
+    }
+    for i in 1..loops.len() {
+        for j in i + 1..loops.len() {
+            if loops_distance(&loops[i], &loops[j])? <= separation_budget(&loops[i], &loops[j], tol)
+                || point_location(loops[i][0].evaluate(0.0), &loops[j], tol)?
+                    != PointLocation::Outside
+                || point_location(loops[j][0].evaluate(0.0), &loops[i], tol)?
+                    != PointLocation::Outside
+            {
+                return Err(Error::InvalidInput(
+                    "mixed holes overlap, touch, nearly touch or nest",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+fn normalized_ring(ring: &[PlanarSegment], positive: bool) -> Vec<PlanarSegment> {
+    if (loop_area(ring) > 0.0) == positive {
+        ring.to_vec()
+    } else {
+        ring.iter().rev().map(|s| s.reversed()).collect()
+    }
+}
+/// Exact positive-Z extrusion of a simple, possibly concave line/arc ring.
+/// Either input winding is accepted. For holes use `extrude_arc_line_region`.
 pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -> Result<Solid> {
-    validate_mixed(&profile.segments, tol)?;
+    extrude_arc_line_region(
+        &ArcLineRegion {
+            origin: profile.origin,
+            outer: profile.segments.clone(),
+            holes: Vec::new(),
+        },
+        height,
+        tol,
+    )
+}
+/// Exact normal extrusion of a simple region with signed circular arcs and
+/// disjoint holes. Normalizes outer CCW/holes CW; rejects all touch/nesting.
+/// Height must be positive. Skew and negative extrusion remain unsupported.
+pub fn extrude_arc_line_region(
+    profile: &ArcLineRegion,
+    height: f64,
+    tol: Tolerance,
+) -> Result<Solid> {
+    let input: Vec<_> = std::iter::once(&profile.outer)
+        .chain(&profile.holes)
+        .cloned()
+        .collect();
+    validate_mixed_region(&input, tol)?;
     if !profile.origin.finite()
         || !height.is_finite()
         || height <= 10.0 * tol.linear
@@ -350,23 +653,38 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
             "mixed extrusion requires finite origin and positive height exceeding ten tolerances",
         ));
     }
-    let n = profile.segments.len();
+    let rings: Vec<_> = input
+        .iter()
+        .enumerate()
+        .map(|(i, ring)| normalized_ring(ring, i == 0))
+        .collect();
+    let segments: Vec<_> = rings.iter().flatten().copied().collect();
+    let mut next = Vec::new();
+    let mut offset = 0;
+    for ring in &rings {
+        for i in 0..ring.len() {
+            next.push(offset + (i + 1) % ring.len());
+        }
+        offset += ring.len();
+    }
+    let n = segments.len();
     let mut s = Solid {
         vertices: Vec::new(),
         edges: Vec::new(),
         shell: Shell { faces: Vec::new() },
     };
     for z in [0.0, height] {
-        for segment in &profile.segments {
+        for segment in &segments {
             s.vertices.push(Vertex {
                 point: profile.origin + p3(segment.evaluate(0.0)) + Vec3::new(0.0, 0.0, z),
             });
         }
     }
-    for (i, segment) in profile.segments.iter().enumerate() {
-        let j = (i + 1) % n;
+    for (i, &segment) in segments.iter().enumerate() {
+        let j = next[i];
+        let canonical = segment.canonical();
         for (offset, z) in [(0, 0.0), (n, height)] {
-            let curve = match *segment {
+            let curve = match canonical {
                 PlanarSegment::Line { a, b } => Curve::Line {
                     a: profile.origin + p3(a) + Vec3::new(0.0, 0.0, z),
                     b: profile.origin + p3(b) + Vec3::new(0.0, 0.0, z),
@@ -387,10 +705,12 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
                     sweep,
                 },
             };
-            s.edges.push(Edge {
-                vertices: [i + offset, j + offset],
-                curve,
-            });
+            let vertices = if segment.forward() {
+                [i + offset, j + offset]
+            } else {
+                [j + offset, i + offset]
+            };
+            s.edges.push(Edge { vertices, curve });
         }
         s.edges.push(Edge {
             vertices: [i, i + n],
@@ -401,6 +721,22 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
         });
     }
     for (top, orientation) in [(false, -1), (true, 1)] {
+        let mut offset = 0;
+        let mut wires = Vec::new();
+        for ring in &rings {
+            wires.push(Wire {
+                coedges: ring
+                    .iter()
+                    .enumerate()
+                    .map(|(i, segment)| Coedge {
+                        edge: 3 * (i + offset) + usize::from(top),
+                        forward: segment.forward(),
+                        pcurve: segment.pcurve(),
+                    })
+                    .collect(),
+            });
+            offset += ring.len();
+        }
         s.shell.faces.push(Face {
             surface: Surface::Plane {
                 origin: profile.origin + Vec3::new(0.0, 0.0, if top { height } else { 0.0 }),
@@ -408,23 +744,13 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
                 v: Vec3::new(0.0, 1.0, 0.0),
             },
             orientation,
-            wires: vec![Wire {
-                coedges: profile
-                    .segments
-                    .iter()
-                    .enumerate()
-                    .map(|(i, segment)| Coedge {
-                        edge: 3 * i + usize::from(top),
-                        forward: true,
-                        pcurve: segment.pcurve(),
-                    })
-                    .collect(),
-            }],
+            wires,
         });
     }
-    for (i, segment) in profile.segments.iter().enumerate() {
-        let next = (i + 1) % n;
-        let (surface, span) = match *segment {
+    for (i, &segment) in segments.iter().enumerate() {
+        let j = next[i];
+        let canonical = segment.canonical();
+        let (surface, span) = match canonical {
             PlanarSegment::Line { a, b } => (
                 Surface::Plane {
                     origin: profile.origin + p3(a),
@@ -447,10 +773,15 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
                 sweep,
             ),
         };
-        let bottom_direction = if matches!(segment, PlanarSegment::Line { .. }) {
+        let direction = if matches!(canonical, PlanarSegment::Line { .. }) {
             span
         } else {
             1.0
+        };
+        let (start, end, orientation) = if segment.forward() {
+            (i, j, 1)
+        } else {
+            (j, i, -1)
         };
         let coedge = |edge, forward, origin, direction| Coedge {
             edge,
@@ -459,13 +790,13 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
         };
         s.shell.faces.push(Face {
             surface,
-            orientation: 1,
+            orientation,
             wires: vec![Wire {
                 coedges: vec![
-                    coedge(3 * i, true, [0.0, 0.0], [bottom_direction, 0.0]),
-                    coedge(3 * next + 2, true, [span, 0.0], [0.0, height]),
-                    coedge(3 * i + 1, false, [0.0, height], [bottom_direction, 0.0]),
-                    coedge(3 * i + 2, false, [0.0, 0.0], [0.0, height]),
+                    coedge(3 * i, true, [0.0, 0.0], [direction, 0.0]),
+                    coedge(3 * end + 2, true, [span, 0.0], [0.0, height]),
+                    coedge(3 * i + 1, false, [0.0, height], [direction, 0.0]),
+                    coedge(3 * start + 2, false, [0.0, 0.0], [0.0, height]),
                 ],
             }],
         });
@@ -473,6 +804,7 @@ pub fn extrude_arc_line(profile: &ArcLineProfile, height: f64, tol: Tolerance) -
     s.validate(tol)?;
     Ok(s)
 }
+
 /// Four exact quarter-circle corners joined tangentially to four straight sides.
 pub fn rounded_rectangle_profile(
     origin: Point3,
@@ -516,6 +848,43 @@ pub fn rounded_rectangle_profile(
     };
     validate_mixed(&profile.segments, tol)?;
     Ok(profile)
+}
+
+pub(crate) fn notched_demo_profile(radius: f64, tol: Tolerance) -> Result<ArcLineRegion> {
+    if !radius.is_finite() || radius <= 10.0 * tol.linear || radius >= 30.0 - 10.0 * tol.linear {
+        return Err(Error::InvalidInput(
+            "notch radius must be positive and less than 30 model units",
+        ));
+    }
+    let line = |a, b| PlanarSegment::Line { a, b };
+    let mut hole =
+        rounded_rectangle_profile(Point3::new(0.0, 0.0, 0.0), 20.0, 10.0, 3.0, tol)?.segments;
+    for segment in &mut hole {
+        match segment {
+            PlanarSegment::Line { a, b } => {
+                a[1] -= 10.0;
+                b[1] -= 10.0;
+            }
+            PlanarSegment::Arc { center, .. } => center[1] -= 10.0,
+        }
+    }
+    Ok(ArcLineRegion {
+        origin: Point3::new(0.0, 0.0, -12.0),
+        outer: vec![
+            line([-40.0, -30.0], [40.0, -30.0]),
+            line([40.0, -30.0], [40.0, 30.0]),
+            line([40.0, 30.0], [radius, 30.0]),
+            PlanarSegment::Arc {
+                center: [0.0, 30.0],
+                radius,
+                start_angle: 0.0,
+                sweep: -PI,
+            },
+            line([-radius, 30.0], [-40.0, 30.0]),
+            line([-40.0, 30.0], [-40.0, -30.0]),
+        ],
+        holes: vec![hole],
+    })
 }
 
 #[cfg(test)]

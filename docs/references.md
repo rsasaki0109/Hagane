@@ -17,8 +17,6 @@ claim compatibility with its data structures or APIs.
   [Rodrigues' rotation formula](https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula).
   Implemented from the mathematical formulas, without reference source code.
 - Circular arc area integrals: [Green's theorem](https://en.wikipedia.org/wiki/Green%27s_theorem).
-  Convex tangent boundary scope: monotone tangent angle and total turning,
-  [total curvature](https://en.wikipedia.org/wiki/Total_curvature).
   Line/circle and circle/circle distance candidates follow Cartesian equations
   and their stationary conditions. All formulas are implemented independently;
   no reference code or prose is incorporated.
@@ -33,6 +31,9 @@ claim compatibility with its data structures or APIs.
   or prose was copied, translated, or vendored; no predicate dependency is linked.
 - Simple polygon validation and containment: standard orientation determinants,
   Euclidean point/segment distance, and [ray casting point-in-polygon](https://en.wikipedia.org/wiki/Point_in_polygon#Ray_casting_algorithm).
+  Mixed line/arc classification splits arcs at Y extrema and solves analytic
+  horizontal ray/circle roots with half-open crossings. Cap conformity restores
+  boundary vertices removed by display triangulation, using exact collinearity.
   Implemented directly in Rust, without importing predicate source code.
 - Rational B-spline formulas and homogeneous evaluation: Les Piegl and Wayne
   Tiller, *The NURBS Book*, second edition (1997); Carl de Boor, *A Practical

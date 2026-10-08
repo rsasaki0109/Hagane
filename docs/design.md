@@ -59,7 +59,7 @@ circle/bounded arc. The cylinder's bottom/top rings have affine angle/height pcu
 The seam has two uses on the same face, at `u=0` and `u=2π`, sharing one 3D edge.
 The complete cylinder wire closes in unwrapped UV space. Rectangular partial
 cylinders use two distinct vertical boundaries and an angular span below 2pi.
-See [mixed profiles](mixed-profiles.md) for the convex tangent line/arc domain.
+See [mixed profiles](mixed-profiles.md) for the simple signed line/arc region domain.
 
 Wires follow the positive surface parameter orientation: outer CCW, holes CW.
 `Face::orientation` is +1 or -1 and reverses its surface normal and all edge
@@ -82,8 +82,9 @@ validation when extending geometry.
 ## Planar trim predicates
 
 Planar outer/inner wires may be simple straight-line polygons or full circles.
-A separate convex tangent line/arc trim domain supports one outer wire without
-holes; its analytic validation is documented in [mixed profiles](mixed-profiles.md).
+A line/arc trim domain supports simple convex/concave outer and inner wires,
+sharp joins and signed arcs; its analytic validation and normalized winding
+are documented in [mixed profiles](mixed-profiles.md).
 Polygon edges must exceed ten tolerances. Near-collinear/redundant corners,
 nonadjacent self-intersections and near touches are rejected. Point/segment
 distance, oriented segment intersections and ray-crossing containment check

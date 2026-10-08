@@ -66,6 +66,11 @@ impl Solid {
                 Surface::Plane { .. } => {
                     let mut coords = Vec::new();
                     let mut holes = Vec::new();
+                    let mixed = f
+                        .wires
+                        .iter()
+                        .flat_map(|w| &w.coedges)
+                        .any(|c| matches!(c.pcurve, PCurve::Arc { .. }));
                     for (wi, w) in f.wires.iter().enumerate() {
                         if wi > 0 {
                             holes.push(coords.len() / 2);
@@ -82,6 +87,9 @@ impl Solid {
                                 }
                                 Curve::Line { .. } => 1,
                             };
+                            if mixed && coords.len() / 2 + count > 4096 {
+                                return Err(Error::Tessellation("mixed planar display trim checking is limited to 4096 total samples per face"));
+                            }
                             let range = edge.curve.range();
                             for k in 0..count {
                                 let frac = k as f64 / count as f64;
@@ -94,11 +102,38 @@ impl Solid {
                             }
                         }
                     }
+                    if mixed {
+                        let boundaries: Vec<_> = std::iter::once(0)
+                            .chain(holes.iter().copied())
+                            .zip(
+                                holes
+                                    .iter()
+                                    .copied()
+                                    .chain(std::iter::once(coords.len() / 2)),
+                            )
+                            .map(|(lo, hi)| {
+                                (lo..hi)
+                                    .map(|i| [coords[2 * i], coords[2 * i + 1]])
+                                    .collect()
+                            })
+                            .collect();
+                        crate::planar::validate_sampled_region(&boundaries,tol).map_err(|_|Error::Tessellation("sampled curved trims are unresolved or intersecting; adjust chord error or model tolerance"))?;
+                    }
                     let triangles = earcutr::earcut(&coords, &holes, 2)
                         .map_err(|_| Error::Tessellation("planar trim triangulation failed"))?;
                     if triangles.is_empty() {
                         return Err(Error::Tessellation("no planar triangles"));
                     }
+                    let triangles = if mixed
+                        || f.wires
+                            .iter()
+                            .flat_map(|w| &w.coedges)
+                            .all(|c| matches!(self.edges[c.edge].curve, Curve::Line { .. }))
+                    {
+                        conforming_triangles(&coords, &triangles)?
+                    } else {
+                        triangles
+                    };
                     for tri in triangles.as_chunks::<3>().0 {
                         let p = [tri[0], tri[1], tri[2]]
                             .map(|i| f.surface.evaluate(coords[i * 2], coords[i * 2 + 1]));
@@ -140,7 +175,8 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
 }
 /// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
 /// polygon extrusion with a polygon hole, 3 coaxial tube, 4 rigidly placed
-/// four-bore part, 5 rounded-rectangle line/arc extrusion. Unknown IDs fail.
+/// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole.
+/// Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
     let b = BoxSpec {
@@ -201,6 +237,7 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        6 => extrude_arc_line_region(&crate::mixed::notched_demo_profile(radius, tol)?, 24.0, tol)?,
         5 => extrude_arc_line(
             &rounded_rectangle_profile(Point3::new(0.0, 0.0, -12.0), 80.0, 60.0, radius, tol)?,
             24.0,
@@ -245,4 +282,46 @@ impl Solid {
         out.push_str("]}");
         Ok(out)
     }
+}
+
+// Earcut can collapse collinear hole-bridge vertices. Restore them on every
+// triangle edge so caps share exactly the same boundary segments as the walls.
+fn conforming_triangles(coords: &[f64], indices: &[usize]) -> Result<Vec<usize>> {
+    use crate::predicates::{orient2d, Orientation};
+    let point = |i: usize| [coords[2 * i], coords[2 * i + 1]];
+    let mut pending: Vec<[usize; 3]> = indices.as_chunks::<3>().0.to_vec();
+    let mut result = Vec::new();
+    while let Some(tri) = pending.pop() {
+        let mut split = None;
+        'edges: for e in 0..3 {
+            let a = point(tri[e]);
+            let b = point(tri[(e + 1) % 3]);
+            for i in 0..coords.len() / 2 {
+                if tri.contains(&i) {
+                    continue;
+                }
+                let p = point(i);
+                if p[0] < a[0].min(b[0])
+                    || p[0] > a[0].max(b[0])
+                    || p[1] < a[1].min(b[1])
+                    || p[1] > a[1].max(b[1])
+                    || p == a
+                    || p == b
+                {
+                    continue;
+                }
+                if orient2d(a, b, p)? == Orientation::Collinear {
+                    split = Some((e, i));
+                    break 'edges;
+                }
+            }
+        }
+        if let Some((e, i)) = split {
+            pending.push([tri[e], i, tri[(e + 2) % 3]]);
+            pending.push([i, tri[(e + 1) % 3], tri[(e + 2) % 3]]);
+        } else {
+            result.extend(tri);
+        }
+    }
+    Ok(result)
 }

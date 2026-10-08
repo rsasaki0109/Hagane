@@ -272,10 +272,15 @@ fn unsupported_or_invalid_arc_profiles_do_not_succeed() {
             },
         ],
     };
-    assert!(matches!(
-        extrude_arc_line(&triangle, 2.0, tol()),
-        Err(Error::Unsupported(_))
-    ));
+    assert!(
+        (extrude_arc_line(&triangle, 2.0, tol())
+            .unwrap()
+            .volume()
+            .unwrap()
+            - 1.0)
+            .abs()
+            < 1e-12
+    );
 }
 #[test]
 fn malformed_arc_pcurves_and_partial_trims_are_rejected() {

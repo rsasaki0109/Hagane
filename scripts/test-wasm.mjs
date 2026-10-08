@@ -10,8 +10,8 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24}];
-for(let id=0;id<6;id++){
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42}];
+for(let id=0;id<7;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
  assert.ok(Math.abs(native.volume-wasm.volume)<1e-9);
@@ -21,8 +21,11 @@ assert.equal(preset(4,30).status,1);assert.equal(preset(4,NaN).status,1);assert.
 for(const radius of [8,14,24]){const {status,result}=preset(5,radius);assert.equal(status,0);assert.ok(Math.abs(result.volume-(4800-(4-Math.PI)*radius**2)*24)<1e-8);}
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(5,radius).status,1);
 assert.equal(preset(5,14,0).status,1);assert.equal(preset(5).status,0);
+for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equal(status,0);assert.ok(Math.abs(result.volume-(4600+(4-Math.PI)*9-Math.PI*radius**2/2)*24)<1e-8);}
+for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
+assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 6 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 7 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);

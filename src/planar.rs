@@ -108,6 +108,15 @@ pub(crate) fn validate_polygon(p: &[P2], tol: Tolerance) -> Result<()> {
             if j == i + 1 || (i == 0 && j == p.len() - 1) {
                 continue;
             }
+            if boxes_separated(
+                p[i],
+                p[(i + 1) % p.len()],
+                p[j],
+                p[(j + 1) % p.len()],
+                tol.linear,
+            ) {
+                continue;
+            }
             if segments_distance(p[i], p[(i + 1) % p.len()], p[j], p[(j + 1) % p.len()])?
                 <= tol.linear
             {
@@ -240,6 +249,50 @@ pub(crate) fn validate_region(
             {
                 return Err(Error::InvalidInput(
                     "holes overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn boxes_separated(a: P2, b: P2, c: P2, d: P2, tolerance: f64) -> bool {
+    (0..2).any(|i| {
+        a[i].max(b[i]) + tolerance < c[i].min(d[i]) || c[i].max(d[i]) + tolerance < a[i].min(b[i])
+    })
+}
+/// Validate the sampled display boundary independently of analytic modeling.
+/// A coarse approximation must not move a hole outside or create a crossing.
+pub(crate) fn validate_sampled_region(loops: &[Vec<P2>], tol: Tolerance) -> Result<()> {
+    for ring in loops {
+        validate_polygon(ring, tol)?;
+    }
+    for i in 0..loops.len() {
+        for j in i + 1..loops.len() {
+            for k in 0..loops[i].len() {
+                for l in 0..loops[j].len() {
+                    let (a, b, c, d) = (
+                        loops[i][k],
+                        loops[i][(k + 1) % loops[i].len()],
+                        loops[j][l],
+                        loops[j][(l + 1) % loops[j].len()],
+                    );
+                    if !boxes_separated(a, b, c, d, tol.linear)
+                        && segments_distance(a, b, c, d)? <= tol.linear
+                    {
+                        return Err(Error::Tessellation(
+                            "sampled trim boundaries intersect or nearly touch",
+                        ));
+                    }
+                }
+            }
+            let a = locate_point_in_polygon(loops[j][0], &loops[i])?;
+            let b = locate_point_in_polygon(loops[i][0], &loops[j])?;
+            if (i == 0 && a != PointLocation::Inside)
+                || (i > 0 && (a != PointLocation::Outside || b != PointLocation::Outside))
+            {
+                return Err(Error::Tessellation(
+                    "sampled holes leave their boundary or nest",
                 ));
             }
         }
