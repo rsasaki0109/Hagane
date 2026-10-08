@@ -241,6 +241,19 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        12 => {
+            if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
+                return Err(Error::InvalidInput(
+                    "sewing subdivision control must be in 8..24",
+                ));
+            }
+            let source = make_box(b, tol)?;
+            let mut patches = planar_face_patches(&source, tol)?;
+            let ring = &mut patches[1].rings[0];
+            ring.insert(1, ring[0] + (ring[1] - ring[0]) * (radius / 32.0));
+            patches.reverse();
+            sew_planar_faces(&patches, GeometryTolerance::default())?
+        }
         11 => {
             subdivide_planar_face(
                 &subtract_through_cylinder(b, tool(0.0, 0.0, 12.0), tol)?,

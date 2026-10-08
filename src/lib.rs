@@ -11,6 +11,7 @@ mod nurbs_surface;
 mod operations;
 mod planar;
 mod predicates;
+mod sewing;
 mod topology;
 mod wasm;
 pub use face_intersections::*;
@@ -24,6 +25,7 @@ pub use nurbs::*;
 pub use nurbs_surface::*;
 pub use operations::*;
 pub use predicates::*;
+pub use sewing::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

@@ -63,6 +63,13 @@ quarter arcs and rectangular walls with cut-safe relocated seams, demonstrated
 by a twelfth periodic-bore preset; see
 [face subdivision](face-split.md).
 
+Exact planar patch sewing now merges identical vertices and shares straight
+edges, propagating exact collinear subdivisions across independent face
+boundaries. A thirteenth native/WASM/browser fixture reconstructs a box from
+patches with an unmatched boundary subdivision. Closed, oriented manifold
+validation rejects open/duplicated/disconnected shells; near coincidences are
+not healed. See [sewing](sewing.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -70,7 +77,7 @@ by a twelfth periodic-bore preset; see
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement shared planar face arrangements and sewing for scoped solid Boolean
+- Implement shared planar face arrangements and classification for scoped solid Boolean
   operations; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

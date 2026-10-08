@@ -123,7 +123,13 @@ rectangles with a relocated seam that clears cut events. Disk/tube caps and
 multiple full-circle bores, including original seam passage, preserve geometry,
 volume and closed mesh seams. A twelfth browser fixture cuts a periodic bore.
 
-The next development task is shared planar face arrangement/sewing toward
+Scoped exact planar sewing now reconstructs one closed manifold solid from
+independent straight-boundary patches. Exact coincidences and exact collinear
+subdivisions share vertices/edges/pcurves; near coincidences fail explicitly.
+A thirteenth native/WASM/browser preset exercises an unmatched face subdivision.
+See [sewing](docs/sewing.md).
+
+The next development task is planar face arrangements and classification toward
 scoped solid Boolean operations. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

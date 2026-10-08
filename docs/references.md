@@ -123,3 +123,16 @@ seams and rectangle trims share these new rim vertices. Seam choice maximizes
 angular clearance over a finite candidate set; chord clearance is checked via
 `2*r*sin(delta/2)`. This independent implementation introduces no dependency and
 uses no OCCT source. Exact geometry remains separate from display tessellation.
+
+### Exact planar sewing
+
+Independent planar patches are assembled as an oriented combinatorial
+boundary representation. Exact coincident points define shared vertices;
+unordered endpoint pairs define shared straight edges; per-face affine UV
+maps use the same normalized edge parameter. Collinearity is tested with the
+existing filtered exact orientation predicate in all three coordinate
+projections. Subdivision points are ordered by a dominant coordinate and
+propagated to all incident uses. Existing edge-use, vertex-link, connectivity,
+trim and positive-volume validation establishes the supported shell invariants.
+No snapping/healing is performed. This independently implemented construction
+uses no new dependency and no OCCT source.
