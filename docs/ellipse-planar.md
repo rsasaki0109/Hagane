@@ -16,7 +16,8 @@ half arcs, each with sweep `pi`, opposite axes and a common center. Both coedges
 must traverse consistently. Axis conditioning, finite coefficients, closure,
 area/orientation and the owning 3D edge/pcurve relationship are checked. A
 conservative coefficient-error sum bounds that relationship over the entire
-arc, in addition to the existing sample checks. Centers and axes of the two
+arc, in addition to the existing sample checks. The 3D/pcurve coefficients must
+also agree within checked binary64 arithmetic precision. Centers and axes of the two
 halves must agree within an analogous whole-curve tolerance bound. The two
 conics must also agree at checked binary64 arithmetic precision; nearly
 coincident but distinct ellipses are rejected even when their difference fits
@@ -26,7 +27,8 @@ distance and root precision guards.
 [Minor ellipse arcs with a straight closing chord](ellipse-segment-planar.md),
 including the [half ellipse and diameter](half-ellipse-planar.md), are also supported.
 [Concentric homothetic full-ellipse holes](ellipse-annulus-planar.md) are supported.
-Other mixed loops, eccentric/multiple ellipse holes, more general arc partitions and
+[Offset homothetic ellipse holes](ellipse-eccentric-planar.md) are supported too.
+Other mixed loops, multiple/nonhomothetic holes, more general arc partitions and
 ellipse-face subdivision are not yet supported. Invalid topology and unsupported
 trim domains fail before query/bounds shortcuts. Independent ellipse pcurve
 values do not imply support for arbitrary ellipse-trimmed modeling operations.

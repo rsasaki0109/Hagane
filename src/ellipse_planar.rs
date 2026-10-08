@@ -171,7 +171,7 @@ pub(crate) fn has_ellipse(f: &Face) -> bool {
         .any(|c| matches!(c.pcurve, PCurve::EllipseArc { .. }))
 }
 /// Validated ellipse material: one outer wire and, optionally, one aligned
-/// concentric homothetic full-ellipse hole.
+/// strictly interior homothetic full-ellipse hole.
 pub(crate) struct EllipseRegion {
     rings: Vec<EllipseRing>,
 }
@@ -235,18 +235,21 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
             norm(sub(hole.cosine, outer.cosine.map(|x| x * ratio * sign)))
                 + norm(sub(hole.sine, outer.sine.map(|x| x * ratio * sign)))
         };
-        let error = norm(sub(hole.center, outer.center)) + mismatch(1.).min(mismatch(-1.));
+        let error = mismatch(1.).min(mismatch(-1.));
         if !error.is_finite() || error > 512. * f64::EPSILON * (outer.scale() + norm(outer.center))
         {
             return Err(Error::Unsupported(
-                "ellipse hole must be concentric with aligned homothetic axes at checked precision",
+                "ellipse hole must have aligned homothetic axes at checked precision",
             ));
         }
         let scale = outer.scale();
         let a = outer.cosine.map(|x| x / scale);
         let b = outer.sine.map(|x| x / scale);
-        let clearance = (1. - ratio) * scale * cross(a, b).abs() / (norm(a) + norm(b));
-        if !clearance.is_finite() || clearance <= 10. * tol.linear + error {
+        let center_offset = outer.inverse(hole.center)?;
+        let sigma_lower = scale * cross(a, b).abs() / (norm(a) + norm(b));
+        let clearance = (1. - ratio - norm(center_offset)) * sigma_lower;
+        let arithmetic = 512. * f64::EPSILON * (scale + norm(outer.center) + norm(hole.center));
+        if !clearance.is_finite() || clearance <= 10. * tol.linear + error + arithmetic {
             return Err(Error::Unsupported("ellipse hole clearance is unresolved"));
         }
     }
@@ -644,24 +647,45 @@ pub fn ellipse_annulus_planar_demo_solid(
     slope: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
+    ellipse_eccentric_planar_demo_solid(radius, inner_radius, height, slope, [0., 0.], tol)
+}
+/// Closed eccentric tube fixture: the hole center is in the source XY profile.
+/// Both circular rims must stay strictly across the transverse cutting plane.
+pub fn ellipse_eccentric_planar_demo_solid(
+    radius: f64,
+    inner_radius: f64,
+    height: f64,
+    slope: f64,
+    center: [f64; 2],
+    tol: GeometryTolerance,
+) -> Result<Solid> {
     if !inner_radius.is_finite()
         || inner_radius <= tol.linear()
         || !radius.is_finite()
-        || radius - inner_radius <= 10. * tol.linear()
+        || center.iter().any(|x| !x.is_finite())
+        || radius - inner_radius - norm(center) <= 10. * tol.linear()
     {
         return Err(Error::InvalidInput(
-            "ellipse annulus requires resolved positive radii and strict clearance",
+            "eccentric ellipse hole requires resolved radii, finite center and strict containment",
         ));
     }
-    ellipse_cap_fixture(radius, height, slope, tol, None, Some(inner_radius))
+    ellipse_cap_fixture(
+        radius,
+        height,
+        slope,
+        tol,
+        None,
+        Some((inner_radius, center)),
+    )
 }
+
 fn ellipse_cap_fixture(
     radius: f64,
     height: f64,
     slope: f64,
     tol: GeometryTolerance,
     segment_sweep: Option<f64>,
-    inner_radius: Option<f64>,
+    inner_radius: Option<(f64, P2)>,
 ) -> Result<Solid> {
     if !radius.is_finite()
         || !height.is_finite()
@@ -677,11 +701,11 @@ fn ellipse_cap_fixture(
         &ArcLineRegion {
             origin: Point3::new(0., 0., -height / 2.),
             holes: inner_radius
-                .map(|radius| {
+                .map(|(radius, center)| {
                     vec![[0., PI]
                         .into_iter()
                         .map(|start_angle| PlanarSegment::Arc {
-                            center: [0., 0.],
+                            center,
                             radius,
                             start_angle,
                             sweep: PI,
@@ -949,6 +973,28 @@ pub fn ellipse_annulus_planar_demo_json(offset: f64, placement: f64) -> Result<S
     };
     ellipse_planar_query_json(&solid, 5, origin - u * 34. + v * offset, u * 2.)
 }
+/// Eccentric hole center X and line V offset in mm; placement in radians.
+pub fn ellipse_eccentric_planar_demo_json(
+    center_x: f64,
+    offset: f64,
+    placement: f64,
+) -> Result<String> {
+    if !offset.is_finite() || !placement.is_finite() {
+        return Err(Error::InvalidInput(
+            "eccentric ellipse demo requires finite query values",
+        ));
+    }
+    let t = GeometryTolerance::default();
+    let solid = ellipse_eccentric_planar_demo_solid(24., 8., 24., 0.25, [center_x, 0.], t)?
+        .transformed(
+            Transform::rotation(Vec3::new(1., 2., 3.), placement)?,
+            t.absolute(),
+        )?;
+    let Surface::Plane { origin, u, v } = solid.shell.faces[5].surface else {
+        unreachable!()
+    };
+    ellipse_planar_query_json(&solid, 5, origin - u * 34. + v * offset, u * 2.)
+}
 fn ellipse_planar_query_json(
     solid: &Solid,
     face: usize,
@@ -998,7 +1044,7 @@ fn ellipse_planar_query_json(
 mod tests {
     use super::*;
     #[test]
-    fn concentric_nonorthogonal_annulus_membership_and_domain_checks() {
+    fn homothetic_nonorthogonal_hole_membership_and_domain_checks() {
         let outer = EllipseRing {
             center: [10., -2.],
             cosine: [2., 0.],
@@ -1046,7 +1092,14 @@ mod tests {
         assert_eq!(region.location([11.5, -2.]).unwrap(), PointLocation::Inside);
         assert!(region.within_boundary([11., -2.], 1e-5).unwrap());
         assert!(!region.within_boundary(outer.center, 1e-5).unwrap());
-        for (ratio, offset) in [(0.5, 1e-9), (1., 0.), (1. - 1e-9, 0.), (1.1, 0.)] {
+        let shifted = ring(&face(0.5, 0.6), tolerance).unwrap();
+        assert_eq!(
+            shifted.location([10.6, -2.]).unwrap(),
+            PointLocation::Outside
+        );
+        assert_eq!(shifted.location([8.7, -2.]).unwrap(), PointLocation::Inside);
+        assert!(shifted.within_boundary([9.6, -2.], 1e-5).unwrap());
+        for (ratio, offset) in [(0.5, 2.), (1., 0.), (1. - 1e-9, 0.), (1.1, 0.)] {
             assert!(ring(&face(ratio, offset), tolerance).is_err());
         }
     }

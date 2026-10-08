@@ -309,3 +309,18 @@ close consistently with the annular cap. The existing mathematical references
 for affine-circle roots, interpolation and ray classification apply to both wires.
 This is original MIT OR Apache-2.0 Rust code, with no new dependency or OCCT
 source consultation, copying or translation.
+
+
+### Offset homothetic ellipse holes
+
+An aligned homothetic ellipse maps to a circle of radius k with displaced center
+q under the outer ellipse's inverse affine map. The triangle inequality gives
+strict containment when `norm(q)+k<1`; multiplying the radial gap by a lower
+singular-value bound gives conservative physical clearance. For an oblique cap
+`z=-slope*x`, integrate the column height `height/2-slope*x` over outer disk
+minus hole. A disk centered at cx has X first moment `pi*r^2*cx`, giving the
+fixture's offset-dependent volume. Whole-curve coefficient-error sums and checked
+binary64 margins preserve owning 3D edge/pcurve correspondence without snapping.
+Existing affine-circle roots and interval subtraction retain the displaced
+parameters. This is original MIT OR Apache-2.0 Rust code, with no new libraries
+or OCCT source consultation, copying or translation.

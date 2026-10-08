@@ -414,3 +414,21 @@ for(const placement of [0,0.37])for(const offset of [-6,6,18,30]){
 for(const [offset,placement] of [[0,0],[12,0],[12+1e-9,0],[24,0],[24+1e-9,0],[NaN,0],[6,Infinity]])assert.equal(ellipseAnnulus(offset,placement).status,1);
 assert.equal(ellipseAnnulus(6).status,0);
 console.log('Ellipse annulus: independent roots/volume, two material intervals, hole provenance, native/WASM parity, contacts and recovery passed.');
+
+function eccentricEllipse(center,offset,placement=0){
+ const status=k.hagane_ellipse_eccentric_planar_demo(center,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const center of [-6,0,6,10])for(const placement of [0,0.37])for(const offset of [4,14,30]){
+ const {status,result}=eccentricEllipse(center,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','ellipse_eccentric_planar','--',String(center),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ const stretch=Math.sqrt(1.0625),outer=Math.sqrt(576-offset**2)*stretch,inner=Math.sqrt(64-offset**2)*stretch,shift=center*stretch;
+ const expected=offset===30?[]:offset>8?[(34-outer)/2,(34+outer)/2]:[(34-outer)/2,(34+shift-inner)/2,(34+shift+inner)/2,(34+outer)/2];
+ assert.equal(result.intersection.hits.length,expected.length);assert.equal(result.intersection.intervals.length,expected.length/2);
+ result.intersection.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-expected[i])<1e-10));
+ assert.ok(Math.abs(result.mesh.volume-(Math.PI*(576-64)*12+16*Math.PI*center))<1e-8);
+}
+for(const center of [16,16-1e-9,20,NaN,Infinity])assert.equal(eccentricEllipse(center,4).status,1);
+for(const [offset,placement] of [[0,0],[8,0],[8+1e-9,0],[24,0],[NaN,0],[4,Infinity]])assert.equal(eccentricEllipse(6,offset,placement).status,1);
+assert.equal(eccentricEllipse(6,4).status,0);
+console.log('Eccentric ellipse holes: independent displaced roots/first-moment volume, native/WASM parity, containment/contact errors and recovery passed.');

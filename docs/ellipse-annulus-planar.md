@@ -14,9 +14,10 @@ included when constructing the shared cap coedges.
 The hole's center must match the outer center at checked binary64 precision.
 The first arc axes must be positive scalar multiples of the outer axes, or
 both must be negated scalar multiples. Nonorthogonal axes are accepted when
-well conditioned; arbitrary relative phase, eccentric holes, unequal axis
-ratios, multiple holes and mixed ellipse/chord regions with holes are not
-supported. The existing single-wire ellipse and minor arc/chord domains remain.
+well conditioned; arbitrary relative phase, unequal axis ratios, multiple holes and mixed
+ellipse/chord regions with holes are not supported.
+[Offset homothetic holes](ellipse-eccentric-planar.md) are also supported, with
+a checked containment bound. The existing single-wire ellipse and minor arc/chord domains remain.
 Invalid or unsupported trim geometry fails before empty-query shortcuts.
 
 Finite coefficients, whole-arc 3D/pcurve agreement, matching half conics,

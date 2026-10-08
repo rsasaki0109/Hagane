@@ -245,7 +245,6 @@ nonorthogonal axes, near contacts and unresolved thickness are tested.
 Native/WASM parity and a 90-degree browser demo are verified. Larger sweeps, arbitrary composite loops and general capped partitions remain
 unsupported. The ellipse-hole extension follows below. See [minor ellipse/chord trims](ellipse-segment-planar.md).
 
-
 Concentric homothetic full-ellipse holes now support exact annular planar caps.
 Checked axis/center agreement and a physical clearance lower bound reject
 unsupported or unresolved holes. Analytic clipping preserves outer/inner wire
@@ -255,9 +254,23 @@ and conforming tessellation retain the hole. A closed obliquely capped tube
 fixture, native/WASM example and actual browser demo are implemented. Tests cover
 independent roots/volume/bounds, rotated/tiny solids, nonorthogonal axes, physical
 bands, shared orientation, display-chord error and no triangles filling the hole.
-Eccentric or multiple ellipse holes, holes in arc/chord loops, arbitrary mixed
-loops and general capped partitions remain unsupported. See
+The offset-hole extension follows below. Multiple ellipse holes, holes in
+arc/chord loops, arbitrary mixed loops and general capped partitions remain unsupported. See
 [ellipse annuli](ellipse-annulus-planar.md).
+
+Offset homothetic full-ellipse holes now extend annular cap support beyond a
+common center. Inverse outer-axis coordinates and a singular-value clearance
+bound certify strict containment; touching or unresolved offsets are rejected.
+Whole-curve 3D/pcurve coefficient agreement is checked at arithmetic precision
+as well as model tolerance. Original displaced roots, wire provenance, one/two
+material intervals, classification and conforming meshes preserve the actual
+hole. The closed eccentric-tube fixture retains the correct first-moment term
+in oblique-cut volume. Native checks cover XY offsets, tilt signs, rotation,
+tiny dimensions, independent volume/roots, nonorthogonal trims, containment,
+corrupt pcurves and oriented meshes with no filled hole. Native/WASM parity and
+an actual browser demo are verified. Multiple/nonhomothetic holes, arbitrary
+mixed loops and general capped partitions remain unsupported. See
+[offset ellipse holes](ellipse-eccentric-planar.md).
 
 ## Next: broaden analytic B-rep operations
 

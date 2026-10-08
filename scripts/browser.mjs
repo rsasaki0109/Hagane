@@ -360,5 +360,18 @@ try {
  const annulusView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),annulusView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: elliptic cap hole, two material intervals, original hole parameters, contacts/empty results, recovery and orbit passed.');
+ await page.locator('#scope').selectOption('eccentricEllipsePlane');assert.equal(await page.locator('#hits').textContent(),'4');
+ const eccentricData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.equal(eccentricData.intersection.intervals.length,2);assert.deepEqual(eccentricData.intersection.hits.map(h=>h.boundaries[0].wire),[0,1,1,0]);
+ assert.ok(Math.abs(eccentricData.mesh.volume-Math.PI*6240)<1e-8);
+ const holeHits=eccentricData.intersection.hits.filter(h=>h.boundaries[0].wire===1);assert.ok(Math.abs((holeHits[0].parameter+holeHits[1].parameter)/2-(34+6*Math.sqrt(1.0625))/2)<1e-10);
+ await page.locator('#offset').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#hits').textContent(),'2');
+ await page.locator('#offset').evaluate(e=>{e.value=8;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('empty');assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'4');await page.locator('#reset').click();
+ if(process.argv.includes('--capture-ellipse-eccentric-planar'))await page.screenshot({path:new URL('../docs/ellipse-eccentric-planar.png',import.meta.url).pathname});
+ const eccentricView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),eccentricView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: offset ellipse hole, asymmetric roots, corrected volume, contacts/empty results, recovery and orbit passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

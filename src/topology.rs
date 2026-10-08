@@ -450,6 +450,15 @@ impl Solid {
                                     "ellipse and planar pcurve coefficients disagree",
                                 ));
                             }
+                            let precision = 512.
+                                * f64::EPSILON
+                                * (center.norm()
+                                    + cosine.norm()
+                                    + sine.norm()
+                                    + f.surface.evaluate(pc_center[0], pc_center[1]).norm());
+                            if mismatch > precision {
+                                return Err(Error::Unsupported("ellipse/pcurve coefficients differ beyond checked arithmetic precision"));
+                            }
                         }
                         (_, PCurve::EllipseArc { .. }) => {
                             return Err(Error::InvalidTopology(

@@ -336,6 +336,20 @@ and conforming tessellation retain the hole. A closed obliquely capped tube
 fixture, native/WASM example and actual browser demo are implemented. Tests cover
 independent roots/volume/bounds, rotated/tiny solids, nonorthogonal axes, physical
 bands, shared orientation, display-chord error and no triangles filling the hole.
-Eccentric or multiple ellipse holes, holes in arc/chord loops, arbitrary mixed
-loops and general capped partitions remain unsupported. See
+The offset-hole extension follows below. Multiple ellipse holes, holes in
+arc/chord loops, arbitrary mixed loops and general capped partitions remain unsupported. See
 [ellipse annuli](docs/ellipse-annulus-planar.md).
+
+Offset homothetic full-ellipse holes now extend annular cap support beyond a
+common center. Inverse outer-axis coordinates and a singular-value clearance
+bound certify strict containment; touching or unresolved offsets are rejected.
+Whole-curve 3D/pcurve coefficient agreement is checked at arithmetic precision
+as well as model tolerance. Original displaced roots, wire provenance, one/two
+material intervals, classification and conforming meshes preserve the actual
+hole. The closed eccentric-tube fixture retains the correct first-moment term
+in oblique-cut volume. Native checks cover XY offsets, tilt signs, rotation,
+tiny dimensions, independent volume/roots, nonorthogonal trims, containment,
+corrupt pcurves and oriented meshes with no filled hole. Native/WASM parity and
+an actual browser demo are verified. Multiple/nonhomothetic holes, arbitrary
+mixed loops and general capped partitions remain unsupported. See
+[offset ellipse holes](docs/ellipse-eccentric-planar.md).
