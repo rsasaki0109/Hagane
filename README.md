@@ -130,6 +130,8 @@ fabricate the demo image.
 
 - `f64` points/vectors, right-handed rigid transforms, explicit linear tolerance.
 - Lines and XY circles; arbitrary orthonormal planes and Z-cylinder surfaces.
+- Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
+  homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
 - Line/plane and horizontal-plane/bounded-Z-cylinder intersections.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
@@ -142,6 +144,28 @@ fabricate the demo image.
 - Structural/geometry validation, connected manifold shells, analytic volume,
   exact bounds for supported solids, and face-indexed display tessellation.
 - The same Rust library on native and WASM targets; interactive browser demo.
+
+## NURBS curves
+
+The geometry layer also has immutable `NurbsCurve` objects with degrees 1..16,
+nonuniform clamped knots and positive weights. For a rational quadratic circle:
+
+```rust
+use hagane::{NurbsCurve, Point3};
+let curve = NurbsCurve::new(2,
+    vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+    vec![Point3::new(1.0, 0.0, 0.0), Point3::new(1.0, 1.0, 0.0),
+         Point3::new(0.0, 1.0, 0.0)],
+    vec![1.0, std::f64::consts::FRAC_1_SQRT_2, 1.0])?;
+let point = curve.evaluate(0.5)?;
+let tangent = curve.derivative(0.5)?;
+```
+
+`cargo run --locked --example nurbs` emits evaluated points and derivatives.
+The solid demo links to a separate **NURBS curves** page with weight and
+parameter controls. [Curve documentation](docs/nurbs.md) explains knot-side
+semantics, numerical limits and the actual WASM demo. These curves are not yet
+integrated with B-rep edges; NURBS surfaces and intersections remain future work.
 
 ## Explicit limits
 
@@ -197,7 +221,10 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all four presets. CI runs formatting, Clippy, native tests,
+and WASM generation/error recovery with native geometry parity for all four presets.
+NURBS tests cover analytic quarter circles/lines, independent basis/Bezier
+formulas, nonuniform knots, C0 one-sided limits, weight-scale invariance, range
+errors and 16 native/WASM curve cases. Browser tests cover both demos. CI runs formatting, Clippy, native tests,
 WASM build/runtime checks, and browser interactions.
 
 See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and

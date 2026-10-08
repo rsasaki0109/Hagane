@@ -7,7 +7,9 @@ or convex XY polygon extrusion with multiple polygon holes and skew/reversed
 directions; explicitly scoped multiple through-bore difference; shared oriented
 B-rep topology and pcurves; trim containment/separation and manifold validation;
 exact metrics; bounded display tessellation; and four native/WASM interactive
-presets with recorded demos.
+presets with recorded demos. Standalone positive-weight clamped NURBS curves
+now support position and analytic first-derivative evaluation, validated knots,
+explicit one-sided limits, and an interactive native/WASM curve demo.
 
 ## Next: broaden analytic B-rep operations
 
@@ -21,7 +23,8 @@ presets with recorded demos.
 
 ## Later: full CAD kernel work
 
-- B-splines and rational NURBS; adaptive evaluation, derivatives, intersections.
+- NURBS knot refinement, higher derivatives, periodic curves, certified adaptive
+  subdivision, surface evaluation, intersections, and integration with B-rep edges.
 - General Boolean operations on arbitrary manifold solids.
 - Fillets/chamfers and continuity constraints.
 - Shape healing, tolerant sewing, and imported-shape diagnostics.

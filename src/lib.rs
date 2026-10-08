@@ -2,6 +2,7 @@
 mod geometry;
 mod math;
 mod mesh;
+mod nurbs;
 mod operations;
 mod planar;
 mod topology;
@@ -9,6 +10,7 @@ mod wasm;
 pub use geometry::*;
 pub use math::*;
 pub use mesh::*;
+pub use nurbs::*;
 pub use operations::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]

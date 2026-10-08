@@ -18,6 +18,13 @@ claim compatibility with its data structures or APIs.
 - Simple polygon validation and containment: standard orientation determinants,
   Euclidean point/segment distance, and [ray casting point-in-polygon](https://en.wikipedia.org/wiki/Point_in_polygon#Ray_casting_algorithm).
   Implemented directly in Rust, without importing predicate source code.
+- Rational B-spline formulas and homogeneous evaluation: Les Piegl and Wayne
+  Tiller, *The NURBS Book*, second edition (1997); Carl de Boor, *A Practical
+  Guide to Splines*. Mathematical background also appears in
+  [de Boor's algorithm](https://en.wikipedia.org/wiki/De_Boor%27s_algorithm) and
+  [B-spline derivative expressions](https://en.wikipedia.org/wiki/B-spline#Derivative_expressions).
+  Hagane implements these formulas independently; no book/page source code or
+  prose was incorporated, and no additional NURBS library is linked.
 - Browser integration specifications: [WebAssembly core specification](https://webassembly.github.io/spec/core/),
   [WebGL 1.0 specification](https://registry.khronos.org/webgl/specs/latest/1.0/).
 - Planar polygon triangulation: [Mapbox Earcut](https://github.com/mapbox/earcut),

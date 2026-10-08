@@ -22,6 +22,11 @@ orientations; the exact volume is `(outer area − hole areas) × abs(direction.
 No cap mesh is used to create the solid. A hollow tube similarly reuses annular
 caps and two oppositely oriented analytic cylindrical walls.
 
+The standalone `nurbs` geometry module implements checked homogeneous de Boor
+curve evaluation and analytic rational first derivatives. Its immutable objects
+are not yet `Curve` enum variants or B-rep edges; the existing topology validator
+must not be used to imply NURBS trim support. See [nurbs.md](nurbs.md).
+
 ## Geometry and units
 
 Coordinates and lengths are `f64`, in a consistent caller-selected unit.
@@ -117,6 +122,6 @@ four bores, polygon extrusion, or tube; unknown IDs return errors. Preset 2 has
 a fixed polygon profile and ignores the radius argument. JSON bytes contain coordinates,
 normals, analytic volume, and topology counts, or an explicit error. Status 0
 means success, 1 means a kernel error. The buffer is valid until the next
-`hagane_generate`; callers must copy/decode it before generating another part
+`hagane_generate*` call, including the NURBS fixture; callers must copy/decode it before generating another part
 and reacquire the memory view after memory growth. This is a single-instance,
 synchronous demo ABI, not yet a versioned public serialization format.
