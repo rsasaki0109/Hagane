@@ -191,3 +191,13 @@ removed before sewing. Inclusion-exclusion gives the independent analytic
 volume check `V(A ∪ B) = V(A) + V(B) - V(A ∩ B)`. This implementation is original
 Rust code under MIT OR Apache-2.0, uses the existing geometry/partition/sewing
 infrastructure and adds no dependency. No OCCT source was consulted or translated.
+
+### Axis-aligned box boundary arrangements
+
+The minimum/maximum coordinate planes of two boxes induce a finite rectangular
+cell decomposition. Boolean truth functions select material cells; faces between
+two selected cells are interior and do not belong to the boundary. Regularization
+discards zero-volume face/edge/point intersections. This follows elementary set
+operations and orthogonal polyhedron boundary construction, implemented originally
+in Rust under MIT OR Apache-2.0. Corners use exact shared input coordinates and
+strict planar sewing. No new dependency or OCCT source is used.

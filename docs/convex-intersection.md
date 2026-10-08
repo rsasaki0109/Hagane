@@ -88,3 +88,7 @@ nonconvex inputs, rotated-diamond area, rigid placement, tiny models, positive
 triangle winding and closed mesh seams. Native/WASM fixtures compare geometry,
 metrics, empty/contact results and recovery. Browser tests move the cutter,
 verify topology/volume changes and exercise orbit/zoom.
+
+Exact coplanarity and full/partial face contact are supported separately for
+axis-aligned `BoxSpec` operands by [box arrangements](box-booleans.md). This does
+not change this convex-input API's contact restrictions.

@@ -163,6 +163,14 @@ nonconvex output, placement and tiny dimensions are verified. A seventeenth
 native/WASM/browser preset demonstrates overlapping boxes. See
 [convex union](docs/convex-union.md).
 
+Axis-aligned box arrangements now support union/difference/intersection with
+exact coplanarity and full/partial face contact. Strict sewing removes interior
+interfaces and produces one closed shell. Identical operands, all contact axes,
+regularized empty intersections and tiny/translated cases are verified; near
+contacts and nonmanifold/disconnected/cavity results fail. An eighteenth
+native/WASM/browser fixture demonstrates partial-face fusion. See
+[box arrangements](docs/box-booleans.md).
+
 The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration

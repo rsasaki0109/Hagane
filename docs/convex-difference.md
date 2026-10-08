@@ -91,3 +91,7 @@ unchanged results, and rejected cavities/disconnected/contact/nonconvex/curved
 cases. Existing strict sewing and convex intersection tests remain passing.
 Native/WASM parity and recovery use the same fixture; browser tests move the
 cutter and verify unchanged retained volume with changing geometry.
+
+Exact coplanarity and full/partial face contact are supported separately for
+axis-aligned `BoxSpec` operands by [box arrangements](box-booleans.md). This does
+not change this convex-input API's contact restrictions.

@@ -67,3 +67,7 @@ native output and exercise errors/recovery; browser tests check all 17 presets
 and changing the union offset.
 
 General nonconvex/curved Boolean inputs and contact overlays remain future work.
+
+Exact coplanarity and full/partial face contact are supported separately for
+axis-aligned `BoxSpec` operands by [box arrangements](box-booleans.md). This does
+not change this convex-input API's contact restrictions.

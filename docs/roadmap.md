@@ -103,6 +103,14 @@ operand order, rigid placement and microscopic dimensions are verified, with a
 seventeenth native/WASM/browser preset. Disjoint/contact/coplanar inputs remain
 unsupported. See [convex union](convex-union.md).
 
+Axis-aligned box arrangements now support all three regularized Booleans with
+exact coplanarity and full/partial face contact. Strict coordinate sharing and
+sewing remove internal interfaces; analytic volume and closed topology are
+verified. Identical operands, all contact axes and tiny/translated cases are
+covered by an eighteenth native/WASM/browser fixture. Near contacts and
+nonmanifold/disconnected/cavity results fail. General convex contact handling
+remains unsupported. See [box arrangements](box-booleans.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
