@@ -241,6 +241,16 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        11 => {
+            subdivide_planar_face(
+                &subtract_through_cylinder(b, tool(0.0, 0.0, 12.0), tol)?,
+                1,
+                Point3::new(0.0, radius - 16.0, 12.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                GeometryTolerance::default(),
+            )?
+            .solid
+        }
         10 => {
             let ring = |radius| {
                 [0.0, std::f64::consts::PI]

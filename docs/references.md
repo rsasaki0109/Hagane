@@ -113,3 +113,13 @@ parameters on the first surviving subedge; normalized straight parameters are
 rescaled to that subinterval, while arc parameters remain angular. Rim/frame
 refinement follows the existing documented rotation formulas. The independent
 implementation introduces no library or OCCT dependency.
+
+### Periodic seam refinement
+
+Circle periodicity allows a change of seam angle without changing its geometry.
+Exact quarter arcs use the existing circular parametrization and orthonormal
+frame rotation, with corresponding planar angular pcurves. Cylinder generator
+seams and rectangle trims share these new rim vertices. Seam choice maximizes
+angular clearance over a finite candidate set; chord clearance is checked via
+`2*r*sin(delta/2)`. This independent implementation introduces no dependency and
+uses no OCCT source. Exact geometry remains separate from display tessellation.

@@ -191,7 +191,7 @@ fn crossed_arc_hole_refines_inward_cylinder_walls() {
         .all(|&i| r.solid.shell.faces[i].wires.len() == 1));
 }
 #[test]
-fn repeated_arc_hits_work_but_periodic_circle_crossings_are_rejected() {
+fn repeated_arc_hits_and_periodic_circle_crossings_work() {
     let t = GeometryTolerance::default();
     let p = ArcLineProfile {
         origin: Point3::new(0., 0., 0.),
@@ -215,7 +215,7 @@ fn repeated_arc_hits_work_but_periodic_circle_crossings_are_rejected() {
         t.absolute(),
     )
     .unwrap();
-    assert!(cut(&s, 1., 1.).is_err());
+    check(&s, &cut(&s, 1., 1.).unwrap(), 2, 1);
 }
 #[test]
 fn two_hits_on_each_outer_and_hole_arc_preserve_exact_geometry() {

@@ -50,8 +50,8 @@ for a simple box subdivision.
   the wall into two rectangles; it does not introduce arbitrary cylinder trims.
 - Both pieces of each split boundary edge, including opposite rims, must have
   resolvable chord/length beyond ten linear tolerances. Full-circle outer edges
-  must first be represented by bounded arcs; periodic single-circle refinement
-  is not implemented.
+  must first be represented by bounded arcs for this API; use
+  `subdivide_planar_face` for periodic rim refinement.
 - Vertex passage, tangencies, boundary overlap, multiple intervals, two hits on
   the same original edge, hole crossings and unresolved geometry return errors.
 - Repeated cuts, reversed direction, top/bottom caps, inward notch walls, checked
@@ -106,12 +106,12 @@ circular or 3D predicates.
 Native tests cover box/rounded/disk/notch parts, polygon and curved holes,
 analytic volume, top/bottom and repeated/reversed cuts, inward cylinder walls,
 rigid placement, microscopic dimensions, shared pcurves and closed oriented
-meshes. Native/WASM fixture parity and browser offset controls exercise eleven
-solid presets. Vertex, tangent, unresolved and same-edge cuts are rejected.
+meshes. Native/WASM fixture parity and browser offset controls exercise twelve
+solid presets. Vertex, tangent and unresolved cuts are rejected; the original
+single-interval API also rejects same-edge cuts.
 
-Periodic full-circle subdivision, arbitrary
-curved-face trims, contact graphs, sewing and general Boolean operations remain
-future work. No OCCT source or additional dependency is used.
+Arbitrary curved-face trims, contact graphs, sewing and general Boolean
+operations remain future work. No OCCT source or additional dependency is used.
 
 ## Multi-interval cut graphs
 
@@ -124,8 +124,8 @@ crossings on polygon/arc holes. It can produce more than two children when a
 half-plane intersection of a concave face is disconnected. The first child
 replaces the original face; others follow any refined cylinder walls.
 
-Crossings require bounded line or arc edges. Two hits on the same arc are
-supported. Periodic circle crossings, vertex/tangent/overlap
+The graph uses bounded line or arc edges; crossed periodic rims are normalized
+as described below. Two hits on the same arc are supported. Vertex/tangent/overlap
 contacts, unresolved side decisions and intervals shorter than ten linear
 tolerances return errors. Arc neighbor requirements match the single-interval
 API. Uncrossed full-circle hole wires remain exact. `split_planar_face` retains
@@ -178,11 +178,57 @@ Run `cargo run --locked --example repeated_arc_split` or `--example part -- 10`.
 bounded semicircles per ring (outer radius 30, inner radius 26, height 24 mm).
 The offset 8..24 mm crosses the same upper outer arc twice and the same upper
 inner arc twice. Two material chords yield two cap children, 11 faces and
-26 edges, with constant volume `5376*pi` mm³. No periodic circle is converted
-or approximated by this operation.
+26 edges, with constant volume `5376*pi` mm³. This fixture starts with bounded
+arcs and does not require periodic normalization.
 
 Tests cover both upper/lower arcs and input directions, opposite-cap cuts,
 rigid placement, microscopic geometry with huge line direction, unchanged
 analytic metrics, positive triangle winding, closed shared mesh seams and
 cylinder sagitta within 0.01. Native/WASM parity, invalid offsets and recovery,
 and browser offset controls run the same annular fixture.
+
+## Periodic full-circle rims
+
+![Actual WASM periodic bore subdivision](periodic-face-split.png)
+
+`subdivide_planar_face` now accepts full `Circle`/`FramedCircle` crossings on
+planar caps. Each crossed circle must have one full-period cylinder neighbor
+with a four-coedge rectangle, a single shared generator seam, and full-circle
+bottom/top rims whose radii exactly equal the cylinder radius. Planar rim uses
+must have full-circle pcurves. General curved neighbors or incompatible trims
+remain unsupported. The original `split_planar_face` contract remains unchanged.
+
+A periodic seam is a parameterization boundary rather than a geometric corner.
+Before clipping the refined graph, the operation relocates that seam away from
+the original cut events and partitions both rims into four **exact** quarter
+arcs. Candidate phase angles sample one quarter turn; the chosen candidate
+maximizes minimum angular clearance to the cut events, retaining the first
+candidate on floating-point ties. The corresponding minimum chord clearance
+must exceed ten linear tolerances. Each periodic wall becomes four rectangular
+cylinder faces, each with its own rotated frame and normalized angular trim.
+Original seam vertices/edges are reused at the new location; three additional
+generators connect the new bottom/top rim vertices. Every planar coedge is
+updated, including the opposite cap. No display chord becomes modeling geometry.
+
+The normalized clone is validated, then clipping is recomputed against its
+bounded arcs. This permits a cut through the **original** periodic seam and
+through a disk diameter. Subsequent graph refinement uses the existing bounded
+arc machinery. The final volume must agree with the original solid within
+1e-10 relative error, and all shared topology/pcurves are validated. Uncrossed
+periodic holes retain their original geometry and have one child owner.
+A normalization failure leaves the input unchanged.
+
+Run `cargo run --locked --example periodic_face_split` or `--example part -- 11`.
+**Split periodic bore** starts with an 80×60×24 mm box minus a radius-12 through
+cylinder, using the original periodic-circle constructor. Two cap cut segments
+cross its bore. The cut offset ranges from -8 to 8 mm; it preserves volume
+`115200 - 3456*pi` mm³ and yields 13 faces / 34 edges. Display tolerance is
+0.05 mm; enable tessellation to inspect the shared seams.
+
+Tests cover disk diameters and original seam passage, top/bottom caps, tubes,
+uncut circular hole ownership in mixed trims, opposite-cap recutting, multiple
+bores, reversed cuts, rotated/translated frames, microscopic models, near-contact
+and incompatible-radius rejection, positive triangle winding, closed mesh seams
+and cylindrical sagitta. Native/WASM parity and browser controls exercise the
+same periodic-bore fixture. Arbitrary cylinder trims, contact graphs and general
+solid Boolean dispatch remain future work.

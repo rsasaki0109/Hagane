@@ -423,42 +423,6 @@ fn split_boundary_edge(
             b: s.vertices[tv].point,
         },
     });
-    let rectangle = |bottom, top, right, left, span| Wire {
-        coedges: vec![
-            Coedge {
-                edge: bottom,
-                forward: true,
-                pcurve: PCurve::Affine {
-                    origin: [0.0, 0.0],
-                    direction: [1.0, 0.0],
-                },
-            },
-            Coedge {
-                edge: right,
-                forward: true,
-                pcurve: PCurve::Affine {
-                    origin: [span, 0.0],
-                    direction: [0.0, height],
-                },
-            },
-            Coedge {
-                edge: top,
-                forward: false,
-                pcurve: PCurve::Affine {
-                    origin: [0.0, height],
-                    direction: [1.0, 0.0],
-                },
-            },
-            Coedge {
-                edge: left,
-                forward: false,
-                pcurve: PCurve::Affine {
-                    origin: [0.0, 0.0],
-                    direction: [0.0, height],
-                },
-            },
-        ],
-    };
     s.shell.faces[fi] = Face {
         surface: Surface::FramedCylinder {
             frame,
@@ -466,7 +430,7 @@ fn split_boundary_edge(
             height,
         },
         orientation: wall.orientation,
-        wires: vec![rectangle(bottom, top, generator, left, t)],
+        wires: vec![cylinder_rectangle(bottom, top, generator, left, t, height)],
     };
     s.shell.faces.push(Face {
         surface: Surface::FramedCylinder {
@@ -475,7 +439,14 @@ fn split_boundary_edge(
             height,
         },
         orientation: wall.orientation,
-        wires: vec![rectangle(bnew, tnew, right, generator, span - t)],
+        wires: vec![cylinder_rectangle(
+            bnew,
+            tnew,
+            right,
+            generator,
+            span - t,
+            height,
+        )],
     });
     Ok(if index == bottom { bv } else { tv })
 }
@@ -489,7 +460,8 @@ pub struct PlanarFaceSubdivision {
 }
 /// Subdivide all transverse material intervals, including polygon/arc holes.
 /// Repeated crossings on bounded arcs are refined in original-parameter order.
-/// Periodic circles and contacts are explicitly unsupported.
+/// Full periodic circle rims are refined with seams away from cut events.
+/// Contacts and nonrectangular cylindrical neighbors are unsupported.
 pub fn subdivide_planar_face(
     solid: &Solid,
     face_index: usize,
@@ -502,6 +474,40 @@ pub fn subdivide_planar_face(
         return Err(Error::Unsupported(
             "subdivision requires material intervals",
         ));
+    }
+    let periodic: std::collections::BTreeSet<_> = clip
+        .events
+        .iter()
+        .filter(|e| {
+            matches!(
+                solid.edges[e.edge].curve,
+                Curve::Circle { .. } | Curve::FramedCircle { .. }
+            )
+        })
+        .map(|e| e.edge)
+        .collect();
+    if !periodic.is_empty() {
+        let mut normalized = solid.clone();
+        for edge in periodic {
+            let hits: Vec<_> = clip
+                .events
+                .iter()
+                .filter(|e| e.edge == edge)
+                .map(|e| e.edge_parameter)
+                .collect();
+            let radius = match solid.edges[edge].curve {
+                Curve::Circle { radius, .. } | Curve::FramedCircle { radius, .. } => radius,
+                _ => unreachable!(),
+            };
+            let theta = periodic_seam(&hits, radius, tol.absolute())?;
+            refine_periodic_wall(&mut normalized, edge, theta, tol.absolute())?;
+        }
+        normalized.validate(tol.absolute())?;
+        let result = subdivide_planar_face(&normalized, face_index, anchor, direction, tol)?;
+        if (result.solid.volume()? - solid.volume()?).abs() > solid.volume()?.abs() * 1e-10 {
+            return Err(Error::InvalidTopology("periodic refinement changes volume"));
+        }
+        return Ok(result);
     }
     for e in &clip.events {
         if !matches!(
@@ -668,4 +674,254 @@ pub fn subdivide_planar_face(
         faces,
         cut_edges,
     })
+}
+
+fn cylinder_rectangle(
+    bottom: usize,
+    top: usize,
+    right: usize,
+    left: usize,
+    span: f64,
+    height: f64,
+) -> Wire {
+    Wire {
+        coedges: vec![
+            Coedge {
+                edge: bottom,
+                forward: true,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, 0.0],
+                    direction: [1.0, 0.0],
+                },
+            },
+            Coedge {
+                edge: right,
+                forward: true,
+                pcurve: PCurve::Affine {
+                    origin: [span, 0.0],
+                    direction: [0.0, height],
+                },
+            },
+            Coedge {
+                edge: top,
+                forward: false,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, height],
+                    direction: [1.0, 0.0],
+                },
+            },
+            Coedge {
+                edge: left,
+                forward: false,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, 0.0],
+                    direction: [0.0, height],
+                },
+            },
+        ],
+    }
+}
+
+// Choose a canonical quarter partition whose vertices avoid all proper hits.
+// Original periodic seams are artificial, so relocation preserves the surface.
+fn periodic_seam(hits: &[f64], radius: f64, tol: Tolerance) -> Result<f64> {
+    use std::f64::consts::{FRAC_PI_2, TAU};
+    let mut best = (0.0, 0.0);
+    for i in 0..64 {
+        let theta = (i as f64 + 0.5) * FRAC_PI_2 / 64.0;
+        let clearance = hits
+            .iter()
+            .flat_map(|t| {
+                (0..4).map(move |j| {
+                    let gap = (t - theta - j as f64 * FRAC_PI_2).rem_euclid(TAU);
+                    gap.min(TAU - gap)
+                })
+            })
+            .fold(f64::INFINITY, f64::min);
+        // Keep the first candidate on floating-point ties for native/WASM parity.
+        if clearance > best.1 + 128.0 * f64::EPSILON {
+            best = (theta, clearance);
+        }
+    }
+    if 2.0 * radius * (best.1 * 0.5).sin() <= 10.0 * tol.linear {
+        return Err(Error::Unsupported("no resolved periodic seam partition"));
+    }
+    Ok(best.0)
+}
+
+fn refine_periodic_wall(s: &mut Solid, edge: usize, theta: f64, tol: Tolerance) -> Result<()> {
+    use std::f64::consts::{FRAC_PI_2, TAU};
+    let walls: Vec<_> = s
+        .shell
+        .faces
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| {
+            !matches!(f.surface, Surface::Plane { .. })
+                && f.wires
+                    .iter()
+                    .flat_map(|w| &w.coedges)
+                    .any(|c| c.edge == edge)
+        })
+        .map(|(i, _)| i)
+        .collect();
+    if walls.len() != 1 {
+        return Err(Error::Unsupported(
+            "periodic rim requires one cylindrical neighbor",
+        ));
+    }
+    let fi = walls[0];
+    let wall = s.shell.faces[fi].clone();
+    if wall.cylinder_span()? != TAU {
+        return Err(Error::Unsupported(
+            "periodic refinement requires a full cylinder rectangle",
+        ));
+    }
+    let (frame, radius, height) = match wall.surface {
+        Surface::Cylinder {
+            center,
+            radius,
+            height,
+        } => (Frame3::translation(center)?, radius, height),
+        Surface::FramedCylinder {
+            frame,
+            radius,
+            height,
+        } => (frame, radius, height),
+        _ => return Err(Error::Unsupported("periodic rim requires a cylinder")),
+    };
+    let c = &wall.wires[0].coedges;
+    let bottom = c[0].edge;
+    let top = c[2].edge;
+    let seam = c[1].edge;
+    if (edge != bottom && edge != top) || c[3].edge != seam {
+        return Err(Error::Unsupported(
+            "periodic cylinder must share its seam edge",
+        ));
+    }
+    let mut rims = Vec::new();
+    let mut rim_vertices = Vec::new();
+    for index in [bottom, top] {
+        let old = s.edges[index].clone();
+        let (rim_frame, r) = match old.curve {
+            Curve::Circle { center, radius } => (Frame3::translation(center)?, radius),
+            Curve::FramedCircle { frame, radius } => (frame, radius),
+            _ => {
+                return Err(Error::Unsupported(
+                    "both periodic rims require full circles",
+                ))
+            }
+        };
+        if r != radius || old.vertices[0] != old.vertices[1] {
+            return Err(Error::Unsupported(
+                "periodic rim radius or seam is inconsistent",
+            ));
+        }
+        let mut vertices = vec![old.vertices[0]];
+        for j in 1..4 {
+            let vertex = s.vertices.len();
+            vertices.push(vertex);
+            s.vertices.push(Vertex {
+                point: old.curve.evaluate(theta + j as f64 * FRAC_PI_2),
+            });
+        }
+        s.vertices[vertices[0]].point = old.curve.evaluate(theta);
+        let mut edges = vec![index];
+        for j in 0..4 {
+            let arc = Edge {
+                vertices: [vertices[j], vertices[(j + 1) % 4]],
+                curve: Curve::Arc {
+                    frame: rotate_arc_frame(rim_frame, theta + j as f64 * FRAC_PI_2, tol)?,
+                    radius,
+                    sweep: FRAC_PI_2,
+                },
+            };
+            if j == 0 {
+                s.edges[index] = arc;
+            } else {
+                edges.push(s.edges.len());
+                s.edges.push(arc);
+            }
+        }
+        for f in &mut s.shell.faces {
+            if !matches!(f.surface, Surface::Plane { .. }) {
+                continue;
+            }
+            for w in &mut f.wires {
+                let mut uses = Vec::new();
+                for c in &w.coedges {
+                    if c.edge != index {
+                        uses.push(c.clone());
+                        continue;
+                    }
+                    let PCurve::Circle { center, radius } = c.pcurve else {
+                        return Err(Error::Unsupported(
+                            "periodic planar rim requires a full-circle pcurve",
+                        ));
+                    };
+                    let mut arcs: Vec<_> = edges
+                        .iter()
+                        .enumerate()
+                        .map(|(j, &edge)| Coedge {
+                            edge,
+                            forward: c.forward,
+                            pcurve: PCurve::Arc {
+                                center,
+                                radius,
+                                start_angle: (theta + j as f64 * FRAC_PI_2).rem_euclid(TAU),
+                                sweep: FRAC_PI_2,
+                            },
+                        })
+                        .collect();
+                    if !c.forward {
+                        arcs.reverse();
+                    }
+                    uses.extend(arcs);
+                }
+                w.coedges = uses;
+            }
+        }
+        rims.push(edges);
+        rim_vertices.push(vertices);
+    }
+    let mut generators = vec![seam];
+    for (j, (&a, &b)) in rim_vertices[0].iter().zip(&rim_vertices[1]).enumerate() {
+        let line = Edge {
+            vertices: [a, b],
+            curve: Curve::Line {
+                a: s.vertices[a].point,
+                b: s.vertices[b].point,
+            },
+        };
+        if j == 0 {
+            s.edges[seam] = line;
+        } else {
+            generators.push(s.edges.len());
+            s.edges.push(line);
+        }
+    }
+    for j in 0..4 {
+        let face = Face {
+            surface: Surface::FramedCylinder {
+                frame: rotate_arc_frame(frame, theta + j as f64 * FRAC_PI_2, tol)?,
+                radius,
+                height,
+            },
+            orientation: wall.orientation,
+            wires: vec![cylinder_rectangle(
+                rims[0][j],
+                rims[1][j],
+                generators[(j + 1) % 4],
+                generators[j],
+                FRAC_PI_2,
+                height,
+            )],
+        };
+        if j == 0 {
+            s.shell.faces[fi] = face;
+        } else {
+            s.shell.faces.push(face);
+        }
+    }
+    Ok(())
 }

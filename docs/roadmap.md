@@ -58,7 +58,9 @@ mesh seams. A ninth native/WASM/browser solid fixture exercises curved cap
 splitting. Multi-interval cut graphs now cross polygon/arc holes and create
 multiple connected children. Repeated crossings on one bounded arc now refine
 shared walls/rims using original-parameter order, with an eleventh annular-cap
-native/WASM/browser fixture; see
+native/WASM/browser fixture. Periodic full-circle rims now refine into exact
+quarter arcs and rectangular walls with cut-safe relocated seams, demonstrated
+by a twelfth periodic-bore preset; see
 [face subdivision](face-split.md).
 
 ## Next: broaden analytic B-rep operations
@@ -68,8 +70,9 @@ native/WASM/browser fixture; see
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Broaden cut topology to periodic circles; then extend contact handling, surface/surface curves, intersection
-  graphs, curved-face splits, sewing and Boolean dispatch.
+- Implement shared planar face arrangements and sewing for scoped solid Boolean
+  operations; extend contact handling, surface/surface curves, intersection
+  graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
 - A stable browser API and versioned serialization.
 

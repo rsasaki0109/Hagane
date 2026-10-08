@@ -118,6 +118,12 @@ refine shared rims/walls without losing subsequent events. Annular cap cuts,
 reversed/placed and microscopic cases preserve topology, volume and the mesh
 sagitta bound; an eleventh native/WASM/browser preset demonstrates this.
 
-The next development task is periodic circular boundary subdivision. Contact graphs,
+Periodic circle rims now refine into exact bounded arcs and cylinder wall
+rectangles with a relocated seam that clears cut events. Disk/tube caps and
+multiple full-circle bores, including original seam passage, preserve geometry,
+volume and closed mesh seams. A twelfth browser fixture cuts a periodic bore.
+
+The next development task is shared planar face arrangement/sewing toward
+scoped solid Boolean operations. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.
