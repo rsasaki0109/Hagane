@@ -3,6 +3,7 @@ mod geometry;
 mod math;
 mod mesh;
 mod operations;
+mod planar;
 mod topology;
 mod wasm;
 pub use geometry::*;

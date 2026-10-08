@@ -396,3 +396,256 @@ fn far_origin_loses_small_features_explicitly() {
     };
     assert!(make_box(b, tol()).is_err());
 }
+
+fn poly(outer: Vec<[f64; 2]>, holes: Vec<Vec<[f64; 2]>>) -> PolygonProfile {
+    PolygonProfile {
+        origin: Point3::new(0.0, 0.0, 0.0),
+        outer,
+        holes,
+    }
+}
+fn rectangle(x: f64, y: f64, w: f64, h: f64) -> Vec<[f64; 2]> {
+    vec![[x, y], [x + w, y], [x + w, y + h], [x, y + h]]
+}
+#[test]
+fn multiple_exact_through_bores() {
+    let cutters = [
+        CylinderSpec {
+            base: Point3::new(-20.0, 0.0, -20.0),
+            radius: 8.0,
+            height: 40.0,
+        },
+        CylinderSpec {
+            base: Point3::new(18.0, 5.0, -20.0),
+            radius: 6.0,
+            height: 40.0,
+        },
+    ];
+    let s = subtract_through_cylinders(block(), &cutters, tol()).unwrap();
+    close(s.volume().unwrap(), 115200.0 - PI * (64.0 + 36.0) * 24.0);
+    assert_eq!(
+        (s.vertices.len(), s.edges.len(), s.shell.faces.len()),
+        (12, 18, 8)
+    );
+    assert_eq!(s.shell.faces[0].wires.len(), 3);
+    let face_chi: isize = s
+        .shell
+        .faces
+        .iter()
+        .map(|f| 2 - f.wires.len() as isize)
+        .sum();
+    assert_eq!(
+        s.vertices.len() as isize - s.edges.len() as isize + face_chi,
+        -2
+    );
+    let m = s.tessellate(0.005, tol()).unwrap();
+    mesh_closed(&m);
+    let polygon_removed: f64 = cutters
+        .iter()
+        .map(|c| {
+            let n = circle_segments(c.radius, 0.005).unwrap() as f64;
+            0.5 * n * c.radius * c.radius * (TAU / n).sin() * 24.0
+        })
+        .sum();
+    close(m.signed_volume(), 115200.0 - polygon_removed);
+    assert!(m.signed_volume() >= s.volume().unwrap());
+    close(
+        subtract_through_cylinders(block(), &[], tol())
+            .unwrap()
+            .volume()
+            .unwrap(),
+        115200.0,
+    );
+}
+#[test]
+fn overlapping_touching_and_nested_bores_rejected() {
+    let a = CylinderSpec {
+        base: Point3::new(-10.0, 0.0, -20.0),
+        radius: 8.0,
+        height: 40.0,
+    };
+    for dx in [0.0, 8.0, 15.0, 16.0, 16.0 + 0.5e-8] {
+        let b = CylinderSpec {
+            base: Point3::new(a.base.x + dx, 0.0, -20.0),
+            ..a
+        };
+        assert!(matches!(
+            subtract_through_cylinders(block(), &[a, b], tol()),
+            Err(Error::Unsupported(_))
+        ));
+    }
+    let b = CylinderSpec {
+        base: Point3::new(0.0, 0.0, -12.0),
+        radius: 4.0,
+        height: 40.0,
+    };
+    assert!(subtract_through_cylinders(block(), &[a, b], tol()).is_err());
+}
+#[test]
+fn convex_and_concave_polygon_extrusions() {
+    for (outer, area) in [
+        (vec![[0.0, 0.0], [10.0, 0.0], [0.0, 8.0]], 40.0),
+        (
+            vec![
+                [0.0, 0.0],
+                [12.0, 0.0],
+                [12.0, 4.0],
+                [4.0, 4.0],
+                [4.0, 10.0],
+                [0.0, 10.0],
+            ],
+            72.0,
+        ),
+    ] {
+        for direction in [
+            Vec3::new(0.0, 0.0, 7.0),
+            Vec3::new(3.0, -5.0, 7.0),
+            Vec3::new(3.0, -5.0, -7.0),
+        ] {
+            let p = poly(outer.clone(), vec![]);
+            let s = extrude_polygon(&p, direction, tol()).unwrap();
+            close(s.volume().unwrap(), area * 7.0);
+            assert_eq!(s.shell.faces.len(), outer.len() + 2);
+            let m = s.tessellate(0.1, tol()).unwrap();
+            mesh_closed(&m);
+            close(m.signed_volume(), s.volume().unwrap());
+            let mut reversed = p.clone();
+            reversed.outer.reverse();
+            close(
+                extrude_polygon(&reversed, direction, tol())
+                    .unwrap()
+                    .volume()
+                    .unwrap(),
+                area * 7.0,
+            );
+        }
+    }
+}
+#[test]
+fn polygon_holes_and_sheared_extrusion() {
+    let p = poly(
+        rectangle(0.0, 0.0, 30.0, 20.0),
+        vec![
+            rectangle(2.0, 2.0, 5.0, 4.0),
+            vec![[15.0, 4.0], [23.0, 4.0], [15.0, 12.0]],
+        ],
+    );
+    let s = extrude_polygon(&p, Vec3::new(4.0, 3.0, 9.0), tol()).unwrap();
+    close(s.volume().unwrap(), (600.0 - 20.0 - 32.0) * 9.0);
+    assert_eq!(s.shell.faces[0].wires.len(), 3);
+    assert_eq!(s.shell.faces.len(), 13);
+    assert_eq!(
+        s.bounds(),
+        Bounds {
+            min: Point3::new(0.0, 0.0, 0.0),
+            max: Point3::new(34.0, 23.0, 9.0)
+        }
+    );
+    let m = s.tessellate(0.05, tol()).unwrap();
+    mesh_closed(&m);
+    close(m.signed_volume(), s.volume().unwrap());
+}
+#[test]
+fn invalid_polygon_boundaries_rejected() {
+    for outer in [
+        vec![],
+        vec![[0.0, 0.0], [1.0, 0.0]],
+        vec![[0.0, 0.0], [10.0, 10.0], [0.0, 10.0], [10.0, 0.0]],
+        vec![
+            [0.0, 0.0],
+            [5.0, 0.0],
+            [10.0, 0.0],
+            [10.0, 10.0],
+            [0.0, 10.0],
+        ],
+        vec![
+            [0.0, 0.0],
+            [10.0, 0.0],
+            [10.0, 10.0],
+            [0.0, 10.0],
+            [0.0, 0.0],
+        ],
+        vec![[0.0, 0.0], [f64::NAN, 0.0], [0.0, 10.0]],
+    ] {
+        assert!(matches!(
+            extrude_polygon(&poly(outer, vec![]), Vec3::new(0.0, 0.0, 5.0), tol()),
+            Err(Error::InvalidInput(_))
+        ));
+    }
+    for holes in [
+        vec![rectangle(-1.0, 2.0, 4.0, 4.0)],
+        vec![rectangle(0.0, 2.0, 4.0, 4.0)],
+        vec![rectangle(1.0, 1.0, 4.0, 4.0), rectangle(5.0, 1.0, 4.0, 4.0)],
+        vec![rectangle(1.0, 1.0, 8.0, 8.0), rectangle(2.0, 2.0, 3.0, 3.0)],
+        vec![rectangle(1.0, 1.0, 5.0, 5.0), rectangle(4.0, 4.0, 3.0, 3.0)],
+    ] {
+        assert!(matches!(
+            extrude_polygon(
+                &poly(rectangle(0.0, 0.0, 10.0, 10.0), holes),
+                Vec3::new(0.0, 0.0, 5.0),
+                tol()
+            ),
+            Err(Error::InvalidInput(_))
+        ));
+    }
+    for direction in [Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 0.0, f64::INFINITY)] {
+        assert!(extrude_polygon(
+            &poly(rectangle(0.0, 0.0, 10.0, 10.0), vec![]),
+            direction,
+            tol()
+        )
+        .is_err());
+    }
+}
+#[test]
+fn concave_profile_rejects_holes_crossing_reentrant_boundary() {
+    let outer = vec![
+        [0.0, 0.0],
+        [12.0, 0.0],
+        [12.0, 4.0],
+        [4.0, 4.0],
+        [4.0, 12.0],
+        [0.0, 12.0],
+    ];
+    let p = poly(outer, vec![rectangle(2.0, 2.0, 6.0, 6.0)]);
+    assert!(extrude_polygon(&p, Vec3::new(0.0, 0.0, 5.0), tol()).is_err());
+}
+#[test]
+fn tube_exact_metrics_and_closed_display() {
+    let t = TubeSpec {
+        base: Point3::new(3.0, -2.0, -5.0),
+        outer_radius: 20.0,
+        inner_radius: 10.0,
+        height: 17.0,
+    };
+    let s = make_tube(t, tol()).unwrap();
+    close(s.volume().unwrap(), PI * (400.0 - 100.0) * 17.0);
+    assert_eq!(
+        (s.vertices.len(), s.edges.len(), s.shell.faces.len()),
+        (4, 6, 4)
+    );
+    assert_eq!(
+        s.bounds(),
+        Bounds {
+            min: Point3::new(-17.0, -22.0, -5.0),
+            max: Point3::new(23.0, 18.0, 12.0)
+        }
+    );
+    let m = s.tessellate(0.005, tol()).unwrap();
+    mesh_closed(&m);
+    assert!((m.signed_volume() - s.volume().unwrap()).abs() < 15.0);
+    for inner_radius in [0.0, 20.0, 20.0 - 0.5e-8, 21.0, f64::NAN] {
+        assert!(make_tube(TubeSpec { inner_radius, ..t }, tol()).is_err());
+    }
+}
+#[test]
+fn micro_polygon_with_explicit_tolerance() {
+    let p = poly(vec![[0.0, 0.0], [1e-5, 0.0], [0.0, 1e-5]], vec![]);
+    let s = extrude_polygon(
+        &p,
+        Vec3::new(1e-6, 0.0, 2e-5),
+        Tolerance::new(1e-12).unwrap(),
+    )
+    .unwrap();
+    assert!((s.volume().unwrap() - 1e-15).abs() < 1e-28);
+}

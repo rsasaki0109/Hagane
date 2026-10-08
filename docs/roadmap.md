@@ -2,15 +2,18 @@
 
 ## Working milestone
 
-Analytic box/cylinder primitives, rectangle/disk extrusion, explicitly scoped
-through-bore difference, shared oriented B-rep topology and pcurves, validation,
-exact metrics, bounded display tessellation, and native/WASM interactive demo.
+Analytic box/cylinder/tube primitives; rectangle/disk extrusion; simple concave
+or convex XY polygon extrusion with multiple polygon holes and skew/reversed
+directions; explicitly scoped multiple through-bore difference; shared oriented
+B-rep topology and pcurves; trim containment/separation and manifold validation;
+exact metrics; bounded display tessellation; and four native/WASM interactive
+presets with recorded demos.
 
 ## Next: broaden analytic B-rep operations
 
-- Explicit frames for curves/surfaces, solid transforms, and arbitrary extrusion.
+- Explicit frames for curves/surfaces, solid transforms, and arbitrary-plane profiles.
 - Structured angular/relative tolerances and robust filtered predicates.
-- General planar wires, multiple holes, and non-complete cylindrical trims.
+- Mixed arc/line planar wires, non-complete cylindrical trims, and general face splits.
 - Typed intersection results, curve/surface classification, intersection graph
   construction, face splitting, consistent sewing, and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

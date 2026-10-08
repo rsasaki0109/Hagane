@@ -14,6 +14,14 @@ have no dependency on the primitive descriptors: later intersection,
 classification, splitting, and sewing algorithms can operate on the same
 edge/coedge/face model. This primitive operation is not a generic CSG engine.
 
+Polygon extrusion has a separate checked profile API. It normalizes input
+winding, creates shared bottom/top/side line edges, and builds planar cap and
+side faces. Concave outlines and disjoint polygon holes use the same topology.
+A skew or negative-Z direction is supported with explicitly reversed face
+orientations; the exact volume is `(outer area − hole areas) × abs(direction.z)`.
+No cap mesh is used to create the solid. A hollow tube similarly reuses annular
+caps and two oppositely oriented analytic cylindrical walls.
+
 ## Geometry and units
 
 Coordinates and lengths are `f64`, in a consistent caller-selected unit.
@@ -59,8 +67,26 @@ with the restricted analytic trim forms this is a practical structural check;
 it is not a certificate for arbitrary newly introduced curve types. Extend
 validation when extending geometry.
 
+## Planar trim predicates
+
+Planar outer/inner wires may be simple straight-line polygons or full circles.
+Polygon edges must exceed ten tolerances. Near-collinear/redundant corners,
+nonadjacent self-intersections and near touches are rejected. Point/segment
+distance, oriented segment intersections and ray-crossing containment check
+that hole boundaries are strictly inside the outer wire and mutually separated.
+Circle/line distance and analytic circle/circle tests handle circular wires.
+Boundary witnesses distinguish containment from disjointness without sampling
+circles into polygons. Hole nesting and contact are rejected before construction.
+These are tolerance-aware `f64` predicates, not adaptive exact arithmetic.
+
+Independent bores are checked as complete disks in XY before any topology is
+mutated. All must overhang the box in Z and clear the sides and each other by
+more than the linear tolerance. This preserves exact, disjoint cylindrical
+trims; intersecting cutters require future face splitting and are unsupported.
+
 ## Exact volume and approximate display
 
+Planar wire area integrals use a nearby reference point to reduce cancellation.
 Volume is an analytic divergence-theorem integral over faces, not an operation
 history formula and not a mesh volume. Planes contribute oriented area times
 `(origin-reference) · normal / 3`. Full cylinders contribute oriented
@@ -85,7 +111,10 @@ positions only for adjacency checks; rendering intentionally splits vertices.
 ## WASM boundary
 
 The Rust `cdylib` exports `hagane_generate(radius, chord_error) -> status`,
-`hagane_output_ptr()`, and `hagane_output_len()`. JSON bytes contain coordinates,
+`hagane_generate_preset(id, radius, chord_error) -> status`,
+`hagane_output_ptr()`, and `hagane_output_len()`. Presets 0..3 select single bore,
+four bores, polygon extrusion, or tube; unknown IDs return errors. Preset 2 has
+a fixed polygon profile and ignores the radius argument. JSON bytes contain coordinates,
 normals, analytic volume, and topology counts, or an explicit error. Status 0
 means success, 1 means a kernel error. The buffer is valid until the next
 `hagane_generate`; callers must copy/decode it before generating another part

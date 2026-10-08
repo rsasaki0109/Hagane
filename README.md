@@ -28,7 +28,16 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Use the local kernel as a dependency during development:
+solid volume as JSON. Pass `1`, `2`, or `3` to select four bores, a concave
+polygon extrusion, or a hollow tube:
+
+```sh
+cargo run --locked --example part -- 1
+cargo run --locked --example part -- 2
+cargo run --locked --example part -- 3
+```
+
+Use the local kernel as a dependency during development:
 
 ```toml
 [dependencies]
@@ -65,6 +74,27 @@ fn main() -> hagane::Result<()> {
 }
 ```
 
+## Polygon extrusion and multiple bores
+
+```rust
+use hagane::{PolygonProfile, Point3, Vec3, Tolerance, extrude_polygon};
+
+let profile = PolygonProfile {
+    origin: Point3::new(0.0, 0.0, 0.0),
+    outer: vec![[0.0, 0.0], [12.0, 0.0], [12.0, 4.0],
+                [4.0, 4.0], [4.0, 10.0], [0.0, 10.0]],
+    holes: vec![],
+};
+let part = extrude_polygon(&profile, Vec3::new(3.0, -5.0, 7.0),
+                           Tolerance::default())?;
+assert!((part.volume()? - 72.0 * 7.0).abs() < 1e-8);
+
+```
+
+Use `subtract_through_cylinders(block, &[tool_a, tool_b], tolerance)` for multiple
+bores, and `make_tube(TubeSpec { base, outer_radius, inner_radius, height }, tolerance)`
+for a coaxial hollow cylinder. All produce exact shared-edge B-rep solids.
+
 ## Web demo
 
 Python 3 serves static files; Node and npm are only needed for the optional
@@ -76,7 +106,9 @@ python3 -m http.server 8000 --directory web
 ```
 
 Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
-slider reruns the **Rust B-rep operation** in WASM. Toggle the display mesh or
+slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
+a concave polygon extrusion with a polygon hole, or a hollow tube. The polygon
+preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
 auto rotation. Arrow keys orbit and `+` / `-` zoom when the canvas is focused.
 The renderer uses WebGL directly, with no CDN assets or JavaScript CAD library.
 The generated `web/hagane.wasm` is ignored and rebuilt from source.
@@ -101,8 +133,12 @@ fabricate the demo image.
 - Line/plane and horizontal-plane/bounded-Z-cylinder intersections.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
-- Exact axis-aligned boxes and Z cylinders; positive-Z rectangle/disk extrusion.
-- Restricted box-minus-through-cylinder difference, including off-center holes.
+- Exact axis-aligned boxes, Z cylinders, and hollow tubes with annular caps.
+- Positive-Z rectangle/disk extrusion and straight-line XY polygon extrusion,
+  including concave profiles, multiple polygon holes, skew vectors and either Z direction.
+- Restricted box-minus-through-cylinders difference, including off-center and
+  multiple disjoint holes, with contact/overlap/nesting rejection.
+- Simple planar polygon and circular trim containment/separation predicates.
 - Structural/geometry validation, connected manifold shells, analytic volume,
   exact bounds for supported solids, and face-indexed display tessellation.
 - The same Rust library on native and WASM targets; interactive browser demo.
@@ -111,10 +147,12 @@ fabricate the demo image.
 
 The difference API accepts immutable **primitive specifications**, not arbitrary
 `Solid` operands. The box axes are global X/Y/Z; the cylinder axis is global Z.
-The cutter must strictly overhang both caps by more than the linear tolerance.
+Each cutter must strictly overhang both caps by more than the linear tolerance.
 Its circle must stay inside all four sides with clearance greater than that
-tolerance. Tangent, near-tangent, partially penetrating, disjoint, side-cutting,
-or cap-coincident cutters return `Unsupported`. Negative/nonfinite/too-small
+tolerance. Multiple bores must also clear each other by more than that tolerance;
+overlapping, nested, tangent or near-tangent bores return `Unsupported`. An empty
+cutter list returns the unchanged box. Tangent, near-tangent, partially penetrating,
+disjoint-from-the-box, side-cutting, or cap-coincident cutters return `Unsupported`. Negative/nonfinite/too-small
 dimensions return `InvalidInput`. No fallback silently substitutes a mesh.
 
 Primitive lengths must exceed **10 × linear tolerance**. Use one consistent
@@ -123,10 +161,16 @@ Small parts require a correspondingly smaller explicit tolerance. At very large
 coordinate offsets, IEEE-754 spacing can exceed the tolerance; construction
 then fails validation rather than accepting inconsistent geometry.
 
-Current face trims are rectangles, disks, rectangles with one circular hole,
-and full periodic cylinder rectangles. Partial cylinder trims, general polygon
-extrusion, tilted circles/cylinders, arbitrary shape transforms, and general
-CSG are not implemented. Topology is intentionally inspectable; callers who
+Current face trims are simple straight-line polygons and disks, with disjoint
+polygonal or circular inner wires, and full periodic cylinder rectangles.
+`extrude_polygon` takes a `PolygonProfile` in an XY plane and a vector with
+`abs(direction.z) > 10 × tolerance`. It accepts either winding, but rejects
+self-intersections, redundant/near-collinear corners, repeated closing points,
+nested/touching holes, and extrusion within the profile plane. Limits are
+4,096 total profile corners, 256 polygon holes, or 256 independent cylinder
+cutters. Tube walls must exceed 10 tolerances. Partial cylinder trims, mixed
+arc/line wires, arbitrary-plane input profiles, tilted circles/cylinders,
+arbitrary shape transforms, and general CSG are not implemented. Topology is intentionally inspectable; callers who
 mutate it must call `validate` before using geometry results. Validation checks
 the supported trim domains, connectivity, endpoint/pcurve consistency, winding,
 vertex links, and volume. It is not a general self-intersection or shape-repair
@@ -151,8 +195,9 @@ node scripts/test-wasm.mjs
 
 Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
-small dimensions, malformed topology, nonfinite inputs, unsupported operations,
-and WASM generation/error recovery. CI runs formatting, Clippy, native tests,
+small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
+concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
+and WASM generation/error recovery with native geometry parity for all four presets. CI runs formatting, Clippy, native tests,
 WASM build/runtime checks, and browser interactions.
 
 See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and

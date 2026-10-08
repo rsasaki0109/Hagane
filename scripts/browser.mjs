@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -25,13 +25,18 @@ try {
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});await page.locator('#reset').click();
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  assert.deepEqual(errors,[]);
+ const presets=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*704*24,faces:4,edges:6}];
+ for(let id=0;id<4;id++){
+  await page.locator('#preset').selectOption(String(id));const mesh=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(mesh.volume-presets[id].volume)<1e-8);assert.equal(mesh.faces,presets[id].faces);assert.equal(mesh.edges,presets[id].edges);assert.equal(await page.locator('#radius').isDisabled(),id===2);assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
+ }
+ await page.locator('#preset').selectOption('0');
  if(process.argv.includes('--capture')){
-  const frames=join(tmpdir(),'hagane-demo-frames');await mkdir(frames,{recursive:true});
-  for(let i=0;i<48;i++){await page.evaluate(a=>window.haganeDemo.setAngle(a),0.65+2*Math.PI*i/48);await page.screenshot({path:join(frames,`frame-${String(i).padStart(3,'0')}.png`)});}
+  const frames=await mkdtemp(join(tmpdir(),'hagane-demo-'));
+  for(let i=0;i<64;i++){if(i%16===0)await page.locator('#preset').selectOption(String(Math.floor(i/16)));await page.evaluate(a=>window.haganeDemo.setAngle(a),0.65+0.8*(i%16)/16);await page.screenshot({path:join(frames,`frame-${String(i).padStart(3,'0')}.png`)});}
   const output=new URL('../docs/demo.gif',import.meta.url).pathname;
   const result=spawnSync('ffmpeg',['-y','-framerate','12','-i',join(frames,'frame-%03d.png'),'-filter_complex','[0:v]scale=1008:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3','-loop','0',output],{encoding:'utf8'});
-  if(result.status!==0)throw Error(result.stderr);console.log('Recorded actual WASM/WebGL demo to docs/demo.gif (48 frames).');
+  if(result.status!==0)throw Error(result.stderr);console.log('Recorded actual WASM/WebGL demo to docs/demo.gif (64 frames, four exact B-rep operations).');await rm(frames,{recursive:true,force:true});
  }
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
- console.log('Browser: WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 4 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

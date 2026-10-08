@@ -222,53 +222,213 @@ pub fn make_cylinder(c: CylinderSpec, t: Tolerance) -> Result<Solid> {
     s.validate(t)?;
     Ok(s)
 }
-/// Narrow-phase primitive difference, returning a genuine shared-edge B-rep.
-/// Only Z-aligned, strictly interior, strictly overhanging through cylinders.
-/// Specs are immutable operands; no claim of general Solid/Solid CSG is made.
+/// Restricted primitive difference with one strictly interior Z-axis through bore.
 pub fn subtract_through_cylinder(b: BoxSpec, c: CylinderSpec, t: Tolerance) -> Result<Solid> {
+    subtract_through_cylinders(b, &[c], t)
+}
+/// Exact multiple-bore primitive difference. All cutters must overhang both
+/// caps, clear the sides, and be mutually disjoint by more than the tolerance.
+/// Empty cutters return an unchanged box. Overlapping/near-touching cuts are
+/// rejected rather than pretending independent holes form a general Boolean.
+pub fn subtract_through_cylinders(
+    b: BoxSpec,
+    cutters: &[CylinderSpec],
+    t: Tolerance,
+) -> Result<Solid> {
     check_box(b, t)?;
-    check_cylinder(c, t)?;
-    let max = b.min + b.size;
-    if c.base.z >= b.min.z - t.linear || c.base.z + c.height <= max.z + t.linear {
+    if cutters.len() > 256 {
         return Err(Error::Unsupported(
-            "cylinder must strictly overhang both box caps",
+            "at most 256 independent bores are supported",
         ));
     }
-    if c.base.x - c.radius <= b.min.x + t.linear
-        || c.base.y - c.radius <= b.min.y + t.linear
-        || c.base.x + c.radius >= max.x - t.linear
-        || c.base.y + c.radius >= max.y - t.linear
-    {
-        return Err(Error::Unsupported(
-            "hole must be strictly inside box sides; tangencies and intersections are unsupported",
-        ));
+    let max = b.min + b.size;
+    for (i, &c) in cutters.iter().enumerate() {
+        check_cylinder(c, t)?;
+        if c.base.z >= b.min.z - t.linear || c.base.z + c.height <= max.z + t.linear {
+            return Err(Error::Unsupported(
+                "cylinder must strictly overhang both box caps",
+            ));
+        }
+        if c.base.x - c.radius <= b.min.x + t.linear
+            || c.base.y - c.radius <= b.min.y + t.linear
+            || c.base.x + c.radius >= max.x - t.linear
+            || c.base.y + c.radius >= max.y - t.linear
+        {
+            return Err(Error::Unsupported("hole must be strictly inside box sides; tangencies and intersections are unsupported"));
+        }
+        for prev in &cutters[..i] {
+            if (c.base.x - prev.base.x).hypot(c.base.y - prev.base.y)
+                <= c.radius + prev.radius + t.linear
+            {
+                return Err(Error::Unsupported(
+                    "bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
     }
     let mut s = make_box(b, t)?;
-    let base = Point3::new(c.base.x, c.base.y, b.min.z);
-    let cutter_surface = Surface::Cylinder {
-        center: c.base,
-        radius: c.radius,
-        height: c.height,
-    };
-    let lower = cylinder_plane(&cutter_surface, &s.shell.faces[0].surface, t)?;
-    let upper = cylinder_plane(&cutter_surface, &s.shell.faces[1].surface, t)?;
-    let bottom = circle_edge(&mut s, lower);
-    let top = circle_edge(&mut s, upper);
-    for (fi, e) in [(0, bottom), (1, top)] {
-        let w = cap_ring(&s, e, &s.shell.faces[fi].surface, false);
-        s.shell.faces[fi].wires.push(w);
-    }
-    cylindrical_face(
-        &mut s,
-        bottom,
-        top,
-        CylinderSpec {
-            base,
+    for &c in cutters {
+        let base = Point3::new(c.base.x, c.base.y, b.min.z);
+        let cutter_surface = Surface::Cylinder {
+            center: c.base,
             radius: c.radius,
-            height: b.size.z,
-        },
-        -1,
-    );
+            height: c.height,
+        };
+        let lower = cylinder_plane(&cutter_surface, &s.shell.faces[0].surface, t)?;
+        let upper = cylinder_plane(&cutter_surface, &s.shell.faces[1].surface, t)?;
+        let bottom = circle_edge(&mut s, lower);
+        let top = circle_edge(&mut s, upper);
+        for (fi, e) in [(0, bottom), (1, top)] {
+            let w = cap_ring(&s, e, &s.shell.faces[fi].surface, false);
+            s.shell.faces[fi].wires.push(w);
+        }
+        cylindrical_face(
+            &mut s,
+            bottom,
+            top,
+            CylinderSpec {
+                base,
+                radius: c.radius,
+                height: b.size.z,
+            },
+            -1,
+        );
+    }
+    s.validate(t)?;
+    Ok(s)
+}
+
+/// Straight-line XY profile with simple, disjoint polygonal holes. Rings omit
+/// a repeated closing point. Input winding is normalized without changing points.
+#[derive(Clone, Debug)]
+pub struct PolygonProfile {
+    pub origin: Point3,
+    pub outer: Vec<[f64; 2]>,
+    pub holes: Vec<Vec<[f64; 2]>>,
+}
+/// Extrudes a simple planar polygon (convex or concave, optionally with holes)
+/// along any vector with a nonzero Z span exceeding ten tolerances.
+/// All surfaces and shared edges are exact planes and lines. Self-intersections,
+/// touching/nested holes and redundant corners are explicit input errors.
+pub fn extrude_polygon(profile: &PolygonProfile, direction: Vec3, t: Tolerance) -> Result<Solid> {
+    use crate::planar::{polygon_area, validate_polygon, validate_region, PlanarLoop};
+    Tolerance::new(t.linear)?;
+    if !profile.origin.finite()
+        || !direction.finite()
+        || !positive(direction.z.abs(), t)
+        || !(profile.origin + direction).finite()
+    {
+        return Err(Error::InvalidInput("extrusion requires finite origin/direction and nonzero Z span exceeding ten tolerances"));
+    }
+    if profile.outer.len() + profile.holes.iter().map(Vec::len).sum::<usize>() > 4096 {
+        return Err(Error::Unsupported(
+            "at most 4096 total profile corners are supported",
+        ));
+    }
+    if profile.holes.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 polygon holes are supported",
+        ));
+    }
+    let mut loops = Vec::new();
+    for (i, input) in std::iter::once(&profile.outer)
+        .chain(&profile.holes)
+        .enumerate()
+    {
+        validate_polygon(input, t)?;
+        let mut points = input.clone();
+        if (polygon_area(&points) > 0.0) != (i == 0) {
+            points.reverse();
+        }
+        loops.push(points);
+    }
+    let trims: Vec<_> = loops.iter().cloned().map(PlanarLoop::Polygon).collect();
+    validate_region(&trims[0], &trims[1..], t)?;
+    let count: usize = loops.iter().map(Vec::len).sum();
+    let mut s = Solid {
+        vertices: Vec::with_capacity(2 * count),
+        edges: Vec::with_capacity(3 * count),
+        shell: Shell { faces: Vec::new() },
+    };
+    for delta in [Vec3::new(0.0, 0.0, 0.0), direction] {
+        for points in &loops {
+            for p in points {
+                let point = profile.origin + Vec3::new(p[0], p[1], 0.0) + delta;
+                if !point.finite() {
+                    return Err(Error::InvalidInput("extrusion exceeds finite coordinates"));
+                }
+                s.vertices.push(Vertex { point });
+            }
+        }
+    }
+    let mut rings = Vec::new();
+    let mut offset = 0;
+    for points in &loops {
+        rings.push((offset..offset + points.len()).collect::<Vec<_>>());
+        offset += points.len();
+    }
+    let mut add_edge = |a: usize, b: usize| {
+        s.edges.push(Edge {
+            vertices: [a, b],
+            curve: Curve::Line {
+                a: s.vertices[a].point,
+                b: s.vertices[b].point,
+            },
+        });
+    };
+    for ring in &rings {
+        for i in 0..ring.len() {
+            let a = ring[i];
+            let b = ring[(i + 1) % ring.len()];
+            add_edge(a, b);
+            add_edge(a + count, b + count);
+            add_edge(a, a + count);
+        }
+    }
+    let sign = if direction.z > 0.0 { 1 } else { -1 };
+    for (offset, orientation) in [(0, -sign), (count, sign)] {
+        let surface = Surface::Plane {
+            origin: profile.origin
+                + if offset == 0 {
+                    Vec3::new(0.0, 0.0, 0.0)
+                } else {
+                    direction
+                },
+            u: Vec3::new(1.0, 0.0, 0.0),
+            v: Vec3::new(0.0, 1.0, 0.0),
+        };
+        let wires = rings
+            .iter()
+            .map(|ring| {
+                plane_wire(
+                    &s,
+                    &ring.iter().map(|i| i + offset).collect::<Vec<_>>(),
+                    &surface,
+                )
+            })
+            .collect();
+        s.shell.faces.push(Face {
+            surface,
+            wires,
+            orientation,
+        });
+    }
+    for ring in &rings {
+        for i in 0..ring.len() {
+            let a = ring[i];
+            let b = ring[(i + 1) % ring.len()];
+            let origin = s.vertices[a].point;
+            let u = (s.vertices[b].point - origin).normalized()?;
+            let v = (direction - u * u.dot(direction)).normalized()?;
+            let surface = Surface::Plane { origin, u, v };
+            let wire = plane_wire(&s, &[a, b, b + count, a + count], &surface);
+            s.shell.faces.push(Face {
+                surface,
+                wires: vec![wire],
+                orientation: sign,
+            });
+        }
+    }
     s.validate(t)?;
     Ok(s)
 }
@@ -307,4 +467,46 @@ pub fn extrude(profile: Profile, height: f64, t: Tolerance) -> Result<Solid> {
             t,
         ),
     }
+}
+
+/// Exact coaxial hollow Z cylinder, including annular plane caps.
+#[derive(Clone, Copy, Debug)]
+pub struct TubeSpec {
+    pub base: Point3,
+    pub outer_radius: f64,
+    pub inner_radius: f64,
+    pub height: f64,
+}
+pub fn make_tube(spec: TubeSpec, t: Tolerance) -> Result<Solid> {
+    let outer = CylinderSpec {
+        base: spec.base,
+        radius: spec.outer_radius,
+        height: spec.height,
+    };
+    let inner = CylinderSpec {
+        base: spec.base,
+        radius: spec.inner_radius,
+        height: spec.height,
+    };
+    check_cylinder(outer, t)?;
+    check_cylinder(inner, t)?;
+    if !positive(spec.outer_radius - spec.inner_radius, t) {
+        return Err(Error::InvalidInput(
+            "tube wall must exceed ten linear tolerances",
+        ));
+    }
+    let mut s = make_cylinder(outer, t)?;
+    let bottom = ring(&mut s, spec.base, spec.inner_radius);
+    let top = ring(
+        &mut s,
+        spec.base + Vec3::new(0.0, 0.0, spec.height),
+        spec.inner_radius,
+    );
+    for (fi, e) in [(0, bottom), (1, top)] {
+        let wire = cap_ring(&s, e, &s.shell.faces[fi].surface, false);
+        s.shell.faces[fi].wires.push(wire);
+    }
+    cylindrical_face(&mut s, bottom, top, inner, -1);
+    s.validate(t)?;
+    Ok(s)
 }

@@ -15,6 +15,9 @@ claim compatibility with its data structures or APIs.
   plane/cylinder equations; [Parametric surface](https://en.wikipedia.org/wiki/Parametric_surface).
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
+- Simple polygon validation and containment: standard orientation determinants,
+  Euclidean point/segment distance, and [ray casting point-in-polygon](https://en.wikipedia.org/wiki/Point_in_polygon#Ray_casting_algorithm).
+  Implemented directly in Rust, without importing predicate source code.
 - Browser integration specifications: [WebAssembly core specification](https://webassembly.github.io/spec/core/),
   [WebGL 1.0 specification](https://registry.khronos.org/webgl/specs/latest/1.0/).
 - Planar polygon triangulation: [Mapbox Earcut](https://github.com/mapbox/earcut),

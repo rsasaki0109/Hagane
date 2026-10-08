@@ -125,41 +125,94 @@ impl Solid {
         Ok(mesh)
     }
 }
-/// Browser/native demo fixture, returned as dependency-free JSON.
+/// Browser/native single-bore fixture. Kept as a compatible shorthand.
 pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
+    demo_preset_json(0, radius, chord_error)
+}
+/// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
+/// polygon extrusion with a polygon hole, 3 coaxial tube. Unknown IDs fail.
+pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
-    let s = subtract_through_cylinder(
-        BoxSpec {
-            min: Point3::new(-40.0, -30.0, -12.0),
-            size: Vec3::new(80.0, 60.0, 24.0),
-        },
-        CylinderSpec {
-            base: Point3::new(0.0, 0.0, -20.0),
-            radius,
-            height: 40.0,
-        },
-        tol,
-    )?;
-    let m = s.tessellate(chord_error, tol)?;
-    let mut out = format!(
-        "{{\"volume\":{},\"faces\":{},\"edges\":{},\"positions\":[",
-        s.volume()?,
-        s.shell.faces.len(),
-        s.edges.len()
-    );
-    for (i, p) in m.positions.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
+    let b = BoxSpec {
+        min: Point3::new(-40.0, -30.0, -12.0),
+        size: Vec3::new(80.0, 60.0, 24.0),
+    };
+    let tool = |x, y, radius| CylinderSpec {
+        base: Point3::new(x, y, -20.0),
+        radius,
+        height: 40.0,
+    };
+    let s = match preset {
+        0 => subtract_through_cylinder(b, tool(0.0, 0.0, radius), tol)?,
+        // Half the radius slider: four independent bores at fixed centers.
+        1 => subtract_through_cylinders(
+            b,
+            &[
+                tool(-20.0, -14.0, radius * 0.5),
+                tool(20.0, -14.0, radius * 0.5),
+                tool(20.0, 14.0, radius * 0.5),
+                tool(-20.0, 14.0, radius * 0.5),
+            ],
+            tol,
+        )?,
+        2 => extrude_polygon(
+            &PolygonProfile {
+                origin: Point3::new(0.0, 0.0, -12.0),
+                outer: vec![
+                    [-40.0, -30.0],
+                    [40.0, -30.0],
+                    [40.0, -5.0],
+                    [-5.0, -5.0],
+                    [-5.0, 30.0],
+                    [-40.0, 30.0],
+                ],
+                holes: vec![vec![
+                    [-32.0, -16.0],
+                    [-20.0, -16.0],
+                    [-20.0, 12.0],
+                    [-32.0, 12.0],
+                ]],
+            },
+            Vec3::new(6.0, 3.0, 24.0),
+            tol,
+        )?,
+        3 => make_tube(
+            TubeSpec {
+                base: Point3::new(0.0, 0.0, -12.0),
+                outer_radius: 30.0,
+                inner_radius: radius,
+                height: 24.0,
+            },
+            tol,
+        )?,
+        _ => return Err(Error::Unsupported("unknown demo preset")),
+    };
+    s.mesh_json(chord_error, tol)
+}
+impl Solid {
+    /// Display-only JSON transport for the WebGL demo. Not a B-rep interchange format.
+    pub fn mesh_json(&self, chord_error: f64, tol: Tolerance) -> Result<String> {
+        let m = self.tessellate(chord_error, tol)?;
+        let mut out = format!(
+            "{{\"volume\":{},\"faces\":{},\"edges\":{},\"positions\":[",
+            self.volume()?,
+            self.shell.faces.len(),
+            self.edges.len()
+        );
+        for (i, p) in m.positions.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str(&format!("{},{},{}", p.x, p.y, p.z));
         }
-        out.push_str(&format!("{},{},{}", p.x, p.y, p.z));
-    }
-    out.push_str("],\"normals\":[");
-    for (i, p) in m.normals.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
+        out.push_str("],\"normals\":[");
+        for (i, p) in m.normals.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            out.push_str(&format!("{},{},{}", p.x, p.y, p.z));
         }
-        out.push_str(&format!("{},{},{}", p.x, p.y, p.z));
+        out.push_str("]}");
+        Ok(out)
     }
-    out.push_str("]}");
-    Ok(out)
 }

@@ -6,9 +6,25 @@ mod exports {
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     #[no_mangle]
     pub extern "C" fn hagane_generate(radius: f64, chord_error: f64) -> i32 {
-        let (status, text) = match crate::demo_json(radius, chord_error) {
+        generate(crate::demo_json(radius, chord_error))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_generate_preset(preset: u32, radius: f64, chord_error: f64) -> i32 {
+        generate(crate::demo_preset_json(preset, radius, chord_error))
+    }
+    fn generate(result: crate::Result<String>) -> i32 {
+        let (status, text) = match result {
             Ok(s) => (0, s),
-            Err(e) => (1, format!("{{\"error\":\"{e}\"}}")),
+            Err(e) => {
+                let message = e
+                    .to_string()
+                    .replace('\\', "\\\\")
+                    .replace('"', "\\\"")
+                    .replace('\n', "\\n")
+                    .replace('\r', "\\r")
+                    .replace('\t', "\\t");
+                (1, format!("{{\"error\":\"{message}\"}}"))
+            }
         };
         *OUTPUT.lock().expect("output mutex") = text.into_bytes();
         status

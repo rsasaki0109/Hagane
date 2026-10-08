@@ -71,84 +71,40 @@ impl Face {
     fn validate_supported_trim(&self, tol: Tolerance) -> Result<()> {
         match self.surface {
             Surface::Plane { .. } => {
-                if self.wires.len() > 2 {
-                    return Err(Error::Unsupported(
-                        "multiple planar holes are not supported yet",
-                    ));
-                }
-                let outer = &self.wires[0];
-                if outer.coedges.len() == 1
-                    && matches!(outer.coedges[0].pcurve, PCurve::Circle { .. })
-                {
-                    if self.wires.len() != 1 {
-                        return Err(Error::Unsupported(
-                            "annular disk faces are not supported yet",
-                        ));
-                    }
-                    return Ok(());
-                }
-                if outer.coedges.len() != 4
-                    || outer
-                        .coedges
-                        .iter()
-                        .any(|c| !matches!(c.pcurve, PCurve::Affine { .. }))
-                {
-                    return Err(Error::Unsupported(
-                        "planar outer trim must be a rectangle or disk",
-                    ));
-                }
-                let points: Vec<_> = outer
-                    .coedges
-                    .iter()
-                    .map(|c| c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }))
-                    .collect();
-                for i in 0..4 {
-                    let a = points[i];
-                    let b = points[(i + 1) % 4];
-                    let d = [b[0] - a[0], b[1] - a[1]];
-                    if (d[0].abs() > tol.linear && d[1].abs() > tol.linear)
-                        || d[0].hypot(d[1]) <= tol.linear
-                    {
-                        return Err(Error::Unsupported(
-                            "planar trim must be axis-aligned in its own surface parameters",
-                        ));
-                    }
-                    let c = points[(i + 2) % 4];
-                    let next = [c[0] - b[0], c[1] - b[1]];
-                    if (d[0] * next[0] + d[1] * next[1]).abs()
-                        > tol.linear * d[0].hypot(d[1]) * next[0].hypot(next[1])
-                    {
-                        return Err(Error::InvalidTopology("nonrectangular trim"));
-                    }
-                }
-                if self.wires.len() == 2 {
-                    let hole = &self.wires[1];
-                    if hole.coedges.len() != 1 {
-                        return Err(Error::Unsupported(
-                            "only a single circular planar hole is supported",
-                        ));
-                    }
-                    let PCurve::Circle { center, radius } = hole.coedges[0].pcurve else {
-                        return Err(Error::Unsupported(
-                            "only circular planar holes are supported",
-                        ));
-                    };
-                    for axis in 0..2 {
-                        let lo = points.iter().map(|p| p[axis]).fold(f64::INFINITY, f64::min);
-                        let hi = points
+                use crate::planar::{validate_polygon, validate_region, PlanarLoop};
+                let mut loops = Vec::new();
+                for w in &self.wires {
+                    if w.coedges.len() == 1 {
+                        let PCurve::Circle { center, radius } = w.coedges[0].pcurve else {
+                            return Err(Error::Unsupported(
+                                "one-edge planar wire must be circular",
+                            ));
+                        };
+                        if !radius.is_finite() || radius <= tol.linear {
+                            return Err(Error::InvalidTopology("invalid circular trim"));
+                        }
+                        loops.push(PlanarLoop::Circle { center, radius });
+                    } else {
+                        if w.coedges
                             .iter()
-                            .map(|p| p[axis])
-                            .fold(f64::NEG_INFINITY, f64::max);
-                        if center[axis] - radius <= lo + tol.linear
-                            || center[axis] + radius >= hi - tol.linear
+                            .any(|c| !matches!(c.pcurve, PCurve::Affine { .. }))
                         {
-                            return Err(Error::InvalidTopology(
-                                "circular trim touches or leaves its outer rectangle",
+                            return Err(Error::Unsupported(
+                                "mixed arc-line planar wires are not supported yet",
                             ));
                         }
+                        let points: Vec<_> = w
+                            .coedges
+                            .iter()
+                            .map(|c| c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }))
+                            .collect();
+                        validate_polygon(&points, tol)?;
+                        loops.push(PlanarLoop::Polygon(points));
                     }
                 }
+                validate_region(&loops[0], &loops[1..], tol)?;
             }
+
             Surface::Cylinder { height, .. } => {
                 if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
                     return Err(Error::Unsupported(
@@ -263,6 +219,21 @@ impl Solid {
                     let start = ne.vertices[usize::from(!next.forward)];
                     if end != start {
                         return Err(Error::InvalidTopology("wire is not topologically closed"));
+                    }
+                    match (&e.curve, &c.pcurve) {
+                        (Curve::Line { .. }, PCurve::Circle { .. }) => {
+                            return Err(Error::InvalidTopology(
+                                "line edge cannot have a circle pcurve",
+                            ))
+                        }
+                        (Curve::Circle { .. }, PCurve::Affine { .. })
+                            if matches!(f.surface, Surface::Plane { .. }) =>
+                        {
+                            return Err(Error::InvalidTopology(
+                                "planar circle edge requires a circle pcurve",
+                            ))
+                        }
+                        _ => {}
                     }
                     let range = e.curve.range();
                     for k in 0..=8 {
@@ -436,12 +407,18 @@ impl Solid {
     }
 }
 pub(crate) fn wire_area(w: &Wire) -> f64 {
+    let reference = w
+        .coedges
+        .first()
+        .map(|c| c.pcurve.evaluate(0.0))
+        .unwrap_or([0.0, 0.0]);
     w.coedges
         .iter()
         .map(|c| {
             let a = match c.pcurve {
                 PCurve::Affine { origin, direction } => {
-                    0.5 * (origin[0] * direction[1] - origin[1] * direction[0])
+                    0.5 * ((origin[0] - reference[0]) * direction[1]
+                        - (origin[1] - reference[1]) * direction[0])
                 }
                 PCurve::Circle { radius, .. } => std::f64::consts::PI * radius * radius,
             };
