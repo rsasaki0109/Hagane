@@ -204,9 +204,9 @@ fabricate the demo image.
   refinement, analytic hole ownership and preserved
   closed-solid geometry.
 - [Solid point classification](docs/classification.md) for planar polygon/circle
-  trims and full periodic cylinder walls, with Euclidean boundary bands and two
+  and bounded-arc trims and rectangular partial/full cylinder walls, with Euclidean boundary bands and two
   checked independent rays. [Cylinder/tube/bore queries](docs/curved-classification.md)
-  are available in the browser model selector.
+  and [rounded/notched queries](docs/arc-classification.md) are available in the browser model selector.
 - [Shared straight edge simplification](docs/edge-simplify.md), removing exact
   degree-two collinear knots while preserving features, holes and shared pcurves.
 - [Coplanar face merging](docs/face-merge.md), removing shared internal boundaries

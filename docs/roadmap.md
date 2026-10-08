@@ -137,8 +137,7 @@ Analytic solid classification now supports planar full-circle wires and full
 periodic cylinder walls. Cylinder/tube/multiple-bore membership, cap/rim/wall
 Euclidean bands, periodic seams, placement and tiny dimensions are verified.
 4950 independent analytic grid samples accompany native/WASM probes/mesh parity;
-the browser query page offers four solid models. Bounded arcs, partial cylinders
-and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
+the browser query page offers six solid models, including bounded arc trims and rectangular partial cylinder walls. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
 
 ## Next: broaden analytic B-rep operations
 

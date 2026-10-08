@@ -4,10 +4,10 @@
 
 `classify_point_in_solid(&Solid, Point3, GeometryTolerance)` returns
 `PointLocation::{Inside, Outside, Boundary}` for a validated closed oriented
-B-rep with planar polygon/full-circle trims and complete periodic cylinder walls.
+B-rep with planar polygon/circle/bounded-arc trims and rectangular cylinder walls.
 Polygon/circular holes, concavity, planar face subdivisions, rigid placement and
-skew polygon extrusion are supported. Partial cylinder walls, bounded arc trims
-and other unsupported boundaries return `Unsupported` before a bounds shortcut.
+skew polygon extrusion are supported. General cylinder trims and other unsupported
+boundaries return errors before a bounds shortcut. See [arc classification](arc-classification.md).
 Invalid topology and nonfinite coordinates return errors. See
 [curved classification](curved-classification.md) for cylinders, tubes and bores.
 
@@ -68,7 +68,7 @@ The same Rust fixture and classifier execute natively and in WASM.
 Tests cover an independent analytic box grid, concave/hollow trims, face/edge/
 vertex and near-boundary points, Euclidean corner distance, relative tolerance,
 ray vertex degeneracy, face subdivision, rigid/skew placement, tiny models,
-exhausted candidates, unsupported bounded-arc rejection, invalid topology and nonfinite
+exhausted candidates, bounded arcs, partial wall subdivision, invalid topology and nonfinite
 queries. WASM tests compare native results, boundary bands, recovery and the
 actual display mesh. Browser tests exercise all probes, coordinate changes,
 orbit and responsive layout.

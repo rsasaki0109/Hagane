@@ -204,17 +204,18 @@ try {
  await page.locator('#x').evaluate(e=>{e.value=-20;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#location').textContent(),'boundary');
  await page.locator('#probe').selectOption('face');await page.locator('#wire').check();await page.locator('#reset').click();
  if(process.argv.includes('--capture-classification'))await page.screenshot({path:new URL('../docs/classification.png',import.meta.url).pathname});
- for(const [model,expected] of [['1',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['2',{material:'inside',hole:'inside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['3',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}]]){
+ for(const [model,expected] of [['1',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['2',{material:'inside',hole:'inside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['3',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['4',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}],['5',{material:'inside',hole:'outside',notch:'boundary',face:'boundary',vertex:'boundary',outside:'outside'}]]){
   await page.locator('#model').selectOption(model);assert.equal(await page.evaluate(()=>window.haganeClassification.model),Number(model));
   for(const [probe,result] of Object.entries(expected)){await page.locator('#probe').selectOption(probe);assert.equal(await page.locator('#location').textContent(),result);}
  }
  await page.locator('#model').selectOption('1');await page.locator('#probe').selectOption('notch');
  if(process.argv.includes('--capture-curved-classification'))await page.screenshot({path:new URL('../docs/curved-classification.png',import.meta.url).pathname});
  await page.locator('#x').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#location').textContent(),'outside');
+ if(process.argv.includes('--capture-arc-classification')){await page.locator('#model').selectOption('5');await page.locator('#probe').selectOption('notch');await page.screenshot({path:new URL('../docs/arc-classification.png',import.meta.url).pathname});}
  await page.locator('#model').selectOption('0');await page.locator('#probe').selectOption('face');assert.equal(await page.locator('#location').textContent(),'boundary');
  const classifierView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),classifierView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
- console.log('Browser: planar and full-cylinder solid point classification, four models, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
+ console.log('Browser: planar and full-cylinder solid point classification, six models, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
  console.log('Browser: 21 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');

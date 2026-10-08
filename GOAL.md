@@ -205,3 +205,10 @@ The next development task is broader retained-face selection and contact handlin
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.
+
+Bounded planar line/arc trims and rectangular partial cylinder walls now support
+analytic solid classification. Rounded material grids, rigid placement, microscopic
+geometry, Euclidean arc-rim bands and periodic subdivision invariance are tested.
+The native/WASM/browser query demo includes rounded plates and concave arc notches
+with rounded through-holes. General cylinder trims and geometric self-intersection
+detection remain unsupported. See [arc classification](docs/arc-classification.md).

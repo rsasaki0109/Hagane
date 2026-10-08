@@ -11,12 +11,11 @@ it never classifies against the display mesh.
 
 The existing closed/oriented solid validator runs before any classification or
 bounds shortcut. Planar faces may have polygon or single full-circle outer/inner
-wires. Cylindrical faces must have a full `2π` rectangular trim over their declared
+or bounded line/arc wires. Cylindrical faces must have a rectangular angular trim over their declared
 axial height. Z cylinders and rigidly placed framed cylinders are supported.
 
 This covers exact cylinders, hollow tubes and boxes with one or multiple circular
-through-bores, alongside the previous planar concave/polygon-hole solids. Bounded
-arcs, partial cylinder walls, general cylinder trims and NURBS remain unsupported,
+through-bores, rounded extrusions and arc notches, alongside planar concave/polygon-hole solids. See [bounded arcs and partial walls](arc-classification.md). General cylinder trims and NURBS remain unsupported,
 even for points outside the bounds. Inputs must be geometrically non-self-
 intersecting; structural validation is not a general geometric intersection detector.
 
@@ -88,5 +87,5 @@ Native tests independently check 4950 cylinder/tube grid points, bore voids/caps
 multiple bores, periodic seams, Euclidean rim distances, relative policies,
 rigid placement, tiny dimensions and explicit unsupported/invalid/exhausted cases.
 WASM compares native results for 16 probes and all three curved display meshes,
-plus invalid input and recovery. Browser tests query all four models, change
+plus invalid input and recovery. Browser tests query all six models, change
 coordinates, switch back to planar queries and verify orbit/responsive rendering.

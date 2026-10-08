@@ -1,13 +1,15 @@
-//! Checked ray classification against analytic planar and full-cylinder boundaries.
+//! Checked ray classification against analytic planar and trimmed-cylinder boundaries.
 use crate::*;
 enum AnalyticRing {
     Polygon(Vec<[f64; 2]>),
+    Mixed(Vec<PlanarSegment>),
     Circle { center: [f64; 2], radius: f64 },
 }
 impl AnalyticRing {
-    fn location(&self, p: [f64; 2]) -> Result<PointLocation> {
+    fn location(&self, p: [f64; 2], budget: f64) -> Result<PointLocation> {
         match self {
             Self::Polygon(ring) => locate_point_in_polygon(p, ring),
+            Self::Mixed(ring) => crate::mixed::point_location(p, ring, Tolerance::new(budget)?),
             Self::Circle { center, radius } => {
                 let r = (p[0] - center[0]).hypot(p[1] - center[1]);
                 if !r.is_finite() {
@@ -25,6 +27,9 @@ impl AnalyticRing {
     }
     fn distance(&self, p: [f64; 2]) -> Result<f64> {
         match self {
+            Self::Mixed(ring) => ring.iter().try_fold(f64::INFINITY, |d, segment| {
+                Ok(d.min(crate::mixed::point_distance(p, *segment)?))
+            }),
             Self::Circle { center, radius } => {
                 let d = ((p[0] - center[0]).hypot(p[1] - center[1]) - radius).abs();
                 if !d.is_finite() {
@@ -52,13 +57,13 @@ struct PlanarTrim<'a> {
     rings: Vec<AnalyticRing>,
 }
 impl PlanarTrim<'_> {
-    fn location(&self, p: [f64; 2]) -> Result<PointLocation> {
-        let outer = self.rings[0].location(p)?;
+    fn location(&self, p: [f64; 2], budget: f64) -> Result<PointLocation> {
+        let outer = self.rings[0].location(p, budget)?;
         if outer != PointLocation::Inside {
             return Ok(outer);
         }
         for hole in &self.rings[1..] {
-            match hole.location(p)? {
+            match hole.location(p, budget)? {
                 PointLocation::Inside => return Ok(PointLocation::Outside),
                 PointLocation::Boundary => return Ok(PointLocation::Boundary),
                 PointLocation::Outside => (),
@@ -79,6 +84,7 @@ struct CylinderTrim<'a> {
     frame: Frame3,
     radius: f64,
     height: f64,
+    span: f64,
 }
 impl CylinderTrim<'_> {
     fn distance(&self, p: Point3) -> Result<f64> {
@@ -88,7 +94,14 @@ impl CylinderTrim<'_> {
                 "cylinder query exceeds finite local coordinates",
             ));
         }
-        let radial = (p.x.hypot(p.y) - self.radius).abs();
+        let angle = p.y.atan2(p.x).rem_euclid(std::f64::consts::TAU);
+        let radial = if self.span == std::f64::consts::TAU || angle <= self.span {
+            (p.x.hypot(p.y) - self.radius).abs()
+        } else {
+            (p.x - self.radius).hypot(p.y).min(
+                (p.x - self.radius * self.span.cos()).hypot(p.y - self.radius * self.span.sin()),
+            )
+        };
         let axial = if p.z < 0. {
             -p.z
         } else if p.z > self.height {
@@ -105,12 +118,10 @@ impl CylinderTrim<'_> {
         Ok(d)
     }
 }
-/// Classify against validated planar polygon/full-circle trims and complete
-/// periodic cylinder walls. Euclidean boundary distance uses a local budget.
-/// Two independent resolved rays must agree. Ambiguous/tangent/rim hits retry.
-/// Partial cylinders, bounded arcs and general self-intersection detection are
-/// unsupported. No display mesh is consulted and periodic seams are not edges
-/// of the material region.
+/// Classify validated planar line/circle/arc trims and rectangular cylinder walls.
+/// Euclidean boundary distance uses a local budget. Two resolved rays must agree.
+/// General cylinder trims and general self-intersection detection are unsupported.
+/// No display mesh is consulted; full-periodic seams do not duplicate crossings.
 pub fn classify_point_in_solid(
     solid: &Solid,
     p: Point3,
@@ -131,16 +142,12 @@ pub fn classify_point_in_solid(
                 radius,
                 height,
             } => {
-                if face.cylinder_span()? != std::f64::consts::TAU {
-                    return Err(Error::Unsupported(
-                        "solid classification requires full periodic cylinder walls",
-                    ));
-                }
                 cylinders.push(CylinderTrim {
                     face,
                     frame: Frame3::translation(center)?,
                     radius,
                     height,
+                    span: face.cylinder_span()?,
                 });
             }
             Surface::FramedCylinder {
@@ -148,21 +155,25 @@ pub fn classify_point_in_solid(
                 radius,
                 height,
             } => {
-                if face.cylinder_span()? != std::f64::consts::TAU {
-                    return Err(Error::Unsupported(
-                        "solid classification requires full periodic cylinder walls",
-                    ));
-                }
                 cylinders.push(CylinderTrim {
                     face,
                     frame,
                     radius,
                     height,
+                    span: face.cylinder_span()?,
                 });
             }
             Surface::Plane { u, v, .. } => {
                 let mut rings = Vec::new();
-                for w in &face.wires {
+                let mixed_rings = crate::face_intersections::rings(face);
+                for (index, w) in face.wires.iter().enumerate() {
+                    if w.coedges
+                        .iter()
+                        .any(|c| matches!(c.pcurve, PCurve::Arc { .. }))
+                    {
+                        rings.push(AnalyticRing::Mixed(mixed_rings[index].clone()));
+                        continue;
+                    }
                     if w.coedges.len() == 1 {
                         let c = &w.coedges[0];
                         if let PCurve::Circle { center, radius } = c.pcurve {
@@ -213,7 +224,7 @@ pub fn classify_point_in_solid(
         let distance = (p - origin).dot(f.normal).abs();
         if distance <= budget {
             let uv = f.face.surface.parameters(p);
-            let trim = f.location(uv)?;
+            let trim = f.location(uv, budget)?;
             let lateral = if trim == PointLocation::Inside {
                 0.0
             } else {
@@ -277,7 +288,13 @@ pub fn classify_point_in_solid(
                 ambiguous = true;
                 break;
             }
-            let location = f.location(uv)?;
+            let location = match f.location(uv, budget) {
+                Ok(location) => location,
+                Err(_) => {
+                    ambiguous = true;
+                    break;
+                }
+            };
             if location == PointLocation::Boundary || f.boundary_distance(uv)? <= budget {
                 ambiguous = true;
                 break;
@@ -299,6 +316,20 @@ pub fn classify_point_in_solid(
                         for hit in points {
                             if hit.parameter <= 0. {
                                 continue;
+                            }
+                            if cylinder.span != std::f64::consts::TAU {
+                                let gap = (2. * cylinder.radius * (hit.uv[0] / 2.).sin().abs())
+                                    .min(
+                                        2. * cylinder.radius
+                                            * ((hit.uv[0] - cylinder.span) / 2.).sin().abs(),
+                                    );
+                                if gap <= budget {
+                                    ambiguous = true;
+                                    break;
+                                }
+                                if hit.uv[0] > cylinder.span {
+                                    continue;
+                                }
                             }
                             let denominator = d.dot(cylinder.face.surface.normal(hit.uv[0]));
                             if hit.contact == IntersectionContact::Tangent
@@ -431,6 +462,12 @@ pub(crate) fn curved_classification_solid(model: u32) -> Result<Solid> {
             },
             t,
         ),
+        3 => extrude_arc_line(
+            &rounded_rectangle_profile(Point3::new(0., 0., -12.), 80., 60., 14., t)?,
+            24.,
+            t,
+        ),
+        4 => extrude_arc_line_region(&crate::mixed::notched_demo_profile(14., t)?, 24., t),
         _ => Err(Error::InvalidInput("unknown curved classification model")),
     }
 }

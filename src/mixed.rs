@@ -133,14 +133,21 @@ fn radial(segment: PlanarSegment, angle: f64) -> P2 {
         center[1] + radius * angle.sin(),
     ]
 }
-fn point_distance(p: P2, segment: PlanarSegment) -> Result<f64> {
+pub(crate) fn point_distance(p: P2, segment: PlanarSegment) -> Result<f64> {
     match segment {
         PlanarSegment::Line { a, b } => crate::planar::segment_distance(p, a, b),
-        PlanarSegment::Arc { center, radius, .. } => {
+        PlanarSegment::Arc {
+            center,
+            radius,
+            start_angle,
+            sweep,
+        } => {
             let delta = [p[0] - center[0], p[1] - center[1]];
             let mut result =
                 distance(p, segment.evaluate(0.0)).min(distance(p, segment.evaluate(1.0)));
-            if has_angle(segment, delta[1].atan2(delta[0])) {
+            if ((delta[1].atan2(delta[0]) - start_angle) * sweep.signum()).rem_euclid(TAU)
+                <= sweep.abs()
+            {
                 result = result.min((delta[0].hypot(delta[1]) - radius).abs());
             }
             if !result.is_finite() {
@@ -915,6 +922,19 @@ pub(crate) fn notched_demo_profile(radius: f64, tol: Tolerance) -> Result<ArcLin
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn finite_arc_distance_does_not_extend_endpoint_by_angular_slack() {
+        let arc = super::PlanarSegment::Arc {
+            center: [0., 0.],
+            radius: 1.,
+            start_angle: 0.,
+            sweep: std::f64::consts::FRAC_PI_2,
+        };
+        let angle: f64 = -5e-11;
+        let distance = super::point_distance([angle.cos(), angle.sin()], arc).unwrap();
+        assert!((distance - 5e-11).abs() < 1e-20);
+    }
+
     use super::*;
     #[test]
     fn analytic_line_arc_distance_checks_interior_extrema_and_intersections() {

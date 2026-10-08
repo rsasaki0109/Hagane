@@ -146,14 +146,16 @@ fn rigid_placement_and_tiny_cylinders_share_the_kernel() {
     );
 }
 #[test]
-fn bounded_arcs_invalid_inputs_and_unresolved_rays_fail() {
+fn bounded_arcs_and_invalid_inputs() {
     let t = GeometryTolerance::default();
     let profile =
         rounded_rectangle_profile(Point3::new(0., 0., 0.), 8., 6., 1., t.absolute()).unwrap();
     let s = extrude_arc_line(&profile, 4., t.absolute()).unwrap();
-    for p in [Point3::new(0., 0., 1.), Point3::new(100., 100., 100.)] {
-        assert!(classify_point_in_solid(&s, p, t).is_err());
-    }
+    assert_eq!(classify(&s, Point3::new(0., 0., 1.)), PointLocation::Inside);
+    assert_eq!(
+        classify(&s, Point3::new(100., 100., 100.)),
+        PointLocation::Outside
+    );
     assert!(classify_point_in_solid(&cylinder(), Point3::new(f64::NAN, 0., 0.), t).is_err());
     let mut s = cylinder();
     s.shell.faces[0].orientation *= -1;
