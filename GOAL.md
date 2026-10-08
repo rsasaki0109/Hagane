@@ -142,7 +142,14 @@ are covered when both results are connected and the plane clears input vertices.
 A fourteenth browser preset shows the positive part; native/WASM fixtures
 verify both. See [solid partition](docs/solid-split.md).
 
-The next development task is retained-face selection and scoped solid Boolean
-dispatch using planar arrangements. Contact graphs,
+Scoped convex solid intersection now clips a planar straight-edge operand by
+checked outward supporting planes of another convex solid. Typed empty and
+strict containment results are distinguished; transverse cuts create closed
+B-reps. Analytic box and independently computed rotated-diamond volumes,
+placement and microscopic cases are verified. A fifteenth native/WASM/browser
+preset exercises two solid operands. See [convex intersection](docs/convex-intersection.md).
+
+The next development task is scoped difference/union and broader retained-face
+selection using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

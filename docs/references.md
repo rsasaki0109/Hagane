@@ -158,3 +158,15 @@ face orientation with half-space orientation to construct complementary caps.
 The existing exact planar sewing machinery assembles both parts, and analytic
 volume conservation checks the result. This independent construction uses no
 mesh modeling, no new dependency and no OCCT source.
+
+### Convex solid intersection
+
+A closed convex polyhedron is the intersection of its outward supporting
+half-spaces. Sequential clipping by the second operand's half-spaces constructs
+their common material. Plane cuts reuse exact edge intersections, cap graphs
+and sewing; convexity is checked before using the half-space representation.
+Background: S. Boyd and L. Vandenberghe, *Convex Optimization*, Cambridge
+University Press, 2004, §2.2 (hyperplanes, half-spaces and polyhedra), available
+from [Stanford](https://web.stanford.edu/~boyd/cvxbook/). This is a mathematical
+reference, not copied source code. The independent implementation adds no
+library dependency and uses no OCCT source.

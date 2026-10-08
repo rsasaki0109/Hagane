@@ -83,6 +83,13 @@ when each result stays connected and the cut clears original vertices. Native/
 WASM fixtures verify both parts; a fourteenth browser preset shows the positive
 part. See [solid partition](solid-split.md).
 
+Convex planar straight-edge solid intersection now clips by checked outward
+supporting half-spaces, creates closed B-reps and returns typed empty results.
+Strict containment, analytic box overlap, rotated-diamond area, placement and
+small dimensions are verified, with a fifteenth native/WASM/browser preset.
+Contacts/coplanar cases and nonconvex/curved operands remain unsupported. See
+[convex intersection](convex-intersection.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -90,7 +97,7 @@ part. See [solid partition](solid-split.md).
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement retained-face selection and scoped solid Boolean dispatch using
+- Implement scoped difference/union and broader retained-face selection using
   planar arrangements; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
