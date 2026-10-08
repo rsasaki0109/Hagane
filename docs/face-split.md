@@ -106,10 +106,10 @@ circular or 3D predicates.
 Native tests cover box/rounded/disk/notch parts, polygon and curved holes,
 analytic volume, top/bottom and repeated/reversed cuts, inward cylinder walls,
 rigid placement, microscopic dimensions, shared pcurves and closed oriented
-meshes. Native/WASM fixture parity and browser offset controls exercise ten
+meshes. Native/WASM fixture parity and browser offset controls exercise eleven
 solid presets. Vertex, tangent, unresolved and same-edge cuts are rejected.
 
-Repeated hits on one original edge, periodic full-circle subdivision, arbitrary
+Periodic full-circle subdivision, arbitrary
 curved-face trims, contact graphs, sewing and general Boolean operations remain
 future work. No OCCT source or additional dependency is used.
 
@@ -124,8 +124,8 @@ crossings on polygon/arc holes. It can produce more than two children when a
 half-plane intersection of a concave face is disconnected. The first child
 replaces the original face; others follow any refined cylinder walls.
 
-Each crossing must use a **distinct original bounded line or arc edge**.
-Periodic circle crossings, repeated hits on one edge, vertex/tangent/overlap
+Crossings require bounded line or arc edges. Two hits on the same arc are
+supported. Periodic circle crossings, vertex/tangent/overlap
 contacts, unresolved side decisions and intervals shorter than ten linear
 tolerances return errors. Arc neighbor requirements match the single-interval
 API. Uncrossed full-circle hole wires remain exact. `split_planar_face` retains
@@ -152,3 +152,37 @@ with three children, reversed direction, rigid placement, tiny dimensions,
 arc-hole inward-wall refinement, contact rejection, unchanged input, volume,
 bounds and closed oriented mesh seams. Native/WASM geometry parity and browser
 controls exercise the same Rust fixture. No modeling boundary is polygonized.
+
+## Repeated crossings on one arc
+
+![Actual WASM annular cap subdivision](repeated-arc-split.png)
+
+Intersections keep their original edge parameter even as subdivision changes
+edge ranges. Events are grouped by original edge and sorted by **descending**
+parameter. Each split retains the first subedge at its original index, so the
+next smaller angular parameter still refers to that subedge. Straight subedges
+use normalized parameters and are rescaled by the original interval end.
+Cut vertices are keyed by both original edge and original parameter; two hits
+on one edge no longer overwrite one another. This also keeps topology independent
+of the input line's traversal direction.
+
+For two arc crossings at t1 < t2, shared rims and rectangular cylinder walls
+become three angular pieces: [0,t1], [t1,t2] and [t2,span]. Both newly created
+generators and both opposite-cap vertices are retained. All pieces must still
+clear the ten-tolerance chord/length guards; near-tangent and vertex cuts fail.
+The original single-interval `split_planar_face` contract stays unchanged;
+use `subdivide_planar_face` for repeated crossings.
+
+Run `cargo run --locked --example repeated_arc_split` or `--example part -- 10`.
+**Split repeated arc crossings** builds an exact annular extrusion from two
+bounded semicircles per ring (outer radius 30, inner radius 26, height 24 mm).
+The offset 8..24 mm crosses the same upper outer arc twice and the same upper
+inner arc twice. Two material chords yield two cap children, 11 faces and
+26 edges, with constant volume `5376*pi` mm³. No periodic circle is converted
+or approximated by this operation.
+
+Tests cover both upper/lower arcs and input directions, opposite-cap cuts,
+rigid placement, microscopic geometry with huge line direction, unchanged
+analytic metrics, positive triangle winding, closed shared mesh seams and
+cylinder sagitta within 0.01. Native/WASM parity, invalid offsets and recovery,
+and browser offset controls run the same annular fixture.

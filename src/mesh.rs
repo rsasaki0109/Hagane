@@ -241,6 +241,34 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        10 => {
+            let ring = |radius| {
+                [0.0, std::f64::consts::PI]
+                    .map(|start_angle| PlanarSegment::Arc {
+                        center: [0.0, 0.0],
+                        radius,
+                        start_angle,
+                        sweep: std::f64::consts::PI,
+                    })
+                    .to_vec()
+            };
+            subdivide_planar_face(
+                &extrude_arc_line_region(
+                    &ArcLineRegion {
+                        origin: Point3::new(0.0, 0.0, -12.0),
+                        outer: ring(30.0),
+                        holes: vec![ring(26.0)],
+                    },
+                    24.0,
+                    tol,
+                )?,
+                1,
+                Point3::new(0.0, radius, 12.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                GeometryTolerance::default(),
+            )?
+            .solid
+        }
         9 => {
             subdivide_planar_face(
                 &extrude_polygon(

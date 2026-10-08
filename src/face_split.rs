@@ -488,8 +488,8 @@ pub struct PlanarFaceSubdivision {
     pub cut_edges: Vec<usize>,
 }
 /// Subdivide all transverse material intervals, including polygon/arc holes.
-/// Each event must hit a distinct bounded line/arc edge. Periodic circles,
-/// contacts and repeated hits on an edge are explicitly unsupported.
+/// Repeated crossings on bounded arcs are refined in original-parameter order.
+/// Periodic circles and contacts are explicitly unsupported.
 pub fn subdivide_planar_face(
     solid: &Solid,
     face_index: usize,
@@ -503,25 +503,43 @@ pub fn subdivide_planar_face(
             "subdivision requires material intervals",
         ));
     }
-    let mut seen = std::collections::BTreeSet::new();
     for e in &clip.events {
-        if !seen.insert(e.edge)
-            || !matches!(
-                solid.edges[e.edge].curve,
-                Curve::Line { .. } | Curve::Arc { .. }
-            )
-        {
+        if !matches!(
+            solid.edges[e.edge].curve,
+            Curve::Line { .. } | Curve::Arc { .. }
+        ) {
             return Err(Error::Unsupported(
-                "cut graph requires distinct bounded boundary edges",
+                "cut graph requires bounded boundary edges",
             ));
         }
     }
     let volume = solid.volume()?;
     let mut s = solid.clone();
     let mut vertices = std::collections::BTreeMap::new();
-    for e in &clip.events {
-        let v = split_boundary_edge(&mut s, e.edge, e.edge_parameter, e.point, tol.absolute())?;
-        vertices.insert(e.edge, v);
+    // Descending original parameters keep every unprocessed hit on the first
+    // subedge at the original index. Arc parameters stay angular; a straight
+    // subedge restarts its normalized [0,1] range, so scale by its original end.
+    let mut events: Vec<_> = clip.events.iter().collect();
+    events.sort_by(|a, b| {
+        a.edge
+            .cmp(&b.edge)
+            .then_with(|| b.edge_parameter.total_cmp(&a.edge_parameter))
+    });
+    let mut last_edge = None;
+    let mut upper = 1.0;
+    for e in events {
+        if last_edge != Some(e.edge) {
+            upper = 1.0;
+            last_edge = Some(e.edge);
+        }
+        let parameter = if matches!(s.edges[e.edge].curve, Curve::Line { .. }) {
+            e.edge_parameter / upper
+        } else {
+            e.edge_parameter
+        };
+        let v = split_boundary_edge(&mut s, e.edge, parameter, e.point, tol.absolute())?;
+        vertices.insert((e.edge, e.edge_parameter.to_bits()), v);
+        upper = e.edge_parameter;
     }
     let face = s.shell.faces[face_index].clone();
     let origin = face.surface.parameters(anchor);
@@ -546,8 +564,8 @@ pub fn subdivide_planar_face(
     }
     let mut cut_edges = Vec::new();
     for interval in &clip.intervals {
-        let a = vertices[&interval.start.edge];
-        let b = vertices[&interval.end.edge];
+        let a = vertices[&(interval.start.edge, interval.start.edge_parameter.to_bits())];
+        let b = vertices[&(interval.end.edge, interval.end.edge_parameter.to_bits())];
         let pa = s.vertices[a].point;
         let pb = s.vertices[b].point;
         if (pb - pa).norm() <= 10.0 * tol.absolute().linear {

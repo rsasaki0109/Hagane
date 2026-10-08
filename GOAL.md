@@ -113,7 +113,11 @@ into connected child faces. Shared boundary refinement and analytic cycle/hole
 ownership preserve closure, volume and conforming meshes. A tenth browser
 preset cuts through two polygon holes, with native/WASM parity.
 
-The next development task is repeated hits on one boundary edge and periodic
-circular boundary subdivision. Contact graphs,
+Repeated bounded-arc crossings now use descending original parameters to
+refine shared rims/walls without losing subsequent events. Annular cap cuts,
+reversed/placed and microscopic cases preserve topology, volume and the mesh
+sagitta bound; an eleventh native/WASM/browser preset demonstrates this.
+
+The next development task is periodic circular boundary subdivision. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

@@ -106,3 +106,10 @@ Green's theorem gives line/arc signed wire area; analytic point-in-ring tests
 assign negative cycles to positive cycles. This independently implemented
 construction reuses the existing documented clipping and arc-refinement math.
 It adds no dependencies and uses no OCCT source.
+
+Repeated crossings retain original curve parameters and refine in descending
+parameter order. This elementary interval-subdivision rule keeps unprocessed
+parameters on the first surviving subedge; normalized straight parameters are
+rescaled to that subinterval, while arc parameters remain angular. Rim/frame
+refinement follows the existing documented rotation formulas. The independent
+implementation introduces no library or OCCT dependency.

@@ -23,7 +23,8 @@ fn check(s: &Solid, r: &PlanarFaceSubdivision, children: usize, cuts: usize) {
     assert_eq!(r.cut_edges.len(), cuts);
     r.solid.validate(Tolerance::default()).unwrap();
     assert!((r.solid.volume().unwrap() - s.volume().unwrap()).abs() < 1e-9);
-    assert_eq!(r.solid.bounds(), s.bounds());
+    assert!((r.solid.bounds().min - s.bounds().min).norm() < 1e-12);
+    assert!((r.solid.bounds().max - s.bounds().max).norm() < 1e-12);
     let m = r.solid.tessellate(0.01, Tolerance::default()).unwrap();
     let key = |p: Point3| {
         [
@@ -33,8 +34,21 @@ fn check(s: &Solid, r: &PlanarFaceSubdivision, children: usize, cuts: usize) {
         ]
     };
     let mut uses = std::collections::BTreeMap::new();
-    for tri in m.triangles {
+    for (ti, tri) in m.triangles.iter().enumerate() {
+        let pts = tri.map(|i| m.positions[i]);
+        assert!(
+            (pts[1] - pts[0])
+                .cross(pts[2] - pts[0])
+                .dot(m.normals[tri[0]])
+                > 0.0
+        );
         for i in 0..3 {
+            if let Surface::FramedCylinder { frame, radius, .. } =
+                r.solid.shell.faces[m.face_ids[ti]].surface
+            {
+                let q = frame.local_point((pts[i] + pts[(i + 1) % 3]) * 0.5);
+                assert!(radius - q.x.hypot(q.y) <= 0.01 + 1e-10);
+            }
             let a = key(m.positions[tri[i]]);
             let b = key(m.positions[tri[(i + 1) % 3]]);
             let (k, sign) = if a < b { ((a, b), 1) } else { ((b, a), -1) };
@@ -177,7 +191,7 @@ fn crossed_arc_hole_refines_inward_cylinder_walls() {
         .all(|&i| r.solid.shell.faces[i].wires.len() == 1));
 }
 #[test]
-fn repeated_arc_hits_and_periodic_circle_crossings_are_rejected() {
+fn repeated_arc_hits_work_but_periodic_circle_crossings_are_rejected() {
     let t = GeometryTolerance::default();
     let p = ArcLineProfile {
         origin: Point3::new(0., 0., 0.),
@@ -191,7 +205,7 @@ fn repeated_arc_hits_and_periodic_circle_crossings_are_rejected() {
             .to_vec(),
     };
     let s = extrude_arc_line(&p, 2., t.absolute()).unwrap();
-    assert!(cut(&s, 1., 1.).is_err());
+    check(&s, &cut(&s, 1., 1.).unwrap(), 2, 1);
     let s = make_cylinder(
         CylinderSpec {
             base: Point3::new(0., 0., 0.),
@@ -202,4 +216,107 @@ fn repeated_arc_hits_and_periodic_circle_crossings_are_rejected() {
     )
     .unwrap();
     assert!(cut(&s, 1., 1.).is_err());
+}
+#[test]
+fn two_hits_on_each_outer_and_hole_arc_preserve_exact_geometry() {
+    let ring = |r| {
+        [0., std::f64::consts::PI]
+            .map(|start_angle| PlanarSegment::Arc {
+                center: [0., 0.],
+                radius: r,
+                start_angle,
+                sweep: std::f64::consts::PI,
+            })
+            .to_vec()
+    };
+    let s = extrude_arc_line_region(
+        &ArcLineRegion {
+            origin: Point3::new(0., 0., 0.),
+            outer: ring(4.),
+            holes: vec![ring(1.)],
+        },
+        2.,
+        Tolerance::default(),
+    )
+    .unwrap();
+    for y in [0.5, -0.5] {
+        for d in [1., -7.] {
+            let r = cut(&s, y, d).unwrap();
+            check(&s, &r, 2, 2);
+            assert_eq!(r.solid.vertices.len(), s.vertices.len() + 8);
+            assert_eq!(r.solid.shell.faces.len(), s.shell.faces.len() + 5);
+            assert!((r.solid.volume().unwrap() - 30. * std::f64::consts::PI).abs() < 1e-10);
+        }
+    }
+    for y in [1., 1. - 1e-9, 4., 4. - 1e-9] {
+        assert!(cut(&s, y, 1.).is_err());
+    }
+}
+#[test]
+fn repeated_arc_parameters_survive_placement_tiny_scale_and_opposite_cap_cuts() {
+    let ring = |r| {
+        [0., std::f64::consts::PI]
+            .map(|start_angle| PlanarSegment::Arc {
+                center: [0., 0.],
+                radius: r,
+                start_angle,
+                sweep: std::f64::consts::PI,
+            })
+            .to_vec()
+    };
+    let tol = GeometryTolerance::default();
+    let s = extrude_arc_line(
+        &ArcLineProfile {
+            origin: Point3::new(0., 0., 0.),
+            segments: ring(4.),
+        },
+        2.,
+        tol.absolute(),
+    )
+    .unwrap();
+    let first = cut(&s, 1., 1.).unwrap();
+    let r = subdivide_planar_face(
+        &first.solid,
+        1,
+        Point3::new(0., -1., 2.),
+        Vec3::new(-3., 0., 0.),
+        tol,
+    )
+    .unwrap();
+    check(&s, &r, 2, 1);
+    let tr = Transform::translation(Vec3::new(12., -7., 3.))
+        .unwrap()
+        .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.7).unwrap())
+        .unwrap();
+    let s = s.transformed(tr, tol.absolute()).unwrap();
+    let r = subdivide_planar_face(
+        &s,
+        0,
+        tr.point(Point3::new(0., 1., 0.)),
+        tr.vector(Vec3::new(-1., 0., 0.)),
+        tol,
+    )
+    .unwrap();
+    check(&s, &r, 2, 1);
+    let tol = GeometryTolerance::new(1e-14, 1e-10, 0.).unwrap();
+    let s = extrude_arc_line(
+        &ArcLineProfile {
+            origin: Point3::new(0., 0., 0.),
+            segments: ring(4e-6),
+        },
+        2e-6,
+        tol.absolute(),
+    )
+    .unwrap();
+    let r = subdivide_planar_face(
+        &s,
+        0,
+        Point3::new(0., 1e-6, 0.),
+        Vec3::new(1e300, 0., 0.),
+        tol,
+    )
+    .unwrap();
+    r.solid.validate(tol.absolute()).unwrap();
+    assert!((r.solid.volume().unwrap() - 32e-18 * std::f64::consts::PI).abs() < 1e-29);
+    r.solid.tessellate(1e-8, tol.absolute()).unwrap();
 }
