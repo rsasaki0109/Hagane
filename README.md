@@ -36,9 +36,10 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, or `6` to select four bores, a concave
+solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, or `7` to select four bores, a concave
 polygon extrusion, a hollow tube, a rigidly placed four-bore part, a
-rounded line/arc extrusion, or a concave arc-notch plate with a rounded hole:
+rounded line/arc extrusion, a concave arc-notch plate with a rounded hole,
+or a cap face subdivision:
 
 ```sh
 cargo run --locked --example part -- 1
@@ -52,6 +53,8 @@ cargo run --locked --example region
 cargo run --locked --example part -- 6
 cargo run --locked --example intersections
 cargo run --locked --example face_clipping
+cargo run --locked --example face_split
+cargo run --locked --example part -- 7
 ```
 
 Use the local kernel as a dependency during development:
@@ -126,7 +129,9 @@ Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
 slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
 a concave polygon extrusion with a polygon hole, a hollow tube, or a rotated
 four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
-a rounded hole. The corner/notch radius controls exact geometry. The polygon
+a rounded hole, or a split planar cap. The split preset moves its cut offset
+while preserving the fixed bore and volume; enable tessellation to see the seam.
+The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
 auto rotation. Arrow keys orbit and `+` / `-` zoom when the canvas is focused.
 The renderer uses WebGL directly, with no CDN assets or JavaScript CAD library.
@@ -163,6 +168,8 @@ fabricate the demo image.
 - Transverse line clipping against planar B-rep trims, including concavity,
   circular/arc boundaries and holes; planar-face intersection segments with
   normalized pcurves and boundary-event provenance.
+- Scoped planar face subdivision with shared boundary-edge updates, normalized
+  pcurves, hole ownership and preserved closed-solid geometry.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
 - Exact axis-aligned boxes, Z cylinders, and hollow tubes with annular caps.
@@ -184,8 +191,8 @@ parameters for further face splitting. [Planar face clipping](docs/face-intersec
 now returns exact-trim interior intervals and finite intersection segments. Run
 `cargo run --locked --example intersections` for the native JSON fixture; the
 same fixture is exported in WASM. Run `cargo run --locked --example face_clipping`
-for the trim-clipping fixture. These APIs do not yet split B-rep faces. Planar
-clipping tangencies, vertex cuts, overlapping boundaries and coplanar overlays
+for the trim-clipping fixture. [Scoped face subdivision](docs/face-split.md) now splits polygonal faces and
+updates their planar neighbors. Planar clipping tangencies, vertex cuts, overlapping boundaries and coplanar overlays
 remain explicitly unsupported.
 
 ## NURBS curves
@@ -289,7 +296,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all seven solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all eight solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

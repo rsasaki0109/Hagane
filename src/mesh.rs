@@ -66,6 +66,7 @@ impl Solid {
                 Surface::Plane { .. } => {
                     let mut coords = Vec::new();
                     let mut holes = Vec::new();
+                    let mut line_vertices = Vec::new();
                     let mixed = f
                         .wires
                         .iter()
@@ -77,6 +78,9 @@ impl Solid {
                         }
                         for c in &w.coedges {
                             let edge = &self.edges[c.edge];
+                            if matches!(edge.curve, Curve::Line { .. }) {
+                                line_vertices.push(coords.len() / 2);
+                            }
                             let count = match edge.curve {
                                 Curve::Circle { radius, .. }
                                 | Curve::FramedCircle { radius, .. } => {
@@ -124,15 +128,15 @@ impl Solid {
                     if triangles.is_empty() {
                         return Err(Error::Tessellation("no planar triangles"));
                     }
-                    let triangles = if mixed
-                        || f.wires
-                            .iter()
-                            .flat_map(|w| &w.coedges)
-                            .all(|c| matches!(self.edges[c.edge].curve, Curve::Line { .. }))
-                    {
-                        conforming_triangles(&coords, &triangles)?
+                    let candidates = if mixed {
+                        (0..coords.len() / 2).collect::<Vec<_>>()
                     } else {
+                        line_vertices
+                    };
+                    let triangles = if candidates.is_empty() {
                         triangles
+                    } else {
+                        conforming_triangles(&coords, &triangles, &candidates)?
                     };
                     for tri in triangles.as_chunks::<3>().0 {
                         let p = [tri[0], tri[1], tri[2]]
@@ -175,7 +179,7 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
 }
 /// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
 /// polygon extrusion with a polygon hole, 3 coaxial tube, 4 rigidly placed
-/// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole.
+/// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole, 7 exact planar face split.
 /// Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
@@ -237,6 +241,16 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        7 => {
+            split_planar_face(
+                &subtract_through_cylinder(b, tool(0.0, 0.0, 7.0), tol)?,
+                1,
+                Point3::new(0.0, radius, 12.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                GeometryTolerance::default(),
+            )?
+            .solid
+        }
         6 => extrude_arc_line_region(&crate::mixed::notched_demo_profile(radius, tol)?, 24.0, tol)?,
         5 => extrude_arc_line(
             &rounded_rectangle_profile(Point3::new(0.0, 0.0, -12.0), 80.0, 60.0, radius, tol)?,
@@ -286,7 +300,11 @@ impl Solid {
 
 // Earcut can collapse collinear hole-bridge vertices. Restore them on every
 // triangle edge so caps share exactly the same boundary segments as the walls.
-fn conforming_triangles(coords: &[f64], indices: &[usize]) -> Result<Vec<usize>> {
+fn conforming_triangles(
+    coords: &[f64],
+    indices: &[usize],
+    candidates: &[usize],
+) -> Result<Vec<usize>> {
     use crate::predicates::{orient2d, Orientation};
     let point = |i: usize| [coords[2 * i], coords[2 * i + 1]];
     let mut pending: Vec<[usize; 3]> = indices.as_chunks::<3>().0.to_vec();
@@ -296,7 +314,7 @@ fn conforming_triangles(coords: &[f64], indices: &[usize]) -> Result<Vec<usize>>
         'edges: for e in 0..3 {
             let a = point(tri[e]);
             let b = point(tri[(e + 1) % 3]);
-            for i in 0..coords.len() / 2 {
+            for &i in candidates {
                 if tri.contains(&i) {
                     continue;
                 }

@@ -100,7 +100,8 @@ or update the original coedges.
   with a 1e-10 angular span allowance, not certified exact circular/3D predicates.
   UV classification uses the existing analytic ray/circle implementation.
 - Cylindrical faces, arbitrary surface trims, coplanar overlays, contact graphs,
-  vertex/tangent handling, face splitting and sewing remain future work.
+  vertex/tangent handling and sewing remain future work.
+  [Scoped polygon face subdivision](face-split.md) uses this clipping API.
 
 ## Runnable fixture and verification
 

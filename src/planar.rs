@@ -73,6 +73,12 @@ pub(crate) fn polygon_area(p: &[P2]) -> f64 {
 /// Returns a signed simple loop. Rejects redundant/near-collinear corners so
 /// cap triangulation and side boundaries cannot acquire different subdivisions.
 pub(crate) fn validate_polygon(p: &[P2], tol: Tolerance) -> Result<()> {
+    validate_polygon_impl(p, tol, false)
+}
+pub(crate) fn validate_polygon_trim(p: &[P2], tol: Tolerance) -> Result<()> {
+    validate_polygon_impl(p, tol, true)
+}
+fn validate_polygon_impl(p: &[P2], tol: Tolerance, subdivisions: bool) -> Result<()> {
     if p.len() < 3 || p.len() > 4096 {
         return Err(Error::InvalidInput(
             "polygon requires 3..4096 distinct corners",
@@ -97,9 +103,11 @@ pub(crate) fn validate_polygon(p: &[P2], tol: Tolerance) -> Result<()> {
             return Err(Error::InvalidInput("polygon span exceeds finite range"));
         }
         let sine = cross([d[0] / nd, d[1] / nd], [e[0] / ne, e[1] / ne]).abs();
-        if orient2d(a, b, c)? == Orientation::Collinear || sine * nd.min(ne) <= tol.linear {
+        if (orient2d(a, b, c)? == Orientation::Collinear || sine * nd.min(ne) <= tol.linear)
+            && (!subdivisions || d[0] / nd * (e[0] / ne) + d[1] / nd * (e[1] / ne) <= 0.0)
+        {
             return Err(Error::InvalidInput(
-                "redundant or near-collinear polygon corner",
+                "redundant or backtracking polygon corner",
             ));
         }
     }

@@ -47,8 +47,15 @@ Transverse planar face clipping now returns original-parameter boundary events
 and material intervals for polygon, circle and line/arc trims with holes.
 Planar-face pairs return finite segments and normalized pcurves on both faces.
 Native/WASM fixtures verify analytic intervals, provenance and volume preservation.
-Tangent/vertex/overlap/coplanar cases and face splitting remain unsupported;
+Tangent/vertex/overlap/coplanar clipping cases remain unsupported;
 see [face intersections](face-intersections.md).
+
+Scoped planar polygon face subdivision now splits shared boundary edges,
+updates adjacent planar coedges/pcurves, partitions holes and creates two child
+faces around a shared cut edge. Closed topology, volume and bounds are preserved.
+An eighth native/WASM/browser solid fixture exercises the operation. Curved
+boundary cuts and multiple intervals remain unsupported; see
+[face subdivision](face-split.md).
 
 ## Next: broaden analytic B-rep operations
 
@@ -57,9 +64,9 @@ see [face intersections](face-intersections.md).
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Build consistent planar face splits from supported transverse cut intervals;
-  then broaden contact handling, surface/surface curves, intersection graphs,
-  sewing and Boolean dispatch.
+- Broaden boundary subdivision to curved edges, hole-crossing cuts and multiple
+  intervals; then extend contact handling, surface/surface curves, intersection
+  graphs, curved-face splits, sewing and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
 - A stable browser API and versioned serialization.
 

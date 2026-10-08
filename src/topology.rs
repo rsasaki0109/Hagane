@@ -165,7 +165,7 @@ impl Face {
                     crate::mixed::validate_mixed_region(&loops, tol)?;
                     return Ok(());
                 }
-                use crate::planar::{validate_polygon, validate_region, PlanarLoop};
+                use crate::planar::{validate_polygon_trim, validate_region, PlanarLoop};
                 let mut loops = Vec::new();
                 for w in &self.wires {
                     if w.coedges.len() == 1 {
@@ -192,7 +192,7 @@ impl Face {
                             .iter()
                             .map(|c| c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }))
                             .collect();
-                        validate_polygon(&points, tol)?;
+                        validate_polygon_trim(&points, tol)?;
                         loops.push(PlanarLoop::Polygon(points));
                     }
                 }

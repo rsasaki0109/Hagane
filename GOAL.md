@@ -101,7 +101,13 @@ Two planar faces produce finite intersection segments with shared normalized
 pcurves, verified natively and in WASM. Contact/vertex/overlap/coplanar cases
 remain unsupported. See [face intersections](docs/face-intersections.md).
 
-The next development task is to turn supported transverse cuts into consistent
-planar face splits while preserving boundary edges, pcurves and oriented shared
-topology. Broader contact graphs, general cylindrical trims and NURBS B-rep
-integration remain incomplete; the latter is stage 2 work.
+Scoped planar face subdivision now turns a single transverse polygon cut into
+two faces, splitting shared boundary edges and reparameterizing neighboring
+coedges. Polygon/full-circle holes remain exact and belong to one child; closed
+topology, geometry and volume are preserved. Native/WASM regression tests and
+the eighth browser preset verify the operation. See [face subdivision](docs/face-split.md).
+
+The next development task is to broaden boundary subdivision and trim topology
+for curved edges, cuts through holes and multiple intersection intervals.
+Contact graphs, curved-face splitting, general sewing and NURBS B-rep integration
+remain incomplete; the latter is stage 2 work.

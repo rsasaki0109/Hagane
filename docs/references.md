@@ -30,6 +30,10 @@ claim compatibility with its data structures or APIs.
   intersection. Surface pcurves use shared parameters; finite line segments
   reparameterize both UV curves to [0,1]. Implemented independently from these
   standard equations and interval operations, without new dependencies.
+- Planar face subdivision: directed boundary paths, opposite uses of a shared
+  chord, containment-based hole ownership and affine parameter substitution.
+  Implemented independently as B-rep topology operations; no source code or
+  additional library is incorporated.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision
