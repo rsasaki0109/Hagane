@@ -12,6 +12,13 @@ pub struct Edge {
 /// Evaluated at the SAME parameter as the owning 3D edge, including reversed uses.
 #[derive(Clone, Debug)]
 pub enum PCurve {
+    /// Exact affine image of a circle in planar UV, sharing the 3D ellipse angle.
+    EllipseArc {
+        center: [f64; 2],
+        cosine: [f64; 2],
+        sine: [f64; 2],
+        sweep: f64,
+    },
     /// u=t, v=offset + cosine*cos(t) + sine*sin(t), sharing ellipse angle.
     HeightGraph {
         offset: f64,
@@ -37,6 +44,12 @@ pub enum PCurve {
 impl PCurve {
     pub fn evaluate(&self, t: f64) -> [f64; 2] {
         match *self {
+            Self::EllipseArc {
+                center,
+                cosine,
+                sine,
+                ..
+            } => std::array::from_fn(|i| center[i] + cosine[i] * t.cos() + sine[i] * t.sin()),
             Self::HeightGraph {
                 offset,
                 cosine,
@@ -127,6 +140,10 @@ impl Face {
     fn validate_supported_trim(&self, tol: Tolerance) -> Result<()> {
         match self.surface {
             Surface::Plane { .. } => {
+                if crate::ellipse_planar::has_ellipse(self) {
+                    crate::ellipse_planar::ring(self, tol)?;
+                    return Ok(());
+                }
                 if self
                     .wires
                     .iter()
@@ -138,7 +155,7 @@ impl Face {
                         let mut segments = Vec::new();
                         for c in &wire.coedges {
                             let segment = match c.pcurve {
-                                PCurve::HeightGraph { .. } => {
+                                PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
                                     return Err(Error::Unsupported(
                                         "height graphs are supported only on circular walls",
                                     ))
@@ -406,6 +423,46 @@ impl Solid {
                         return Err(Error::InvalidTopology("wire is not topologically closed"));
                     }
                     match (&e.curve, &c.pcurve) {
+                        (
+                            Curve::EllipseArc {
+                                center,
+                                cosine,
+                                sine,
+                                sweep,
+                            },
+                            PCurve::EllipseArc {
+                                center: pc_center,
+                                cosine: pc_cosine,
+                                sine: pc_sine,
+                                sweep: pc_sweep,
+                            },
+                        ) => {
+                            let Surface::Plane { u, v, .. } = f.surface else {
+                                return Err(Error::Unsupported("ellipse pcurves require a plane"));
+                            };
+                            let mismatch =
+                                (*center - f.surface.evaluate(pc_center[0], pc_center[1])).norm()
+                                    + (*cosine - u * pc_cosine[0] - v * pc_cosine[1]).norm()
+                                    + (*sine - u * pc_sine[0] - v * pc_sine[1]).norm();
+                            if *sweep != *pc_sweep || !mismatch.is_finite() || mismatch > tol.linear
+                            {
+                                return Err(Error::InvalidTopology(
+                                    "ellipse and planar pcurve coefficients disagree",
+                                ));
+                            }
+                        }
+                        (_, PCurve::EllipseArc { .. }) => {
+                            return Err(Error::InvalidTopology(
+                                "ellipse pcurve requires an ellipse edge",
+                            ))
+                        }
+                        (Curve::EllipseArc { .. }, _)
+                            if matches!(f.surface, Surface::Plane { .. }) =>
+                        {
+                            return Err(Error::InvalidTopology(
+                                "planar ellipse edge requires an ellipse pcurve",
+                            ))
+                        }
                         (Curve::Line { .. }, PCurve::Circle { .. } | PCurve::Arc { .. }) => {
                             return Err(Error::InvalidTopology(
                                 "line edge cannot have a circular pcurve",
@@ -716,6 +773,18 @@ pub(crate) fn wire_area(w: &Wire) -> f64 {
         .iter()
         .map(|c| {
             let a = match c.pcurve {
+                PCurve::EllipseArc {
+                    center,
+                    cosine,
+                    sine,
+                    sweep,
+                } => {
+                    let x = [center[0] - reference[0], center[1] - reference[1]];
+                    let cross = |a: [f64; 2], b: [f64; 2]| a[0] * b[1] - a[1] * b[0];
+                    0.5 * (cross(x, cosine) * (sweep.cos() - 1.)
+                        + cross(x, sine) * sweep.sin()
+                        + cross(cosine, sine) * sweep)
+                }
                 PCurve::HeightGraph {
                     offset,
                     cosine,

@@ -4,7 +4,8 @@
 
 `classify_point_in_solid(&Solid, Point3, GeometryTolerance)` returns
 `PointLocation::{Inside, Outside, Boundary}` for a validated closed oriented
-B-rep with planar polygon/circle/bounded-arc trims and rectangular cylinder or
+B-rep with planar polygon/circle/bounded-arc and
+[full-ellipse trims](ellipse-planar.md), and rectangular cylinder or
 skew circular translation walls, including
 [harmonic height bands](harmonic-classification.md). See [skew classification](skew-classification.md)
 for Euclidean boundary-band bounds on oblique circular extrusion.

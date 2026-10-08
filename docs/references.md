@@ -19,6 +19,13 @@ claim compatibility with its data structures or APIs.
   interpolation error uses the second-derivative bound; shared edge sampling
   keeps adjacent analytic trims conforming. All are independently implemented
   from mathematical formulas, with no added dependency or copied source.
+- Full-ellipse planar trims: inverse affine unit-circle coordinates and
+  Cartesian line/circle roots; Green's theorem integrates ellipse arc area.
+  Chord interpolation error follows Taylor's second-derivative bound, and
+  boundary-distance bounds follow the Hausdorff-distance triangle inequality.
+  Shared ellipse/pcurve parameters and coefficient-error sums preserve analytic
+  B-rep provenance. Independently implemented formulas; no reference source code
+  or new dependencies. See [ellipse planar trims](ellipse-planar.md).
 - Skew circular face subdivision: orthonormal basis change and circular angular
   addition preserve the physical translation while rebasing child parameters.
   Rim/coedge refinement uses shared B-rep traversal and affine parameter

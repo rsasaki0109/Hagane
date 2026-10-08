@@ -213,11 +213,25 @@ classification models are verified. General trim loops, repeated band subdivisio
 capped partitions and general curved Booleans remain unsupported. See
 [harmonic classification](harmonic-classification.md).
 
+Full-ellipse planar B-rep trims now retain shared angular pcurves, validated
+whole-arc coefficient agreement and exact area/volume. Distinct near-coincident
+half conics are rejected rather than treated as one ellipse. In-plane line clipping
+and planar-face intersections return original line/ellipse parameters; solid
+classification and conforming tessellation accept the closed ellipse-cap fixture.
+Native tests cover roots, reversal, polygon-face intersection, tilt signs,
+placement, microscopic dimensions, nonorthogonal axes, conditioning, malformed
+inputs and contact rejection. Native/WASM queries and meshes and browser cap
+selection/error recovery are verified. The domain is one complete two-half-arc
+ellipse wire; mixed loops, ellipse holes, arbitrary ellipse-face subdivision
+and general capped partitions remain unsupported. See
+[ellipse planar trims](ellipse-planar.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
+- Extend ellipse planar trims to mixed line/arc/ellipse loops and holes.
 - Extend oblique plane subdivision to partial/rim contacts and capped solid partitions.
 - Extend general trim clipping and subdivision to skew circular translation
   surfaces; broaden classification beyond harmonic height bands and support arbitrary cylindrical

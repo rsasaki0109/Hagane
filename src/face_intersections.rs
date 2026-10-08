@@ -61,7 +61,7 @@ pub(crate) fn rings(face: &Face) -> Result<Vec<Vec<PlanarSegment>>> {
             let mut ring = Vec::new();
             for c in &wire.coedges {
                 let s = match c.pcurve {
-                    PCurve::HeightGraph { .. } => {
+                    PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
                         return Err(Error::Unsupported(
                             "planar trim routines do not support harmonic height graphs",
                         ))
@@ -176,6 +176,9 @@ fn clip_validated(
         ));
     }
     let unit = direction.normalized()?;
+    if crate::ellipse_planar::has_ellipse(face) {
+        return crate::ellipse_planar::clip(solid, face, anchor, direction, tol);
+    }
     let loops = rings(face)?;
     let scale = loops
         .iter()
@@ -221,7 +224,7 @@ fn clip_validated(
             }
             let mut roots = Vec::new();
             match c.pcurve {
-                PCurve::HeightGraph { .. } => {
+                PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
                     return Err(Error::Unsupported(
                         "planar clipping does not support harmonic height graphs",
                     ))

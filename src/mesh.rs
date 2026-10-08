@@ -118,11 +118,9 @@ impl Solid {
                     let mut coords = Vec::new();
                     let mut holes = Vec::new();
                     let mut line_vertices = Vec::new();
-                    let mixed = f
-                        .wires
-                        .iter()
-                        .flat_map(|w| &w.coedges)
-                        .any(|c| matches!(c.pcurve, PCurve::Arc { .. }));
+                    let mixed = f.wires.iter().flat_map(|w| &w.coedges).any(|c| {
+                        matches!(c.pcurve, PCurve::Arc { .. } | PCurve::EllipseArc { .. })
+                    });
                     for (wi, w) in f.wires.iter().enumerate() {
                         if wi > 0 {
                             holes.push(coords.len() / 2);

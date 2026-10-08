@@ -334,3 +334,23 @@ for(const placement of [0,0.37])for(const selection of [0,1])for(const [mode,off
 for(const args of [[0,1,0,0.37],[1,2,0,0.37],[2,0,14,0],[0,4,0,0],[0,0,NaN,0],[0,0,14,Infinity],[0,3,1e-9,0],[1,3,-1e-9,0]])assert.equal(harmonicFace(...args).status,1);
 assert.equal(harmonicFace(0,3,0).status,0);
 console.log('Harmonic face queries: native/WASM roots, ellipse provenance, placement, errors and recovery passed.');
+function ellipsePlanar(offset,placement=0){
+ const status=k.hagane_ellipse_planar_demo(offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const placement of [0,0.37])for(const offset of [-14,14,30]){
+ const {status,result}=ellipsePlanar(offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','ellipse_planar','--',String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ const hits=result.intersection.hits;assert.equal(hits.length,offset===30?0:2);
+ const half=24*Math.sqrt(1.0625)*Math.sqrt(1-(offset/24)**2);
+ if(offset!==30){assert.equal(result.intersection.intervals.length,1);hits.forEach((p,i)=>{
+  assert.ok(Math.abs(p.parameter-(34+(i===0?-half:half))/2)<1e-10);assert.equal(p.boundaries.length,1);
+  assert.ok(Math.abs(p.parameter-native.intersection.hits[i].parameter)<1e-10);
+  assert.ok(Math.abs(p.boundaries[0].edge_parameter-native.intersection.hits[i].boundaries[0].edge_parameter)<1e-10);
+ });}
+ assert.equal(result.mesh.faces,4);assert.ok(Math.abs(result.mesh.volume-Math.PI*24**2*12)<1e-8);
+ compareIntersection(result.mesh,native.mesh);compareIntersection(result.display_mesh,native.display_mesh);
+}
+for(const [offset,placement] of [[0,0],[24,0],[24+1e-9,0],[NaN,0],[14,Infinity]])assert.equal(ellipsePlanar(offset,placement).status,1);
+assert.equal(ellipsePlanar(14).status,0);
+console.log('Planar ellipse trims: independent roots/volume, original ellipse edge parameters, native/WASM meshes, tangency/vertex rejection and recovery passed.');

@@ -298,5 +298,20 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  assert.deepEqual(errors,[]);
  console.log('Browser: harmonic wall bands, clipped roots/generators, shared ellipse provenance, ambiguity and recovery passed.');
+ await page.locator('#scope').selectOption('ellipsePlane');assert.equal(await page.locator('#hits').textContent(),'2');
+ const ellipseData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.equal(ellipseData.mesh.faces,4);assert.equal(ellipseData.intersection.intervals.length,1);
+ assert.ok(ellipseData.intersection.hits.every(p=>p.boundaries.length===1));
+ assert.ok(Math.abs(ellipseData.mesh.volume-Math.PI*24**2*12)<1e-8);
+ assert.ok(await page.locator('#mode option[value="1"]').isDisabled());
+ await page.locator('#probe').selectOption('tangent');assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('empty');assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'2');
+ await page.locator('#offset').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('crossing');await page.locator('#wire').uncheck();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-ellipse-planar'))await page.screenshot({path:new URL('../docs/ellipse-planar.png',import.meta.url).pathname});
+ const ellipseView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),ellipseView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: planar ellipse cap, original boundary parameters, tangent/vertex rejection, empty clip, recovery and orbit passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

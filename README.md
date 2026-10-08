@@ -60,6 +60,7 @@ cargo run --locked --example skew_face_subdivision -- 0.4375 0
 cargo run --locked --example oblique_boundary -- 0.13 0
 cargo run --locked --example harmonic_face_intersections -- 0 0 14 0
 cargo run --locked --example curved_classification -- 6 26 -3 0
+cargo run --locked --example ellipse_planar -- 14 0
 cargo run --locked --example part -- 8
 cargo run --locked --example cut_graph
 cargo run --locked --example part -- 9
@@ -167,6 +168,7 @@ four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
 a rounded hole, a split planar cap, a split curved cap, a cut across two polygon holes, repeated crossings of an annular cap, a periodic bore split, sewn independent planar patches, the positive half of a plane-cut solid, intersecting convex solids, a subtracted rectangular through-hole, the union of overlapping solids, exact face-contact box fusion, merged coplanar faces, tilted faces with independent UV frames, or simplified shared straight boundaries. Framed/skew arc extrusion and
 [skew circular face subdivision](docs/skew-face-subdivision.md), and
 [oblique plane wall sections](docs/oblique-boundary.md) are also available.
+The contact-study page includes an actual [planar ellipse cap](docs/ellipse-planar.md).
 The split preset moves its cut offset
 while preserving the fixed bore and volume; enable tessellation to see the seam.
 The corner/notch radius controls exact geometry. The polygon
@@ -222,6 +224,10 @@ fabricate the demo image.
   Transverse planes must stay strictly between complete bounded circular rims;
   [solid classification](docs/harmonic-classification.md) supports the resulting
   harmonic height bands.
+- [Full-ellipse planar trims](docs/ellipse-planar.md), with shared ellipse-angle
+  pcurves, analytic line/face queries, solid classification, area/volume and
+  conforming display meshes. One two-half-arc ellipse wire is supported;
+  mixed ellipse loops, holes and general capped partitions remain unsupported.
 - [Harmonic circular face line queries](docs/harmonic-face-intersections.md):
   analytic height clipping, bounded generator overlaps, certified shared ellipse
   contacts and browser selection of faces above/below an oblique section.

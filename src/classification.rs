@@ -1,6 +1,7 @@
 //! Checked ray classification against analytic planar and circular translation boundaries.
 use crate::*;
 enum AnalyticRing {
+    Ellipse(crate::ellipse_planar::EllipseRing),
     Polygon(Vec<[f64; 2]>),
     Mixed(Vec<PlanarSegment>),
     Circle { center: [f64; 2], radius: f64 },
@@ -8,6 +9,7 @@ enum AnalyticRing {
 impl AnalyticRing {
     fn location(&self, p: [f64; 2], budget: f64) -> Result<PointLocation> {
         match self {
+            Self::Ellipse(ellipse) => ellipse.location(p),
             Self::Polygon(ring) => locate_point_in_polygon(p, ring),
             Self::Mixed(ring) => crate::mixed::point_location(p, ring, Tolerance::new(budget)?),
             Self::Circle { center, radius } => {
@@ -27,6 +29,9 @@ impl AnalyticRing {
     }
     fn distance(&self, p: [f64; 2]) -> Result<f64> {
         match self {
+            Self::Ellipse(_) => Err(Error::Unsupported(
+                "ellipse distance requires checked band bounds",
+            )),
             Self::Mixed(ring) => ring.iter().try_fold(f64::INFINITY, |d, segment| {
                 Ok(d.min(crate::mixed::point_distance(p, *segment)?))
             }),
@@ -70,6 +75,18 @@ impl PlanarTrim<'_> {
             }
         }
         Ok(PointLocation::Inside)
+    }
+    fn near_boundary(&self, p: [f64; 2], budget: f64) -> Result<bool> {
+        for ring in &self.rings {
+            let near = match ring {
+                AnalyticRing::Ellipse(e) => e.within_boundary(p, budget)?,
+                _ => ring.distance(p)? <= budget,
+            };
+            if near {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
     fn boundary_distance(&self, p: [f64; 2]) -> Result<f64> {
         let mut distance = f64::INFINITY;
@@ -220,6 +237,17 @@ pub fn classify_point_in_solid(
                 });
             }
             Surface::Plane { u, v, .. } => {
+                if crate::ellipse_planar::has_ellipse(face) {
+                    faces.push(PlanarTrim {
+                        face,
+                        normal: u.cross(v),
+                        rings: vec![AnalyticRing::Ellipse(crate::ellipse_planar::ring(
+                            face,
+                            tol.absolute(),
+                        )?)],
+                    });
+                    continue;
+                }
                 let mut rings = Vec::new();
                 let mixed_rings = crate::face_intersections::rings(face)?;
                 for (index, w) in face.wires.iter().enumerate() {
@@ -281,6 +309,17 @@ pub fn classify_point_in_solid(
         if distance <= budget {
             let uv = f.face.surface.parameters(p);
             let trim = f.location(uv, budget)?;
+            if f.rings
+                .iter()
+                .any(|r| matches!(r, AnalyticRing::Ellipse(_)))
+            {
+                if trim == PointLocation::Inside
+                    || f.near_boundary(uv, ((budget - distance) * (budget + distance)).sqrt())?
+                {
+                    return Ok(PointLocation::Boundary);
+                }
+                continue;
+            }
             let lateral = if trim == PointLocation::Inside {
                 0.0
             } else {
@@ -351,7 +390,7 @@ pub fn classify_point_in_solid(
                     break;
                 }
             };
-            if location == PointLocation::Boundary || f.boundary_distance(uv)? <= budget {
+            if location == PointLocation::Boundary || f.near_boundary(uv, budget)? {
                 ambiguous = true;
                 break;
             }
