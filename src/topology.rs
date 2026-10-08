@@ -12,6 +12,12 @@ pub struct Edge {
 /// Evaluated at the SAME parameter as the owning 3D edge, including reversed uses.
 #[derive(Clone, Debug)]
 pub enum PCurve {
+    Arc {
+        center: [f64; 2],
+        radius: f64,
+        start_angle: f64,
+        sweep: f64,
+    },
     Affine {
         origin: [f64; 2],
         direction: [f64; 2],
@@ -27,6 +33,15 @@ impl PCurve {
             Self::Affine { origin, direction } => {
                 [origin[0] + direction[0] * t, origin[1] + direction[1] * t]
             }
+            Self::Arc {
+                center,
+                radius,
+                start_angle,
+                ..
+            } => [
+                center[0] + radius * (start_angle + t).cos(),
+                center[1] + radius * (start_angle + t).sin(),
+            ],
             Self::Circle { center, radius } => {
                 [center[0] + radius * t.cos(), center[1] + radius * t.sin()]
             }
@@ -67,10 +82,52 @@ pub struct Bounds {
     pub max: Point3,
 }
 impl Face {
+    pub(crate) fn cylinder_span(&self) -> Result<f64> {
+        if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
+            return Err(Error::Unsupported(
+                "cylindrical trim requires a four-coedge rectangle",
+            ));
+        }
+        let PCurve::Affine { origin, .. } = self.wires[0].coedges[1].pcurve else {
+            return Err(Error::Unsupported("nonrectangular cylindrical trim"));
+        };
+        let span = origin[0];
+        if !span.is_finite() || span <= 0.0 || span > TAU {
+            return Err(Error::Unsupported(
+                "cylindrical angular span must be in (0, 2pi]",
+            ));
+        }
+        Ok(span)
+    }
     // Precisely delimit the trim domains covered by this first kernel milestone.
     fn validate_supported_trim(&self, tol: Tolerance) -> Result<()> {
         match self.surface {
             Surface::Plane { .. } => {
+                if self
+                    .wires
+                    .iter()
+                    .flat_map(|w| &w.coedges)
+                    .any(|c| matches!(c.pcurve, PCurve::Arc { .. }))
+                {
+                    if self.wires.len() != 1 {
+                        return Err(Error::Unsupported("mixed arc-line planar trims currently support one convex outer wire, without holes"));
+                    }
+                    let mut segments = Vec::new();
+                    for c in &self.wires[0].coedges {
+                        segments.push(match c.pcurve {
+                            PCurve::Affine { .. } => PlanarSegment::Line {
+                                a: c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }),
+                                b: c.pcurve.evaluate(if c.forward { 1.0 } else { 0.0 }),
+                            },
+                            PCurve::Arc { center, radius, start_angle, sweep } if c.forward => {
+                                PlanarSegment::Arc { center, radius, start_angle, sweep }
+                            },
+                            _ => return Err(Error::Unsupported("mixed trim arcs must be counterclockwise and cannot use full-circle coedges")),
+                        });
+                    }
+                    crate::mixed::validate_mixed(&segments, tol)?;
+                    return Ok(());
+                }
                 use crate::planar::{validate_polygon, validate_region, PlanarLoop};
                 let mut loops = Vec::new();
                 for w in &self.wires {
@@ -90,7 +147,7 @@ impl Face {
                             .any(|c| !matches!(c.pcurve, PCurve::Affine { .. }))
                         {
                             return Err(Error::Unsupported(
-                                "mixed arc-line planar wires are not supported yet",
+                                "full-circle coedges cannot be combined with other planar trim segments",
                             ));
                         }
                         let points: Vec<_> = w
@@ -108,12 +165,13 @@ impl Face {
             Surface::Cylinder { height, .. } | Surface::FramedCylinder { height, .. } => {
                 if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
                     return Err(Error::Unsupported(
-                        "only complete cylindrical faces are supported",
+                        "cylindrical faces require one rectangular four-coedge wire",
                     ));
                 }
+                let span = self.cylinder_span()?;
                 let expected = [
                     ([0.0, 0.0], [1.0, 0.0], true),
-                    ([TAU, 0.0], [0.0, height], true),
+                    ([span, 0.0], [0.0, height], true),
                     ([0.0, height], [1.0, 0.0], false),
                     ([0.0, 0.0], [0.0, height], false),
                 ];
@@ -128,7 +186,7 @@ impl Face {
                         })
                     {
                         return Err(Error::Unsupported(
-                            "partial or reordered cylindrical trim is unsupported",
+                            "only cylindrical rectangles from u=0, v=0 to u=span, v=height are supported",
                         ));
                     }
                 }
@@ -187,6 +245,15 @@ impl Solid {
                     if !radius.is_finite() || radius <= tol.linear =>
                 {
                     return Err(Error::InvalidTopology("invalid circle"))
+                }
+                Curve::Arc { radius, sweep, .. }
+                    if !radius.is_finite()
+                        || radius <= tol.linear
+                        || !sweep.is_finite()
+                        || sweep <= 0.0
+                        || sweep > std::f64::consts::PI =>
+                {
+                    return Err(Error::InvalidTopology("invalid bounded arc"));
                 }
                 _ => {}
             }
@@ -255,17 +322,33 @@ impl Solid {
                         return Err(Error::InvalidTopology("wire is not topologically closed"));
                     }
                     match (&e.curve, &c.pcurve) {
-                        (Curve::Line { .. }, PCurve::Circle { .. }) => {
+                        (Curve::Line { .. }, PCurve::Circle { .. } | PCurve::Arc { .. }) => {
                             return Err(Error::InvalidTopology(
-                                "line edge cannot have a circle pcurve",
+                                "line edge cannot have a circular pcurve",
                             ))
                         }
                         (
-                            Curve::Circle { .. } | Curve::FramedCircle { .. },
+                            Curve::Circle { .. } | Curve::FramedCircle { .. } | Curve::Arc { .. },
                             PCurve::Affine { .. },
                         ) if matches!(f.surface, Surface::Plane { .. }) => {
                             return Err(Error::InvalidTopology(
-                                "planar circle edge requires a circle pcurve",
+                                "planar circular edge requires a circular pcurve",
+                            ))
+                        }
+                        (
+                            Curve::Arc { sweep, .. },
+                            PCurve::Arc {
+                                sweep: pc_sweep, ..
+                            },
+                        ) if (sweep - pc_sweep).abs() > 1e-10 => {
+                            return Err(Error::InvalidTopology(
+                                "arc and pcurve angular spans disagree",
+                            ))
+                        }
+                        (Curve::Arc { .. }, PCurve::Circle { .. })
+                        | (Curve::Circle { .. } | Curve::FramedCircle { .. }, PCurve::Arc { .. }) => {
+                            return Err(Error::InvalidTopology(
+                                "bounded arcs and full-circle pcurves cannot be interchanged",
                             ))
                         }
                         _ => {}
@@ -404,12 +487,25 @@ impl Solid {
                 }
                 Surface::Cylinder { radius, height, .. }
                 | Surface::FramedCylinder { radius, height, .. } => {
-                    if f.wires.len() != 1 || f.wires[0].coedges.len() != 4 {
-                        return Err(Error::Unsupported(
-                            "volume requires a complete cylindrical face",
-                        ));
+                    let span = f.cylinder_span()?;
+                    if span == TAU {
+                        TAU * radius * radius * height / 3.0
+                    } else {
+                        let (center, u, v) = match f.surface {
+                            Surface::Cylinder { center, .. } => {
+                                (center, Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0))
+                            }
+                            Surface::FramedCylinder { frame, .. } => {
+                                (frame.origin(), frame.axes()[0], frame.axes()[1])
+                            }
+                            _ => unreachable!(),
+                        };
+                        let delta = center - reference;
+                        radius * height / 3.0
+                            * (radius * span
+                                + delta.dot(u) * span.sin()
+                                + delta.dot(v) * (1.0 - span.cos()))
                     }
-                    TAU * radius * radius * height / 3.0
                 }
             };
             sum += term * f.orientation as f64;
@@ -444,6 +540,33 @@ impl Solid {
                 Curve::FramedCircle { frame, radius } => {
                     Some((frame.origin(), frame.axes()[0], frame.axes()[1], radius))
                 }
+                Curve::Arc {
+                    frame,
+                    radius,
+                    sweep,
+                } => {
+                    for angle in [0.0, sweep] {
+                        add(frame.point(Vec3::new(
+                            radius * angle.cos(),
+                            radius * angle.sin(),
+                            0.0,
+                        )));
+                    }
+                    let [u, v, _] = frame.axes();
+                    for (a, b) in [(u.x, v.x), (u.y, v.y), (u.z, v.z)] {
+                        let angle = b.atan2(a).rem_euclid(TAU);
+                        for t in [angle, (angle + std::f64::consts::PI).rem_euclid(TAU)] {
+                            if t <= sweep {
+                                add(frame.point(Vec3::new(
+                                    radius * t.cos(),
+                                    radius * t.sin(),
+                                    0.0,
+                                )));
+                            }
+                        }
+                    }
+                    None
+                }
                 Curve::Line { .. } => None,
             };
             if let Some((center, u, v, radius)) = circle {
@@ -468,6 +591,18 @@ pub(crate) fn wire_area(w: &Wire) -> f64 {
                 PCurve::Affine { origin, direction } => {
                     0.5 * ((origin[0] - reference[0]) * direction[1]
                         - (origin[1] - reference[1]) * direction[0])
+                }
+                PCurve::Arc {
+                    center,
+                    radius,
+                    start_angle,
+                    sweep,
+                } => {
+                    let end = start_angle + sweep;
+                    0.5 * (radius
+                        * ((center[0] - reference[0]) * (end.sin() - start_angle.sin())
+                            - (center[1] - reference[1]) * (end.cos() - start_angle.cos()))
+                        + radius * radius * sweep)
                 }
                 PCurve::Circle { radius, .. } => std::f64::consts::PI * radius * radius,
             };

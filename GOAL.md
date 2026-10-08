@@ -81,5 +81,10 @@ Stage 1 also includes explicit length/angular/relative policies, classified
 line/plane intersection and filtered exact 2D predicates integrated with planar
 validation. See [tolerances](docs/tolerances.md) for scope and verified cases.
 
-The next development task is stage 1: mixed line/arc planar wires and their exact
-B-rep construction/validation, followed by broader surface trims.
+Stage 1 now includes scoped convex tangent line/arc profiles, exact normal
+extrusion, bounded arcs, and rectangular partial-cylinder trims, with analytic
+metrics and native/WASM/browser validation. See [mixed profiles](docs/mixed-profiles.md).
+
+The next development task is to extend mixed profiles and trim validation toward
+sharp joins, concavity and holes, then broaden surface trims and intersections
+needed for face splitting. NURBS B-rep integration remains stage 2 work.

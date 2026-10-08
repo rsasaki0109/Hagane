@@ -55,5 +55,6 @@ Rust operation on native and WASM; it is distinct from moving the viewer camera.
 Remaining limits: the through-bore difference constructor and cylinder/plane
 intersection routine still accept their documented axis-aligned inputs only;
 perform the supported operation before placement. There is no general Boolean
-on placed solids, mixed arc/line trim support, or NURBS B-rep integration yet.
+on placed solids or NURBS B-rep integration yet. Convex tangent
+[line/arc trims](mixed-profiles.md) and rectangular partial cylinders now work.
 Standalone NURBS data is not transformed by `Solid::transformed`.

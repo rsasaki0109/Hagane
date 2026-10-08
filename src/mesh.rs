@@ -44,6 +44,15 @@ pub fn circle_segments(radius: f64, chord_error: f64) -> Result<usize> {
     }
     Ok(count as usize)
 }
+/// Sagitta-bounded sampling of a positive angular span, in radians.
+pub fn arc_segments(radius: f64, sweep: f64, chord_error: f64) -> Result<usize> {
+    if !sweep.is_finite() || sweep <= 0.0 || sweep > TAU {
+        return Err(Error::InvalidInput("arc sweep must be in (0, 2pi]"));
+    }
+    Ok((circle_segments(radius, chord_error)? as f64 * sweep / TAU)
+        .ceil()
+        .max(1.0) as usize)
+}
 impl Solid {
     /// Meshes the exact supported B-rep surfaces and trims; never performs mesh CSG.
     pub fn tessellate(&self, chord_error: f64, tol: Tolerance) -> Result<Mesh> {
@@ -67,6 +76,9 @@ impl Solid {
                                 Curve::Circle { radius, .. }
                                 | Curve::FramedCircle { radius, .. } => {
                                     circle_segments(radius, chord_error)?
+                                }
+                                Curve::Arc { radius, sweep, .. } => {
+                                    arc_segments(radius, sweep, chord_error)?
                                 }
                                 Curve::Line { .. } => 1,
                             };
@@ -100,16 +112,11 @@ impl Solid {
                 }
                 Surface::Cylinder { radius, height, .. }
                 | Surface::FramedCylinder { radius, height, .. } => {
-                    // A complete periodic cylindrical rectangle is the currently supported trim.
-                    if f.wires.len() != 1 || f.wires[0].coedges.len() != 4 {
-                        return Err(Error::Unsupported(
-                            "partial cylindrical trims cannot be tessellated",
-                        ));
-                    }
-                    let n = circle_segments(radius, chord_error)?;
+                    let span = f.cylinder_span()?;
+                    let n = arc_segments(radius, span, chord_error)?;
                     for i in 0..n {
-                        let a = TAU * i as f64 / n as f64;
-                        let b = TAU * (i + 1) as f64 / n as f64;
+                        let a = span * i as f64 / n as f64;
+                        let b = span * (i + 1) as f64 / n as f64;
                         let p = [
                             f.surface.evaluate(a, 0.0),
                             f.surface.evaluate(b, 0.0),
@@ -133,7 +140,7 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
 }
 /// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
 /// polygon extrusion with a polygon hole, 3 coaxial tube, 4 rigidly placed
-/// four-bore part. Unknown IDs fail.
+/// four-bore part, 5 rounded-rectangle line/arc extrusion. Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
     let b = BoxSpec {
@@ -192,6 +199,11 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
         .transformed(
             Transform::translation(Vec3::new(8.0, -4.0, 6.0))?
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
+            tol,
+        )?,
+        5 => extrude_arc_line(
+            &rounded_rectangle_profile(Point3::new(0.0, 0.0, -12.0), 80.0, 60.0, radius, tol)?,
+            24.0,
             tol,
         )?,
         3 => make_tube(

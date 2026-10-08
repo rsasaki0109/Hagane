@@ -2,6 +2,7 @@
 mod geometry;
 mod math;
 mod mesh;
+mod mixed;
 mod nurbs;
 mod nurbs_surface;
 mod operations;
@@ -12,6 +13,7 @@ mod wasm;
 pub use geometry::*;
 pub use math::*;
 pub use mesh::*;
+pub use mixed::*;
 pub use nurbs::*;
 pub use nurbs_surface::*;
 pub use operations::*;

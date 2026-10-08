@@ -2,15 +2,29 @@ use crate::{Error, Frame3, GeometryTolerance, Point3, Result, Tolerance, Transfo
 use std::f64::consts::TAU;
 #[derive(Clone, Debug)]
 pub enum Curve {
-    Line { a: Point3, b: Point3 },
-    Circle { center: Point3, radius: f64 },
-    FramedCircle { frame: Frame3, radius: f64 },
+    Line {
+        a: Point3,
+        b: Point3,
+    },
+    Circle {
+        center: Point3,
+        radius: f64,
+    },
+    FramedCircle {
+        frame: Frame3,
+        radius: f64,
+    },
+    Arc {
+        frame: Frame3,
+        radius: f64,
+        sweep: f64,
+    },
 }
 impl Curve {
     pub fn evaluate(&self, t: f64) -> Point3 {
         match *self {
             Self::Line { a, b } => a + (b - a) * t,
-            Self::FramedCircle { frame, radius } => {
+            Self::FramedCircle { frame, radius } | Self::Arc { frame, radius, .. } => {
                 frame.point(Vec3::new(radius * t.cos(), radius * t.sin(), 0.0))
             }
             Self::Circle { center, radius } => {
@@ -33,6 +47,15 @@ impl Curve {
                 frame: transform.compose(Frame3::translation(center)?)?,
                 radius,
             },
+            Self::Arc {
+                frame,
+                radius,
+                sweep,
+            } => Self::Arc {
+                frame: transform.compose(frame)?,
+                radius,
+                sweep,
+            },
             Self::FramedCircle { frame, radius } => Self::FramedCircle {
                 frame: transform.compose(frame)?,
                 radius,
@@ -42,6 +65,7 @@ impl Curve {
     pub fn range(&self) -> [f64; 2] {
         match self {
             Self::Line { .. } => [0.0, 1.0],
+            Self::Arc { sweep, .. } => [0.0, *sweep],
             Self::Circle { .. } | Self::FramedCircle { .. } => [0.0, TAU],
         }
     }

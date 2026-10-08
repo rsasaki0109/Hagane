@@ -16,6 +16,12 @@ claim compatibility with its data structures or APIs.
 - Rigid coordinate frames and rotation: orthonormal basis projection and
   [Rodrigues' rotation formula](https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula).
   Implemented from the mathematical formulas, without reference source code.
+- Circular arc area integrals: [Green's theorem](https://en.wikipedia.org/wiki/Green%27s_theorem).
+  Convex tangent boundary scope: monotone tangent angle and total turning,
+  [total curvature](https://en.wikipedia.org/wiki/Total_curvature).
+  Line/circle and circle/circle distance candidates follow Cartesian equations
+  and their stationary conditions. All formulas are implemented independently;
+  no reference code or prose is incorporated.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision

@@ -55,9 +55,11 @@ is no copy of a shared edge for each face.
 
 Every coedge has a pcurve evaluated at the **same parameter as its 3D edge**.
 `forward` controls traversal only. A plane pcurve is an exact affine line or
-circle. The cylinder's bottom/top rings have affine angle/height pcurves.
+circle/bounded arc. The cylinder's bottom/top rings have affine angle/height pcurves.
 The seam has two uses on the same face, at `u=0` and `u=2π`, sharing one 3D edge.
-The complete cylinder wire closes in unwrapped UV space.
+The complete cylinder wire closes in unwrapped UV space. Rectangular partial
+cylinders use two distinct vertical boundaries and an angular span below 2pi.
+See [mixed profiles](mixed-profiles.md) for the convex tangent line/arc domain.
 
 Wires follow the positive surface parameter orientation: outer CCW, holes CW.
 `Face::orientation` is +1 or -1 and reverses its surface normal and all edge
@@ -80,6 +82,8 @@ validation when extending geometry.
 ## Planar trim predicates
 
 Planar outer/inner wires may be simple straight-line polygons or full circles.
+A separate convex tangent line/arc trim domain supports one outer wire without
+holes; its analytic validation is documented in [mixed profiles](mixed-profiles.md).
 Polygon edges must exceed ten tolerances. Near-collinear/redundant corners,
 nonadjacent self-intersections and near touches are rejected. Point/segment
 distance, oriented segment intersections and ray-crossing containment check
@@ -103,11 +107,12 @@ Volume is an analytic divergence-theorem integral over faces, not an operation
 history formula and not a mesh volume. Planes contribute oriented area times
 `(origin-reference) · normal / 3`. Full cylinders contribute oriented
 `2π r² h / 3`; the translation terms integrate to zero. A nearby reference
-point reduces cancellation from global translations. Exact circle loop areas
+point reduces cancellation from global translations. Partial cylinders retain
+the analytic center/reference sine and cosine terms over their angular span. Exact circle loop areas
 subtract the cap holes. This yields `box volume − π r² h` independently of
 display settings.
 
-Bounds include vertices and analytic circle extrema. The display mesher samples
+Bounds include vertices, full-circle extrema and bounded-arc extrema. The display mesher samples
 shared curves with a radius/error-dependent segment count, triangulates planar
 trim polygons with the Rust `earcutr` dependency, and evaluates cylindrical
 patches directly. It does not create or subtract mesh solids.
@@ -124,8 +129,9 @@ positions only for adjacency checks; rendering intentionally splits vertices.
 
 The Rust `cdylib` exports `hagane_generate(radius, chord_error) -> status`,
 `hagane_generate_preset(id, radius, chord_error) -> status`,
-`hagane_output_ptr()`, and `hagane_output_len()`. Presets 0..4 select single bore,
-four bores, polygon extrusion, tube, or a rigidly placed four-bore part; unknown IDs return errors. Preset 2 has
+`hagane_output_ptr()`, and `hagane_output_len()`. Presets 0..5 select single bore,
+four bores, polygon extrusion, tube, a rigidly placed four-bore part, or an
+exact rounded line/arc extrusion; unknown IDs return errors. Preset 2 has
 a fixed polygon profile and ignores the radius argument. JSON bytes contain coordinates,
 normals, analytic volume, and topology counts, or an explicit error. Status 0
 means success, 1 means a kernel error. The buffer is valid until the next
