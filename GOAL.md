@@ -77,5 +77,9 @@ Stage 1 now includes checked coordinate frames, rigid analytic B-rep transforms,
 exact placed bounds, and arbitrary-plane polygon extrusion, with native/WASM
 validation and a browser preset. See [frames](docs/frames.md).
 
-The next development task is stage 1: structured angular/relative tolerances
-and robust predicates, followed by mixed line/arc planar wires.
+Stage 1 also includes explicit length/angular/relative policies, classified
+line/plane intersection and filtered exact 2D predicates integrated with planar
+validation. See [tolerances](docs/tolerances.md) for scope and verified cases.
+
+The next development task is stage 1: mixed line/arc planar wires and their exact
+B-rep construction/validation, followed by broader surface trims.

@@ -87,7 +87,9 @@ that hole boundaries are strictly inside the outer wire and mutually separated.
 Circle/line distance and analytic circle/circle tests handle circular wires.
 Boundary witnesses distinguish containment from disjointness without sampling
 circles into polygons. Hole nesting and contact are rejected before construction.
-These are tolerance-aware `f64` predicates, not adaptive exact arithmetic.
+Crossing and containment decisions now use a floating-point filter with an
+exact dyadic-integer fallback for orientation. Clearance distances and areas
+remain tolerance-aware `f64` calculations. See [tolerances](tolerances.md).
 
 Independent bores are checked as complete disks in XY before any topology is
 mutated. All must overhang the box in Z and clear the sides and each other by

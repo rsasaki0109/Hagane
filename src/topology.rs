@@ -202,11 +202,11 @@ impl Solid {
             match f.surface {
                 Surface::Plane { origin, u, v } => {
                     if !origin.finite()
-                        || !u.finite()
-                        || !v.finite()
-                        || (u.norm() - 1.0).abs() > tol.linear
-                        || (v.norm() - 1.0).abs() > tol.linear
-                        || u.dot(v).abs() > tol.linear
+                        || !crate::geometry::plane_basis_valid(
+                            u,
+                            v,
+                            GeometryTolerance::try_from(tol)?,
+                        )
                     {
                         return Err(Error::InvalidTopology("invalid plane basis"));
                     }

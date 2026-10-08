@@ -140,13 +140,16 @@ fabricate the demo image.
 ## Implemented
 
 - `f64` points/vectors, right-handed rigid transforms, explicit linear tolerance.
+- Structured length/angular/relative policy and filtered exact 2D orientation,
+  segment intersection, and inside/boundary/outside polygon classification.
 - Lines, XY and framed circles; arbitrary orthonormal planes and Z/framed cylinders.
 - Checked rigid B-rep placement, inverse/composed frames and exact placed bounds.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
   homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
 - Standalone tensor-product NURBS surfaces: checked rectangular control nets,
   analytic U/V partials, oriented regular-point normals and uniform display grids.
-- Line/plane and horizontal-plane/bounded-Z-cylinder intersections.
+- Checked line/plane intersection and tolerance-based parallel/coincident classification;
+  horizontal-plane/bounded-Z-cylinder intersections.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
 - Exact axis-aligned boxes, Z cylinders, and hollow tubes with annular caps.
@@ -237,7 +240,9 @@ B-rep and analytic volume remain independent of display tolerance. Segment
 counts are capped at 65,536; finer requests return `Tessellation`. Mesh vertices
 are split at face boundaries for normals; equal positions still form a closed
 oriented mesh. Broad numerical robustness and industrial tolerancing remain
-ongoing work; there are no adaptive exact predicates in this milestone.
+ongoing work. [Exact planar predicates and the tolerance policy](docs/tolerances.md)
+now protect orientation/crossing/containment decisions; distance calculations,
+3D predicates and general intersections are not certified exact.
 
 ## Validation
 
@@ -262,7 +267,9 @@ errors and 16 native/WASM curve cases. Surface tests add bilinear/rational
 patches, exact quarter-cylinder geometry, partials in both axes, crease-side
 normals, singularities, sampling checks, and six native/WASM grid/derivative
 cases. Browser tests cover solids, curves and surfaces. CI runs formatting, Clippy, native tests,
-WASM build/runtime checks, and browser interactions.
+WASM build/runtime checks, and browser interactions. Numerical tests also cover
+10,000 independent integer orientation fixtures, 3,399 exact BigInt/WASM
+orientation comparisons, 204 segment cases, and explicit angle/relative policies.
 
 See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and
 [references and dependency licenses](docs/references.md).

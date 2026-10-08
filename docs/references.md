@@ -18,6 +18,13 @@ claim compatibility with its data structures or APIs.
   Implemented from the mathematical formulas, without reference source code.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
+- Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision
+  Floating-Point Arithmetic and Fast Robust Geometric Predicates* (1997),
+  [publication](https://www.cs.cmu.edu/~quake/robust.html);
+  [IEEE 754 binary64 representation](https://en.wikipedia.org/wiki/Double-precision_floating-point_format).
+  Hagane uses a conservative floating filter and an independently designed
+  dyadic-integer fallback, not Shewchuk's expansion routines. No reference code
+  or prose was copied, translated, or vendored; no predicate dependency is linked.
 - Simple polygon validation and containment: standard orientation determinants,
   Euclidean point/segment distance, and [ray casting point-in-polygon](https://en.wikipedia.org/wiki/Point_in_polygon#Ray_casting_algorithm).
   Implemented directly in Rust, without importing predicate source code.

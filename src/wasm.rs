@@ -20,6 +20,33 @@ mod exports {
     pub extern "C" fn hagane_generate_surface(height: f64, weight: f64, u: f64, v: f64) -> i32 {
         generate(crate::nurbs_surface_demo_json(height, weight, u, v))
     }
+    /// -1/0/+1 exact orientation; 2 indicates a nonfinite input.
+    #[no_mangle]
+    pub extern "C" fn hagane_orient2d(ax: f64, ay: f64, bx: f64, by: f64, cx: f64, cy: f64) -> i32 {
+        crate::orient2d([ax, ay], [bx, by], [cx, cy])
+            .map(|o| o.sign())
+            .unwrap_or(2)
+    }
+    /// 0 disjoint, 1 intersecting (including contact), 2 invalid input.
+    #[no_mangle]
+    pub extern "C" fn hagane_segments_intersect2d(
+        ax: f64,
+        ay: f64,
+        bx: f64,
+        by: f64,
+        cx: f64,
+        cy: f64,
+        dx: f64,
+        dy: f64,
+    ) -> i32 {
+        crate::segments_intersect2d([ax, ay], [bx, by], [cx, cy], [dx, dy])
+            .map(i32::from)
+            .unwrap_or(2)
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_generate_predicates(scale: f64, angle: f64) -> i32 {
+        generate(crate::predicates_demo_json(scale, angle))
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

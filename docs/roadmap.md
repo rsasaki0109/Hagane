@@ -23,10 +23,17 @@ cylinders, exact world-axis bounds, and arbitrary-plane polygon extrusion now
 work natively and in WASM, with a fifth interactive solid preset. See
 [frames](frames.md) for numerical and operation limits.
 
+Structured length/angular/relative policies, classified line/plane intersections,
+filtered exact 2D orientation, exact segment contact and polygon point location
+now underpin planar validation. Native integer and WASM BigInt reference corpora
+verify signs independently. Metric distances and 3D predicates remain floating
+calculations; see [tolerances](tolerances.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
-- Structured angular/relative tolerances and robust filtered predicates.
+- Extend explicit tolerance policies to more modeling operations, and add exact
+  3D predicates and robust curve/surface intersections.
 - Mixed arc/line planar wires, non-complete cylindrical trims, and general face splits.
 - Typed intersection results, curve/surface classification, intersection graph
   construction, face splitting, consistent sewing, and Boolean dispatch.

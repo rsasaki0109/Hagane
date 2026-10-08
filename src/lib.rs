@@ -6,6 +6,7 @@ mod nurbs;
 mod nurbs_surface;
 mod operations;
 mod planar;
+mod predicates;
 mod topology;
 mod wasm;
 pub use geometry::*;
@@ -14,6 +15,7 @@ pub use mesh::*;
 pub use nurbs::*;
 pub use nurbs_surface::*;
 pub use operations::*;
+pub use predicates::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

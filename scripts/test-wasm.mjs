@@ -42,3 +42,37 @@ for(const [height,weight,u,v] of [[0,1,0.5,0.5],[35,1,0.5,0.5],[35,2,0.3,0.7],[-
 for(const args of [[0,0,0.5,0.5],[101,1,0.5,0.5],[NaN,1,0.5,0.5],[0,1,1.1,0.5],[0,1,0.5,-0.1]]){assert.equal(surface(...args).status,1);}
 assert.equal(surface(35,1,0.5,0.5).status,0);
 console.log('NURBS surfaces: 6 native/WASM grid/partial/normal parity cases, analytic fixtures and errors/recovery passed.');
+
+// Independent BigInt oracle: decode exact IEEE-754 coordinates to integers
+// in units of 2^-1074. No floating arithmetic in the reference determinant.
+const bitsView=new DataView(new ArrayBuffer(8));
+function dyadic(value){bitsView.setFloat64(0,value);const bits=bitsView.getBigUint64(0);const exponent=Number((bits>>52n)&2047n);const mantissa=(bits&((1n<<52n)-1n))|(exponent?1n<<52n:0n);const integer=mantissa<<BigInt(Math.max(0,exponent-1));return bits>>63n?-integer:integer;}
+function exactOrientation(a,b,c){const [ax,ay,bx,by,cx,cy]=[...a,...b,...c].map(dyadic);const det=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);return det>0n?1:det<0n?-1:0;}
+let predicateCases=0;
+function checkOrientation(a,b,c){const expected=exactOrientation(a,b,c);assert.equal(k.hagane_orient2d(...a,...b,...c),expected);assert.equal(k.hagane_orient2d(...c,...b,...a),-expected||0);predicateCases++;}
+for(const s of [Number.MIN_VALUE,2**-1022,1e-200,1,1e200,Number.MAX_VALUE]){checkOrientation([0,-0],[s,0],[0,s]);checkOrientation([-s,-s],[s,-s],[s,s]);checkOrientation([s,0],[s,0],[0,s]);}
+for(let exponent=-1000;exponent<=900;exponent+=5){const s=2**exponent,n=134217728;checkOrientation([0,0],[(n+1)*s,n*s],[n*s,(n-1)*s]);}
+let randomBits=0xcafebabe12345678n;
+function random64(){randomBits=BigInt.asUintN(64,randomBits*6364136223846793005n+1442695040888963407n);return randomBits;}
+function finiteFloat(){let bits=random64();if(((bits>>52n)&2047n)===2047n)bits^=1n<<52n;bitsView.setBigUint64(0,bits);return bitsView.getFloat64(0);}
+for(let i=0;i<2000;i++){checkOrientation([finiteFloat(),finiteFloat()],[finiteFloat(),finiteFloat()],[finiteFloat(),finiteFloat()]);}
+for(let i=0;i<500;i++){
+ const a=[finiteFloat(),finiteFloat()],b=[finiteFloat(),finiteFloat()];
+ checkOrientation(a,b,a);checkOrientation(a,b,b);
+}
+assert.equal(k.hagane_orient2d(NaN,0,1,0,0,1),2);assert.equal(k.hagane_orient2d(0,0,Infinity,0,0,1),2);
+function onBox(p,a,b){return [0,1].every(i=>p[i]>=Math.min(a[i],b[i])&&p[i]<=Math.max(a[i],b[i]));}
+function exactSegments(a,b,c,d){const [s1,s2,s3,s4]=[exactOrientation(a,b,c),exactOrientation(a,b,d),exactOrientation(c,d,a),exactOrientation(c,d,b)];return s1*s2<0&&s3*s4<0||s1===0&&onBox(c,a,b)||s2===0&&onBox(d,a,b)||s3===0&&onBox(a,c,d)||s4===0&&onBox(b,c,d);}
+for(let i=0;i<200;i++){const points=Array.from({length:4},()=>[finiteFloat(),finiteFloat()]);assert.equal(k.hagane_segments_intersect2d(...points.flat()),Number(exactSegments(...points)));}
+for(const points of [[[0,0],[1,0],[1,0],[2,0]],[[0,0],[3,0],[1,0],[2,0]],[[0,0],[1,0],[1+Number.EPSILON,0],[2,0]],[[1,1],[1,1],[0,0],[2,2]]]){assert.equal(k.hagane_segments_intersect2d(...points.flat()),Number(exactSegments(...points)));}
+assert.equal(k.hagane_segments_intersect2d(0,0,1,0,NaN,0,2,0),2);
+function numericalDemo(scale,angle){const status=k.hagane_generate_predicates(scale,angle);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [scale,angle,classification] of [[10,0.1,'point'],[10,1e-12,'parallel'],[1e-12,1e-12,'coincident'],[1e8,0.1,'point'],[1,Math.PI/2,'point']]){
+ const {status,result}=numericalDemo(scale,angle);assert.equal(status,0);assert.equal(result.orientation,-1);assert.equal(result.line_plane,classification);assert.equal(result.length_budget,Math.max(1e-8,1e-10*scale));
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','predicates','--',String(scale),String(angle)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ for(const field of ['orientation','length_budget','line_plane'])assert.equal(native[field],result[field]);
+ if(result.point){result.point.forEach((value,i)=>assert.ok(Math.abs(value-native.point[i])<=1e-10*Math.max(1,Math.abs(value))));assert.ok(Math.abs(result.parameter-native.parameter)<=1e-10*Math.max(1,Math.abs(result.parameter)));}
+}
+for(const [scale,angle] of [[0,0.1],[-1,0.1],[NaN,0.1],[1,NaN]]){assert.equal(numericalDemo(scale,angle).status,1);}
+assert.equal(numericalDemo(10,0.1).status,0);
+console.log(`Predicates: ${predicateCases} exact BigInt orientation cases, 204 exact segment cases, tolerance/classification native/WASM parity and errors passed.`);

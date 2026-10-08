@@ -17,9 +17,10 @@ let placed = solid.transformed(placement, tolerance)?;
 ```
 
 `Transform::new` validates finite origin and all three basis lengths, pairwise
-orthogonality, and handedness. Its existing tolerance argument is validated,
-with basis acceptance capped at 1e-10; accepted roundoff is orthonormalized.
-A dedicated angular/relative tolerance policy remains roadmap work. Scale,
+orthogonality, and handedness. Its existing linear argument is validated but
+basis checks use default angular/relative budgets independently of length units.
+`new_with_tolerance` accepts an explicit [geometry policy](tolerances.md).
+Basis acceptance is capped at 1e-10; accepted roundoff is orthonormalized. Scale,
 shear, and reflections are rejected. Frame components have getters rather than
 public mutation. `inverse`, composition, and constructors reject nonfinite
 results. Raw point/vector evaluation returns f64 coordinates; use checked

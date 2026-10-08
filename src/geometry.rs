@@ -1,4 +1,4 @@
-use crate::{Error, Frame3, Point3, Result, Tolerance, Transform, Vec3};
+use crate::{Error, Frame3, GeometryTolerance, Point3, Result, Tolerance, Transform, Vec3};
 use std::f64::consts::TAU;
 #[derive(Clone, Debug)]
 pub enum Curve {
@@ -136,35 +136,105 @@ impl Surface {
         }
     }
 }
-/// Exact intersection of a line with an infinite plane; parallel/coincident is explicit.
-pub fn line_plane(a: Point3, d: Vec3, plane: &Surface) -> Result<Point3> {
+/// Line/plane classification according to explicit distance and angle budgets.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LinePlaneIntersection {
+    Point {
+        point: Point3,
+        parameter: f64,
+    },
+    /// Direction lies within the angular budget of the plane; anchor lies outside
+    /// its distance budget. This is not a claim of exact mathematical parallelism.
+    Parallel,
+    /// Direction and anchor are within the plane's angular/distance budgets.
+    Coincident,
+}
+pub(crate) fn plane_basis_valid(u: Vec3, v: Vec3, tol: GeometryTolerance) -> bool {
+    u.finite()
+        && v.finite()
+        && (u.norm() - 1.0).abs() <= tol.relative().clamp(64.0 * f64::EPSILON, 1e-10)
+        && (v.norm() - 1.0).abs() <= tol.relative().clamp(64.0 * f64::EPSILON, 1e-10)
+        && u.dot(v).abs() <= tol.angular().sin().min(1e-10)
+}
+/// Checked intersection/classification of an infinite line and plane. The
+/// returned parameter satisfies `point = anchor + direction * parameter`.
+/// Relative distance scale is the anchor-to-plane-origin separation.
+pub fn intersect_line_plane(
+    a: Point3,
+    d: Vec3,
+    plane: &Surface,
+    tol: GeometryTolerance,
+) -> Result<LinePlaneIntersection> {
     let Surface::Plane { origin, u, v } = *plane else {
         return Err(Error::Unsupported("line-plane requires a plane"));
     };
-    if !a.finite()
-        || !d.finite()
-        || !origin.finite()
-        || !u.finite()
-        || !v.finite()
-        || d.norm() == 0.0
-    {
-        return Err(Error::InvalidInput("invalid line or plane"));
+    if !a.finite() || !origin.finite() || !plane_basis_valid(u, v, tol) {
+        return Err(Error::InvalidInput("invalid line or orthonormal plane"));
     }
-    let n = u.cross(v);
-    if (u.norm() - 1.0).abs() > 1e-10 || (v.norm() - 1.0).abs() > 1e-10 || u.dot(v).abs() > 1e-10 {
-        return Err(Error::InvalidInput("plane requires orthonormal axes"));
-    }
-    let den = n.dot(d);
-    if den.abs() <= f64::EPSILON * d.norm() {
-        return Err(Error::Unsupported("parallel or coincident line-plane"));
-    }
-    let point = a + d * (n.dot(origin - a) / den);
-    if !point.finite() {
+    let unit = d.normalized()?;
+    let n = u.cross(v).normalized()?;
+    let offset = origin - a;
+    let scale = offset.norm();
+    if !scale.is_finite() {
         return Err(Error::InvalidInput(
-            "intersection exceeds finite coordinate range",
+            "line-plane separation exceeds finite range",
         ));
     }
-    Ok(point)
+    let distance = n.dot(offset);
+    let den = n.dot(unit);
+    if !distance.is_finite() || !den.is_finite() {
+        return Err(Error::InvalidInput(
+            "line-plane projection exceeds finite range",
+        ));
+    }
+    let budget = tol.length_at_scale(scale)?;
+    if den.abs() <= tol.angular().sin() {
+        return Ok(if distance.abs() <= budget {
+            LinePlaneIntersection::Coincident
+        } else {
+            LinePlaneIntersection::Parallel
+        });
+    }
+    let travel = distance / den;
+    let direction_scale = d.x.abs().max(d.y.abs()).max(d.z.abs());
+    let scaled_direction = Vec3::new(
+        d.x / direction_scale,
+        d.y / direction_scale,
+        d.z / direction_scale,
+    );
+    let parameter = (travel / direction_scale) / scaled_direction.norm();
+    let point = a + unit * travel;
+    if !point.finite()
+        || !parameter.is_finite()
+        || !travel.is_finite()
+        || (travel != 0.0 && parameter == 0.0)
+    {
+        return Err(Error::InvalidInput(
+            "intersection exceeds finite coordinate/parameter range",
+        ));
+    }
+    let reconstructed = a + d * parameter;
+    if !reconstructed.finite() || !tol.coincident(point, reconstructed, scale.max(travel.abs()))? {
+        return Err(Error::InvalidInput(
+            "intersection loses line agreement at this parameter magnitude",
+        ));
+    }
+    let residual = (point - origin).dot(n).abs();
+    if !residual.is_finite() || residual > tol.length_at_scale(scale.max(travel.abs()))? {
+        return Err(Error::InvalidInput(
+            "intersection loses plane agreement at this coordinate magnitude",
+        ));
+    }
+    Ok(LinePlaneIntersection::Point { point, parameter })
+}
+/// Compatibility point-only API; near-parallel/coincident cases are explicit errors.
+pub fn line_plane(a: Point3, d: Vec3, plane: &Surface) -> Result<Point3> {
+    match intersect_line_plane(a, d, plane, GeometryTolerance::default())? {
+        LinePlaneIntersection::Point { point, .. } => Ok(point),
+        _ => Err(Error::Unsupported(
+            "parallel or coincident line-plane within tolerance",
+        )),
+    }
 }
 
 /// Exact intersection circle of a bounded Z-cylinder and a horizontal plane.
@@ -188,11 +258,7 @@ pub fn cylinder_plane(cylinder: &Surface, plane: &Surface, tol: Tolerance) -> Re
         || radius <= tol.linear
         || !height.is_finite()
         || height <= tol.linear
-        || !u.finite()
-        || !v.finite()
-        || (u.norm() - 1.0).abs() > 1e-10
-        || (v.norm() - 1.0).abs() > 1e-10
-        || u.dot(v).abs() > 1e-10
+        || !plane_basis_valid(u, v, GeometryTolerance::try_from(tol)?)
     {
         return Err(Error::InvalidInput("invalid intersection surfaces"));
     }
