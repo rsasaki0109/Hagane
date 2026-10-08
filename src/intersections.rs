@@ -113,7 +113,7 @@ pub struct CylinderIntersectionPoint {
     pub point: Point3,
     /// Parameter on the caller's original (possibly non-unit) line direction.
     pub parameter: f64,
-    /// Cylinder angle in [0,2pi), axial length in [0,height].
+    /// Circular angle in [0,2pi), normal-span length in [0,height].
     pub uv: [f64; 2],
     pub contact: IntersectionContact,
 }
@@ -122,7 +122,7 @@ pub enum LineCylinderIntersection {
     Empty,
     /// Sorted by increasing line parameter. Only the lateral surface is intersected.
     Points(Vec<CylinderIntersectionPoint>),
-    /// An exactly axial generator overlaps the lateral surface over this interval.
+    /// An exactly resolved axial/extrusion generator overlaps the lateral surface.
     Coincident {
         parameter_range: [f64; 2],
         angle: f64,

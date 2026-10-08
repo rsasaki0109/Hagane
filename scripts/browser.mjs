@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
 const root=new URL('../web/',import.meta.url);
-const types={'/classification.html':'text/html','/classification.js':'text/javascript','/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
+const types={'/intersections.html':'text/html','/intersections.js':'text/javascript','/classification.html':'text/html','/classification.js':'text/javascript','/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
 const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://localhost').pathname;if(!types[path]){res.writeHead(404);res.end();return;}const data=await readFile(new URL(path==='/'?'index.html':path.slice(1),root));res.writeHead(200,{'Content-Type':types[path]});res.end(data);}catch{res.writeHead(500);res.end('Build the WASM module first.');}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
@@ -236,5 +236,16 @@ try {
  console.log('Browser: planar and full-cylinder solid point classification, six models, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
+ await page.setViewportSize({width:1440,height:900});await page.goto(`http://127.0.0.1:${server.address().port}/intersections.html`);await page.waitForFunction(()=>window.haganeIntersections?.ready);
+ for(const [probe,kind,hits] of [['crossing','crossing','2'],['tangent','tangent','1'],['empty','empty','0'],['generator','generator overlap','0'],['reverse','generator overlap','0']]){
+  await page.locator('#probe').selectOption(probe);assert.equal(await page.locator('#kind').textContent(),kind);assert.equal(await page.locator('#hits').textContent(),hits);assert.ok(await page.evaluate(()=>window.haganeIntersections.data));
+ }
+ await page.locator('#probe').selectOption('crossing');const intersectionsBefore=await page.locator('canvas').screenshot();await page.locator('#offset').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'crossing');assert.equal(await page.locator('#probe').inputValue(),'custom');assert.notDeepEqual(await page.locator('canvas').screenshot(),intersectionsBefore);
+ await page.locator('#probe').selectOption('tangent');await page.locator('#offset').evaluate(e=>{e.step='any';e.value=24+1e-9;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');assert.equal(await page.evaluate(()=>window.haganeIntersections.data),null);
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#kind').textContent(),'crossing');await page.locator('#wire').check();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-extrusion-intersections'))await page.screenshot({path:new URL('../docs/extrusion-intersections.png',import.meta.url).pathname});
+ const hitView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),hitView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
+ console.log('Browser: skew surface secants, tangent, empty, forward/reverse generator, ambiguity recovery, slider, marker lines, orbit and responsive layout passed.');
  console.log('Browser: 23 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

@@ -227,3 +227,12 @@ microscopic geometry and closed sagitta-bounded meshes are verified natively
 and in WASM. A twenty-third browser fixture varies tangential offset. Classification,
 intersection and general modeling of these skew walls remain unsupported.
 See [skew extrusion](docs/skew-arc-extrusion.md).
+
+Typed line/skew circular translation surface intersection now supports finite
+points, tangent contact, and forward/reverse generator intervals. A conservative
+shear-scaled cylinder reduction preserves original line parameters; recovered
+world and local dimensions are checked. Native/WASM tests cover independent
+roots, placement, tiny dimensions, conditioning and error recovery. The browser
+contact-study page uses the exact skew circular B-rep fixture. Solid classification
+and angular face clipping remain unsupported. See
+[extrusion intersections](docs/extrusion-intersections.md).

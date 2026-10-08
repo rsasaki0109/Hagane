@@ -66,6 +66,7 @@ cargo run --locked --example part -- 11
 cargo run --locked --example sewing
 cargo run --locked --example classification -- -10 0 0
 cargo run --locked --example curved_classification -- 0 0 0 0
+cargo run --locked --example extrusion_intersections -- 0 14 0
 cargo run --locked --example part -- 12
 cargo run --locked --example solid_split -- -2
 cargo run --locked --example part -- 13
@@ -187,6 +188,7 @@ fabricate the demo image.
   segment intersection, and inside/boundary/outside polygon classification.
 - Lines, XY and framed circles; arbitrary orthonormal planes and Z/framed cylinders.
 - Exact circular translation surfaces for [skew line/arc extrusion](docs/skew-arc-extrusion.md), including evaluation, UV, normals, volume and bounded display meshes.
+- [Line/skew-wall intersections](docs/extrusion-intersections.md), with original line parameters, bounded normal spans, tangency and generator overlap.
 - Checked rigid B-rep placement, inverse/composed frames and exact placed bounds.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
   homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
@@ -317,8 +319,8 @@ cutters. Tube walls must exceed 10 tolerances. Mixed line/arc regions accept
 2..1,024 segments per ring, at most 256 holes and 4,096 total segments. Their
 [supported domain](docs/mixed-profiles.md) includes positive XY extrusion and
 [framed extrusion](docs/framed-arc-extrusion.md) with either sign and exact skew
-translation surfaces. Nested holes and unresolved cusps are rejected. Queries
-and general modeling operations on skew walls remain unsupported. Arbitrary
+translation surfaces. Nested holes and unresolved cusps are rejected. Line intersections with skew walls are supported; solid classification
+and general modeling operations on them remain unsupported. Arbitrary
 curved trims, scale/shear/reflection transforms, and general CSG are not implemented.
 Rigid placement and arbitrary-plane polygon extrusion are documented in
 [frames](docs/frames.md); the restricted Boolean constructor and cylinder/plane

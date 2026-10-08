@@ -57,7 +57,9 @@ errors. Framed inputs within `64 * EPSILON * vector_length` of normal retain the
 previous rigid-conversion roundoff allowance. Height-only APIs still require
 positive finite height.
 
-**Current limits:** point classification, line/cylinder intersection, curved-face
+[Line/skew-surface intersection](extrusion-intersections.md) now supports finite
+hits, tangency and generator overlap. The ordinary line/cylinder API keeps its
+original domain. **Current limits:** point classification, curved-face
 subdivision and general Booleans do not yet support these new skew surfaces.
 They return explicit errors rather than treating them as ordinary cylinders.
 Normal extrusion still uses the existing cylinder surface and query path.

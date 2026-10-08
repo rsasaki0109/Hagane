@@ -253,3 +253,15 @@ for(const [radius,offset,height] of [[8,8,-24],[14,14,-24],[24,24,-24],[14,-14,2
 for(const args of [[0,14,-24],[30,14,-24],[NaN,14,-24],[14,NaN,-24],[14,Infinity,-24],[14,14,0],[14,14,1e-9],[14,14,Infinity],[14,14,NaN]]){const {status,result}=skewArc(...args);assert.equal(status,1);assert.ok(result.error);}
 assert.equal(skewArc(14,14,-24).status,0);
 console.log('Skew arc extrusion: exact walls, signed spans, analytic volume, native/WASM geometry, errors and recovery passed.');
+function extrusionHits(mode,offset,placement){const status=k.hagane_extrusion_intersections_demo(mode,offset,placement);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [mode,offset,placement] of [[0,-30,0],[0,-14,0],[0,0,0],[0,14,0],[0,24,0],[0,30,0],[0,14,0.7],[0,-14,-0.5],[1,0,0],[2,0,0],[1,1,0],[2,-1,0]]){
+ const {status,result}=extrusionHits(mode,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','extrusion_intersections','--',String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ assert.ok(Math.abs(result.mesh.volume-24*24*Math.PI*24)<1e-8);assert.equal(result.mesh.faces,4);assert.equal(result.mesh.edges,6);
+ const hit=result.intersection;
+ if(mode===0){if(Math.abs(offset)>24){assert.equal(hit.kind,'empty');}else {assert.equal(hit.kind,'points');const half=Math.sqrt(24**2-offset**2);const expected=half===0?[20]:[(40-half)/2,(40+half)/2];assert.equal(hit.hits.length,expected.length);hit.hits.forEach((h,i)=>{assert.ok(Math.abs(h.parameter-expected[i])<1e-10);assert.ok(Math.abs(h.uv[1]-12)<1e-10);assert.equal(h.contact,half===0?'tangent':'crossing');});}}
+ else if(offset===0){assert.equal(hit.kind,'coincident');assert.ok(Math.abs(hit.range[0])<1e-12 && Math.abs(hit.range[1]-1)<1e-12);}else assert.equal(hit.kind,'empty');
+}
+for(const args of [[3,0,0],[0,NaN,0],[0,Infinity,0],[0,0,NaN],[0,24-1e-9,0],[0,24+1e-9,0],[1,1e-9,0],[2,-1e-9,0]]){const {status,result}=extrusionHits(...args);assert.equal(status,1);assert.ok(result.error);}
+assert.equal(extrusionHits(0,14,0).status,0);
+console.log('Skew circular surface intersections: independent roots, contacts, signed generator intervals, placement, native/WASM mesh/query parity, errors and recovery passed.');
