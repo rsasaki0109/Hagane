@@ -1,5 +1,9 @@
 # Roadmap
 
+This roadmap implements the standing [development goal](../GOAL.md): a usable
+end-to-end pure Rust CAD workflow. Feature-specific supported domains and
+verified completion criteria take precedence over broad feature labels.
+
 ## Working milestone
 
 Analytic box/cylinder/tube primitives; rectangle/disk extrusion; simple concave

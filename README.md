@@ -15,6 +15,10 @@ trimmed B-rep solid: planar caps have inner circular wires and share exact
 circle edges with an inward-facing cylindrical wall. Tessellation happens
 **after** solid construction and validation; there is no mesh Boolean.
 
+The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
+its acceptance criteria and implementation order guide ongoing development.
+See the [roadmap](docs/roadmap.md) for current milestones and limitations.
+
 ## Quick start
 
 Install [Rust with rustup](https://rustup.rs/), then:
