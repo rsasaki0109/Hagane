@@ -224,3 +224,14 @@ basis vectors to origins. Affine pcurve frame conversion follows elementary
 linear coordinate transformation. Native i128 and WASM BigInt oracles independently
 verify determinant signs. This is original MIT OR Apache-2.0 Rust code with no new
 dependency and no OCCT source consultation/copying/translation.
+
+### Shared straight edge simplification
+
+A degree-two vertex strictly between collinear endpoints does not change the
+straight boundary set. Exact projected orientation signs certify collinearity
+in 3D; exact UV orientation and continuity preserve both incident trim wires.
+Globally removing eligible knots and rebuilding shared normalized-parameter lines
+preserves manifold adjacency and affine pcurves. This is original MIT OR Apache-2.0
+Rust code based on elementary straight-line geometry and boundary topology,
+reusing existing exact predicates and validation. No new dependency or OCCT source
+is used; approximate straightening and healing are not part of this operation.

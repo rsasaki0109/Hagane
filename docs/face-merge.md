@@ -46,8 +46,8 @@ world-space boundary vertex. Final geometric checks reject unresolved conversion
 The result must retain exact bounds, conserve analytic volume within relative
 `1e-10`, and not increase the face count. Final validation checks trims, plane
 geometry, pcurves, signed edge uses, vertex links and closed connectivity. Internal
-vertices/edges disappear; exterior collinear subdivisions remain. Collinear edge
-simplification, curved-surface merging and tolerant healing are future work. Applying this operation again preserves topology counts.
+vertices/edges disappear; exterior collinear subdivisions remain. [Shared straight edge simplification](edge-simplify.md) is available separately;
+curved-surface merging and tolerant healing remain future work. Applying this operation again preserves topology counts.
 
 ## Usage
 

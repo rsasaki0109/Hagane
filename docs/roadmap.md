@@ -115,7 +115,8 @@ Scoped coplanar face merging now reconstructs outer/hole boundaries after removi
 shared interior face edges. Certified identical frames or exact axis-aligned
 supports preserve geometry, pcurves, volume, bounds and mesh closure. Rigid/tiny
 parts and hole/disconnected-region cases are covered, with a nineteenth
-native/WASM/browser preset reducing 26 faces to 10. Collinear edge simplification and healing remain future work.
+native/WASM/browser preset reducing 26 faces to 10. Shared straight edge simplification is available separately; healing remains
+future work.
 See [face merging](face-merge.md).
 
 Exact scalar triple products now certify plane identity across independent
@@ -124,6 +125,13 @@ merging without snapping near supports. Exact 3D orientation is independently
 verified natively and in WASM across the full finite binary64 range. A twentieth
 native/WASM/browser fixture exercises independent tilted frames. See
 [reframed merging](reframed-merge.md).
+
+Shared straight edge simplification now removes exact degree-two collinear
+knots in 3D and both incident UV wires, preserving features, holes and geometry.
+Minimal box topology, branches, classification, closed meshes, placed/tiny parts
+and idempotence are verified. A twenty-first native/WASM/browser fixture reduces
+34 shared edges to 24. Curved merging and tolerant straightening remain unsupported.
+See [edge simplification](edge-simplify.md).
 
 ## Next: broaden analytic B-rep operations
 

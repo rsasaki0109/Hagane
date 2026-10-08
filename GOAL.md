@@ -185,6 +185,14 @@ Exact 3D orientation covers full finite binary64 inputs with independent native/
 WASM integer reference tests. A twentieth browser fixture merges tilted union
 faces. See [reframed merging](docs/reframed-merge.md).
 
+Shared straight edge simplification now removes globally eligible degree-two
+knots certified collinear in 3D and both incident UV boundaries. Original chain
+endpoints, features, holes, face count, volume and closure are preserved. Native
+tests cover minimal box topology, branches, placement, tiny dimensions and
+idempotence. A twenty-first native/WASM/browser fixture reduces the merged
+contact part from 34 to 24 shared edges. See
+[edge simplification](docs/edge-simplify.md).
+
 The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration

@@ -42,7 +42,8 @@ Plane support identity is exact for the *supplied* binary64 frames. Independent
 rounding can make two nominally coincident design planes distinct; those faces
 remain separate. A UV conversion or boundary graph that is not resolvable under
 the model tolerance returns an explicit error. This does not implement healing,
-plane fitting, arbitrary curved merging or collinear edge simplification.
+plane fitting or arbitrary curved merging. [Shared straight edge simplification](edge-simplify.md)
+is available separately for exactly collinear knots.
 
 ## Demo and evidence
 

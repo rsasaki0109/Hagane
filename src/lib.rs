@@ -2,6 +2,7 @@
 mod booleans;
 mod box_booleans;
 mod classification;
+mod edge_simplify;
 mod face_intersections;
 mod face_merge;
 mod face_split;
@@ -22,6 +23,7 @@ mod wasm;
 pub use booleans::*;
 pub use box_booleans::*;
 pub use classification::*;
+pub use edge_simplify::*;
 pub use face_intersections::*;
 pub use face_merge::*;
 pub use face_split::*;
