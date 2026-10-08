@@ -373,5 +373,19 @@ try {
  const eccentricView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),eccentricView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: offset ellipse hole, asymmetric roots, corrected volume, contacts/empty results, recovery and orbit passed.');
+ await page.locator('#scope').selectOption('multiHoleEllipsePlane');assert.equal(await page.locator('#hits').textContent(),'6');
+ const multiData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.equal(multiData.intersection.intervals.length,3);assert.deepEqual(multiData.intersection.hits.map(h=>h.boundaries[0].wire),[0,1,1,2,2,0]);
+ assert.equal(multiData.mesh.faces,8);assert.ok(Math.abs(multiData.mesh.volume-Math.PI*6204.75)<1e-8);
+ for(const [offset,hits,intervals] of [[5.5,4,2],[14,2,1]]){
+  await page.locator('#offset').evaluate((e,v)=>{e.step='any';e.value=v;e.dispatchEvent(new Event('input'));},offset);assert.equal(await page.locator('#hits').textContent(),String(hits));assert.equal(await page.evaluate(()=>window.haganeIntersections.data.intersection.intervals.length),intervals);
+ }
+ await page.locator('#offset').evaluate(e=>{e.value=5;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('empty');assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'6');await page.locator('#reset').click();
+ if(process.argv.includes('--capture-ellipse-multi-hole-planar'))await page.screenshot({path:new URL('../docs/ellipse-multi-hole-planar.png',import.meta.url).pathname});
+ const multiView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),multiView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: multiple ellipse holes, one/two/three intervals, six roots with wire provenance, contacts, empty results, recovery and orbit passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

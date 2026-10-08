@@ -432,3 +432,23 @@ for(const center of [16,16-1e-9,20,NaN,Infinity])assert.equal(eccentricEllipse(c
 for(const [offset,placement] of [[0,0],[8,0],[8+1e-9,0],[24,0],[NaN,0],[4,Infinity]])assert.equal(eccentricEllipse(6,offset,placement).status,1);
 assert.equal(eccentricEllipse(6,4).status,0);
 console.log('Eccentric ellipse holes: independent displaced roots/first-moment volume, native/WASM parity, containment/contact errors and recovery passed.');
+
+function multiHoleEllipse(spread,offset,placement=0){
+ const status=k.hagane_ellipse_multi_hole_planar_demo(spread,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const spread of [6,9,12])for(const placement of [0,0.37])for(const offset of [2,5.5,14,30]){
+ const {status,result}=multiHoleEllipse(spread,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','ellipse_multi_hole_planar','--',String(spread),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ const stretch=Math.sqrt(1.0625),outer=Math.sqrt(576-offset**2)*stretch;
+ const expected=offset===30?[]:[[(34-outer)/2,0],[(34+outer)/2,0]];
+ if(offset<5)for(const sign of [-1,1])expected.push([(34-spread*stretch+sign*Math.sqrt(25-offset**2)*stretch)/2,1]);
+ if(offset<6)for(const sign of [-1,1])expected.push([(34+spread*stretch+sign*Math.sqrt(36-offset**2)*stretch)/2,2]);
+ expected.sort((a,b)=>a[0]-b[0]);assert.equal(result.intersection.hits.length,expected.length);assert.equal(result.intersection.intervals.length,expected.length/2);
+ result.intersection.hits.forEach((h,i)=>{assert.ok(Math.abs(h.parameter-expected[i][0])<1e-10);assert.equal(h.boundaries[0].wire,expected[i][1]);});
+ assert.equal(result.mesh.faces,8);assert.equal(result.mesh.edges,18);assert.ok(Math.abs(result.mesh.volume-Math.PI*(6180+2.75*spread))<1e-8);
+}
+for(const spread of [0,5,5.5,5.5+1e-9,18,NaN,Infinity])assert.equal(multiHoleEllipse(spread,2).status,1);
+for(const [offset,placement] of [[0,0],[5,0],[5+1e-9,0],[6,0],[24,0],[NaN,0],[2,Infinity]])assert.equal(multiHoleEllipse(9,offset,placement).status,1);
+assert.equal(multiHoleEllipse(9,2).status,0);
+console.log('Multiple ellipse holes: independent roots/first moments, one/two/three material intervals, hole wire provenance, native/WASM parity, separation/contact errors and recovery passed.');

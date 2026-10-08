@@ -8,8 +8,9 @@ homothetic complete ellipse hole with a different center. This extends the
 two pi-sweep owning ellipse edges, pcurves, traversal and surface orientation.
 The hole axes must still be equal positive multiples of the outer axes, or
 both negated multiples. Nonorthogonal well-conditioned axes remain supported.
-Multiple holes, unequal axis ratios, arbitrary relative arc phase and holes in
-arc/chord regions remain unsupported.
+[Multiple disjoint homothetic holes](ellipse-multi-hole-planar.md) are also supported.
+Unequal axis ratios, arbitrary relative arc phase and holes in arc/chord regions
+remain unsupported.
 
 ## Containment and exact geometry
 

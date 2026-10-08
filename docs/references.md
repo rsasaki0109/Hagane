@@ -324,3 +324,17 @@ binary64 margins preserve owning 3D edge/pcurve correspondence without snapping.
 Existing affine-circle roots and interval subtraction retain the displaced
 parameters. This is original MIT OR Apache-2.0 Rust code, with no new libraries
 or OCCT source consultation, copying or translation.
+
+
+### Multiple homothetic ellipse holes
+
+Under the common outer inverse affine map, each aligned homothetic hole becomes
+a circle with its own radius and center. Pairwise center distance minus both
+radii gives a normalized separation bound. Multiplication by a lower singular
+value and subtraction of checked coefficient/arithmetic margins bounds physical
+clearance without sampling. Sorting original line parameters and verifying
+paired hole events yields the material gaps independent of hole order or line
+orientation. Signed circle areas and first moments sum each removed column's
+contribution to exact oblique-cap volume. Existing shared topology, ray and chord
+bounds apply to all wires. This is independently authored MIT OR Apache-2.0 Rust
+code, with no added dependency or OCCT source consultation, copying or translation.

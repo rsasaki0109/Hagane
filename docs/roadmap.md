@@ -254,8 +254,8 @@ and conforming tessellation retain the hole. A closed obliquely capped tube
 fixture, native/WASM example and actual browser demo are implemented. Tests cover
 independent roots/volume/bounds, rotated/tiny solids, nonorthogonal axes, physical
 bands, shared orientation, display-chord error and no triangles filling the hole.
-The offset-hole extension follows below. Multiple ellipse holes, holes in
-arc/chord loops, arbitrary mixed loops and general capped partitions remain unsupported. See
+The offset- and multiple-hole extensions follow below. Holes in arc/chord loops,
+arbitrary mixed loops and general capped partitions remain unsupported. See
 [ellipse annuli](ellipse-annulus-planar.md).
 
 Offset homothetic full-ellipse holes now extend annular cap support beyond a
@@ -268,9 +268,24 @@ hole. The closed eccentric-tube fixture retains the correct first-moment term
 in oblique-cut volume. Native checks cover XY offsets, tilt signs, rotation,
 tiny dimensions, independent volume/roots, nonorthogonal trims, containment,
 corrupt pcurves and oriented meshes with no filled hole. Native/WASM parity and
-an actual browser demo are verified. Multiple/nonhomothetic holes, arbitrary
-mixed loops and general capped partitions remain unsupported. See
+an actual browser demo are verified. The multiple-hole extension follows below;
+nonhomothetic holes, arbitrary mixed loops and general capped partitions remain unsupported. See
 [offset ellipse holes](ellipse-eccentric-planar.md).
+
+
+Multiple disjoint aligned homothetic ellipse holes now extend full-ellipse
+planar trims to at most sixteen holes. Inverse outer-axis circle coordinates and
+physical clearance lower bounds validate containment and pairwise separation;
+overlap, nesting, touching, near touching and excessive counts are rejected.
+Sorted shared-parameter events preserve original wire/edge provenance and emit
+all material intervals independently of input order or line direction.
+Classification, analytic first-moment volume and conforming tessellation retain
+every hole. Native tests cover three-hole roots/volume/material, reordered and
+reversed queries, rotated/tiny solids, nonorthogonal trims, all-wall chord errors,
+closed meshes without filled holes, four polygon/cap intersection segments and
+the sixteen-hole limit. Native/WASM parity and a two-hole browser demo are verified.
+Nonhomothetic holes, holes in arc/chord loops, arbitrary mixed loops and general
+capped partitions remain unsupported. See [multiple ellipse holes](ellipse-multi-hole-planar.md).
 
 ## Next: broaden analytic B-rep operations
 

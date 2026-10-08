@@ -170,8 +170,7 @@ pub(crate) fn has_ellipse(f: &Face) -> bool {
         .flat_map(|w| &w.coedges)
         .any(|c| matches!(c.pcurve, PCurve::EllipseArc { .. }))
 }
-/// Validated ellipse material: one outer wire and, optionally, one aligned
-/// strictly interior homothetic full-ellipse hole.
+/// Validated ellipse material: one outer wire and disjoint aligned homothetic holes.
 pub(crate) struct EllipseRegion {
     rings: Vec<EllipseRing>,
 }
@@ -181,7 +180,7 @@ impl EllipseRegion {
         if outer != PointLocation::Inside {
             return Ok(outer);
         }
-        if let Some(hole) = self.rings.get(1) {
+        for hole in &self.rings[1..] {
             match hole.location(p)? {
                 PointLocation::Inside => return Ok(PointLocation::Outside),
                 PointLocation::Boundary => return Ok(PointLocation::Boundary),
@@ -208,18 +207,18 @@ impl EllipseRegion {
 pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
     if !matches!(face.surface, Surface::Plane { .. })
         || face.wires.is_empty()
-        || face.wires.len() > 2
+        || face.wires.len() > 17
     {
         return Err(Error::Unsupported(
-            "ellipse trims require an outer wire and at most one supported hole",
+            "ellipse trims require an outer wire and at most sixteen supported holes",
         ));
     }
     let rings = (0..face.wires.len())
         .map(|wire| single_ring(face, wire, tol))
         .collect::<Result<Vec<_>>>()?;
-    if rings.len() == 2 {
+    let mut normalized_holes = Vec::new();
+    for hole in &rings[1..] {
         let outer = &rings[0];
-        let hole = &rings[1];
         if outer.segment_sweep.is_some() || hole.segment_sweep.is_some() {
             return Err(Error::Unsupported(
                 "ellipse holes require complete ellipse wires",
@@ -251,6 +250,17 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
         let arithmetic = 512. * f64::EPSILON * (scale + norm(outer.center) + norm(hole.center));
         if !clearance.is_finite() || clearance <= 10. * tol.linear + error + arithmetic {
             return Err(Error::Unsupported("ellipse hole clearance is unresolved"));
+        }
+        normalized_holes.push((ratio, center_offset, sigma_lower, error + arithmetic));
+    }
+    for (i, &(radius, center, sigma, error)) in normalized_holes.iter().enumerate() {
+        for &(other_radius, other_center, _, other_error) in &normalized_holes[..i] {
+            let clearance = (norm(sub(center, other_center)) - radius - other_radius) * sigma;
+            if !clearance.is_finite() || clearance <= 10. * tol.linear + error + other_error {
+                return Err(Error::Unsupported(
+                    "ellipse holes overlap, nest, touch or have unresolved separation",
+                ));
+            }
         }
     }
     Ok(EllipseRegion { rings })
@@ -385,18 +395,21 @@ pub(crate) fn clip(
     if outer.events.is_empty() || region.rings.len() == 1 {
         return Ok(outer);
     }
-    let hole = clip_ring(solid, face, (1, &region.rings[1]), anchor, direction, tol)?;
-    if hole.events.is_empty() {
-        return Ok(outer);
+    for (wire, hole) in region.rings.iter().enumerate().skip(1) {
+        outer
+            .events
+            .extend(clip_ring(solid, face, (wire, hole), anchor, direction, tol)?.events);
     }
-    outer.events.extend(hole.events);
     outer
         .events
         .sort_by(|a, b| a.parameter.total_cmp(&b.parameter));
-    if outer.events.iter().map(|e| e.wire).collect::<Vec<_>>() != [0, 1, 1, 0] {
-        return Err(Error::Unsupported(
-            "ellipse annulus event order is unresolved",
-        ));
+    if outer.events.first().is_none_or(|event| event.wire != 0)
+        || outer.events.last().is_none_or(|event| event.wire != 0)
+        || outer.events[1..outer.events.len() - 1]
+            .chunks(2)
+            .any(|pair| pair.len() != 2 || pair[0].wire == 0 || pair[0].wire != pair[1].wire)
+    {
+        return Err(Error::Unsupported("ellipse hole event order is unresolved"));
     }
     let budget = tol.length_at_scale(region.rings[0].scale())?;
     for pair in outer.events.windows(2) {
@@ -408,8 +421,8 @@ pub(crate) fn clip(
             ));
         }
     }
-    outer.intervals = [0, 2]
-        .into_iter()
+    outer.intervals = (0..outer.events.len() - 1)
+        .step_by(2)
         .map(|i| PlanarClipInterval {
             parameter_range: [outer.events[i].parameter, outer.events[i + 1].parameter],
             start: outer.events[i].clone(),
@@ -610,7 +623,7 @@ pub fn ellipse_planar_demo_solid(
     slope: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
-    ellipse_cap_fixture(radius, height, slope, tol, None, None)
+    ellipse_cap_fixture(radius, height, slope, tol, None, &[])
 }
 /// Closed half-cylinder fixture with a half-ellipse/straight-diameter cap.
 pub fn half_ellipse_planar_demo_solid(
@@ -636,7 +649,7 @@ pub fn ellipse_segment_planar_demo_solid(
             "ellipse segment fixture requires sweep in (0, pi]",
         ));
     }
-    ellipse_cap_fixture(radius, height, slope, tol, Some(sweep), None)
+    ellipse_cap_fixture(radius, height, slope, tol, Some(sweep), &[])
 }
 /// Closed tube fixture with a complete ellipse outer boundary and concentric hole.
 /// The transverse plane must stay strictly between both source rims.
@@ -659,24 +672,49 @@ pub fn ellipse_eccentric_planar_demo_solid(
     center: [f64; 2],
     tol: GeometryTolerance,
 ) -> Result<Solid> {
-    if !inner_radius.is_finite()
-        || inner_radius <= tol.linear()
-        || !radius.is_finite()
-        || center.iter().any(|x| !x.is_finite())
-        || radius - inner_radius - norm(center) <= 10. * tol.linear()
-    {
-        return Err(Error::InvalidInput(
-            "eccentric ellipse hole requires resolved radii, finite center and strict containment",
-        ));
-    }
-    ellipse_cap_fixture(
+    ellipse_multi_hole_planar_demo_solid(
         radius,
         height,
         slope,
+        &[EllipseCapHole {
+            radius: inner_radius,
+            center,
+        }],
         tol,
-        None,
-        Some((inner_radius, center)),
     )
+}
+/// Source XY circular hole; its oblique section becomes a homothetic ellipse.
+#[derive(Clone, Copy, Debug)]
+pub struct EllipseCapHole {
+    pub radius: f64,
+    pub center: [f64; 2],
+}
+/// Exact oblique cap fixture with up to sixteen disjoint homothetic ellipse holes.
+pub fn ellipse_multi_hole_planar_demo_solid(
+    radius: f64,
+    height: f64,
+    slope: f64,
+    holes: &[EllipseCapHole],
+    tol: GeometryTolerance,
+) -> Result<Solid> {
+    if holes.len() > 16 {
+        return Err(Error::Unsupported(
+            "ellipse cap fixture supports at most sixteen holes",
+        ));
+    }
+    for hole in holes {
+        if !hole.radius.is_finite()
+            || hole.radius <= tol.linear()
+            || !radius.is_finite()
+            || hole.center.iter().any(|x| !x.is_finite())
+            || radius - hole.radius - norm(hole.center) <= 10. * tol.linear()
+        {
+            return Err(Error::InvalidInput(
+                "ellipse holes require resolved radii, finite centers and strict containment",
+            ));
+        }
+    }
+    ellipse_cap_fixture(radius, height, slope, tol, None, holes)
 }
 
 fn ellipse_cap_fixture(
@@ -685,7 +723,7 @@ fn ellipse_cap_fixture(
     slope: f64,
     tol: GeometryTolerance,
     segment_sweep: Option<f64>,
-    inner_radius: Option<(f64, P2)>,
+    holes: &[EllipseCapHole],
 ) -> Result<Solid> {
     if !radius.is_finite()
         || !height.is_finite()
@@ -700,19 +738,20 @@ fn ellipse_cap_fixture(
     let source = extrude_arc_line_region_along(
         &ArcLineRegion {
             origin: Point3::new(0., 0., -height / 2.),
-            holes: inner_radius
-                .map(|(radius, center)| {
-                    vec![[0., PI]
+            holes: holes
+                .iter()
+                .map(|hole| {
+                    [0., PI]
                         .into_iter()
                         .map(|start_angle| PlanarSegment::Arc {
-                            center,
-                            radius,
+                            center: hole.center,
+                            radius: hole.radius,
                             start_angle,
                             sweep: PI,
                         })
-                        .collect()]
+                        .collect()
                 })
-                .unwrap_or_default(),
+                .collect(),
             outer: if let Some(sweep) = segment_sweep {
                 vec![
                     PlanarSegment::Arc {
@@ -774,7 +813,7 @@ fn ellipse_cap_fixture(
             Ok(solid.shell.faces[index].clone())
         })
         .collect::<Result<_>>()?;
-    if sides.len() != if inner_radius.is_some() { 4 } else { 2 } {
+    if sides.len() != 2 * (1 + holes.len()) {
         return Err(Error::InvalidTopology(
             "ellipse fixture has an unexpected side wall count",
         ));
@@ -995,6 +1034,38 @@ pub fn ellipse_eccentric_planar_demo_json(
     };
     ellipse_planar_query_json(&solid, 5, origin - u * 34. + v * offset, u * 2.)
 }
+/// Two differently sized holes at X=-spread and X=+spread; line V offset in mm.
+pub fn ellipse_multi_hole_planar_demo_json(
+    spread: f64,
+    offset: f64,
+    placement: f64,
+) -> Result<String> {
+    if !spread.is_finite() || spread <= 0. || !offset.is_finite() || !placement.is_finite() {
+        return Err(Error::InvalidInput(
+            "multiple ellipse hole demo requires positive spread and finite values",
+        ));
+    }
+    let t = GeometryTolerance::default();
+    let holes = [
+        EllipseCapHole {
+            radius: 5.,
+            center: [-spread, 0.],
+        },
+        EllipseCapHole {
+            radius: 6.,
+            center: [spread, 0.],
+        },
+    ];
+    let solid = ellipse_multi_hole_planar_demo_solid(24., 24., 0.25, &holes, t)?.transformed(
+        Transform::rotation(Vec3::new(1., 2., 3.), placement)?,
+        t.absolute(),
+    )?;
+    let face = 7;
+    let Surface::Plane { origin, u, v } = solid.shell.faces[face].surface else {
+        unreachable!()
+    };
+    ellipse_planar_query_json(&solid, face, origin - u * 34. + v * offset, u * 2.)
+}
 fn ellipse_planar_query_json(
     solid: &Solid,
     face: usize,
@@ -1099,6 +1170,20 @@ mod tests {
         );
         assert_eq!(shifted.location([8.7, -2.]).unwrap(), PointLocation::Inside);
         assert!(shifted.within_boundary([9.6, -2.], 1e-5).unwrap());
+        let mut multiple = face(0.2, -0.6);
+        multiple.wires.push(Wire {
+            coedges: coedges(0.2, false, 0.6),
+        });
+        let region = ring(&multiple, tolerance).unwrap();
+        assert_eq!(
+            region.location(outer.center).unwrap(),
+            PointLocation::Inside
+        );
+        for x in [9.4, 10.6] {
+            assert_eq!(region.location([x, -2.]).unwrap(), PointLocation::Outside);
+        }
+        multiple.wires[2].coedges = coedges(0.6, false, 0.6);
+        assert!(ring(&multiple, tolerance).is_err());
         for (ratio, offset) in [(0.5, 2.), (1., 0.), (1. - 1e-9, 0.), (1.1, 0.)] {
             assert!(ring(&face(ratio, offset), tolerance).is_err());
         }
