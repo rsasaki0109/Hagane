@@ -232,3 +232,7 @@ and incompatible-radius rejection, positive triangle winding, closed mesh seams
 and cylindrical sagitta. Native/WASM parity and browser controls exercise the
 same periodic-bore fixture. Arbitrary cylinder trims, contact graphs and general
 solid Boolean dispatch remain future work.
+
+Bounded rectangular skew circular walls now support generator subdivision and
+rim refinement alongside planar cap cuts. See [skew subdivision](skew-face-subdivision.md)
+for child drift rebasing, shared edge provenance and its supported domain.

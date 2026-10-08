@@ -177,6 +177,15 @@ browser classification model are tested. Unresolved bounds return explicit
 errors; general trims and self-intersection detection remain unsupported.
 See [skew classification](skew-classification.md).
 
+Bounded skew circular face subdivision now supports generator cuts and rim
+refinement alongside planar cap cuts. Rebased child frames transform drift to
+preserve the exact world translation, shared opposite generators and cap
+pcurves. Signed, placed, tiny, repeated and inward-hole cases are verified,
+including closed meshes, membership and analytic volume/bounds. The twenty-fourth
+solid preset has native/WASM parity and browser slider checks. Full-periodic
+skew rims and arbitrary curved-wall cuts remain unsupported.
+See [skew subdivision](skew-face-subdivision.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.

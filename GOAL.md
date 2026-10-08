@@ -253,5 +253,14 @@ tests cover inverse-sheared material grids with curved holes, both signs,
 placement, normal offsets, combined rim distance, tiny geometry and precision
 rejection. Native/WASM queries and meshes agree; the seventh browser query
 model is a skew plate with a rounded hole. General trims, self-intersection
-detection, curved-face splitting and general curved Booleans remain unsupported.
+detection, arbitrary curved-face splitting and general curved Booleans remain unsupported.
 See [skew classification](docs/skew-classification.md).
+
+Bounded skew circular face subdivision now preserves the physical translation
+when rebasing child angular frames. The direct generator API refines both rims
+and cap wires; planar cap splits also refine skew neighbors, including repeated
+arc crossings and curved holes. Native checks verify child UV/normals, signed
+placed/tiny solids, volume/bounds, membership and closed sagitta-bounded meshes.
+Native/WASM/browser fixtures share the twenty-fourth solid preset. Full-periodic
+skew rim refinement, arbitrary wall cuts and general curved Booleans remain
+unsupported. See [skew subdivision](docs/skew-face-subdivision.md).

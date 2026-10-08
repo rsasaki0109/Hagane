@@ -242,6 +242,7 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        23 => crate::skew_face_subdivision_demo(radius / 32., 0.)?,
         22 => crate::skew_arc_extrusion_demo(14., radius, -24.)?,
         21 => crate::framed_arc_extrusion_demo(radius)?,
         20 => crate::simplified_contact_demo(radius - 16.0)?,

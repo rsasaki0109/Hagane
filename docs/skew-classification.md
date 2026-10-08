@@ -103,7 +103,8 @@ rendering, orbit, sliders and responsive layout.
 
 General nonrectangular circular trim loops, geometric self-intersection
 detection, arbitrary curved-face subdivision, and general curved Booleans
-remain unsupported. There is no new general surface-distance API. Difficult
+remain unsupported. [Bounded generator/cap subdivision](skew-face-subdivision.md)
+is implemented separately. There is no new general surface-distance API. Difficult
 valid inputs can fail explicitly when bounds or ray candidates cannot resolve.
 
 Original implementation: MIT OR Apache-2.0; no added dependencies or OCCT source.

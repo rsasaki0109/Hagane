@@ -34,6 +34,10 @@ mod exports {
         generate(crate::demo_preset_json(preset, radius, chord_error))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_skew_face_subdivision_demo(fraction: f64, placement: f64) -> i32 {
+        generate(crate::skew_face_subdivision_demo_json(fraction, placement))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_skew_arc_extrusion_demo(radius: f64, offset: f64, height: f64) -> i32 {
         generate(crate::skew_arc_extrusion_demo_json(radius, offset, height))
     }

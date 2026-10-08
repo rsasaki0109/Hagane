@@ -177,6 +177,12 @@ try {
  assert.notDeepEqual(skewAfter.positions,skewBefore.positions);assert.notDeepEqual(skewAfter.normals,skewBefore.normals);
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
  if(process.argv.includes('--capture-skew-arc')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/skew-arc-extrusion.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
+ await page.locator('#preset').selectOption('23');assert.equal(await page.locator('#radius-title').textContent(),'Wall split position');assert.deepEqual(await page.locator('.range-label span').allTextContents(),['25%','75%']);
+ const skewSplitBefore=await page.evaluate(()=>window.haganeDemo.mesh);assert.equal(skewSplitBefore.faces,22);assert.equal(skewSplitBefore.edges,58);
+ await page.locator('#radius').evaluate(e=>{e.value=24;e.dispatchEvent(new Event('input'));});const skewSplitAfter=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(skewSplitAfter.volume-skewSplitBefore.volume)<1e-8);assert.notDeepEqual(skewSplitAfter.positions,skewSplitBefore.positions);assert.equal(skewSplitAfter.faces,22);assert.equal(skewSplitAfter.edges,58);
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+ if(process.argv.includes('--capture-skew-face-split')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/skew-face-subdivision.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
+
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
  await page.locator('#preset').selectOption('4');
@@ -259,5 +265,5 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: circular face trim selection, original edge parameters, exact boundary overlap, ambiguity recovery and selected face meshes passed.');
  console.log('Browser: skew surface secants, tangent, empty, forward/reverse generator, ambiguity recovery, slider, marker lines, orbit and responsive layout passed.');
- console.log('Browser: 23 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 24 B-rep presets including skew circular face subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

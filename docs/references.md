@@ -13,6 +13,10 @@ claim compatibility with its data structures or APIs.
   [Euler characteristic](https://en.wikipedia.org/wiki/Euler_characteristic).
 - Analytic surface parametrization and oriented normals: standard Cartesian
   plane/cylinder equations; [Parametric surface](https://en.wikipedia.org/wiki/Parametric_surface).
+- Skew circular face subdivision: orthonormal basis change and circular angular
+  addition preserve the physical translation while rebasing child parameters.
+  Rim/coedge refinement uses shared B-rep traversal and affine parameter
+  substitution; implemented independently without new dependencies.
 - Rigid coordinate frames and rotation: orthonormal basis projection and
   [Rodrigues' rotation formula](https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula).
   Implemented from the mathematical formulas, without reference source code.

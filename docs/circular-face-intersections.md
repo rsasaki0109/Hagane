@@ -91,7 +91,8 @@ invalid topology and lost-radius rejection. Native/WASM checks compare queries,
 provenance and meshes; browser checks exercise selected-face rendering, boundary
 selection, ambiguity and recovery alongside the existing solid/surface demos.
 
-[Skew-solid classification](skew-classification.md) is now implemented separately.
+[Skew-solid classification](skew-classification.md) and
+[bounded face subdivision](skew-face-subdivision.md) are now implemented separately.
 General nonrectangular circular trims, arbitrary curved-face subdivision and
 general Booleans remain unsupported. This is a
 face-intersection prerequisite, not a general Boolean implementation.

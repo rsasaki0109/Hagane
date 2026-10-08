@@ -240,6 +240,138 @@ fn rotate_arc_frame(frame: Frame3, t: f64, tol: Tolerance) -> Result<Frame3> {
         tol,
     )
 }
+
+// Rebase angular coordinates while preserving the physical translation vector.
+fn rotate_circular_surface(surface: Surface, angle: f64, tol: Tolerance) -> Result<Surface> {
+    Ok(match surface {
+        Surface::FramedCylinder {
+            frame,
+            radius,
+            height,
+        } => Surface::FramedCylinder {
+            frame: rotate_arc_frame(frame, angle, tol)?,
+            radius,
+            height,
+        },
+        Surface::ExtrudedCircle {
+            frame,
+            radius,
+            height,
+            drift,
+        } => {
+            let rotated = rotate_arc_frame(frame, angle, tol)?;
+            let world = frame.vector(Vec3::new(drift[0], drift[1], 0.));
+            let local = rotated.local_vector(world);
+            Surface::ExtrudedCircle {
+                frame: rotated,
+                radius,
+                height,
+                drift: [local.x, local.y],
+            }
+        }
+        _ => {
+            return Err(Error::Unsupported(
+                "angular rebasing requires a framed circular wall",
+            ))
+        }
+    })
+}
+/// Two rectangular wall children sharing an original-geometry generator edge.
+#[derive(Clone, Debug)]
+pub struct CircularFaceSubdivision {
+    pub solid: Solid,
+    pub faces: [usize; 2],
+    pub generator_edge: usize,
+    pub rim_vertices: [usize; 2],
+}
+/// Split a bounded circular wall at its local angle, preserving the closed solid.
+/// Supports rectangular framed cylinders and skew circular translation walls
+/// with matching bounded arc rims. Both cap wires are refined atomically.
+/// Full-periodic rims, near-endpoint cuts and general trim loops are unsupported.
+pub fn subdivide_circular_face(
+    solid: &Solid,
+    face_index: usize,
+    angle: f64,
+    tol: GeometryTolerance,
+) -> Result<CircularFaceSubdivision> {
+    solid.validate(tol.absolute())?;
+    let wall = solid
+        .shell
+        .faces
+        .get(face_index)
+        .ok_or(Error::InvalidInput(
+            "circular subdivision face index is out of range",
+        ))?;
+    let (radius, height, drift) = match wall.surface {
+        Surface::FramedCylinder { radius, height, .. } => (radius, height, [0., 0.]),
+        Surface::ExtrudedCircle {
+            radius,
+            height,
+            drift,
+            ..
+        } => (radius, height, drift),
+        _ => {
+            return Err(Error::Unsupported(
+                "circular subdivision requires bounded framed circular walls",
+            ))
+        }
+    };
+    let span = wall.cylinder_span()?;
+    if !angle.is_finite() || angle <= 0. || angle >= span {
+        return Err(Error::InvalidInput(
+            "subdivision angle must be finite and strictly inside the face",
+        ));
+    }
+    let budget = tol.length_at_scale(radius.max(height * drift[0].hypot(drift[1]).hypot(1.)))?;
+    let guard = 10. * budget * (1. + drift[0].hypot(drift[1]));
+    let chord = |u: f64| 2. * radius * (u / 2.).sin().abs();
+    if !guard.is_finite() || chord(angle).min(chord(span - angle)) <= guard {
+        return Err(Error::Unsupported(
+            "circular subdivision is unresolved near an angular endpoint",
+        ));
+    }
+    let volume = solid.volume()?;
+    let bottom = wall.wires[0].coedges[0].edge;
+    if !matches!(solid.edges[bottom].curve, Curve::Arc { .. })
+        || !matches!(
+            solid.edges[wall.wires[0].coedges[2].edge].curve,
+            Curve::Arc { .. }
+        )
+    {
+        return Err(Error::Unsupported(
+            "circular subdivision requires matching bounded arc rims",
+        ));
+    }
+    let mut output = solid.clone();
+    let second = output.shell.faces.len();
+    let bv = split_boundary_edge(
+        &mut output,
+        bottom,
+        angle,
+        solid.edges[bottom].curve.evaluate(angle),
+        tol.absolute(),
+    )?;
+    let generator_edge = output.shell.faces[face_index].wires[0].coedges[1].edge;
+    let rim_vertices = output.edges[generator_edge].vertices;
+    if rim_vertices[0] != bv {
+        return Err(Error::InvalidTopology(
+            "circular subdivision lost its generator provenance",
+        ));
+    }
+    output.validate(tol.absolute())?;
+    if (output.volume()? - volume).abs() > volume.abs() * 1e-10 {
+        return Err(Error::InvalidTopology(
+            "circular subdivision changes analytic volume",
+        ));
+    }
+    Ok(CircularFaceSubdivision {
+        solid: output,
+        faces: [face_index, second],
+        generator_edge,
+        rim_vertices,
+    })
+}
+
 // Rim subdivision updates planar cap uses. Cylinder uses are replaced by two
 // checked rectangles below, so their unwrapped UV coordinates never get reset
 // accidentally while the 3D arc's angular parameter restarts at zero.
@@ -376,15 +508,18 @@ fn split_boundary_edge(
     let fi = walls[0];
     let wall = s.shell.faces[fi].clone();
     let span = wall.cylinder_span()?;
-    let (frame, radius, height) = match wall.surface {
+    let height = match wall.surface {
         Surface::FramedCylinder {
-            frame,
-            radius,
+            frame: _,
+            radius: _,
             height,
-        } => (frame, radius, height),
+        }
+        | Surface::ExtrudedCircle {
+            radius: _, height, ..
+        } => height,
         _ => {
             return Err(Error::Unsupported(
-                "bounded rim subdivision requires a framed cylinder",
+                "bounded rim subdivision requires a framed circular wall",
             ))
         }
     };
@@ -424,20 +559,12 @@ fn split_boundary_edge(
         },
     });
     s.shell.faces[fi] = Face {
-        surface: Surface::FramedCylinder {
-            frame,
-            radius,
-            height,
-        },
+        surface: wall.surface.clone(),
         orientation: wall.orientation,
         wires: vec![cylinder_rectangle(bottom, top, generator, left, t, height)],
     };
     s.shell.faces.push(Face {
-        surface: Surface::FramedCylinder {
-            frame: rotate_arc_frame(frame, t, tol)?,
-            radius,
-            height,
-        },
+        surface: rotate_circular_surface(wall.surface, t, tol)?,
         orientation: wall.orientation,
         wires: vec![cylinder_rectangle(
             bnew,
@@ -924,4 +1051,41 @@ fn refine_periodic_wall(s: &mut Solid, edge: usize, theta: f64, tol: Tolerance) 
         }
     }
     Ok(())
+}
+
+/// Demo: split a skew rounded plate cap, then split a remaining circular wall.
+pub fn skew_face_subdivision_demo(fraction: f64, placement: f64) -> Result<Solid> {
+    if !fraction.is_finite() || fraction <= 0. || fraction >= 1. || !placement.is_finite() {
+        return Err(Error::InvalidInput(
+            "expected an interior angular fraction and finite placement",
+        ));
+    }
+    let tol = GeometryTolerance::default();
+    let solid = crate::classification::curved_classification_solid(5)?;
+    let split = split_planar_face(
+        &solid,
+        0,
+        Point3::new(0., 22., -12.),
+        Vec3::new(1., 0., 0.),
+        tol,
+    )?
+    .solid;
+    let fi = split
+        .shell
+        .faces
+        .iter()
+        .position(|f| matches!(f.surface, Surface::ExtrudedCircle { .. }))
+        .ok_or(Error::InvalidTopology(
+            "skew subdivision fixture has no circular wall",
+        ))?;
+    let angle = split.shell.faces[fi].cylinder_span()? * fraction;
+    let result = subdivide_circular_face(&split, fi, angle, tol)?.solid;
+    result.transformed(
+        Transform::rotation(Vec3::new(1., 2., 3.), placement)?,
+        tol.absolute(),
+    )
+}
+/// Exact closed B-rep-derived display mesh, shared by native and WASM demos.
+pub fn skew_face_subdivision_demo_json(fraction: f64, placement: f64) -> Result<String> {
+    skew_face_subdivision_demo(fraction, placement)?.mesh_json(0.05, Tolerance::default())
 }
