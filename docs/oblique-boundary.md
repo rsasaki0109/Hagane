@@ -119,10 +119,10 @@ The cutting plane's height range is checked analytically, including interior
 extrema; endpoint-only checks cannot accept a hidden rim crossing. The plane
 normal is normalized robustly, including very small/large finite scales.
 
-**Queries on the new harmonic trims are not implemented yet.** Existing
-rectangular circular-face intersections, solid point classification and
-rectangular generator subdivision reject this trim domain explicitly, including
-queries beyond the bounding box. General curved Boolean operations, arbitrary
+**Solid point classification on the new harmonic trims remains unsupported.**
+[Line/face queries](harmonic-face-intersections.md) now support these bands.
+Solid point classification and rectangular generator subdivision still reject
+this trim domain explicitly, including classification beyond the bounding box. General curved Boolean operations, arbitrary
 partial plane sections and creation of capped separated halves remain future
 work. Source solids and previous rectangular operations retain their support.
 

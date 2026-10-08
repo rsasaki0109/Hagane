@@ -146,6 +146,34 @@ pub(crate) fn exact_line_relation(
         ExactLineRelation::Skew
     })
 }
+/// Certify a line lies in the plane spanned by stored ellipse axes. Dyadic
+/// differences avoid rounded center-plus-axis points and overflowing subtraction.
+pub(crate) fn exact_line_in_ellipse_plane(
+    anchor: [f64; 3],
+    direction: [f64; 3],
+    center: [f64; 3],
+    cosine: [f64; 3],
+    sine: [f64; 3],
+) -> Result<bool> {
+    if anchor
+        .into_iter()
+        .chain(direction)
+        .chain(center)
+        .chain(cosine)
+        .chain(sine)
+        .any(|x| !x.is_finite())
+    {
+        return Err(Error::InvalidInput(
+            "ellipse incidence requires finite values",
+        ));
+    }
+    let a = cosine.map(Integer::from_f64);
+    let b = sine.map(Integer::from_f64);
+    let d = direction.map(Integer::from_f64);
+    let offset =
+        std::array::from_fn(|i| Integer::from_f64(anchor[i]).sub(&Integer::from_f64(center[i])));
+    Ok(triple(&a, &b, &d) == 0 && triple(&a, &b, &offset) == 0)
+}
 pub(crate) fn exact_plane_support(
     a: [f64; 3],
     u: [f64; 3],

@@ -4,7 +4,8 @@
 
 `intersect_line_circular_face(&solid, face_index, anchor, direction, policy)`
 intersects an infinite line with an actual B-rep face, including its angular trim.
-It supports rectangular normal-cylinder and skew circular-translation walls.
+It supports rectangular normal-cylinder and skew circular-translation walls,
+and [harmonic height trims](harmonic-face-intersections.md) from oblique sections.
 The complete solid is validated before querying; no display mesh participates.
 
 ```rust
@@ -94,7 +95,8 @@ selection, ambiguity and recovery alongside the existing solid/surface demos.
 [Skew-solid classification](skew-classification.md) and
 [bounded face subdivision](skew-face-subdivision.md) are now implemented separately.
 [Oblique transverse sections](oblique-boundary.md) use harmonic height trims
-which this rectangular intersection API explicitly rejects.
+which this API now queries with analytic height clipping and certified ellipse
+boundary provenance; see [harmonic face queries](harmonic-face-intersections.md).
 General nonrectangular circular trims, arbitrary curved-face subdivision and
 general Booleans remain unsupported. This is a
 face-intersection prerequisite, not a general Boolean implementation.

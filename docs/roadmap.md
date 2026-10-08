@@ -191,15 +191,24 @@ and harmonic height pcurves, preserving closed shared topology and analytical
 volume. Wall flux quadrature, signed/placed/tiny geometry, shared mesh sampling,
 ellipse error and rejection of rim contacts/partial crossings are verified.
 Native/WASM/browser contours and meshes share the twenty-fifth solid fixture.
-Periodic rims, repeated band cuts and queries on harmonic trims remain unsupported.
+Periodic rims, repeated band cuts and solid classification on harmonic trims remain unsupported.
 See [oblique subdivision](oblique-boundary.md).
+
+Harmonic circular face line intersections now clip supporting roots and bounded
+generator intervals against analytic height graphs. Exact dyadic ellipse-plane
+incidence retains shared edge parameters; uncertified near-boundary inputs fail.
+Native tests cover tangency, corners, reversal, tiny skew geometry and placement.
+Native/WASM fixtures and browser band selection share the actual subdivided
+B-rep. Harmonic solid classification, arbitrary trim loops, repeated band cuts
+and general curved Booleans remain unsupported. See
+[harmonic face queries](harmonic-face-intersections.md).
 
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Extend intersection/classification to harmonic height trims from oblique
+- Extend solid classification to harmonic height trims from oblique
   plane subdivision; support partial/rim contacts and capped solid partitions.
 - Extend general trim clipping and subdivision to skew circular translation
   surfaces; broaden classification beyond rectangular trims and support arbitrary cylindrical

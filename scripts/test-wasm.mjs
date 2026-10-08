@@ -301,3 +301,22 @@ for(const slope of [3,-3,NaN,Infinity])assert.equal(obliqueBoundary(slope).statu
 assert.equal(obliqueBoundary(0.1,NaN).status,1);assert.equal(obliqueBoundary(0.1,Infinity).status,1);assert.equal(obliqueBoundary(0.1).status,0);
 assert.equal(preset(24,14,0).status,1);assert.equal(preset(24,14).status,0);
 console.log('Oblique plane boundary subdivision: exact ellipse sections, bounded shared geometry, volume, native/WASM mesh/contour parity, invalid cuts and recovery passed.');
+function harmonicFace(selection,mode,offset,placement=0){
+ const status=k.hagane_harmonic_face_intersections_demo(selection,mode,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));
+ return {status,result};
+}
+for(const placement of [0,0.37])for(const selection of [0,1])for(const [mode,offset] of (placement===0?[[0,14],[1,0],[2,0],[3,0]]:[[0,14],[3,0]])){
+ const {status,result}=harmonicFace(selection,mode,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','harmonic_face_intersections','--',String(selection),String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ assert.equal(result.intersection.kind,native.intersection.kind);
+ for(const field of ['positions','normals']){assert.equal(result.display_mesh[field].length,native.display_mesh[field].length);native.display_mesh[field].forEach((v,i)=>assert.ok(Math.abs(v-result.display_mesh[field][i])<1e-9));}
+ const points=result.intersection.endpoints??result.intersection.hits;
+ const reference=native.intersection.endpoints??native.intersection.hits;
+ assert.equal(points.length,reference.length);points.forEach((p,i)=>assert.ok(Math.abs(p.parameter-reference[i].parameter)<1e-10));
+ if(mode===0){assert.equal(points.length,1);assert.ok(Math.abs(points[0].parameter-(40+(selection===0?-1:1)*Math.sqrt(576-196))/2)<1e-10);}
+ if(mode===3){assert.equal(points.length,1);assert.equal(points[0].boundaries.length,1);assert.ok(Math.abs(points[0].boundaries[0].edge_parameter-Math.PI/2)<1e-10);}
+}
+for(const args of [[0,1,0,0.37],[1,2,0,0.37],[2,0,14,0],[0,4,0,0],[0,0,NaN,0],[0,0,14,Infinity],[0,3,1e-9,0],[1,3,-1e-9,0]])assert.equal(harmonicFace(...args).status,1);
+assert.equal(harmonicFace(0,3,0).status,0);
+console.log('Harmonic face queries: native/WASM roots, ellipse provenance, placement, errors and recovery passed.');

@@ -273,5 +273,26 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: circular face trim selection, original edge parameters, exact boundary overlap, ambiguity recovery and selected face meshes passed.');
  console.log('Browser: skew surface secants, tangent, empty, forward/reverse generator, ambiguity recovery, slider, marker lines, orbit and responsive layout passed.');
+ await page.setViewportSize({width:1440,height:900});
+ for(const scope of ['band0','band1']){
+  await page.locator('#scope').selectOption(scope);await page.locator('#probe').selectOption('crossing');
+  assert.equal(await page.locator('#hits').textContent(),'1');
+  assert.ok(await page.evaluate(()=>window.haganeIntersections.data.display_mesh.positions.length>0));
+  await page.locator('#probe').selectOption('generator');assert.equal(await page.locator('#kind').textContent(),'generator overlap');
+ }
+ await page.locator('#probe').selectOption('ellipse');
+ const lower=await page.evaluate(()=>window.haganeIntersections.data.intersection.hits[0]);
+ assert.equal(await page.locator('#hits').textContent(),'1');assert.equal(lower.boundaries.length,1);
+ await page.locator('#scope').selectOption('band1');
+ const upper=await page.evaluate(()=>window.haganeIntersections.data.intersection.hits[0]);
+ assert.equal(upper.boundaries[0].edge,lower.boundaries[0].edge);
+ assert.ok(Math.abs(upper.boundaries[0].edge_parameter-Math.PI/2)<1e-10);
+ await page.locator('#offset').evaluate(e=>{e.step='any';e.value=1e-9;e.dispatchEvent(new Event('input'));});
+ assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('ellipse');await page.locator('#wire').uncheck();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-harmonic-face-intersections'))await page.screenshot({path:new URL('../docs/harmonic-face-intersections.png',import.meta.url).pathname});
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
+ assert.deepEqual(errors,[]);
+ console.log('Browser: harmonic wall bands, clipped roots/generators, shared ellipse provenance, ambiguity and recovery passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

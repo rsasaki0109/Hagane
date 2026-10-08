@@ -58,6 +58,7 @@ cargo run --locked --example part -- 7
 cargo run --locked --example arc_face_split
 cargo run --locked --example skew_face_subdivision -- 0.4375 0
 cargo run --locked --example oblique_boundary -- 0.13 0
+cargo run --locked --example harmonic_face_intersections -- 0 0 14 0
 cargo run --locked --example part -- 8
 cargo run --locked --example cut_graph
 cargo run --locked --example part -- 9
@@ -218,7 +219,10 @@ fabricate the demo image.
 - [Oblique boundary subdivision](docs/oblique-boundary.md) with exact ellipse
   section edges, harmonic wall pcurves, analytic volume and conforming meshes.
   Transverse planes must stay strictly between complete bounded circular rims;
-  queries on the new harmonic trim domain remain explicitly unsupported.
+  solid classification on the new harmonic trim domain remains explicitly unsupported.
+- [Harmonic circular face line queries](docs/harmonic-face-intersections.md):
+  analytic height clipping, bounded generator overlaps, certified shared ellipse
+  contacts and browser selection of faces above/below an oblique section.
 - [Solid point classification](docs/classification.md) for planar polygon/circle
   and bounded-arc trims and rectangular partial/full cylinder or skew circular translation walls, with Euclidean boundary bands and two
   checked independent rays. [Cylinder/tube/bore queries](docs/curved-classification.md),
