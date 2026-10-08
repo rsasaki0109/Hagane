@@ -1,90 +1,114 @@
 # Scoped planar face subdivision
 
-![Actual WASM demo of a split cap, with display tessellation enabled](face-split.png)
+![Actual WASM demo of an arc-cap split and refined cylinder walls](arc-face-split.png)
 
 `split_planar_face` subdivides one planar B-rep face into two faces while
-preserving a closed solid. It updates shared boundary edges and their coedges
-on adjacent faces. The result is a topological refinement of the same shape,
-not a solid cut, mesh operation, union or difference.
+preserving a closed solid. Straight boundary cuts update adjacent planar faces.
+Bounded arc cuts additionally subdivide the neighboring cylinder wall and its
+opposite rim. The result refines topology while preserving geometry and volume;
+it is not a solid cut or mesh Boolean.
 
 ```rust
-use hagane::{BoxSpec, Point3, Vec3, GeometryTolerance, make_box, split_planar_face};
+use hagane::{Point3, Vec3, GeometryTolerance, rounded_rectangle_profile,
+    extrude_arc_line, split_planar_face};
 let tol = GeometryTolerance::default();
-let solid = make_box(BoxSpec {
-    min: Point3::new(-4.0, -3.0, 0.0), size: Vec3::new(8.0, 6.0, 2.0),
-}, tol.absolute())?;
+let profile = rounded_rectangle_profile(
+    Point3::new(0.0, 0.0, 0.0), 12.0, 10.0, 1.0, tol.absolute(),
+)?;
+let solid = extrude_arc_line(&profile, 2.0, tol.absolute())?;
 let split = split_planar_face(&solid, 0,
-    Point3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 0.0, 0.0), tol)?;
+    Point3::new(0.0, 4.5, 0.0), Vec3::new(1.0, 0.0, 0.0), tol)?;
 split.solid.validate(tol.absolute())?;
-assert_eq!(split.solid.shell.faces.len(), 7);
-assert!((split.solid.volume()? - 96.0).abs() < 1e-10);
+assert_eq!(split.solid.shell.faces.len(), 13);
 ```
 
-Run `cargo run --locked --example face_split` for this example or
-`cargo run --locked --example part -- 7` for the browser mesh fixture. Select
-**Split planar face** in the browser. The offset slider moves the new cap
-boundary; **Show tessellation** reveals the boundary and triangulation.
-The fixture has a fixed 7 mm bore, eight faces and eighteen edges, with unchanged
-volume `115200 - pi*49*24`. The same Rust operation executes in WASM.
+Run `cargo run --locked --example arc_face_split` for this example or
+`cargo run --locked --example part -- 8` for the browser fixture. Select
+**Split curved cap** in the browser and enable **Show tessellation**. The cut
+crosses two circular corner rims of an 80×60×24 mm rounded solid with fixed
+24 mm corner radius. Its offset slider ranges from 8 to 24 mm. It has thirteen
+faces and thirty-one edges, with unchanged volume
+`[4800 - (4-pi)*576] * 24`. The same Rust operation executes in WASM.
+
+The earlier straight cap with a fixed bore remains preset 7, with its
+[actual screenshot](face-split.png). Run `cargo run --locked --example face_split`
+for a simple box subdivision.
 
 ## Supported domain
 
-- A validated planar face with a straight polygon outer ring. Concavity works
+- A validated planar face with a simple line/arc outer ring. Concavity works
   when the line produces exactly one interior interval and two proper crossings
-  on distinct outer edges.
-- Holes may be full circles or straight polygons. The cut must not cross or
-  touch a hole. Each unchanged hole wire is assigned to exactly one child face;
-  circular geometry and shared wall edges remain analytic.
-- Split boundary edges must have planar neighboring faces with affine/circular
-  trims. Neighbors containing bounded arc trims, curved neighbors and partial
-  cylinder boundaries remain unsupported.
-- Both subedges created at each crossing must exceed ten linear tolerances.
-  Vertex passage, tangencies, boundary overlap, multiple intervals, disjoint
-  cuts, curved outer boundaries and unresolved geometry return errors.
-- Repeated splits, either direction, checked rigid placement and small dimensions
-  work within these conditions. The line must lie in the supporting plane under
-  the [clipping contract](face-intersections.md).
+  on **distinct** outer edges.
+- Holes may contain lines, bounded arcs or full circles. The cut must not cross
+  or touch them. Analytic containment assigns each unchanged hole wire to one
+  child; no polygonized boundary is used for ownership.
+- Straight crossed edges require planar neighbors and affine coedge pcurves.
+  Planar neighbors can themselves contain circular or bounded arc trims.
+- Crossed bounded arcs require one framed-cylinder neighbor with its existing
+  four-coedge rectangular UV trim. Both bottom/top rims must be bounded arcs
+  with angular ranges identical to the cylinder span. This operation refines
+  the wall into two rectangles; it does not introduce arbitrary cylinder trims.
+- Both pieces of each split boundary edge, including opposite rims, must have
+  resolvable chord/length beyond ten linear tolerances. Full-circle outer edges
+  must first be represented by bounded arcs; periodic single-circle refinement
+  is not implemented.
+- Vertex passage, tangencies, boundary overlap, multiple intervals, two hits on
+  the same original edge, hole crossings and unresolved geometry return errors.
+- Repeated cuts, reversed direction, top/bottom caps, inward notch walls, checked
+  rigid placement and small dimensions work within these conditions. The line
+  must satisfy the [planar clipping contract](face-intersections.md).
 
 ## Shared topology and parameters
 
-The operation first computes analytic [trim clipping](face-intersections.md).
-It works on a clone, so failures leave the input unchanged. Each boundary event
-creates one shared vertex and replaces its straight edge by two straight
-subedges. The original edge index keeps the first half; the second is appended.
-Every coedge using that edge is updated, including its neighboring face. Reverse
-uses reverse the subedge order. Each affine pcurve is reparameterized to the
-new edge's normalized [0,1] interval.
+The operation computes analytic trim clipping and works on a clone, so failures
+leave the input unchanged. Each straight boundary event creates one vertex and
+two subedges. The original edge index retains the first half; the second is
+appended. Every coedge use is updated, with reverse uses reversing subedge order.
+Affine pcurves are reparameterized to each new edge's normalized [0,1] interval.
 
-The outer wire is partitioned into two directed paths between the cut vertices.
-One new straight cut edge closes both paths with opposite coedge directions.
-Child faces retain the parent's supporting plane and face orientation. Hole
-ownership uses checked point containment in the child polygon trims. Closure,
-shared uses, vertex links, winding, pcurve consistency and positive volume are
-validated before return. Face-integrated volume must agree with the original
-within 1e-10 relative error.
+For an arc event at angular parameter t, both cylinder rims split at that same
+angle. The first subarc keeps its frame and range [0,t]; the second rotates its
+frame's radial axes by t and restarts its angular parameter at zero. Planar arc
+pcurves shift their start angles consistently. No circle is replaced by chords.
 
-`PlanarFaceSplit` returns the new `solid`, both child `faces`, the `cut_edge`
-and `cut_vertices`. The first child replaces the input face index; the second
-is appended. Other original face indices remain stable. The operation introduces
-two vertices, three net edges and one face, preserving the Euler characteristic.
+A new axial generator joins the bottom/top split vertices. The cylinder wall
+becomes two faces sharing that generator with opposite signed uses. Each wall
+retains a four-coedge rectangle starting at u=v=0, with spans t and span-t.
+The second wall's frame rotates by t. The original wall orientation is retained,
+including inward walls. The opposite planar cap receives matching rim subedges,
+even when that cap is not the face selected for subdivision.
 
-Planar B-rep trim validation now permits forward collinear boundary subdivisions
-needed for shared vertices; backtracking, short edges, self-intersection and
-near contacts remain invalid. Profile constructors still reject redundant
-corners. Display triangulation restores straight boundary vertices even on
-caps with circular holes, preserving conformity with neighboring face meshes.
-For mixed bounded-arc caps the existing sampled-boundary restoration remains.
+The selected outer wire partitions into two paths between cut vertices. A new
+straight cut edge closes both paths with opposite coedge directions. Child faces
+retain the parent's plane and orientation. Hole ownership uses analytic line/arc
+classification of the child trims. Closure, shared uses, vertex links, winding,
+pcurves and positive volume are validated before return; face-integrated volume
+must agree with the original within 1e-10 relative error.
+
+`PlanarFaceSplit` returns the new `solid`, both selected-face children in `faces`,
+the `cut_edge` and `cut_vertices`. The first child replaces the selected face;
+the second is appended after any newly refined cylinder faces. Original face
+indices remain stable, though a refined cylinder face now represents its first
+angular portion. For a straight event, V/E increase by 1/1. For an arc event,
+V/E/F increase by 2/3/1. The selected face's chord adds another E/F increase of
+1/1, preserving the Euler characteristic.
+
+Planar B-rep trim validation permits forward straight subdivisions, including
+mixed trims, while profile constructors still reject redundant corners.
+Backtracking, short edges, self-intersection and near contacts remain invalid.
+Display triangulation restores subdivision vertices. Arc cap and refined wall
+sampling use the same subarc counts, preserving mesh seams and the circular
+sagitta bound. Numerical checks remain f64 tolerance checks, not certified
+circular or 3D predicates.
 
 ## Evidence and remaining work
 
-Native tests verify exact box volume/bounds, shared-edge closure, hole ownership,
-conforming oriented display meshes, side-face cuts, repeated/reversed cuts,
-concavity, rigid placement, microscopic dimensions, and rejected curved/contact
-cases. Native/WASM mesh parity and cut-offset/error recovery tests exercise the
-eighth browser preset. Browser tests check the offset label, unchanged volume,
-wireframe rendering, orbit/zoom and the existing demos.
+Native tests cover box/rounded/disk/notch parts, polygon and curved holes,
+analytic volume, top/bottom and repeated/reversed cuts, inward cylinder walls,
+rigid placement, microscopic dimensions, shared pcurves and closed oriented
+meshes. Native/WASM fixture parity and browser offset controls exercise nine
+solid presets. Vertex, tangent, unresolved and same-edge cuts are rejected.
 
-This is a bounded face-splitting implementation. Circular/arc edge subdivision,
-curved face trims, cuts through holes, multiple cut intervals, vertex/tangent
-handling, intersection graphs, sewing and general Boolean operations remain
-future work. No OCCT source or additional dependency is used.
+Cuts through holes, multiple intervals, periodic full-circle subdivision,
+arbitrary curved-face trims, contact graphs, sewing and general Boolean
+operations remain future work. No OCCT source or additional dependency is used.

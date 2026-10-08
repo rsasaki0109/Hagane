@@ -101,7 +101,7 @@ or update the original coedges.
   UV classification uses the existing analytic ray/circle implementation.
 - Cylindrical faces, arbitrary surface trims, coplanar overlays, contact graphs,
   vertex/tangent handling and sewing remain future work.
-  [Scoped polygon face subdivision](face-split.md) uses this clipping API.
+  [Scoped line/arc face subdivision](face-split.md) uses this clipping API.
 
 ## Runnable fixture and verification
 

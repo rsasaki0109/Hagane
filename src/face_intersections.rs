@@ -54,7 +54,7 @@ pub enum PlanarFacesIntersection {
     /// Empty means disjoint trimmed faces; multiple segments preserve holes.
     Segments(Vec<PlanarFaceIntersectionSegment>),
 }
-fn rings(face: &Face) -> Vec<Vec<PlanarSegment>> {
+pub(crate) fn rings(face: &Face) -> Vec<Vec<PlanarSegment>> {
     face.wires
         .iter()
         .map(|wire| {

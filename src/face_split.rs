@@ -11,7 +11,13 @@ pub struct PlanarFaceSplit {
 fn start_vertex(s: &Solid, c: &Coedge) -> usize {
     s.edges[c.edge].vertices[usize::from(!c.forward)]
 }
-fn split_edge(s: &mut Solid, index: usize, t: f64, point: Point3, tol: Tolerance) -> Result<usize> {
+fn split_line_edge(
+    s: &mut Solid,
+    index: usize,
+    t: f64,
+    point: Point3,
+    tol: Tolerance,
+) -> Result<usize> {
     let old = s.edges[index].clone();
     let Curve::Line { a, b } = old.curve else {
         return Err(Error::Unsupported(
@@ -28,14 +34,10 @@ fn split_edge(s: &mut Solid, index: usize, t: f64, point: Point3, tol: Tolerance
             for c in &w.coedges {
                 if c.edge == index
                     && (!matches!(f.surface, Surface::Plane { .. })
-                        || !matches!(c.pcurve, PCurve::Affine { .. })
-                        || f.wires
-                            .iter()
-                            .flat_map(|w| &w.coedges)
-                            .any(|c| matches!(c.pcurve, PCurve::Arc { .. })))
+                        || !matches!(c.pcurve, PCurve::Affine { .. }))
                 {
                     return Err(Error::Unsupported(
-                        "split edge neighbors require planar affine/circular trims",
+                        "straight split edge neighbors require planar affine trims",
                     ));
                 }
             }
@@ -90,9 +92,9 @@ fn split_edge(s: &mut Solid, index: usize, t: f64, point: Point3, tol: Tolerance
     }
     Ok(vertex)
 }
-/// Splits a planar polygon face along one proper interior interval. Exactly two
-/// crossings on distinct outer straight edges are required. Holes may be full
-/// circles or polygons but cannot be crossed. Neighboring edge uses are split
+/// Splits a planar line/arc face along one proper interior interval. Exactly two
+/// crossings on distinct outer edges are required. Holes cannot be crossed.
+/// Arc cuts refine their rectangular cylinder walls and opposite rims. Edge uses are split
 /// and reparameterized atomically on a clone; unsupported inputs return errors.
 pub fn split_planar_face(
     solid: &Solid,
@@ -103,18 +105,14 @@ pub fn split_planar_face(
 ) -> Result<PlanarFaceSplit> {
     let clip = clip_line_to_planar_face(solid, face_index, anchor, direction, tol)?;
     let face = &solid.shell.faces[face_index];
-    if face
-        .wires
-        .iter()
-        .flat_map(|w| &w.coedges)
-        .any(|c| matches!(c.pcurve, PCurve::Arc { .. }))
-        || face.wires[0]
-            .coedges
-            .iter()
-            .any(|c| !matches!(solid.edges[c.edge].curve, Curve::Line { .. }))
-    {
+    if face.wires[0].coedges.iter().any(|c| {
+        matches!(
+            solid.edges[c.edge].curve,
+            Curve::Circle { .. } | Curve::FramedCircle { .. }
+        )
+    }) {
         return Err(Error::Unsupported(
-            "face splitting supports polygon outer trims and polygon/full-circle holes",
+            "split circular outer wires into bounded arcs before face subdivision",
         ));
     }
     if clip.events.len() != 2
@@ -128,14 +126,14 @@ pub fn split_planar_face(
     }
     let original_volume = solid.volume()?;
     let mut s = solid.clone();
-    let va = split_edge(
+    let va = split_boundary_edge(
         &mut s,
         clip.events[0].edge,
         clip.events[0].edge_parameter,
         clip.events[0].point,
         tol.absolute(),
     )?;
-    let vb = split_edge(
+    let vb = split_boundary_edge(
         &mut s,
         clip.events[1].edge,
         clip.events[1].edge_parameter,
@@ -182,14 +180,18 @@ pub fn split_planar_face(
     a.push(chord(false));
     let mut b = path(ib, ia);
     b.push(chord(true));
-    let polygon = |coedges: &[Coedge]| {
-        coedges
-            .iter()
-            .map(|c| c.pcurve.evaluate(if c.forward { 0.0 } else { 1.0 }))
-            .collect::<Vec<_>>()
+    let analytic_ring = |coedges: &[Coedge]| {
+        crate::face_intersections::rings(&Face {
+            surface: face.surface.clone(),
+            orientation: face.orientation,
+            wires: vec![Wire {
+                coedges: coedges.to_vec(),
+            }],
+        })
+        .remove(0)
     };
-    let ap = polygon(&a);
-    let bp = polygon(&b);
+    let ap = analytic_ring(&a);
+    let bp = analytic_ring(&b);
     let mut aw = vec![Wire { coedges: a }];
     let mut bw = vec![Wire { coedges: b }];
     for hole in &face.wires[1..] {
@@ -197,8 +199,8 @@ pub fn split_planar_face(
         let range = s.edges[c.edge].curve.range();
         let witness = c.pcurve.evaluate(range[usize::from(!c.forward)]);
         match (
-            locate_point_in_polygon(witness, &ap)?,
-            locate_point_in_polygon(witness, &bp)?,
+            crate::mixed::point_location(witness, &ap, tol.absolute())?,
+            crate::mixed::point_location(witness, &bp, tol.absolute())?,
         ) {
             (PointLocation::Inside, PointLocation::Outside) => aw.push(hole.clone()),
             (PointLocation::Outside, PointLocation::Inside) => bw.push(hole.clone()),
@@ -228,4 +230,252 @@ pub fn split_planar_face(
         cut_edge: cut,
         cut_vertices: [va, vb],
     })
+}
+
+fn rotate_arc_frame(frame: Frame3, t: f64, tol: Tolerance) -> Result<Frame3> {
+    let [u, v, w] = frame.axes();
+    Frame3::new(
+        frame.origin(),
+        [u * t.cos() + v * t.sin(), v * t.cos() - u * t.sin(), w],
+        tol,
+    )
+}
+// Rim subdivision updates planar cap uses. Cylinder uses are replaced by two
+// checked rectangles below, so their unwrapped UV coordinates never get reset
+// accidentally while the 3D arc's angular parameter restarts at zero.
+fn split_arc_rim(s: &mut Solid, index: usize, t: f64, tol: Tolerance) -> Result<(usize, usize)> {
+    let old = s.edges[index].clone();
+    let Curve::Arc {
+        frame,
+        radius,
+        sweep,
+    } = old.curve
+    else {
+        return Err(Error::Unsupported(
+            "cylinder rim refinement requires bounded circular arcs",
+        ));
+    };
+    let point = old.curve.evaluate(t);
+    if t <= 0.0
+        || t >= sweep
+        || radius * t <= 10.0 * tol.linear
+        || radius * (sweep - t) <= 10.0 * tol.linear
+        || (point - old.curve.evaluate(0.0)).norm() <= 10.0 * tol.linear
+        || (point - old.curve.evaluate(sweep)).norm() <= 10.0 * tol.linear
+    {
+        return Err(Error::Unsupported(
+            "arc subedges are unresolved at model tolerance",
+        ));
+    }
+    let vertex = s.vertices.len();
+    s.vertices.push(Vertex { point });
+    let new = s.edges.len();
+    s.edges[index] = Edge {
+        vertices: [old.vertices[0], vertex],
+        curve: Curve::Arc {
+            frame,
+            radius,
+            sweep: t,
+        },
+    };
+    s.edges.push(Edge {
+        vertices: [vertex, old.vertices[1]],
+        curve: Curve::Arc {
+            frame: rotate_arc_frame(frame, t, tol)?,
+            radius,
+            sweep: sweep - t,
+        },
+    });
+    for f in &mut s.shell.faces {
+        if !matches!(f.surface, Surface::Plane { .. }) {
+            continue;
+        }
+        for w in &mut f.wires {
+            let mut coedges = Vec::new();
+            for c in &w.coedges {
+                if c.edge != index {
+                    coedges.push(c.clone());
+                    continue;
+                }
+                let PCurve::Arc {
+                    center,
+                    radius,
+                    start_angle,
+                    sweep,
+                } = c.pcurve
+                else {
+                    return Err(Error::Unsupported(
+                        "planar arc split requires angular arc pcurves",
+                    ));
+                };
+                let a = Coedge {
+                    edge: index,
+                    forward: c.forward,
+                    pcurve: PCurve::Arc {
+                        center,
+                        radius,
+                        start_angle,
+                        sweep: t,
+                    },
+                };
+                let b = Coedge {
+                    edge: new,
+                    forward: c.forward,
+                    pcurve: PCurve::Arc {
+                        center,
+                        radius,
+                        start_angle: (start_angle + t).rem_euclid(std::f64::consts::TAU),
+                        sweep: sweep - t,
+                    },
+                };
+                if c.forward {
+                    coedges.extend([a, b]);
+                } else {
+                    coedges.extend([b, a]);
+                }
+            }
+            w.coedges = coedges;
+        }
+    }
+    Ok((vertex, new))
+}
+fn split_boundary_edge(
+    s: &mut Solid,
+    index: usize,
+    t: f64,
+    point: Point3,
+    tol: Tolerance,
+) -> Result<usize> {
+    if matches!(s.edges[index].curve, Curve::Line { .. }) {
+        return split_line_edge(s, index, t, point, tol);
+    }
+    if !matches!(s.edges[index].curve, Curve::Arc { .. }) {
+        return Err(Error::Unsupported(
+            "boundary subdivision requires lines or bounded arcs",
+        ));
+    }
+    let walls: Vec<_> = s
+        .shell
+        .faces
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| {
+            !matches!(f.surface, Surface::Plane { .. })
+                && f.wires
+                    .iter()
+                    .flat_map(|w| &w.coedges)
+                    .any(|c| c.edge == index)
+        })
+        .map(|(i, _)| i)
+        .collect();
+    if walls.len() != 1 {
+        return Err(Error::Unsupported(
+            "arc boundary requires one rectangular cylindrical neighbor",
+        ));
+    }
+    let fi = walls[0];
+    let wall = s.shell.faces[fi].clone();
+    let span = wall.cylinder_span()?;
+    let (frame, radius, height) = match wall.surface {
+        Surface::FramedCylinder {
+            frame,
+            radius,
+            height,
+        } => (frame, radius, height),
+        _ => {
+            return Err(Error::Unsupported(
+                "bounded rim subdivision requires a framed cylinder",
+            ))
+        }
+    };
+    let c = &wall.wires[0].coedges;
+    let bottom = c[0].edge;
+    let right = c[1].edge;
+    let top = c[2].edge;
+    let left = c[3].edge;
+    if index != bottom && index != top {
+        return Err(Error::Unsupported("only cylinder rim arcs can be refined"));
+    }
+    if !matches!(s.edges[bottom].curve, Curve::Arc { .. })
+        || !matches!(s.edges[top].curve, Curve::Arc { .. })
+    {
+        return Err(Error::Unsupported(
+            "both cylinder rims must use bounded arcs",
+        ));
+    }
+    for index in [bottom, top] {
+        let Curve::Arc { sweep, .. } = s.edges[index].curve else {
+            unreachable!()
+        };
+        if sweep != span {
+            return Err(Error::Unsupported(
+                "cylinder refinement requires identical angular domains on both rim edges",
+            ));
+        }
+    }
+    let (bv, bnew) = split_arc_rim(s, bottom, t, tol)?;
+    let (tv, tnew) = split_arc_rim(s, top, t, tol)?;
+    let generator = s.edges.len();
+    s.edges.push(Edge {
+        vertices: [bv, tv],
+        curve: Curve::Line {
+            a: s.vertices[bv].point,
+            b: s.vertices[tv].point,
+        },
+    });
+    let rectangle = |bottom, top, right, left, span| Wire {
+        coedges: vec![
+            Coedge {
+                edge: bottom,
+                forward: true,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, 0.0],
+                    direction: [1.0, 0.0],
+                },
+            },
+            Coedge {
+                edge: right,
+                forward: true,
+                pcurve: PCurve::Affine {
+                    origin: [span, 0.0],
+                    direction: [0.0, height],
+                },
+            },
+            Coedge {
+                edge: top,
+                forward: false,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, height],
+                    direction: [1.0, 0.0],
+                },
+            },
+            Coedge {
+                edge: left,
+                forward: false,
+                pcurve: PCurve::Affine {
+                    origin: [0.0, 0.0],
+                    direction: [0.0, height],
+                },
+            },
+        ],
+    };
+    s.shell.faces[fi] = Face {
+        surface: Surface::FramedCylinder {
+            frame,
+            radius,
+            height,
+        },
+        orientation: wall.orientation,
+        wires: vec![rectangle(bottom, top, generator, left, t)],
+    };
+    s.shell.faces.push(Face {
+        surface: Surface::FramedCylinder {
+            frame: rotate_arc_frame(frame, t, tol)?,
+            radius,
+            height,
+        },
+        orientation: wall.orientation,
+        wires: vec![rectangle(bnew, tnew, right, generator, span - t)],
+    });
+    Ok(if index == bottom { bv } else { tv })
 }

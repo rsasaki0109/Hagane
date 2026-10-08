@@ -34,6 +34,11 @@ claim compatibility with its data structures or APIs.
   chord, containment-based hole ownership and affine parameter substitution.
   Implemented independently as B-rep topology operations; no source code or
   additional library is incorporated.
+- Bounded rim/wall refinement: angular parameter translation, rotation of the
+  local circle basis and subdivision of a rectangular cylinder domain along
+  an axial generator. Opposite rim edges and cap pcurves share the subdivision
+  angle. Hole ownership uses analytic line/arc classification. Implemented
+  independently from these formulas/topology operations, with no new dependency.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision

@@ -317,6 +317,13 @@ fn loop_area(segments: &[PlanarSegment]) -> f64 {
     })
 }
 pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Result<()> {
+    validate_mixed_impl(segments, tol, false)
+}
+fn validate_mixed_impl(
+    segments: &[PlanarSegment],
+    tol: Tolerance,
+    subdivisions: bool,
+) -> Result<()> {
     Tolerance::new(tol.linear)?;
     if segments.len() < 2 || segments.len() > 1024 {
         return Err(Error::Unsupported(
@@ -387,7 +394,9 @@ pub(crate) fn validate_mixed(segments: &[PlanarSegment], tol: Tolerance) -> Resu
         ) {
             let length = distance(a.evaluate(0.0), a.evaluate(1.0))
                 .min(distance(b.evaluate(0.0), b.evaluate(1.0)));
-            if incoming.cross(outgoing).norm() * length <= tol.linear {
+            if incoming.cross(outgoing).norm() * length <= tol.linear
+                && (!subdivisions || incoming.dot(outgoing) <= 0.0)
+            {
                 return Err(Error::InvalidInput(
                     "merge redundant or near-collinear straight corners",
                 ));
@@ -581,6 +590,19 @@ fn separation_budget(a: &[PlanarSegment], b: &[PlanarSegment], tol: Tolerance) -
     tol.linear + 64.0 * f64::EPSILON * scale
 }
 pub(crate) fn validate_mixed_region(loops: &[Vec<PlanarSegment>], tol: Tolerance) -> Result<()> {
+    validate_mixed_region_impl(loops, tol, false)
+}
+pub(crate) fn validate_mixed_region_trim(
+    loops: &[Vec<PlanarSegment>],
+    tol: Tolerance,
+) -> Result<()> {
+    validate_mixed_region_impl(loops, tol, true)
+}
+fn validate_mixed_region_impl(
+    loops: &[Vec<PlanarSegment>],
+    tol: Tolerance,
+    subdivisions: bool,
+) -> Result<()> {
     Tolerance::new(tol.linear)?;
     if loops.is_empty() || loops.len() > 257 || loops.iter().map(Vec::len).sum::<usize>() > 4096 {
         return Err(Error::Unsupported(
@@ -588,7 +610,7 @@ pub(crate) fn validate_mixed_region(loops: &[Vec<PlanarSegment>], tol: Tolerance
         ));
     }
     for ring in loops {
-        validate_mixed(ring, tol)?;
+        validate_mixed_impl(ring, tol, subdivisions)?;
     }
     for hole in &loops[1..] {
         if loops_distance(&loops[0], hole)? <= separation_budget(&loops[0], hole, tol)

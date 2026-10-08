@@ -225,7 +225,7 @@ fn concave_single_interval_splits_and_multiple_intervals_are_rejected() {
     .is_err());
 }
 #[test]
-fn polygon_holes_and_unsupported_arc_neighbors_are_checked() {
+fn polygon_holes_and_subdivided_mixed_cap_neighbors_are_checked() {
     let s = extrude_polygon(
         &PolygonProfile {
             origin: Point3::new(0.0, 0.0, 0.0),
@@ -248,12 +248,14 @@ fn polygon_holes_and_unsupported_arc_neighbors_are_checked() {
     let p = rounded_rectangle_profile(Point3::new(0.0, 0.0, 0.0), 12.0, 10.0, 1.0, t().absolute())
         .unwrap();
     let s = extrude_arc_line(&p, 2.0, t().absolute()).unwrap();
-    assert!(split_planar_face(
+    let r = split_planar_face(
         &s,
         2,
         Point3::new(0.0, -5.0, 1.0),
         Vec3::new(0.0, 0.0, 1.0),
-        t()
+        t(),
     )
-    .is_err());
+    .unwrap();
+    r.solid.validate(t().absolute()).unwrap();
+    closed_mesh(&r.solid);
 }

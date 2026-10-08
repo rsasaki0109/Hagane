@@ -50,11 +50,12 @@ Native/WASM fixtures verify analytic intervals, provenance and volume preservati
 Tangent/vertex/overlap/coplanar clipping cases remain unsupported;
 see [face intersections](face-intersections.md).
 
-Scoped planar polygon face subdivision now splits shared boundary edges,
-updates adjacent planar coedges/pcurves, partitions holes and creates two child
-faces around a shared cut edge. Closed topology, volume and bounds are preserved.
-An eighth native/WASM/browser solid fixture exercises the operation. Curved
-boundary cuts and multiple intervals remain unsupported; see
+Scoped planar line/arc face subdivision now splits straight boundaries and
+bounded rims, refines rectangular cylinder walls along shared generators,
+updates opposite caps and assigns curved holes analytically. Top/bottom,
+repeated/reversed and inward-wall cuts preserve closed topology, volume and
+mesh seams. A ninth native/WASM/browser solid fixture exercises curved cap
+splitting. Hole-crossing and multiple intervals remain unsupported; see
 [face subdivision](face-split.md).
 
 ## Next: broaden analytic B-rep operations
@@ -64,7 +65,7 @@ boundary cuts and multiple intervals remain unsupported; see
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Broaden boundary subdivision to curved edges, hole-crossing cuts and multiple
+- Broaden cut topology to hole-crossing cuts, periodic circles and multiple
   intervals; then extend contact handling, surface/surface curves, intersection
   graphs, curved-face splits, sewing and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

@@ -162,7 +162,7 @@ impl Face {
                         }
                         loops.push(segments);
                     }
-                    crate::mixed::validate_mixed_region(&loops, tol)?;
+                    crate::mixed::validate_mixed_region_trim(&loops, tol)?;
                     return Ok(());
                 }
                 use crate::planar::{validate_polygon_trim, validate_region, PlanarLoop};

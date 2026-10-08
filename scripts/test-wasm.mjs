@@ -10,8 +10,8 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18}];
-for(let id=0;id<8;id++){
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31}];
+for(let id=0;id<9;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
  assert.ok(Math.abs(native.volume-wasm.volume)<1e-9);
@@ -25,7 +25,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 8 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 9 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -120,3 +120,8 @@ for(const offset of [0,7,7+1e-9,30,31,NaN,Infinity])assert.equal(preset(7,offset
 assert.equal(preset(7,14,0).status,1);assert.equal(preset(7).status,0);
 assert.notDeepEqual(preset(7,8).result.positions,preset(7,24).result.positions);
 console.log('Face splitting: B-rep subdivision, unchanged volume, cut offsets, errors and recovery passed.');
+for(const offset of [8,14,24,-14]){const {status,result}=preset(8,offset);assert.equal(status,0);assert.equal(result.faces,13);assert.equal(result.edges,31);assert.ok(Math.abs(result.volume-(4800-(4-Math.PI)*576)*24)<1e-8);}
+for(const offset of [6,30,31,NaN,Infinity])assert.equal(preset(8,offset).status,1);
+assert.equal(preset(8,14,0).status,1);assert.equal(preset(8).status,0);
+assert.notDeepEqual(preset(8,8).result.positions,preset(8,24).result.positions);
+console.log('Arc face splitting: shared rims, rectangular cylinder walls, unchanged volume, offsets, errors and recovery passed.');

@@ -273,7 +273,7 @@ fn boxes_separated(a: P2, b: P2, c: P2, d: P2, tolerance: f64) -> bool {
 /// A coarse approximation must not move a hole outside or create a crossing.
 pub(crate) fn validate_sampled_region(loops: &[Vec<P2>], tol: Tolerance) -> Result<()> {
     for ring in loops {
-        validate_polygon(ring, tol)?;
+        validate_polygon_trim(ring, tol)?;
     }
     for i in 0..loops.len() {
         for j in i + 1..loops.len() {

@@ -179,7 +179,7 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
 }
 /// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
 /// polygon extrusion with a polygon hole, 3 coaxial tube, 4 rigidly placed
-/// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole, 7 exact planar face split.
+/// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole, 7 exact planar face split, 8 arc-rim and cylinder-wall refinement.
 /// Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
@@ -241,6 +241,26 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        8 => {
+            split_planar_face(
+                &extrude_arc_line(
+                    &rounded_rectangle_profile(
+                        Point3::new(0.0, 0.0, -12.0),
+                        80.0,
+                        60.0,
+                        24.0,
+                        tol,
+                    )?,
+                    24.0,
+                    tol,
+                )?,
+                1,
+                Point3::new(0.0, radius, 12.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                GeometryTolerance::default(),
+            )?
+            .solid
+        }
         7 => {
             split_planar_face(
                 &subtract_through_cylinder(b, tool(0.0, 0.0, 7.0), tol)?,

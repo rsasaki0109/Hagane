@@ -106,8 +106,8 @@ API applies a face's polygon, hole, arc, or partial-cylinder angular trims.
 [Transverse planar trim clipping](face-intersections.md) now works separately.
 Broader plane/cylinder curves, cylinder/cylinder intersections, NURBS
 intersections, intersection graphs, curved-face splitting and general sewing
-remain future work. [Scoped polygon face subdivision](face-split.md) now works
-with shared planar boundary updates. The earlier `cylinder_plane` horizontal Z-cylinder helper retains
+remain future work. [Scoped line/arc face subdivision](face-split.md) now works
+with shared planar boundaries and rectangular cylinder-wall refinement. The earlier `cylinder_plane` horizontal Z-cylinder helper retains
 its existing restricted contract.
 
 ## Runnable native/WASM fixture and evidence

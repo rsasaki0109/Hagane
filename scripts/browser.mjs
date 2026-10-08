@@ -25,8 +25,8 @@ try {
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});await page.locator('#reset').click();
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  assert.deepEqual(errors,[]);
- const presets=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*704*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18}];
- for(let id=0;id<8;id++){
+ const presets=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*704*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31}];
+ for(let id=0;id<9;id++){
   await page.locator('#preset').selectOption(String(id));const mesh=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(mesh.volume-presets[id].volume)<1e-8);assert.equal(mesh.faces,presets[id].faces);assert.equal(mesh.edges,presets[id].edges);assert.equal(await page.locator('#radius').isDisabled(),id===2);assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  }
  await page.locator('#preset').selectOption('5');
@@ -52,6 +52,14 @@ try {
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
  if(process.argv.includes('--capture-split')){await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/face-split.png',import.meta.url).pathname});}
  await page.locator('#wire').uncheck();
+ await page.locator('#preset').selectOption('8');
+ assert.match(await page.locator('#radius-title').textContent(),/Arc cut offset/);
+ const arcSplitPositions=await page.evaluate(()=>window.haganeDemo.mesh.positions);
+ await page.locator('#radius').evaluate(e=>{e.value=24;e.dispatchEvent(new Event('input'));});
+ assert.notDeepEqual(await page.evaluate(()=>window.haganeDemo.mesh.positions),arcSplitPositions);
+ assert.ok(Math.abs(await page.evaluate(()=>window.haganeDemo.mesh.volume)-(4800-(4-Math.PI)*576)*24)<1e-8);
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+ if(process.argv.includes('--capture-arc-split')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/arc-face-split.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
  await page.locator('#preset').selectOption('4');
@@ -89,5 +97,5 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
- console.log('Browser: 8 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 9 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}
