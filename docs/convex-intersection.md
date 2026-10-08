@@ -47,7 +47,7 @@ assert!((common.volume()? - 36.0).abs() < 1e-10);
 - Nonconvex operands, curved faces/edges, face holes, unresolved coordinates or
   topology fail explicitly. Inputs must be geometrically non-self-intersecting;
   this is not a general imported-shell self-intersection detector.
-- [Scoped difference](convex-difference.md) is available separately; union and
+- [Scoped difference](convex-difference.md) and [scoped union](convex-union.md) are available separately;
   coplanar overlays remain future work. Operand
   order can change which unsupported arrangement is encountered; successful
   intersections preserve common geometry, not stable face-index provenance.

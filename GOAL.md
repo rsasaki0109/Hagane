@@ -157,7 +157,13 @@ arrangements reconcile only bounded arithmetic roundoff; standalone sewing
 stays strict. A sixteenth browser preset exercises a true two-solid subtraction.
 See [convex difference](docs/convex-difference.md).
 
-The next development task is scoped union and broader retained-face selection
+Scoped convex operand union now selects both operands' exterior fragments and
+sews one closed boundary with checked combined volume. Containment, operand order,
+nonconvex output, placement and tiny dimensions are verified. A seventeenth
+native/WASM/browser preset demonstrates overlapping boxes. See
+[convex union](docs/convex-union.md).
+
+The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

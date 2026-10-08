@@ -71,6 +71,10 @@ mod exports {
     pub extern "C" fn hagane_convex_intersection_demo(offset: f64) -> i32 {
         generate(crate::convex_intersection_demo_json(offset))
     }
+    #[unsafe(no_mangle)]
+    pub extern "C" fn hagane_convex_union_demo(offset: f64) -> i32 {
+        generate(crate::convex_union_demo_json(offset))
+    }
     #[no_mangle]
     pub extern "C" fn hagane_convex_difference_demo(offset: f64) -> i32 {
         generate(crate::convex_difference_demo_json(offset))

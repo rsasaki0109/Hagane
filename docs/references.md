@@ -181,3 +181,13 @@ are omitted before sewing. Generated arrangements reconcile only floating-point
 roundoff bounded by `min(64*EPSILON*local_diagonal, linear/1024)`; independent
 patch sewing remains strict. This independently implemented boundary selection
 adds no dependency and uses no OCCT source.
+
+### Convex operand union boundary selection
+
+For regular overlapping convex solids, the union boundary consists of each
+operand's outward boundary fragments outside the other operand. Independent
+half-space partitions provide these fragments; internal partition caps are
+removed before sewing. Inclusion-exclusion gives the independent analytic
+volume check `V(A ∪ B) = V(A) + V(B) - V(A ∩ B)`. This implementation is original
+Rust code under MIT OR Apache-2.0, uses the existing geometry/partition/sewing
+infrastructure and adds no dependency. No OCCT source was consulted or translated.

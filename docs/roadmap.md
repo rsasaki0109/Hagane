@@ -97,6 +97,12 @@ and tiny models are verified, with a sixteenth native/WASM/browser fixture.
 Enclosed cavities, disconnected results and general contacts remain unsupported.
 See [convex difference](convex-difference.md).
 
+Convex operand union now retains both operands' exterior fragments and sews one
+closed, potentially nonconvex boundary. Analytic combined volume, containment,
+operand order, rigid placement and microscopic dimensions are verified, with a
+seventeenth native/WASM/browser preset. Disjoint/contact/coplanar inputs remain
+unsupported. See [convex union](convex-union.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -104,7 +110,7 @@ See [convex difference](convex-difference.md).
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement scoped union and broader retained-face selection using
+- Broaden retained-face selection and contact handling using
   planar arrangements; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

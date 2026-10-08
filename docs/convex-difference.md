@@ -46,7 +46,7 @@ assert!((part.volume()? - 176.0).abs() < 1e-10);
   arrangements or invalid topology return errors. Successful nonconvex results
   are not automatically accepted as inputs to this convex-only API.
 - Input solids must be geometrically non-self-intersecting. Structural validation
-  is not a general imported-shell self-intersection detector. General union,
+  is not a general imported-shell self-intersection detector. [Scoped union](convex-union.md) is available separately; general union,
   curved difference, cavity shells and contact overlays remain future work.
 
 ## Boundary construction

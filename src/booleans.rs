@@ -1,4 +1,4 @@
-//! Scoped convex operand intersection/difference using checked half-space clipping.
+//! Scoped convex operand intersection/difference/union using checked half-space clipping.
 use crate::*;
 #[derive(Clone, Debug)]
 pub enum SolidIntersection {
@@ -264,4 +264,72 @@ pub fn convex_difference_demo_json(offset: f64) -> Result<String> {
             s.mesh_json(0.05, Tolerance::default())?
         )),
     }
+}
+
+/// Union checked convex planar straight-edge operands into one closed shell.
+/// Nonconvex output is supported; contacts, coplanar boundaries and disjoint
+/// operands are unsupported. Strict containment returns the enclosing operand.
+pub fn union_convex_solids(first: &Solid, second: &Solid, tol: GeometryTolerance) -> Result<Solid> {
+    let (common, first_outside) = convex_partition(first, second, tol)?;
+    let Some(common) = common else {
+        return Err(Error::Unsupported(
+            "union requires overlapping operands; disconnected solids are unsupported",
+        ));
+    };
+    if first_outside.is_empty() {
+        return Ok(second.clone());
+    }
+    let (reverse_common, second_outside) = convex_partition(second, first, tol)?;
+    let Some(reverse_common) = reverse_common else {
+        return Err(Error::InvalidTopology(
+            "union operand partitions disagree on overlap",
+        ));
+    };
+    let expected = first.volume()? + second.volume()? - common.volume()?;
+    if (common.volume()? - reverse_common.volume()?).abs() > expected.abs() * 1e-10 {
+        return Err(Error::InvalidTopology(
+            "union operand partitions disagree on volume",
+        ));
+    }
+    if second_outside.is_empty() {
+        return Ok(first.clone());
+    }
+    let mut retained = Vec::new();
+    for (pieces, source) in [(first_outside, first), (second_outside, second)] {
+        for piece in pieces {
+            retained.extend(
+                planar_face_patches(&piece, tol.absolute())?
+                    .into_iter()
+                    .filter(|p| original_plane(&p.surface, source)),
+            );
+        }
+    }
+    let result = crate::sewing::sew_generated_planar_faces(&retained, tol)?;
+    if (result.volume()? - expected).abs() > expected.abs() * 1e-10 {
+        return Err(Error::InvalidTopology(
+            "union does not conserve combined volume",
+        ));
+    }
+    Ok(result)
+}
+pub(crate) fn convex_union_demo(offset: f64) -> Result<Solid> {
+    let t = GeometryTolerance::default();
+    let a = make_box(
+        BoxSpec {
+            min: Point3::new(-40., -30., -12.),
+            size: Vec3::new(80., 60., 24.),
+        },
+        t.absolute(),
+    )?;
+    let b = make_box(
+        BoxSpec {
+            min: Point3::new(10. + offset, -10., -4.),
+            size: Vec3::new(50., 50., 32.),
+        },
+        t.absolute(),
+    )?;
+    union_convex_solids(&a, &b, t)
+}
+pub fn convex_union_demo_json(offset: f64) -> Result<String> {
+    convex_union_demo(offset)?.mesh_json(0.05, Tolerance::default())
 }
