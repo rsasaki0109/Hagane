@@ -61,6 +61,7 @@ cargo run --locked --example oblique_boundary -- 0.13 0
 cargo run --locked --example harmonic_face_intersections -- 0 0 14 0
 cargo run --locked --example curved_classification -- 6 26 -3 0
 cargo run --locked --example ellipse_planar -- 14 0
+cargo run --locked --example half_ellipse_planar -- 1 0 0
 cargo run --locked --example part -- 8
 cargo run --locked --example cut_graph
 cargo run --locked --example part -- 9
@@ -227,7 +228,9 @@ fabricate the demo image.
 - [Full-ellipse planar trims](docs/ellipse-planar.md), with shared ellipse-angle
   pcurves, analytic line/face queries, solid classification, area/volume and
   conforming display meshes. One two-half-arc ellipse wire is supported;
-  mixed ellipse loops, holes and general capped partitions remain unsupported.
+  [Diameter-closed half ellipses](docs/half-ellipse-planar.md) also support exact
+  line/arc clipping, solid classification and conforming meshes. Other mixed
+  ellipse loops, holes and general capped partitions remain unsupported.
 - [Harmonic circular face line queries](docs/harmonic-face-intersections.md):
   analytic height clipping, bounded generator overlaps, certified shared ellipse
   contacts and browser selection of faces above/below an oblique section.

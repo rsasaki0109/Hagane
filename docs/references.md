@@ -268,3 +268,15 @@ classifier and checked analytic line/cylinder roots, under MIT OR Apache-2.0.
 No mesh membership approximation, dependency addition or OCCT source use occurs.
 Full periodic walls have no angular trim boundary; the artificial parameter seam
 is excluded from physical boundary and crossing-degeneracy tests.
+
+### Diameter-closed half-ellipse trims
+
+An affine ellipse maps to the unit circle; a pi-sweep arc and its closing
+straight diameter bound the disk intersected with a half-plane. Line/circle
+roots on the retained half and a line/diameter crossing bound each convex
+interior interval. Inverting the original affine line pcurve preserves the
+owning diameter parameter. Green's theorem gives exact signed area; the existing
+Taylor interpolation bound and point-to-segment distance bound physical boundary
+proximity. This is independently authored MIT OR Apache-2.0 Rust code using the
+mathematical sources already listed for planar ellipse trims. No new dependency
+or OCCT source consultation, copying or translation is involved.

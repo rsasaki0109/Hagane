@@ -1,4 +1,4 @@
-//! Checked full-ellipse planar trims; arbitrary mixed ellipse loops are unsupported.
+//! Checked full ellipses and diameter-closed half ellipses; arbitrary mixed loops are unsupported.
 use crate::*;
 use std::f64::consts::{PI, TAU};
 type P2 = [f64; 2];
@@ -20,6 +20,7 @@ pub(crate) struct EllipseRing {
     cosine: P2,
     sine: P2,
     coherence_error: f64,
+    half: bool,
 }
 impl EllipseRing {
     fn scale(&self) -> f64 {
@@ -53,6 +54,12 @@ impl EllipseRing {
     pub(crate) fn location(&self, p: P2) -> Result<PointLocation> {
         let uv = self.inverse(p)?;
         let r = norm(uv);
+        if self.half && uv[1] < 0. {
+            return Ok(PointLocation::Outside);
+        }
+        if self.half && uv[1] == 0. && r <= 1. {
+            return Ok(PointLocation::Boundary);
+        }
         Ok(if r == 1. {
             PointLocation::Boundary
         } else if r < 1. {
@@ -73,10 +80,24 @@ impl EllipseRing {
         }
         let uv = self.inverse(p)?;
         let angle = uv[1].atan2(uv[0]).rem_euclid(TAU);
-        if norm(sub(p, self.point(angle))) + roundoff <= budget {
+        let mut diameter_unresolved = false;
+        if self.half {
+            let a = self.point(0.);
+            let b = self.point(PI);
+            let e = sub(b, a);
+            let length = norm(e);
+            let unit = e.map(|x| x / length);
+            let t = dot(sub(p, a), unit).clamp(0., length);
+            let distance = norm(sub(p, [a[0] + unit[0] * t, a[1] + unit[1] * t]));
+            if distance + roundoff <= budget {
+                return Ok(true);
+            }
+            diameter_unresolved = (distance - budget).abs() <= roundoff;
+        }
+        if (!self.half || angle <= PI) && norm(sub(p, self.point(angle))) + roundoff <= budget {
             return Ok(true);
         }
-        let mut pending: Vec<_> = (0..4)
+        let mut pending: Vec<_> = (0..if self.half { 2 } else { 4 })
             .map(|i| (i as f64 * PI / 2., (i + 1) as f64 * PI / 2., 0))
             .collect();
         let mut visits = 0;
@@ -115,6 +136,11 @@ impl EllipseRing {
             pending.push((lo, middle, depth + 1));
             pending.push((middle, hi, depth + 1));
         }
+        if diameter_unresolved {
+            return Err(Error::Unsupported(
+                "half-ellipse diameter distance is unresolved",
+            ));
+        }
         Ok(false)
     }
 }
@@ -124,14 +150,14 @@ pub(crate) fn has_ellipse(f: &Face) -> bool {
         .flat_map(|w| &w.coedges)
         .any(|c| matches!(c.pcurve, PCurve::EllipseArc { .. }))
 }
-/// Initial domain: one complete ellipse encoded by two opposite semicircle parameters.
+/// One full ellipse, or a half ellipse followed by its closing diameter.
 pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
     if !matches!(face.surface, Surface::Plane { .. })
         || face.wires.len() != 1
         || face.wires[0].coedges.len() != 2
     {
         return Err(Error::Unsupported(
-            "planar ellipse trims require one two-half-arc ellipse wire",
+            "planar ellipse trims require one supported two-coedge wire",
         ));
     }
     let coedges = &face.wires[0].coedges;
@@ -151,7 +177,49 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
         cosine,
         sine,
         coherence_error: 0.,
+        half: false,
     };
+    if let PCurve::Affine { origin, direction } = coedges[1].pcurve {
+        if sweep != PI {
+            return Err(Error::Unsupported(
+                "mixed ellipse trim requires a half ellipse",
+            ));
+        }
+        if [center, cosine, sine, origin, direction]
+            .iter()
+            .flatten()
+            .any(|x| !x.is_finite())
+            || norm(cosine) <= tol.linear
+            || norm(sine) <= tol.linear
+        {
+            return Err(Error::InvalidTopology(
+                "invalid half-ellipse/diameter coefficients",
+            ));
+        }
+        let first = ellipse.point(if coedges[0].forward { PI } else { 0. });
+        let last = ellipse.point(if coedges[0].forward { 0. } else { PI });
+        let start = coedges[1]
+            .pcurve
+            .evaluate(if coedges[1].forward { 0. } else { 1. });
+        let end = coedges[1]
+            .pcurve
+            .evaluate(if coedges[1].forward { 1. } else { 0. });
+        let error = norm(sub(first, start)) + norm(sub(last, end));
+        if error > tol.linear {
+            return Err(Error::InvalidTopology(
+                "half ellipse and diameter endpoints disagree",
+            ));
+        }
+        if error > 512. * f64::EPSILON * (ellipse.scale() + norm(center)) {
+            return Err(Error::Unsupported(
+                "half-ellipse diameter differs beyond checked arithmetic precision",
+            ));
+        }
+        ellipse.coherence_error = error;
+        ellipse.half = true;
+        ellipse.inverse(center)?;
+        return Ok(ellipse);
+    }
     let PCurve::EllipseArc {
         center: c,
         cosine: a,
@@ -262,12 +330,63 @@ pub(crate) fn clip(
         ));
     }
     let half = ((1. - signed.abs()) * (1. + signed.abs())).sqrt();
-    let mut events = Vec::new();
+    let mut roots = Vec::new();
     for travel in [along - half, along + half] {
         let circle = [q[0] + h[0] * travel, q[1] + h[1] * travel];
         let angle = circle[1].atan2(circle[0]).rem_euclid(TAU);
-        let coedge = usize::from(angle >= PI);
-        let t = angle - coedge as f64 * PI;
+        if ellipse.half && angle > PI {
+            continue;
+        }
+        let coedge = if ellipse.half {
+            0
+        } else {
+            usize::from(angle >= PI)
+        };
+        roots.push((travel, coedge, angle - coedge as f64 * PI));
+    }
+    if ellipse.half {
+        if h[1].abs() <= tol.angular().sin() {
+            if q[1].abs() <= guard {
+                return Err(Error::Unsupported(
+                    "line overlaps or nearly overlaps half-ellipse diameter",
+                ));
+            }
+        } else {
+            let travel = -q[1] / h[1];
+            let x = q[0] + h[0] * travel;
+            if (x.abs() - 1.).abs() <= guard {
+                return Err(Error::Unsupported(
+                    "half-ellipse cut is unresolved near a diameter vertex",
+                ));
+            }
+            if x.abs() < 1. {
+                let a = face.wires[0].coedges[1].pcurve.evaluate(0.);
+                let b = face.wires[0].coedges[1].pcurve.evaluate(1.);
+                let target = [
+                    ellipse.center[0] + ellipse.cosine[0] * x,
+                    ellipse.center[1] + ellipse.cosine[1] * x,
+                ];
+                let delta = sub(b, a);
+                let coordinate = usize::from(delta[1].abs() > delta[0].abs());
+                let t = (target[coordinate] - a[coordinate]) / delta[coordinate];
+                roots.push((travel, 1, t));
+            }
+        }
+    }
+    roots.sort_by(|a, b| a.0.total_cmp(&b.0));
+    if roots.is_empty() {
+        return Ok(PlanarLineClip {
+            events: vec![],
+            intervals: vec![],
+        });
+    }
+    if roots.len() != 2 {
+        return Err(Error::Unsupported(
+            "half-ellipse crossing count is unresolved",
+        ));
+    }
+    let mut events = Vec::new();
+    for (travel, coedge, t) in roots {
         let c = &face.wires[0].coedges[coedge];
         let edge = &solid.edges[c.edge];
         let point = anchor + unit * (travel / speed);
@@ -330,6 +449,24 @@ pub fn ellipse_planar_demo_solid(
     slope: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
+    ellipse_cap_fixture(radius, height, slope, tol, false)
+}
+/// Closed half-cylinder fixture with a half-ellipse/straight-diameter cap.
+pub fn half_ellipse_planar_demo_solid(
+    radius: f64,
+    height: f64,
+    slope: f64,
+    tol: GeometryTolerance,
+) -> Result<Solid> {
+    ellipse_cap_fixture(radius, height, slope, tol, true)
+}
+fn ellipse_cap_fixture(
+    radius: f64,
+    height: f64,
+    slope: f64,
+    tol: GeometryTolerance,
+    half: bool,
+) -> Result<Solid> {
     if !radius.is_finite()
         || !height.is_finite()
         || !slope.is_finite()
@@ -344,14 +481,29 @@ pub fn ellipse_planar_demo_solid(
         &ArcLineRegion {
             origin: Point3::new(0., 0., -height / 2.),
             holes: vec![],
-            outer: [0., PI]
-                .map(|start_angle| PlanarSegment::Arc {
-                    center: [0., 0.],
-                    radius,
-                    start_angle,
-                    sweep: PI,
-                })
-                .to_vec(),
+            outer: if half {
+                vec![
+                    PlanarSegment::Arc {
+                        center: [0., 0.],
+                        radius,
+                        start_angle: 0.,
+                        sweep: PI,
+                    },
+                    PlanarSegment::Line {
+                        a: [-radius, 0.],
+                        b: [radius, 0.],
+                    },
+                ]
+            } else {
+                [0., PI]
+                    .map(|start_angle| PlanarSegment::Arc {
+                        center: [0., 0.],
+                        radius,
+                        start_angle,
+                        sweep: PI,
+                    })
+                    .to_vec()
+            },
         },
         Vec3::new(0., 0., height),
         tol.absolute(),
@@ -367,14 +519,48 @@ pub fn ellipse_planar_demo_solid(
         .split_faces
         .iter()
         .filter(|pair| pair[0] >= 2)
-        .map(|pair| solid.shell.faces[pair[0]].clone())
-        .collect();
+        .map(|pair| {
+            let index = pair
+                .iter()
+                .find(|&&fi| {
+                    solid.shell.faces[fi]
+                        .wires
+                        .iter()
+                        .flat_map(|w| &w.coedges)
+                        .any(|c| {
+                            let edge = &solid.edges[c.edge];
+                            edge.vertices.iter().any(|&index| {
+                                Vec3::new(slope, 0., 1.).dot(solid.vertices[index].point)
+                                    < -tol.linear()
+                            })
+                        })
+                })
+                .copied()
+                .ok_or(Error::InvalidTopology(
+                    "ellipse fixture has no resolved lower wall",
+                ))?;
+            Ok(solid.shell.faces[index].clone())
+        })
+        .collect::<Result<_>>()?;
     if sides.len() != 2 {
         return Err(Error::InvalidTopology(
-            "ellipse fixture requires two circular walls",
+            "ellipse fixture requires two side walls",
         ));
     }
-    let edges: Vec<_> = sides.iter().map(|f| f.wires[0].coedges[2].edge).collect();
+    let boundaries: Vec<_> = sides
+        .iter()
+        .map(|f| {
+            f.wires[0]
+                .coedges
+                .iter()
+                .find(|c| cut.section_edges.contains(&c.edge))
+                .cloned()
+                .ok_or(Error::InvalidTopology(
+                    "section edge missing from fixture side",
+                ))
+        })
+        .collect::<Result<_>>()?;
+    let edges: Vec<_> = boundaries.iter().map(|c| c.edge).collect();
     let Curve::EllipseArc { center, cosine, .. } = solid.edges[edges[0]].curve else {
         return Err(Error::InvalidTopology("ellipse section required"));
     };
@@ -388,25 +574,34 @@ pub fn ellipse_planar_demo_solid(
     };
     let coedges = edges
         .iter()
-        .map(|&edge| {
-            let Curve::EllipseArc {
-                center: c,
-                cosine: a,
-                sine: b,
-                sweep,
-            } = solid.edges[edge].curve
-            else {
-                unreachable!()
-            };
-            Coedge {
-                edge,
-                forward: true,
-                pcurve: PCurve::EllipseArc {
+        .enumerate()
+        .map(|(index, &edge)| {
+            let pcurve = match solid.edges[edge].curve {
+                Curve::EllipseArc {
+                    center: c,
+                    cosine: a,
+                    sine: b,
+                    sweep,
+                } => PCurve::EllipseArc {
                     center: surface.parameters(c),
                     cosine: [a.dot(u), a.dot(v)],
                     sine: [b.dot(u), b.dot(v)],
                     sweep,
                 },
+                Curve::Line { a, b } => {
+                    let first = surface.parameters(a);
+                    let last = surface.parameters(b);
+                    PCurve::Affine {
+                        origin: first,
+                        direction: sub(last, first),
+                    }
+                }
+                _ => unreachable!(),
+            };
+            Coedge {
+                edge,
+                forward: !boundaries[index].forward,
+                pcurve,
             }
         })
         .collect();
@@ -468,7 +663,38 @@ pub fn ellipse_planar_demo_json(offset: f64, placement: f64) -> Result<String> {
     };
     let anchor = origin - u * 34. + v * offset;
     let direction = u * 2.;
-    let result = clip_line_to_planar_face(&solid, face, anchor, direction, t)?;
+    ellipse_planar_query_json(&solid, anchor, direction)
+}
+/// Mixed half-ellipse/diameter fixture: modes 0 across arc, 1 diameter-to-arc,
+/// 2 reversed diameter crossing. Offset is the transverse in-plane coordinate.
+pub fn half_ellipse_planar_demo_json(mode: u32, offset: f64, placement: f64) -> Result<String> {
+    if mode > 2 || !offset.is_finite() || !placement.is_finite() {
+        return Err(Error::InvalidInput(
+            "half ellipse demo requires mode 0..2 and finite values",
+        ));
+    }
+    let t = GeometryTolerance::default();
+    let solid = half_ellipse_planar_demo_solid(24., 24., 0.25, t)?.transformed(
+        Transform::rotation(Vec3::new(1., 2., 3.), placement)?,
+        t.absolute(),
+    )?;
+    let Surface::Plane { origin, u, v } = solid.shell.faces[3].surface else {
+        unreachable!()
+    };
+    let (a, d) = match mode {
+        0 => (origin - u * 34. + v * offset, u * 2.),
+        1 => (origin + u * offset - v * 34., v * 2.),
+        _ => (origin + u * offset + v * 34., v * (-2.)),
+    };
+    ellipse_planar_query_json(&solid, a, d)
+}
+fn ellipse_planar_query_json(solid: &Solid, anchor: Point3, direction: Vec3) -> Result<String> {
+    let face = 3;
+    let t = GeometryTolerance::default();
+    let Surface::Plane { u, v, .. } = solid.shell.faces[face].surface else {
+        unreachable!()
+    };
+    let result = clip_line_to_planar_face(solid, face, anchor, direction, t)?;
     let xyz = |p: Vec3| format!("[{},{},{}]", p.x, p.y, p.z);
     let intervals: Vec<_> = result
         .intervals
@@ -513,6 +739,7 @@ mod tests {
             cosine: [2., 0.],
             sine: [1., 1.],
             coherence_error: 0.,
+            half: false,
         };
         let uv = ellipse.inverse(ellipse.point(0.37)).unwrap();
         assert!((uv[0] - 0.37f64.cos()).abs() < 1e-13);
@@ -540,6 +767,7 @@ mod tests {
             cosine: [1., 0.],
             sine: [1., 1e-12],
             coherence_error: 0.,
+            half: false,
         };
         assert!(bad.inverse([0., 0.]).is_err());
     }

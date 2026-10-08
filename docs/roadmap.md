@@ -256,3 +256,12 @@ These are plans, not stubbed operations or claims of current support. Every
 added operation must define its input domain, error contracts, invariant checks,
 reference provenance, native tests, and WASM compatibility before being listed
 as implemented. OCCT source copying or translation is outside this project.
+
+Diameter-closed half-ellipse planar trims now support a single exact pi-sweep
+ellipse arc followed by its straight diameter. In-plane queries retain original
+line and ellipse parameters; boundary distance checks, solid classification,
+analytic volume and conforming tessellation cover the mixed boundary. A closed
+half-cylinder fixture retains material below an oblique plane. Native/WASM and
+browser tests cover both crossings, reversal, placement, microscopic dimensions,
+contact rejection and recovery. Other mixed ellipse loops, ellipse holes and
+general capped partitions remain unsupported. See [half-ellipse trims](half-ellipse-planar.md).

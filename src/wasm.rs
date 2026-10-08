@@ -5,6 +5,16 @@ mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     #[no_mangle]
+    pub extern "C" fn hagane_half_ellipse_planar_demo(
+        mode: u32,
+        offset: f64,
+        placement: f64,
+    ) -> i32 {
+        generate(crate::half_ellipse_planar_demo_json(
+            mode, offset, placement,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_ellipse_planar_demo(offset: f64, placement: f64) -> i32 {
         generate(crate::ellipse_planar_demo_json(offset, placement))
     }

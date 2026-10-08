@@ -307,3 +307,12 @@ selection/error recovery are verified. The domain is one complete two-half-arc
 ellipse wire; mixed loops, ellipse holes, arbitrary ellipse-face subdivision
 and general capped partitions remain unsupported. See
 [ellipse planar trims](docs/ellipse-planar.md).
+
+Diameter-closed half-ellipse planar trims now support a single exact pi-sweep
+ellipse arc followed by its straight diameter. In-plane queries retain original
+line and ellipse parameters; boundary distance checks, solid classification,
+analytic volume and conforming tessellation cover the mixed boundary. A closed
+half-cylinder fixture retains material below an oblique plane. Native/WASM and
+browser tests cover both crossings, reversal, placement, microscopic dimensions,
+contact rejection and recovery. Other mixed ellipse loops, ellipse holes and
+general capped partitions remain unsupported. See [half-ellipse trims](docs/half-ellipse-planar.md).

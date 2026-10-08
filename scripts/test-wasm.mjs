@@ -354,3 +354,22 @@ for(const placement of [0,0.37])for(const offset of [-14,14,30]){
 for(const [offset,placement] of [[0,0],[24,0],[24+1e-9,0],[NaN,0],[14,Infinity]])assert.equal(ellipsePlanar(offset,placement).status,1);
 assert.equal(ellipsePlanar(14).status,0);
 console.log('Planar ellipse trims: independent roots/volume, original ellipse edge parameters, native/WASM meshes, tangency/vertex rejection and recovery passed.');
+
+function halfEllipse(mode,offset,placement=0){
+ const status=k.hagane_half_ellipse_planar_demo(mode,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const placement of [0,0.37])for(const [mode,offset] of [[0,14],[0,-14],[0,30],[1,0],[1,14],[2,0],[2,14]]){
+ const {status,result}=halfEllipse(mode,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','half_ellipse_planar','--',String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ compareIntersection(result,native);
+ const a=24*Math.sqrt(1.0625),y=24*Math.sqrt(1-(offset/a)**2);
+ const expected=mode===0?(offset<0||offset>24?[]:[(34-a*Math.sqrt(1-(offset/24)**2))/2,(34+a*Math.sqrt(1-(offset/24)**2))/2]):mode===1?[17,(34+y)/2]:[(34-y)/2,17];
+ assert.equal(result.intersection.hits.length,expected.length);
+ result.intersection.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-expected[i])<1e-10));
+ if(mode!==0&&offset===0){const diameter=result.intersection.hits.find(h=>h.boundaries[0].coedge===1);assert.ok(Math.abs(diameter.boundaries[0].edge_parameter-0.5)<1e-12);}
+ assert.equal(result.mesh.faces,4);assert.equal(result.mesh.edges,6);assert.ok(Math.abs(result.mesh.volume-Math.PI*24**2*6)<1e-8);
+}
+for(const args of [[3,14,0],[0,0,0],[0,1e-9,0],[0,24,0],[0,24+1e-9,0],[0,NaN,0],[1,0,Infinity]])assert.equal(halfEllipse(...args).status,1);
+assert.equal(halfEllipse(1,0).status,0);
+console.log('Half-ellipse planar trims: independent arc/diameter roots, original parameters, analytic volume, native/WASM parity, errors and recovery passed.');
