@@ -25,10 +25,16 @@ try {
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});await page.locator('#reset').click();
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  assert.deepEqual(errors,[]);
- const presets=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*704*24,faces:4,edges:6}];
- for(let id=0;id<4;id++){
+ const presets=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*704*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24}];
+ for(let id=0;id<5;id++){
   await page.locator('#preset').selectOption(String(id));const mesh=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(mesh.volume-presets[id].volume)<1e-8);assert.equal(mesh.faces,presets[id].faces);assert.equal(mesh.edges,presets[id].edges);assert.equal(await page.locator('#radius').isDisabled(),id===2);assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);
  }
+ await page.locator('#preset').selectOption('1');
+ const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
+ await page.locator('#preset').selectOption('4');
+ const placed=await page.evaluate(()=>window.haganeDemo.mesh);
+ assert.notDeepEqual(placed.positions,unplaced.positions);assert.notDeepEqual(placed.normals,unplaced.normals);
+ if(process.argv.includes('--capture-placement')){await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/placement.png',import.meta.url).pathname});}
  await page.locator('#preset').selectOption('0');
  if(process.argv.includes('--capture')){
   const frames=await mkdtemp(join(tmpdir(),'hagane-demo-'));
@@ -60,5 +66,5 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
- console.log('Browser: 4 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 5 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

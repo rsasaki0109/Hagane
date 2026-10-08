@@ -73,5 +73,9 @@ Booleans, fillets/chamfers, healing, and STEP interchange. NURBS surface display
 grids currently have no certified chord-error bound. See
 [the roadmap](docs/roadmap.md) and [README](README.md) for feature-specific limits.
 
-The next development task is stage 1: introduce consistent geometric frames
-and checked solid transforms, with native/WASM validation and examples.
+Stage 1 now includes checked coordinate frames, rigid analytic B-rep transforms,
+exact placed bounds, and arbitrary-plane polygon extrusion, with native/WASM
+validation and a browser preset. See [frames](docs/frames.md).
+
+The next development task is stage 1: structured angular/relative tolerances
+and robust predicates, followed by mixed line/arc planar wires.

@@ -105,7 +105,7 @@ impl Face {
                 validate_region(&loops[0], &loops[1..], tol)?;
             }
 
-            Surface::Cylinder { height, .. } => {
+            Surface::Cylinder { height, .. } | Surface::FramedCylinder { height, .. } => {
                 if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
                     return Err(Error::Unsupported(
                         "only complete cylindrical faces are supported",
@@ -138,6 +138,29 @@ impl Face {
     }
 }
 impl Solid {
+    /// Copies exact geometry through a rigid transform. Shared indices, edge
+    /// parameters, pcurves and orientations are unchanged; both solids are checked.
+    pub fn transformed(&self, transform: Transform, tol: Tolerance) -> Result<Self> {
+        self.validate(tol)?;
+        let mut result = self.clone();
+        for v in &mut result.vertices {
+            v.point = transform.point(v.point);
+        }
+        for e in &mut result.edges {
+            e.curve = e.curve.transformed(transform)?;
+        }
+        for f in &mut result.shell.faces {
+            f.surface = f.surface.transformed(transform)?;
+        }
+        result.validate(tol)?;
+        let original_volume = self.volume()?;
+        if (result.volume()? - original_volume).abs() > original_volume * 1e-10 {
+            return Err(Error::InvalidInput(
+                "rigid placement loses volume at this coordinate magnitude",
+            ));
+        }
+        Ok(result)
+    }
     pub fn validate(&self, tol: Tolerance) -> Result<()> {
         Tolerance::new(tol.linear)?;
         if self.shell.faces.is_empty() || self.vertices.is_empty() {
@@ -160,7 +183,9 @@ impl Solid {
                 Curve::Line { a, b } if (a - b).norm() <= tol.linear => {
                     return Err(Error::InvalidTopology("degenerate edge"))
                 }
-                Curve::Circle { radius, .. } if !radius.is_finite() || radius <= tol.linear => {
+                Curve::Circle { radius, .. } | Curve::FramedCircle { radius, .. }
+                    if !radius.is_finite() || radius <= tol.linear =>
+                {
                     return Err(Error::InvalidTopology("invalid circle"))
                 }
                 _ => {}
@@ -184,6 +209,15 @@ impl Solid {
                         || u.dot(v).abs() > tol.linear
                     {
                         return Err(Error::InvalidTopology("invalid plane basis"));
+                    }
+                }
+                Surface::FramedCylinder { radius, height, .. } => {
+                    if !radius.is_finite()
+                        || !height.is_finite()
+                        || radius <= tol.linear
+                        || height <= tol.linear
+                    {
+                        return Err(Error::InvalidTopology("invalid framed cylinder surface"));
                     }
                 }
                 Surface::Cylinder {
@@ -226,9 +260,10 @@ impl Solid {
                                 "line edge cannot have a circle pcurve",
                             ))
                         }
-                        (Curve::Circle { .. }, PCurve::Affine { .. })
-                            if matches!(f.surface, Surface::Plane { .. }) =>
-                        {
+                        (
+                            Curve::Circle { .. } | Curve::FramedCircle { .. },
+                            PCurve::Affine { .. },
+                        ) if matches!(f.surface, Surface::Plane { .. }) => {
                             return Err(Error::InvalidTopology(
                                 "planar circle edge requires a circle pcurve",
                             ))
@@ -367,7 +402,8 @@ impl Solid {
                         * f.wires.iter().map(wire_area).sum::<f64>()
                         / 3.0
                 }
-                Surface::Cylinder { radius, height, .. } => {
+                Surface::Cylinder { radius, height, .. }
+                | Surface::FramedCylinder { radius, height, .. } => {
                     if f.wires.len() != 1 || f.wires[0].coedges.len() != 4 {
                         return Err(Error::Unsupported(
                             "volume requires a complete cylindrical face",
@@ -398,9 +434,22 @@ impl Solid {
             add(v.point);
         }
         for e in &self.edges {
-            if let Curve::Circle { center, radius } = e.curve {
-                add(center + Vec3::new(radius, radius, 0.0));
-                add(center - Vec3::new(radius, radius, 0.0));
+            let circle = match e.curve {
+                Curve::Circle { center, radius } => Some((
+                    center,
+                    Vec3::new(1.0, 0.0, 0.0),
+                    Vec3::new(0.0, 1.0, 0.0),
+                    radius,
+                )),
+                Curve::FramedCircle { frame, radius } => {
+                    Some((frame.origin(), frame.axes()[0], frame.axes()[1], radius))
+                }
+                Curve::Line { .. } => None,
+            };
+            if let Some((center, u, v, radius)) = circle {
+                let extent = Vec3::new(u.x.hypot(v.x), u.y.hypot(v.y), u.z.hypot(v.z)) * radius;
+                add(center + extent);
+                add(center - extent);
             }
         }
         Bounds { min: lo, max: hi }

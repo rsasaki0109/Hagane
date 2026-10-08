@@ -36,13 +36,14 @@ are likewise not `Surface` enum variants or topological faces. See
 Coordinates and lengths are `f64`, in a consistent caller-selected unit.
 `Tolerance::linear` is positive and finite. There is no automatic unit scaling.
 Primitives reject dimensions ≤10 tolerances. Curves use normalized `[0,1]`
-line parameters and `[0,2π]` circle parameters. Circles lie in XY; cylinder
-parameters are `(angle, axial length)` with the angle in radians. Plane axes
+line parameters and `[0,2π]` circle parameters. Legacy circles lie in XY; framed circles/cylinders use an immutable
+right-handed local frame. Cylinder parameters are `(angle, axial length)` with the angle in radians. Plane axes
 are unit and orthogonal; their UV coordinates use length units.
 
-`Transform` maps points with a right-handed orthonormal basis and translation.
-It does not silently transform solids or promote an axis-aligned Boolean to a
-rotated one. Low-level curve/surface evaluation is mathematical evaluation;
+`Transform` maps points and vectors with a checked right-handed orthonormal
+basis and translation. `Solid::transformed` explicitly places exact geometry,
+retaining topology, orientation and pcurves; see [frames](frames.md). Restricted
+axis-aligned Boolean constructors do not accept arbitrary placed solids. Low-level curve/surface evaluation is mathematical evaluation;
 solid constructors and intersection functions provide checked entry points.
 
 ## Topological ownership
@@ -121,8 +122,8 @@ positions only for adjacency checks; rendering intentionally splits vertices.
 
 The Rust `cdylib` exports `hagane_generate(radius, chord_error) -> status`,
 `hagane_generate_preset(id, radius, chord_error) -> status`,
-`hagane_output_ptr()`, and `hagane_output_len()`. Presets 0..3 select single bore,
-four bores, polygon extrusion, or tube; unknown IDs return errors. Preset 2 has
+`hagane_output_ptr()`, and `hagane_output_len()`. Presets 0..4 select single bore,
+four bores, polygon extrusion, tube, or a rigidly placed four-bore part; unknown IDs return errors. Preset 2 has
 a fixed polygon profile and ignores the radius argument. JSON bytes contain coordinates,
 normals, analytic volume, and topology counts, or an explicit error. Status 0
 means success, 1 means a kernel error. The buffer is valid until the next

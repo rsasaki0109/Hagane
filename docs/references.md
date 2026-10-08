@@ -13,6 +13,9 @@ claim compatibility with its data structures or APIs.
   [Euler characteristic](https://en.wikipedia.org/wiki/Euler_characteristic).
 - Analytic surface parametrization and oriented normals: standard Cartesian
   plane/cylinder equations; [Parametric surface](https://en.wikipedia.org/wiki/Parametric_surface).
+- Rigid coordinate frames and rotation: orthonormal basis projection and
+  [Rodrigues' rotation formula](https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula).
+  Implemented from the mathematical formulas, without reference source code.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Simple polygon validation and containment: standard orientation determinants,

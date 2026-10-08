@@ -510,3 +510,16 @@ pub fn make_tube(spec: TubeSpec, t: Tolerance) -> Result<Solid> {
     s.validate(t)?;
     Ok(s)
 }
+
+/// Extrudes a polygon specified in frame-local coordinates along a world-space
+/// direction. `profile.origin` is local to `frame`; ring coordinates are local
+/// XY offsets. The normal span must exceed ten linear tolerances. Construction
+/// and validation use exact planes/lines, then the checked rigid placement.
+pub fn extrude_polygon_in_frame(
+    profile: &PolygonProfile,
+    world_direction: Vec3,
+    frame: Frame3,
+    tol: Tolerance,
+) -> Result<Solid> {
+    extrude_polygon(profile, frame.local_vector(world_direction), tol)?.transformed(frame, tol)
+}

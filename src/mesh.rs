@@ -64,7 +64,8 @@ impl Solid {
                         for c in &w.coedges {
                             let edge = &self.edges[c.edge];
                             let count = match edge.curve {
-                                Curve::Circle { radius, .. } => {
+                                Curve::Circle { radius, .. }
+                                | Curve::FramedCircle { radius, .. } => {
                                     circle_segments(radius, chord_error)?
                                 }
                                 Curve::Line { .. } => 1,
@@ -97,7 +98,8 @@ impl Solid {
                         mesh.triangle(p, [normal; 3], fi, f.orientation);
                     }
                 }
-                Surface::Cylinder { radius, height, .. } => {
+                Surface::Cylinder { radius, height, .. }
+                | Surface::FramedCylinder { radius, height, .. } => {
                     // A complete periodic cylindrical rectangle is the currently supported trim.
                     if f.wires.len() != 1 || f.wires[0].coedges.len() != 4 {
                         return Err(Error::Unsupported(
@@ -130,7 +132,8 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
     demo_preset_json(0, radius, chord_error)
 }
 /// Select actual kernel operations: 0 single bore, 1 four bores, 2 concave
-/// polygon extrusion with a polygon hole, 3 coaxial tube. Unknown IDs fail.
+/// polygon extrusion with a polygon hole, 3 coaxial tube, 4 rigidly placed
+/// four-bore part. Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
     let tol = Tolerance::default();
     let b = BoxSpec {
@@ -174,6 +177,21 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 ]],
             },
             Vec3::new(6.0, 3.0, 24.0),
+            tol,
+        )?,
+        4 => subtract_through_cylinders(
+            b,
+            &[
+                tool(-20.0, -14.0, radius * 0.5),
+                tool(20.0, -14.0, radius * 0.5),
+                tool(20.0, 14.0, radius * 0.5),
+                tool(-20.0, 14.0, radius * 0.5),
+            ],
+            tol,
+        )?
+        .transformed(
+            Transform::translation(Vec3::new(8.0, -4.0, 6.0))?
+                .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
         3 => make_tube(

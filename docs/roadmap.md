@@ -18,9 +18,14 @@ Standalone tensor-product NURBS surfaces now support points, analytic U/V
 partials, regular-point normals, knot-side selection, and checked uniform
 display grids, with a 3D native/WASM surface demo.
 
+Checked immutable coordinate frames, rigid B-rep placement, framed circles and
+cylinders, exact world-axis bounds, and arbitrary-plane polygon extrusion now
+work natively and in WASM, with a fifth interactive solid preset. See
+[frames](frames.md) for numerical and operation limits.
+
 ## Next: broaden analytic B-rep operations
 
-- Explicit frames for curves/surfaces, solid transforms, and arbitrary-plane profiles.
+- Extend frame-aware primitive/profile APIs and intersection routines.
 - Structured angular/relative tolerances and robust filtered predicates.
 - Mixed arc/line planar wires, non-complete cylindrical trims, and general face splits.
 - Typed intersection results, curve/surface classification, intersection graph
