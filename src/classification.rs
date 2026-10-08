@@ -1,4 +1,4 @@
-//! Checked ray classification against analytic planar and trimmed-cylinder boundaries.
+//! Checked ray classification against analytic planar and circular translation boundaries.
 use crate::*;
 enum AnalyticRing {
     Polygon(Vec<[f64; 2]>),
@@ -85,8 +85,30 @@ struct CylinderTrim<'a> {
     radius: f64,
     height: f64,
     span: f64,
+    drift: [f64; 2],
 }
 impl CylinderTrim<'_> {
+    fn within_boundary(&self, p: Point3, budget: f64) -> Result<bool> {
+        if self.drift != [0., 0.] {
+            return crate::skew_boundary::within_boundary(
+                self.frame.local_point(p),
+                self.radius,
+                self.height,
+                self.span,
+                self.drift,
+                budget,
+                32. * f64::EPSILON
+                    * p.x
+                        .abs()
+                        .max(p.y.abs())
+                        .max(p.z.abs())
+                        .max(self.frame.origin().x.abs())
+                        .max(self.frame.origin().y.abs())
+                        .max(self.frame.origin().z.abs()),
+            );
+        }
+        Ok(self.distance(p)? <= budget)
+    }
     fn distance(&self, p: Point3) -> Result<f64> {
         let p = self.frame.local_point(p);
         if !p.finite() {
@@ -118,10 +140,11 @@ impl CylinderTrim<'_> {
         Ok(d)
     }
 }
-/// Classify validated planar line/circle/arc trims and rectangular cylinder walls.
+/// Classify validated planar line/circle/arc trims and rectangular circular walls.
 /// Euclidean boundary distance uses a local budget. Two resolved rays must agree.
-/// Skew circular translation surfaces, general cylinder trims and general
-/// self-intersection detection are unsupported.
+/// Skew boundary bands use bounded Euclidean chord-patch distance refinement.
+/// General circular trims and general self-intersection detection are unsupported;
+/// unresolved distance bounds or ray candidates return explicit errors.
 /// No display mesh is consulted; full-periodic seams do not duplicate crossings.
 pub fn classify_point_in_solid(
     solid: &Solid,
@@ -138,10 +161,20 @@ pub fn classify_point_in_solid(
     let mut cylinders = Vec::new();
     for face in &solid.shell.faces {
         match face.surface {
-            Surface::ExtrudedCircle { .. } => {
-                return Err(Error::Unsupported(
-                    "solid classification of skew circular extrusion surfaces is unsupported",
-                ))
+            Surface::ExtrudedCircle {
+                frame,
+                radius,
+                height,
+                drift,
+            } => {
+                cylinders.push(CylinderTrim {
+                    face,
+                    frame,
+                    radius,
+                    height,
+                    drift,
+                    span: face.cylinder_span()?,
+                });
             }
             Surface::Cylinder {
                 center,
@@ -154,6 +187,7 @@ pub fn classify_point_in_solid(
                     radius,
                     height,
                     span: face.cylinder_span()?,
+                    drift: [0., 0.],
                 });
             }
             Surface::FramedCylinder {
@@ -167,6 +201,7 @@ pub fn classify_point_in_solid(
                     radius,
                     height,
                     span: face.cylinder_span()?,
+                    drift: [0., 0.],
                 });
             }
             Surface::Plane { u, v, .. } => {
@@ -242,7 +277,7 @@ pub fn classify_point_in_solid(
         }
     }
     for cylinder in &cylinders {
-        if cylinder.distance(p)? <= budget {
+        if cylinder.within_boundary(p, budget)? {
             return Ok(PointLocation::Boundary);
         }
     }
@@ -316,7 +351,12 @@ pub fn classify_point_in_solid(
         if !ambiguous {
             let ray_tol = GeometryTolerance::new(budget, tol.angular(), 0.)?;
             for cylinder in &cylinders {
-                match intersect_line_cylinder(p, d, &cylinder.face.surface, ray_tol) {
+                let intersection = if cylinder.drift == [0., 0.] {
+                    intersect_line_cylinder(p, d, &cylinder.face.surface, ray_tol)
+                } else {
+                    intersect_line_extruded_circle(p, d, &cylinder.face.surface, ray_tol)
+                };
+                match intersection {
                     Ok(LineCylinderIntersection::Empty) => (),
                     Ok(LineCylinderIntersection::Points(points)) => {
                         for hit in points {
@@ -329,7 +369,8 @@ pub fn classify_point_in_solid(
                                         2. * cylinder.radius
                                             * ((hit.uv[0] - cylinder.span) / 2.).sin().abs(),
                                     );
-                                if gap <= budget {
+                                if gap <= budget * (1. + cylinder.drift[0].hypot(cylinder.drift[1]))
+                                {
                                     ambiguous = true;
                                     break;
                                 }
@@ -340,7 +381,8 @@ pub fn classify_point_in_solid(
                             let denominator = d.dot(cylinder.face.surface.normal(hit.uv[0]));
                             if hit.contact == IntersectionContact::Tangent
                                 || denominator.abs() <= tol.angular().sin()
-                                || hit.uv[1].min(cylinder.height - hit.uv[1]) <= budget
+                                || hit.uv[1].min(cylinder.height - hit.uv[1])
+                                    <= budget * (1. + cylinder.drift[0].hypot(cylinder.drift[1]))
                                 || hit.parameter <= budget
                             {
                                 ambiguous = true;
@@ -474,6 +516,18 @@ pub(crate) fn curved_classification_solid(model: u32) -> Result<Solid> {
             t,
         ),
         4 => extrude_arc_line_region(&crate::mixed::notched_demo_profile(14., t)?, 24., t),
+        5 => extrude_arc_line_region_along(
+            &ArcLineRegion {
+                origin: Point3::new(0., 0., -12.),
+                outer: rounded_rectangle_profile(Point3::new(0., 0., 0.), 64., 48., 10., t)?
+                    .segments,
+                holes: vec![
+                    rounded_rectangle_profile(Point3::new(0., 0., 0.), 20., 16., 4., t)?.segments,
+                ],
+            },
+            Vec3::new(12., -6., 24.),
+            t,
+        ),
         _ => Err(Error::InvalidInput("unknown curved classification model")),
     }
 }

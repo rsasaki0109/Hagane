@@ -66,6 +66,7 @@ cargo run --locked --example part -- 11
 cargo run --locked --example sewing
 cargo run --locked --example classification -- -10 0 0
 cargo run --locked --example curved_classification -- 0 0 0 0
+cargo run --locked --example curved_classification -- 5 34 19 0
 cargo run --locked --example extrusion_intersections -- 0 14 0
 cargo run --locked --example circular_face_intersections -- 0 0 14 0
 cargo run --locked --example part -- 12
@@ -209,9 +210,10 @@ fabricate the demo image.
   refinement, analytic hole ownership and preserved
   closed-solid geometry.
 - [Solid point classification](docs/classification.md) for planar polygon/circle
-  and bounded-arc trims and rectangular partial/full cylinder walls, with Euclidean boundary bands and two
-  checked independent rays. [Cylinder/tube/bore queries](docs/curved-classification.md)
-  and [rounded/notched queries](docs/arc-classification.md) are available in the browser model selector.
+  and bounded-arc trims and rectangular partial/full cylinder or skew circular translation walls, with Euclidean boundary bands and two
+  checked independent rays. [Cylinder/tube/bore queries](docs/curved-classification.md),
+  [rounded/notched queries](docs/arc-classification.md), and
+  [skew plate queries](docs/skew-classification.md) are available in the browser model selector.
 - [Shared straight edge simplification](docs/edge-simplify.md), removing exact
   degree-two collinear knots while preserving features, holes and shared pcurves.
 - [Coplanar face merging](docs/face-merge.md), removing shared internal boundaries
@@ -321,8 +323,9 @@ cutters. Tube walls must exceed 10 tolerances. Mixed line/arc regions accept
 2..1,024 segments per ring, at most 256 holes and 4,096 total segments. Their
 [supported domain](docs/mixed-profiles.md) includes positive XY extrusion and
 [framed extrusion](docs/framed-arc-extrusion.md) with either sign and exact skew
-translation surfaces. Nested holes and unresolved cusps are rejected. Line intersections with skew walls are supported; solid classification
-and general modeling operations on them remain unsupported. Arbitrary
+translation surfaces. Nested holes and unresolved cusps are rejected. Line intersections
+and solid classification with rectangular skew walls are supported; general
+curved modeling operations remain unsupported. Arbitrary
 curved trims, scale/shear/reflection transforms, and general CSG are not implemented.
 Rigid placement and arbitrary-plane polygon extrusion are documented in
 [frames](docs/frames.md); the restricted Boolean constructor and cylinder/plane

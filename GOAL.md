@@ -224,8 +224,8 @@ Mixed-profile skew extrusion now succeeds with exact circular translation
 surfaces, retaining arcs, generators and surface parameter boundaries. Both
 normal signs, curved holes, placement, analytic volume/bounds, UV/normals,
 microscopic geometry and closed sagitta-bounded meshes are verified natively
-and in WASM. A twenty-third browser fixture varies tangential offset. Classification,
-intersection and general modeling of these skew walls remain unsupported.
+and in WASM. A twenty-third browser fixture varies tangential offset. Classification and intersections are now implemented separately below;
+general curved modeling of these skew walls remains unsupported.
 See [skew extrusion](docs/skew-arc-extrusion.md).
 
 Typed line/skew circular translation surface intersection now supports finite
@@ -234,7 +234,7 @@ shear-scaled cylinder reduction preserves original line parameters; recovered
 world and local dimensions are checked. Native/WASM tests cover independent
 roots, placement, tiny dimensions, conditioning and error recovery. The browser
 contact-study page uses the exact skew circular B-rep fixture. Solid classification
-and angular face clipping remain unsupported. See
+and angular face clipping are implemented separately below. See
 [extrusion intersections](docs/extrusion-intersections.md).
 
 Rectangular circular B-rep face intersections now clip supporting hits to
@@ -243,6 +243,15 @@ uses and oriented normals. Exact dyadic incidence certifies shared-edge
 generators and crossings; near-boundary inputs without certificates fail.
 Native/WASM tests cover half/quarter faces, rims/corners, placement, tiny
 geometry and world-coordinate precision loss. Browser face selection displays
-actual open face meshes from the closed parent solid. General trims and
-skew-solid classification remain unsupported. See
+actual open face meshes from the closed parent solid. General trims remain
+unsupported; skew-solid classification is implemented separately below. See
 [circular face intersections](docs/circular-face-intersections.md).
+
+Skew circular solid classification now uses checked Euclidean boundary-band
+bounds and analytic oriented rays on rectangular translation walls. Native
+tests cover inverse-sheared material grids with curved holes, both signs,
+placement, normal offsets, combined rim distance, tiny geometry and precision
+rejection. Native/WASM queries and meshes agree; the seventh browser query
+model is a skew plate with a rounded hole. General trims, self-intersection
+detection, curved-face splitting and general curved Booleans remain unsupported.
+See [skew classification](docs/skew-classification.md).

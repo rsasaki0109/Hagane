@@ -19,6 +19,7 @@ mod operations;
 mod planar;
 mod predicates;
 mod sewing;
+mod skew_boundary;
 mod solid_split;
 mod topology;
 mod wasm;

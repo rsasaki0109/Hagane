@@ -160,10 +160,10 @@ fn invalid_inputs_and_unimplemented_surface_operations_fail_explicitly() {
         assert!(extrude_arc_line_region_along(&p, d, t).is_err());
     }
     let s = extrude_arc_line_region_along(&p, Vec3::new(3., -2., 4.), t).unwrap();
-    assert!(matches!(
-        classify_point_in_solid(&s, Point3::new(0., 0., 0.), GeometryTolerance::default()),
-        Err(Error::Unsupported(_))
-    ));
+    assert_eq!(
+        classify_point_in_solid(&s, Point3::new(0., 0., 0.), GeometryTolerance::default()).unwrap(),
+        PointLocation::Outside
+    );
     let surface = s
         .shell
         .faces

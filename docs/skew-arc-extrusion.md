@@ -60,7 +60,9 @@ positive finite height.
 [Line/skew-surface intersection](extrusion-intersections.md) now supports finite
 hits, tangency and generator overlap. The ordinary line/cylinder API keeps its
 original domain. [Trimmed face intersection](circular-face-intersections.md)
-now selects actual angular faces and preserves boundary parameters. **Current limits:** point classification, curved-face
+now selects actual angular faces and preserves boundary parameters.
+[Solid classification](skew-classification.md) now supports Euclidean boundary
+bands and checked rays on rectangular skew walls. **Current limits:** curved-face
 subdivision and general Booleans do not yet support these new skew surfaces.
 They return explicit errors rather than treating them as ordinary cylinders.
 Normal extrusion still uses the existing cylinder surface and query path.

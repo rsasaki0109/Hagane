@@ -40,6 +40,11 @@ claim compatibility with its data structures or APIs.
   angle. Hole ownership uses analytic line/arc classification. Implemented
   independently from these formulas/topology operations, with no new dependency.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
+- Skew circular boundary distance: orthogonal plane/segment projection, convex
+  parallelogram coordinates, circle sagitta and the distance-function bound from
+  [Hausdorff distance](https://en.wikipedia.org/wiki/Hausdorff_distance).
+  Independent chord-patch refinement uses analytic generators and checked
+  arithmetic guards, without adding a dependency or using a display mesh.
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision
   Floating-Point Arithmetic and Fast Robust Geometric Predicates* (1997),

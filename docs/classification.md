@@ -4,7 +4,9 @@
 
 `classify_point_in_solid(&Solid, Point3, GeometryTolerance)` returns
 `PointLocation::{Inside, Outside, Boundary}` for a validated closed oriented
-B-rep with planar polygon/circle/bounded-arc trims and rectangular cylinder walls.
+B-rep with planar polygon/circle/bounded-arc trims and rectangular cylinder or
+skew circular translation walls. See [skew classification](skew-classification.md)
+for Euclidean boundary-band bounds on oblique circular extrusion.
 Polygon/circular holes, concavity, planar face subdivisions, rigid placement and
 skew polygon extrusion are supported. General cylinder trims and other unsupported
 boundaries return errors before a bounds shortcut. See [arc classification](arc-classification.md).
@@ -52,7 +54,7 @@ use checked f64 calculations; 3D decisions are not certified exact predicates.
 The input must be a geometrically non-self-intersecting solid within the existing
 supported trim domain. Existing structural validation checks topology, trims,
 pcurves, connectivity and orientation; it is not a general geometric
-self-intersection detector. Partial-cylinder/bounded-arc/NURBS classification and general Boolean selection
+self-intersection detector. General circular/NURBS trim classification and general curved Boolean selection
 remain subsequent work.
 
 ## Native/WASM/browser evidence

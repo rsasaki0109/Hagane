@@ -137,19 +137,20 @@ Analytic solid classification now supports planar full-circle wires and full
 periodic cylinder walls. Cylinder/tube/multiple-bore membership, cap/rim/wall
 Euclidean bands, periodic seams, placement and tiny dimensions are verified.
 4950 independent analytic grid samples accompany native/WASM probes/mesh parity;
-the browser query page offers six solid models, including bounded arc trims and rectangular partial cylinder walls. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
+the browser query page offers seven solid models, including bounded arc trims, rectangular partial cylinder walls and skew circular translation walls. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
 
 Framed line/arc region extrusion now accepts either world-space normal sign on
 arbitrary rigid planes, preserving exact walls, holes and shared pcurves.
 Analytic volume/bounds, tiny inputs, signed/winding variants and closed meshes
 are verified, with a twenty-second native/WASM/browser fixture. Skew arc
-extrusion remains unsupported. See [framed extrusion](framed-arc-extrusion.md).
+extrusion is implemented separately below. See [framed extrusion](framed-arc-extrusion.md).
 
 Exact skew mixed-profile extrusion now constructs circular translation surfaces
 with signed vectors, curved holes, arbitrary rigid placement and checked shared
 pcurves. Analytic volume/bounds and sagitta-bounded closed meshes are verified.
 The twenty-third native/WASM/browser fixture varies skew offset at fixed volume.
-Solid classification and general modeling operations on the new walls remain unsupported.
+Solid classification is now implemented separately below; general curved modeling
+operations on the new walls remain unsupported.
 See [skew arc extrusion](skew-arc-extrusion.md).
 
 Line/skew circular translation surface intersections now reduce analytically
@@ -157,8 +158,7 @@ to the cylinder solver with conservative shear-scaled guards and original-space
 line/surface verification. Sorted finite hits, tangency and signed generator
 intervals are checked natively/in WASM. A browser contact-study page exercises
 secants, tangents, misses and overlaps with actual B-rep-derived geometry.
-Solid classification remains unsupported; face angular clipping is implemented
-separately below. See
+Solid classification and face angular clipping are implemented separately below. See
 [extrusion intersections](extrusion-intersections.md).
 
 Trimmed circular face intersections now select rectangular cylinder/skew-wall
@@ -166,16 +166,24 @@ angular domains, report original shared-edge parameters and oriented normals,
 and retain bounded generator overlap. Exact dyadic line incidence certifies
 boundary cases without tolerance snapping. Periodic seams, partial walls, tiny
 geometry and error recovery are verified natively/in WASM. The browser contact
-page displays either selected semicircular face. General trims and skew-solid
-classification remain unsupported. See [circular face intersections](circular-face-intersections.md).
+page displays either selected semicircular face. General trims remain unsupported;
+skew-solid classification is implemented separately below. See [circular face intersections](circular-face-intersections.md).
+
+Skew circular solid classification now supports rectangular translation walls
+with Euclidean chord-patch distance bounds and independent oriented ray checks.
+Signed, placed and microscopic solids with rounded holes are verified against
+independent analytic grids. Native/WASM parity, error recovery and the seventh
+browser classification model are tested. Unresolved bounds return explicit
+errors; general trims and self-intersection detection remain unsupported.
+See [skew classification](skew-classification.md).
 
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Extend general trim clipping, classification and subdivision to skew circular translation
-  surfaces; support arbitrary cylindrical
+- Extend general trim clipping and subdivision to skew circular translation
+  surfaces; broaden classification beyond rectangular trims and support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using
   planar arrangements; extend contact handling, surface/surface curves, intersection

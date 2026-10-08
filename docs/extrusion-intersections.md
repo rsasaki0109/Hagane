@@ -79,9 +79,10 @@ cover all contact studies, slider changes, ambiguity/recovery, marker rendering,
 orbit and mobile layout, alongside the existing 23 solid presets.
 
 [Angular face clipping](circular-face-intersections.md) is now supported separately
-with original edge provenance. Solid classification, curved-face subdivision and
-general Booleans for skew circular translation walls remain unsupported. This
-milestone provides the surface intersection prerequisite for those operations.
+with original edge provenance. [Solid classification](skew-classification.md)
+now uses these supporting intersections and Euclidean boundary bands. Curved-face
+subdivision and general Booleans for skew circular translation walls remain
+unsupported.
 
 Implementation is original MIT OR Apache-2.0 Rust, with no added dependencies or
 OCCT source. Mathematical sources are affine line parameter preservation,
