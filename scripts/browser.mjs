@@ -182,6 +182,14 @@ try {
  await page.locator('#radius').evaluate(e=>{e.value=24;e.dispatchEvent(new Event('input'));});const skewSplitAfter=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(skewSplitAfter.volume-skewSplitBefore.volume)<1e-8);assert.notDeepEqual(skewSplitAfter.positions,skewSplitBefore.positions);assert.equal(skewSplitAfter.faces,22);assert.equal(skewSplitAfter.edges,58);
  await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
  if(process.argv.includes('--capture-skew-face-split')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/skew-face-subdivision.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
+ await page.locator('#preset').selectOption('24');assert.equal(await page.locator('#radius-title').textContent(),'Plane tilt');assert.deepEqual(await page.locator('.range-label span').allTextContents(),['−9.5°','9.5°']);
+ const obliqueBefore=await page.evaluate(()=>window.haganeDemo.mesh);assert.equal(obliqueBefore.faces,34);assert.equal(obliqueBefore.edges,80);assert.ok(obliqueBefore.section_segments.length>16);const obliqueCanvas=await page.locator('canvas').screenshot();
+ await page.locator('#radius').evaluate(e=>{e.value=24;e.dispatchEvent(new Event('input'));});const obliqueAfter=await page.evaluate(()=>window.haganeDemo.mesh);assert.ok(Math.abs(obliqueAfter.volume-obliqueBefore.volume)<1e-8);assert.notDeepEqual(obliqueAfter.positions,obliqueBefore.positions);assert.notDeepEqual(obliqueAfter.section_segments,obliqueBefore.section_segments);assert.notDeepEqual(await page.locator('canvas').screenshot(),obliqueCanvas);assert.equal(obliqueAfter.faces,34);assert.equal(obliqueAfter.edges,80);
+ for(const segment of obliqueAfter.section_segments)for(const p of segment)assert.ok(Math.abs((p[0]-6)/6-0.08*(p[1]+3)+p[2])<1e-9);
+ const cyanPixels=await page.evaluate(()=>{const canvas=document.getElementById('view'),gl=canvas.getContext('webgl'),pixels=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pixels);let count=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]>=80&&pixels[i]<=140&&pixels[i+1]>=200&&pixels[i+2]>=180)count++;return count;});assert.ok(cyanPixels>100,'Actual section contours must render visibly');
+ if(process.argv.includes('--capture-oblique-boundary')){await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/oblique-boundary.png',import.meta.url).pathname});await page.locator('#wire').uncheck();}
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+
 
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
@@ -265,5 +273,5 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: circular face trim selection, original edge parameters, exact boundary overlap, ambiguity recovery and selected face meshes passed.');
  console.log('Browser: skew surface secants, tangent, empty, forward/reverse generator, ambiguity recovery, slider, marker lines, orbit and responsive layout passed.');
- console.log('Browser: 24 B-rep presets including skew circular face subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

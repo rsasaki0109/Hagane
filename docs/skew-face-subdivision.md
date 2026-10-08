@@ -66,8 +66,10 @@ explicit error, rather than a partial result.
 
 Full-periodic circle rims are not supported by this new direct wall API. The
 existing periodic **normal-cylinder** cap subdivision remains separate.
-Nonrectangular circular trims, arbitrary oblique cuts through a curved wall,
-curved surface/surface splitting and general curved Booleans remain unsupported.
+[Oblique transverse plane subdivision](oblique-boundary.md) is now supported
+separately using exact ellipse boundaries and harmonic height trims. Arbitrary
+partial wall cuts, general surface/surface splitting and curved Booleans remain
+unsupported.
 Generator-aligned splitting is an implemented prerequisite for broader curved
 B-rep operations.
 

@@ -206,7 +206,7 @@ pub fn classify_point_in_solid(
             }
             Surface::Plane { u, v, .. } => {
                 let mut rings = Vec::new();
-                let mixed_rings = crate::face_intersections::rings(face);
+                let mixed_rings = crate::face_intersections::rings(face)?;
                 for (index, w) in face.wires.iter().enumerate() {
                     if w.coedges
                         .iter()

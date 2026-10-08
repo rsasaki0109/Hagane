@@ -180,18 +180,18 @@ pub fn split_planar_face(
     a.push(chord(false));
     let mut b = path(ib, ia);
     b.push(chord(true));
-    let analytic_ring = |coedges: &[Coedge]| {
-        crate::face_intersections::rings(&Face {
+    let analytic_ring = |coedges: &[Coedge]| -> Result<Vec<PlanarSegment>> {
+        Ok(crate::face_intersections::rings(&Face {
             surface: face.surface.clone(),
             orientation: face.orientation,
             wires: vec![Wire {
                 coedges: coedges.to_vec(),
             }],
-        })
-        .remove(0)
+        })?
+        .remove(0))
     };
-    let ap = analytic_ring(&a);
-    let bp = analytic_ring(&b);
+    let ap = analytic_ring(&a)?;
+    let bp = analytic_ring(&b)?;
     let mut aw = vec![Wire { coedges: a }];
     let mut bw = vec![Wire { coedges: b }];
     for hole in &face.wires[1..] {
@@ -764,7 +764,7 @@ pub fn subdivide_planar_face(
             let p = c.pcurve.evaluate(range[usize::from(!c.forward)]);
             let mut owner = None;
             for (i, f) in faces.iter().enumerate() {
-                let ring = crate::face_intersections::rings(f).remove(0);
+                let ring = crate::face_intersections::rings(f)?.remove(0);
                 match crate::mixed::point_location(p, &ring, tol.absolute())? {
                     PointLocation::Inside => {
                         if owner.replace(i).is_some() {

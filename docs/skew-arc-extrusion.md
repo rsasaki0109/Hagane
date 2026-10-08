@@ -64,7 +64,9 @@ now selects actual angular faces and preserves boundary parameters.
 [Solid classification](skew-classification.md) now supports Euclidean boundary
 bands and checked rays on rectangular skew walls.
 [Bounded face subdivision](skew-face-subdivision.md) now splits these walls along
-generators and refines them alongside cap cuts. **Current limits:** general
+generators and refines them alongside cap cuts.
+[Oblique transverse sections](oblique-boundary.md) add exact ellipse boundaries.
+**Current limits:** general
 curved-face splits and general Booleans do not yet support these skew surfaces.
 They return explicit errors rather than treating them as ordinary cylinders.
 Normal extrusion still uses the existing cylinder surface and query path.

@@ -53,6 +53,56 @@ pub fn arc_segments(radius: f64, sweep: f64, chord_error: f64) -> Result<usize> 
         .ceil()
         .max(1.0) as usize)
 }
+// Opposite rims use the same angular grid. Union propagation keeps cap/wall
+// and ellipse/wall samples conforming even after oblique cuts increase accuracy.
+pub(crate) fn shared_edge_counts(solid: &Solid, error: f64) -> Result<Vec<usize>> {
+    let mut parent: Vec<_> = (0..solid.edges.len()).collect();
+    fn root(parent: &mut [usize], mut i: usize) -> usize {
+        while parent[i] != i {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        i
+    }
+    for face in &solid.shell.faces {
+        if !matches!(face.surface, Surface::Plane { .. }) {
+            let c = &face.wires[0].coedges;
+            let a = root(&mut parent, c[0].edge);
+            let b = root(&mut parent, c[2].edge);
+            parent[a] = b;
+        }
+    }
+    let mut maxima = vec![0; solid.edges.len()];
+    for (i, edge) in solid.edges.iter().enumerate() {
+        let count = match edge.curve {
+            Curve::Line { .. } => 1,
+            Curve::Circle { radius, .. } | Curve::FramedCircle { radius, .. } => {
+                circle_segments(radius, error)?
+            }
+            Curve::Arc { radius, sweep, .. } => arc_segments(radius, sweep, error)?,
+            Curve::EllipseArc {
+                cosine,
+                sine,
+                sweep,
+                ..
+            } => {
+                let curvature = cosine.norm() + sine.norm();
+                let count = (sweep * (curvature / (8. * error)).sqrt()).ceil().max(1.);
+                if !curvature.is_finite() || !count.is_finite() || count > 65536. {
+                    return Err(Error::Tessellation(
+                        "ellipse accuracy exceeds 65536 segments",
+                    ));
+                }
+                count as usize
+            }
+        };
+        let r = root(&mut parent, i);
+        maxima[r] = maxima[r].max(count);
+    }
+    Ok((0..solid.edges.len())
+        .map(|i| maxima[root(&mut parent, i)])
+        .collect())
+}
 impl Solid {
     /// Meshes the exact supported B-rep surfaces and trims; never performs mesh CSG.
     pub fn tessellate(&self, chord_error: f64, tol: Tolerance) -> Result<Mesh> {
@@ -60,6 +110,7 @@ impl Solid {
         if !chord_error.is_finite() || chord_error <= 0.0 {
             return Err(Error::InvalidInput("positive finite chord error required"));
         }
+        let counts = shared_edge_counts(self, chord_error)?;
         let mut mesh = Mesh::default();
         for (fi, f) in self.shell.faces.iter().enumerate() {
             match f.surface {
@@ -81,16 +132,7 @@ impl Solid {
                             if matches!(edge.curve, Curve::Line { .. }) {
                                 line_vertices.push(coords.len() / 2);
                             }
-                            let count = match edge.curve {
-                                Curve::Circle { radius, .. }
-                                | Curve::FramedCircle { radius, .. } => {
-                                    circle_segments(radius, chord_error)?
-                                }
-                                Curve::Arc { radius, sweep, .. } => {
-                                    arc_segments(radius, sweep, chord_error)?
-                                }
-                                Curve::Line { .. } => 1,
-                            };
+                            let count = counts[c.edge];
                             if mixed && coords.len() / 2 + count > 4096 {
                                 return Err(Error::Tessellation("mixed planar display trim checking is limited to 4096 total samples per face"));
                             }
@@ -149,19 +191,24 @@ impl Solid {
                         mesh.triangle(p, [normal; 3], fi, f.orientation);
                     }
                 }
-                Surface::Cylinder { radius, height, .. }
-                | Surface::FramedCylinder { radius, height, .. }
-                | Surface::ExtrudedCircle { radius, height, .. } => {
-                    let span = f.cylinder_span()?;
-                    let n = arc_segments(radius, span, chord_error)?;
+                Surface::Cylinder { .. }
+                | Surface::FramedCylinder { .. }
+                | Surface::ExtrudedCircle { .. } => {
+                    let span = f.circular_span()?;
+                    let bands = f.circular_bands()?;
+                    let n = counts[f.wires[0].coedges[0].edge];
                     for i in 0..n {
                         let a = span * i as f64 / n as f64;
                         let b = span * (i + 1) as f64 / n as f64;
                         let p = [
-                            f.surface.evaluate(a, 0.0),
-                            f.surface.evaluate(b, 0.0),
-                            f.surface.evaluate(b, height),
-                            f.surface.evaluate(a, height),
+                            f.surface
+                                .evaluate(a, crate::circular_trims::value(bands[0], a)),
+                            f.surface
+                                .evaluate(b, crate::circular_trims::value(bands[0], b)),
+                            f.surface
+                                .evaluate(b, crate::circular_trims::value(bands[1], b)),
+                            f.surface
+                                .evaluate(a, crate::circular_trims::value(bands[1], a)),
                         ];
                         let na = f.surface.normal(a);
                         let nb = f.surface.normal(b);
@@ -183,6 +230,13 @@ pub fn demo_json(radius: f64, chord_error: f64) -> Result<String> {
 /// four-bore part, 5 rounded-rectangle line/arc extrusion, 6 concave arc-notch with rounded hole, 7 exact planar face split, 8 arc-rim and cylinder-wall refinement.
 /// Unknown IDs fail.
 pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<String> {
+    if preset == 24 {
+        return crate::oblique_split::oblique_boundary_mesh_json(
+            (radius - 16.) / 48.,
+            0.,
+            chord_error,
+        );
+    }
     let tol = Tolerance::default();
     let b = BoxSpec {
         min: Point3::new(-40.0, -30.0, -12.0),

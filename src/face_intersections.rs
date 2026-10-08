@@ -54,13 +54,18 @@ pub enum PlanarFacesIntersection {
     /// Empty means disjoint trimmed faces; multiple segments preserve holes.
     Segments(Vec<PlanarFaceIntersectionSegment>),
 }
-pub(crate) fn rings(face: &Face) -> Vec<Vec<PlanarSegment>> {
+pub(crate) fn rings(face: &Face) -> Result<Vec<Vec<PlanarSegment>>> {
     face.wires
         .iter()
         .map(|wire| {
             let mut ring = Vec::new();
             for c in &wire.coedges {
                 let s = match c.pcurve {
+                    PCurve::HeightGraph { .. } => {
+                        return Err(Error::Unsupported(
+                            "planar trim routines do not support harmonic height graphs",
+                        ))
+                    }
                     PCurve::Affine { .. } => PlanarSegment::Line {
                         a: c.pcurve.evaluate(0.0),
                         b: c.pcurve.evaluate(1.0),
@@ -93,7 +98,7 @@ pub(crate) fn rings(face: &Face) -> Vec<Vec<PlanarSegment>> {
                 };
                 ring.push(if c.forward { s } else { s.reversed() });
             }
-            ring
+            Ok(ring)
         })
         .collect()
 }
@@ -171,7 +176,7 @@ fn clip_validated(
         ));
     }
     let unit = direction.normalized()?;
-    let loops = rings(face);
+    let loops = rings(face)?;
     let scale = loops
         .iter()
         .flatten()
@@ -216,6 +221,11 @@ fn clip_validated(
             }
             let mut roots = Vec::new();
             match c.pcurve {
+                PCurve::HeightGraph { .. } => {
+                    return Err(Error::Unsupported(
+                        "planar clipping does not support harmonic height graphs",
+                    ))
+                }
                 PCurve::Affine {
                     origin: p,
                     direction: e,

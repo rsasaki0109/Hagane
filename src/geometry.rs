@@ -2,6 +2,13 @@ use crate::{Error, Frame3, GeometryTolerance, Point3, Result, Tolerance, Transfo
 use std::f64::consts::TAU;
 #[derive(Clone, Debug)]
 pub enum Curve {
+    /// Exact bounded ellipse, parameterized by a shared angular parameter.
+    EllipseArc {
+        center: Point3,
+        cosine: Vec3,
+        sine: Vec3,
+        sweep: f64,
+    },
     Line {
         a: Point3,
         b: Point3,
@@ -23,6 +30,12 @@ pub enum Curve {
 impl Curve {
     pub fn evaluate(&self, t: f64) -> Point3 {
         match *self {
+            Self::EllipseArc {
+                center,
+                cosine,
+                sine,
+                ..
+            } => center + cosine * t.cos() + sine * t.sin(),
             Self::Line { a, b } => a + (b - a) * t,
             Self::FramedCircle { frame, radius } | Self::Arc { frame, radius, .. } => {
                 frame.point(Vec3::new(radius * t.cos(), radius * t.sin(), 0.0))
@@ -34,6 +47,27 @@ impl Curve {
     }
     pub fn transformed(&self, transform: Transform) -> Result<Self> {
         Ok(match *self {
+            Self::EllipseArc {
+                center,
+                cosine,
+                sine,
+                sweep,
+            } => {
+                let center = transform.point(center);
+                let cosine = transform.vector(cosine);
+                let sine = transform.vector(sine);
+                if !center.finite() || !cosine.finite() || !sine.finite() {
+                    return Err(Error::InvalidInput(
+                        "transformed ellipse exceeds finite coordinates",
+                    ));
+                }
+                Self::EllipseArc {
+                    center,
+                    cosine,
+                    sine,
+                    sweep,
+                }
+            }
             Self::Line { a, b } => {
                 let (a, b) = (transform.point(a), transform.point(b));
                 if !a.finite() || !b.finite() {
@@ -65,7 +99,7 @@ impl Curve {
     pub fn range(&self) -> [f64; 2] {
         match self {
             Self::Line { .. } => [0.0, 1.0],
-            Self::Arc { sweep, .. } => [0.0, *sweep],
+            Self::Arc { sweep, .. } | Self::EllipseArc { sweep, .. } => [0.0, *sweep],
             Self::Circle { .. } | Self::FramedCircle { .. } => [0.0, TAU],
         }
     }

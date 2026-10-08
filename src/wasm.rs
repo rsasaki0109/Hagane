@@ -34,6 +34,10 @@ mod exports {
         generate(crate::demo_preset_json(preset, radius, chord_error))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_oblique_boundary_demo(slope: f64, placement: f64) -> i32 {
+        generate(crate::oblique_boundary_demo_json(slope, placement))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_skew_face_subdivision_demo(fraction: f64, placement: f64) -> i32 {
         generate(crate::skew_face_subdivision_demo_json(fraction, placement))
     }

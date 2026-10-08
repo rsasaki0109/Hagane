@@ -12,6 +12,13 @@ pub struct Edge {
 /// Evaluated at the SAME parameter as the owning 3D edge, including reversed uses.
 #[derive(Clone, Debug)]
 pub enum PCurve {
+    /// u=t, v=offset + cosine*cos(t) + sine*sin(t), sharing ellipse angle.
+    HeightGraph {
+        offset: f64,
+        cosine: f64,
+        sine: f64,
+        sweep: f64,
+    },
     Arc {
         center: [f64; 2],
         radius: f64,
@@ -30,6 +37,12 @@ pub enum PCurve {
 impl PCurve {
     pub fn evaluate(&self, t: f64) -> [f64; 2] {
         match *self {
+            Self::HeightGraph {
+                offset,
+                cosine,
+                sine,
+                ..
+            } => [t, offset + cosine * t.cos() + sine * t.sin()],
             Self::Affine { origin, direction } => {
                 [origin[0] + direction[0] * t, origin[1] + direction[1] * t]
             }
@@ -83,6 +96,17 @@ pub struct Bounds {
 }
 impl Face {
     pub(crate) fn cylinder_span(&self) -> Result<f64> {
+        let span = self.circular_span()?;
+        let bands = self.circular_bands()?;
+        let (_, _, height, _) = crate::circular_trims::surface_data(&self.surface)?;
+        if bands != [[0., 0., 0.], [height, 0., 0.]] {
+            return Err(Error::Unsupported(
+                "this operation requires rectangular circular trims, not height-graph bands",
+            ));
+        }
+        Ok(span)
+    }
+    pub(crate) fn circular_span(&self) -> Result<f64> {
         if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
             return Err(Error::Unsupported(
                 "cylindrical trim requires a four-coedge rectangle",
@@ -114,6 +138,11 @@ impl Face {
                         let mut segments = Vec::new();
                         for c in &wire.coedges {
                             let segment = match c.pcurve {
+                                PCurve::HeightGraph { .. } => {
+                                    return Err(Error::Unsupported(
+                                        "height graphs are supported only on circular walls",
+                                    ))
+                                }
                                 PCurve::Affine { .. } => PlanarSegment::Line {
                                     a: c.pcurve.evaluate(0.0),
                                     b: c.pcurve.evaluate(1.0),
@@ -199,36 +228,10 @@ impl Face {
                 validate_region(&loops[0], &loops[1..], tol)?;
             }
 
-            Surface::Cylinder { height, .. }
-            | Surface::FramedCylinder { height, .. }
-            | Surface::ExtrudedCircle { height, .. } => {
-                if self.wires.len() != 1 || self.wires[0].coedges.len() != 4 {
-                    return Err(Error::Unsupported(
-                        "cylindrical faces require one rectangular four-coedge wire",
-                    ));
-                }
-                let span = self.cylinder_span()?;
-                let expected = [
-                    ([0.0, 0.0], [1.0, 0.0], true),
-                    ([span, 0.0], [0.0, height], true),
-                    ([0.0, height], [1.0, 0.0], false),
-                    ([0.0, 0.0], [0.0, height], false),
-                ];
-                for (c, (o, d, forward)) in self.wires[0].coedges.iter().zip(expected) {
-                    let PCurve::Affine { origin, direction } = c.pcurve else {
-                        return Err(Error::Unsupported("nonrectangular cylindrical trim"));
-                    };
-                    if c.forward != forward
-                        || (0..2).any(|i| {
-                            (origin[i] - o[i]).abs() > tol.linear
-                                || (direction[i] - d[i]).abs() > tol.linear
-                        })
-                    {
-                        return Err(Error::Unsupported(
-                            "only cylindrical rectangles from u=0, v=0 to u=span, v=height are supported",
-                        ));
-                    }
-                }
+            Surface::Cylinder { .. }
+            | Surface::FramedCylinder { .. }
+            | Surface::ExtrudedCircle { .. } => {
+                crate::circular_trims::validate_face(self, tol)?;
             }
         }
         Ok(())
@@ -277,6 +280,29 @@ impl Solid {
                 return Err(Error::InvalidTopology("edge endpoints disagree with curve"));
             }
             match e.curve {
+                Curve::EllipseArc {
+                    center,
+                    cosine,
+                    sine,
+                    sweep,
+                } => {
+                    if !center.finite()
+                        || !cosine.finite()
+                        || !sine.finite()
+                        || !sweep.is_finite()
+                        || sweep <= 0.
+                        || sweep > std::f64::consts::PI
+                        || cosine.norm() <= tol.linear
+                        || sine.norm() <= tol.linear
+                        || !cosine.norm().is_finite()
+                        || !sine.norm().is_finite()
+                        || cosine.normalized()?.cross(sine.normalized()?).norm() <= 1e-10
+                    {
+                        return Err(Error::InvalidTopology(
+                            "invalid or unresolved bounded ellipse",
+                        ));
+                    }
+                }
                 Curve::Line { a, b } if (a - b).norm() <= tol.linear => {
                     return Err(Error::InvalidTopology("degenerate edge"))
                 }
@@ -537,49 +563,58 @@ impl Solid {
             .point;
         let mut sum = 0.0;
         for f in &self.shell.faces {
-            let term = match f.surface {
-                Surface::Plane { origin, u, v } => {
-                    (origin - reference).dot(u.cross(v))
-                        * f.wires.iter().map(wire_area).sum::<f64>()
-                        / 3.0
-                }
-                Surface::ExtrudedCircle {
-                    frame,
-                    radius,
-                    height,
-                    drift,
-                } => {
-                    let span = f.cylinder_span()?;
-                    let delta = frame.local_point(reference) * (-1.);
-                    if span == TAU {
-                        TAU * radius * radius * height / 3.
-                    } else {
-                        radius * height / 3.
-                            * (radius * span
-                                + (delta.x - drift[0] * delta.z) * span.sin()
-                                + (delta.y - drift[1] * delta.z) * (1. - span.cos()))
+            let term = if f
+                .wires
+                .iter()
+                .flat_map(|w| &w.coedges)
+                .any(|c| matches!(c.pcurve, PCurve::HeightGraph { .. }))
+            {
+                crate::circular_trims::volume_term(f, reference)?
+            } else {
+                match f.surface {
+                    Surface::Plane { origin, u, v } => {
+                        (origin - reference).dot(u.cross(v))
+                            * f.wires.iter().map(wire_area).sum::<f64>()
+                            / 3.0
                     }
-                }
-                Surface::Cylinder { radius, height, .. }
-                | Surface::FramedCylinder { radius, height, .. } => {
-                    let span = f.cylinder_span()?;
-                    if span == TAU {
-                        TAU * radius * radius * height / 3.0
-                    } else {
-                        let (center, u, v) = match f.surface {
-                            Surface::Cylinder { center, .. } => {
-                                (center, Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0))
-                            }
-                            Surface::FramedCylinder { frame, .. } => {
-                                (frame.origin(), frame.axes()[0], frame.axes()[1])
-                            }
-                            _ => unreachable!(),
-                        };
-                        let delta = center - reference;
-                        radius * height / 3.0
-                            * (radius * span
-                                + delta.dot(u) * span.sin()
-                                + delta.dot(v) * (1.0 - span.cos()))
+                    Surface::ExtrudedCircle {
+                        frame,
+                        radius,
+                        height,
+                        drift,
+                    } => {
+                        let span = f.cylinder_span()?;
+                        let delta = frame.local_point(reference) * (-1.);
+                        if span == TAU {
+                            TAU * radius * radius * height / 3.
+                        } else {
+                            radius * height / 3.
+                                * (radius * span
+                                    + (delta.x - drift[0] * delta.z) * span.sin()
+                                    + (delta.y - drift[1] * delta.z) * (1. - span.cos()))
+                        }
+                    }
+                    Surface::Cylinder { radius, height, .. }
+                    | Surface::FramedCylinder { radius, height, .. } => {
+                        let span = f.cylinder_span()?;
+                        if span == TAU {
+                            TAU * radius * radius * height / 3.0
+                        } else {
+                            let (center, u, v) = match f.surface {
+                                Surface::Cylinder { center, .. } => {
+                                    (center, Vec3::new(1.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0))
+                                }
+                                Surface::FramedCylinder { frame, .. } => {
+                                    (frame.origin(), frame.axes()[0], frame.axes()[1])
+                                }
+                                _ => unreachable!(),
+                            };
+                            let delta = center - reference;
+                            radius * height / 3.0
+                                * (radius * span
+                                    + delta.dot(u) * span.sin()
+                                    + delta.dot(v) * (1.0 - span.cos()))
+                        }
                     }
                 }
             };
@@ -642,6 +677,24 @@ impl Solid {
                     }
                     None
                 }
+                Curve::EllipseArc {
+                    center,
+                    cosine,
+                    sine,
+                    sweep,
+                } => {
+                    add(e.curve.evaluate(0.));
+                    add(e.curve.evaluate(sweep));
+                    for (a, b) in [(cosine.x, sine.x), (cosine.y, sine.y), (cosine.z, sine.z)] {
+                        let angle = b.atan2(a).rem_euclid(TAU);
+                        for t in [angle, (angle + std::f64::consts::PI).rem_euclid(TAU)] {
+                            if t <= sweep {
+                                add(center + cosine * t.cos() + sine * t.sin());
+                            }
+                        }
+                    }
+                    None
+                }
                 Curve::Line { .. } => None,
             };
             if let Some((center, u, v, radius)) = circle {
@@ -663,6 +716,18 @@ pub(crate) fn wire_area(w: &Wire) -> f64 {
         .iter()
         .map(|c| {
             let a = match c.pcurve {
+                PCurve::HeightGraph {
+                    offset,
+                    cosine,
+                    sine,
+                    sweep,
+                } => {
+                    let y0 = offset + cosine;
+                    let y1 = offset + cosine * sweep.cos() + sine * sweep.sin();
+                    0.5 * (sweep * (y1 + reference[1])
+                        - reference[0] * (y1 - y0)
+                        - 2. * (offset * sweep + cosine * sweep.sin() + sine * (1. - sweep.cos())))
+                }
                 PCurve::Affine { origin, direction } => {
                     0.5 * ((origin[0] - reference[0]) * direction[1]
                         - (origin[1] - reference[1]) * direction[0])
@@ -688,4 +753,61 @@ pub(crate) fn wire_area(w: &Wire) -> f64 {
             }
         })
         .sum()
+}
+
+#[cfg(test)]
+mod height_graph_tests {
+    use super::*;
+    #[test]
+    fn closed_height_graph_wire_area_matches_independent_integral() {
+        let sweep = 1.3;
+        let offset = 1.2;
+        let cosine = 0.2;
+        let sine = -0.3;
+        let top = 4.;
+        let graph = PCurve::HeightGraph {
+            offset,
+            cosine,
+            sine,
+            sweep,
+        };
+        let y0 = graph.evaluate(0.)[1];
+        let y1 = graph.evaluate(sweep)[1];
+        let wire = Wire {
+            coedges: vec![
+                Coedge {
+                    edge: 0,
+                    forward: true,
+                    pcurve: graph,
+                },
+                Coedge {
+                    edge: 1,
+                    forward: true,
+                    pcurve: PCurve::Affine {
+                        origin: [sweep, y1],
+                        direction: [0., top - y1],
+                    },
+                },
+                Coedge {
+                    edge: 2,
+                    forward: true,
+                    pcurve: PCurve::Affine {
+                        origin: [sweep, top],
+                        direction: [-sweep, 0.],
+                    },
+                },
+                Coedge {
+                    edge: 3,
+                    forward: true,
+                    pcurve: PCurve::Affine {
+                        origin: [0., top],
+                        direction: [0., y0 - top],
+                    },
+                },
+            ],
+        };
+        let expected =
+            top * sweep - (offset * sweep + cosine * sweep.sin() + sine * (1. - sweep.cos()));
+        assert!((wire_area(&wire) - expected).abs() < 1e-12);
+    }
 }

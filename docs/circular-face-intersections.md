@@ -93,6 +93,8 @@ selection, ambiguity and recovery alongside the existing solid/surface demos.
 
 [Skew-solid classification](skew-classification.md) and
 [bounded face subdivision](skew-face-subdivision.md) are now implemented separately.
+[Oblique transverse sections](oblique-boundary.md) use harmonic height trims
+which this rectangular intersection API explicitly rejects.
 General nonrectangular circular trims, arbitrary curved-face subdivision and
 general Booleans remain unsupported. This is a
 face-intersection prerequisite, not a general Boolean implementation.

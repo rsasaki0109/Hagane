@@ -13,6 +13,12 @@ claim compatibility with its data structures or APIs.
   [Euler characteristic](https://en.wikipedia.org/wiki/Euler_characteristic).
 - Analytic surface parametrization and oriented normals: standard Cartesian
   plane/cylinder equations; [Parametric surface](https://en.wikipedia.org/wiki/Parametric_surface).
+- Oblique circular-wall sections: substitution into a Cartesian plane yields
+  a sinusoidal height graph and an affine unit-circle image (ellipse).
+  Harmonic wall flux uses elementary trigonometric integrals. Linear
+  interpolation error uses the second-derivative bound; shared edge sampling
+  keeps adjacent analytic trims conforming. All are independently implemented
+  from mathematical formulas, with no added dependency or copied source.
 - Skew circular face subdivision: orthonormal basis change and circular angular
   addition preserve the physical translation while rebasing child parameters.
   Rim/coedge refinement uses shared B-rep traversal and affine parameter

@@ -264,3 +264,13 @@ placed/tiny solids, volume/bounds, membership and closed sagitta-bounded meshes.
 Native/WASM/browser fixtures share the twenty-fourth solid preset. Full-periodic
 skew rim refinement, arbitrary wall cuts and general curved Booleans remain
 unsupported. See [skew subdivision](docs/skew-face-subdivision.md).
+
+Oblique transverse plane boundary subdivision now uses exact bounded ellipse
+section edges and harmonic wall pcurves. Shared generator splits propagate to
+planar neighbors; analytical trim extrema, face flux and conforming shared-edge
+meshes preserve a closed solid and its volume. Signed/placed/tiny cases, plane
+incidence, loops, bounds, chord error, conditioning and failures are verified.
+Native/WASM meshes and contours agree; the twenty-fifth browser solid preset
+varies plane tilt. Rim contacts/partial crossings, full-periodic rims, repeated
+harmonic-band cuts and queries on harmonic trims remain unsupported.
+See [oblique boundary subdivision](docs/oblique-boundary.md).
