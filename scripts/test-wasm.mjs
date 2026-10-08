@@ -149,3 +149,14 @@ for(const value of [0,7,25,NaN,Infinity])assert.equal(preset(12,value).status,1)
 assert.equal(preset(12,14,0).status,1);assert.equal(preset(12).status,0);
 assert.notDeepEqual(preset(12,8).result.positions,preset(12,24).result.positions);
 console.log('Planar sewing: shared subdivision, metrics, native/WASM parity, errors and recovery passed.');
+function classifySolid(x,y,z){const status=k.hagane_classify_demo(x,y,z);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [x,y,z,expected] of [[-10,0,0,'inside'],[-26,0,0,'outside'],[10,10,0,'outside'],[-10,0,12,'boundary'],[-40,-30,-12,'boundary'],[45,0,0,'outside'],[-20,0,0,'boundary'],[-26,0,12,'outside'],[-10,0,12+1e-9,'boundary'],[-10,0,12+1e-6,'outside']]){
+ const {status,result}=classifySolid(x,y,z);assert.equal(status,0);assert.equal(result.location,expected);assert.equal(result.volume,69336);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','classification','--',...[x,y,z].map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);
+}
+for(const p of [[NaN,0,0],[0,Infinity,0],[0,0,-Infinity]])assert.equal(classifySolid(...p).status,1);
+assert.equal(classifySolid(-10,0,0).status,0);
+assert.equal(k.hagane_classification_mesh(),0);
+const classMesh=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));
+const nativeClassMesh=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','classification','--','--mesh'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(classMesh,nativeClassMesh);
+console.log('Solid classification: analytic probes, native/WASM parity, boundary bands, display fixture, invalid points and recovery passed.');

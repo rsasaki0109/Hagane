@@ -70,6 +70,12 @@ patches with an unmatched boundary subdivision. Closed, oriented manifold
 validation rejects open/duplicated/disconnected shells; near coincidences are
 not healed. See [sewing](sewing.md).
 
+Planar straight-edge solid point classification now uses analytic plane/trim
+intersections, Euclidean boundary bands, signed entry/exit checks and agreement
+of two independent rays. Concavity, polygon holes, rigid/skew placement and
+subdivided faces are covered, with a native/WASM browser query demo. Curved
+solid classification remains unsupported; see [classification](classification.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -77,7 +83,7 @@ not healed. See [sewing](sewing.md).
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement shared planar face arrangements and classification for scoped solid Boolean
+- Implement shared planar face arrangements for scoped solid Boolean
   operations; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

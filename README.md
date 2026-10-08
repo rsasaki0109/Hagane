@@ -64,6 +64,7 @@ cargo run --locked --example part -- 10
 cargo run --locked --example periodic_face_split
 cargo run --locked --example part -- 11
 cargo run --locked --example sewing
+cargo run --locked --example classification -- -10 0 0
 cargo run --locked --example part -- 12
 ```
 
@@ -144,6 +145,8 @@ while preserving the fixed bore and volume; enable tessellation to see the seam.
 The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
 auto rotation. Arrow keys orbit and `+` / `-` zoom when the canvas is focused.
+The **Classify** link opens an exact planar-solid point query. Move X/Y/Z or
+select material, hole, notch and boundary probes; Rust returns inside/outside/boundary.
 The renderer uses WebGL directly, with no CDN assets or JavaScript CAD library.
 The generated `web/hagane.wasm` is ignored and rebuilt from source.
 
@@ -183,6 +186,8 @@ fabricate the demo image.
   hole edges (including two crossings on one arc), periodic full-circle rim
   refinement, analytic hole ownership and preserved
   closed-solid geometry.
+- [Solid point classification](docs/classification.md) for planar straight-edge
+  B-reps, with Euclidean boundary bands and two checked independent rays.
 - Exact [planar patch sewing](docs/sewing.md), shared straight boundaries and
   conforming collinear subdivisions, with closed manifold validation.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,

@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
 const root=new URL('../web/',import.meta.url);
-const types={'/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
+const types={'/classification.html':'text/html','/classification.js':'text/javascript','/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
 const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://localhost').pathname;if(!types[path]){res.writeHead(404);res.end();return;}const data=await readFile(new URL(path==='/'?'index.html':path.slice(1),root));res.writeHead(200,{'Content-Type':types[path]});res.end(data);}catch{res.writeHead(500);res.end('Build the WASM module first.');}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
@@ -135,6 +135,19 @@ try {
  const shaded=await page.locator('canvas').screenshot();await page.locator('#wire').check();assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);await page.locator('#wire').uncheck();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);
  if(process.argv.includes('--capture')){await page.locator('#height').evaluate(e=>{e.value=60;e.dispatchEvent(new Event('input'));});await page.locator('#weight').evaluate(e=>{e.value=2;e.dispatchEvent(new Event('input'));});await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-surface.png',import.meta.url).pathname});}
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto(`http://127.0.0.1:${server.address().port}/classification.html`);await page.waitForFunction(()=>window.haganeClassification?.ready);
+ for(const [id,result] of [['material','inside'],['hole','outside'],['notch','outside'],['face','boundary'],['vertex','boundary'],['outside','outside']]){
+  await page.locator('#probe').selectOption(id);assert.equal(await page.locator('#location').textContent(),result);assert.equal(await page.evaluate(()=>window.haganeClassification.data.location),result);
+ }
+ await page.locator('#probe').selectOption('material');
+ await page.locator('#x').evaluate(e=>{e.value=-26;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#location').textContent(),'outside');assert.equal(await page.locator('#probe').inputValue(),'custom');
+ await page.locator('#x').evaluate(e=>{e.value=-20;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#location').textContent(),'boundary');
+ await page.locator('#probe').selectOption('face');await page.locator('#wire').check();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-classification'))await page.screenshot({path:new URL('../docs/classification.png',import.meta.url).pathname});
+ const classifierView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),classifierView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
+ console.log('Browser: solid point classification, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
  console.log('Browser: 13 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');

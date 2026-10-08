@@ -136,3 +136,14 @@ propagated to all incident uses. Existing edge-use, vertex-link, connectivity,
 trim and positive-volume validation establishes the supported shell invariants.
 No snapping/healing is performed. This independently implemented construction
 uses no new dependency and no OCCT source.
+
+### Solid point classification
+
+Ray crossing parity and oriented entry/exit counts classify points inside a
+closed oriented polygonal boundary. Analytic line/plane intersections and the
+existing exact 2D polygon membership predicate test each trimmed face, without
+mesh triangulation. Euclidean point/trim distance defines a boundary band;
+ambiguous vertex/edge/near-parallel rays are retried, and two independent rays
+must agree. Metric 3D calculations remain checked f64 operations. This is an
+independent implementation of elementary ray casting, with no new dependency
+and no OCCT source.

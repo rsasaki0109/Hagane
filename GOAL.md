@@ -129,7 +129,13 @@ subdivisions share vertices/edges/pcurves; near coincidences fail explicitly.
 A thirteenth native/WASM/browser preset exercises an unmatched face subdivision.
 See [sewing](docs/sewing.md).
 
-The next development task is planar face arrangements and classification toward
+Solid point classification now supports validated planar straight-edge B-reps,
+including concavity, holes, subdivisions, skew extrusion and rigid placement.
+Euclidean boundary distance uses a local tolerance budget; two independent
+nondegenerate rays must agree. A native/WASM browser probe demo exercises exact
+inside/outside/boundary queries. See [classification](docs/classification.md).
+
+The next development task is planar face arrangements toward
 scoped solid Boolean operations. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

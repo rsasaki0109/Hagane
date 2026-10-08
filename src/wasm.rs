@@ -55,6 +55,14 @@ mod exports {
     pub extern "C" fn hagane_generate_face_clipping(offset: f64, placement: f64) -> i32 {
         generate(crate::face_clipping_demo_json(offset, placement))
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_classify_demo(x: f64, y: f64, z: f64) -> i32 {
+        generate(crate::classification_demo_json(x, y, z))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_classification_mesh() -> i32 {
+        generate(crate::classification_mesh_demo_json())
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),
