@@ -208,8 +208,19 @@ Within an edge-connected component of faces on the same oriented plane, shared
 coedges cancel from the exterior boundary. The remaining directed cycles define
 outer rings and holes via signed planar area and containment. This is elementary
 oriented boundary cancellation and polygon topology, implemented originally in
-Rust under MIT OR Apache-2.0. Plane identity is certified only by exact frame
-identity or exact axis-aligned support; no approximate coplanarity inference is
-used. Original affine pcurves survive frame-preserving merges. This reuses the
+Rust under MIT OR Apache-2.0. Plane identity is certified by exact dyadic scalar triple products of plane
+bases and origin differences; no approximate coplanarity inference is used.
+Original affine pcurves undergo checked local frame conversion when needed. This reuses the
 existing boundary graph and planar sewing code and adds no dependency. No OCCT
 source was consulted, copied or translated.
+
+### Exact 3D orientation and frame conversion
+
+The signed scalar triple product gives tetrahedron orientation and tests whether
+a vector lies in a plane span. Exact dyadic integer arithmetic extends the
+existing independent finite-binary64 sign implementation to three-factor products.
+Plane identity tests use raw bases and exact origin differences, without adding
+basis vectors to origins. Affine pcurve frame conversion follows elementary
+linear coordinate transformation. Native i128 and WASM BigInt oracles independently
+verify determinant signs. This is original MIT OR Apache-2.0 Rust code with no new
+dependency and no OCCT source consultation/copying/translation.

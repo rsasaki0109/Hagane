@@ -11,14 +11,17 @@ only after the resulting analytic B-rep is validated.
 ## Supported domain
 
 The input must be a geometrically valid, closed planar straight-edge solid, with
-at most 512 faces and 4096 coedges. Plane identity is deliberately conservative:
+at most 512 faces and 4096 coedges. Plane identity is certified across different
+origins and UV frames by exact scalar triple products of the supplied binary64
+vectors: both target axes must lie in the source plane, and the exact origin
+difference must lie in that plane. Outward normals must have equal orientation.
+The public `same_plane_support(&first, &second)` checks checked plane supports
+independently of outward orientation.
 
-- Faces with exactly equal origin, U/V frame and orientation can merge. This
-  includes subdivisions retaining an original frame and rigid placement of them.
-- Axis-aligned planes can merge across different UV origins/frames when their
-  plane coordinate and signed outward unit normal are exactly equal.
-- Other representations, nearly parallel features and near coplanarity remain
-  separate. The function performs no tolerance-based plane snapping or healing.
+This includes different in-plane basis rotations/reflections and shifted origins,
+including tilted planes. Independently rounded representations that define
+slightly different binary64 planes remain separate even if their nominal design
+plane was the same. There is no tolerance-based snapping or healing.
 
 Only adjacency through a shared edge joins a component. Edge-disconnected regions
 on the same plane remain separate faces. Curved input and invalid topology fail
@@ -34,17 +37,17 @@ UV area identifies outer rings; negative rings must belong to exactly one outer
 ring. This supports concave boundaries and planar holes without filling the holes.
 
 Strict planar sewing reconstructs the solid. Every output vertex and edge must
-correspond to an original boundary vertex/edge. When the merged face retains an
-original UV frame, its affine pcurves are copied with edge-parameter reversal as
-needed. This avoids reprojection drift of collinear knots after rigid placement.
-Frames changed within an axis-aligned plane receive checked reconstructed pcurves.
+correspond to an original boundary vertex/edge. Affine pcurves on certified equal supports are transformed into the representative
+frame using local basis coefficients and origin offset, then reversed as needed
+for the output edge parameter. Exact axis permutations/sign changes use exact
+coefficients. This preserves original UV data instead of reprojecting every
+world-space boundary vertex. Final geometric checks reject unresolved conversions.
 
 The result must retain exact bounds, conserve analytic volume within relative
 `1e-10`, and not increase the face count. Final validation checks trims, plane
 geometry, pcurves, signed edge uses, vertex links and closed connectivity. Internal
 vertices/edges disappear; exterior collinear subdivisions remain. Collinear edge
-simplification, arbitrary differently parameterized rotated planes and tolerant
-healing are future work. Applying this operation again preserves topology counts.
+simplification, curved-surface merging and tolerant healing are future work. Applying this operation again preserves topology counts.
 
 ## Usage
 
@@ -83,3 +86,7 @@ parallel feature preservation, invalid/curved inputs and idempotence. Tests comp
 bounds, volume and material/boundary classification and check outward triangles
 and closed mesh seams. WASM verifies native geometry parity at four offsets and
 error recovery. Browser tests exercise all 19 presets and capture the actual demo.
+
+
+A second [tilted-frame fixture](reframed-merge.md) exercises independently
+parameterized faces, exact 3D predicates and native/WASM/browser parity.

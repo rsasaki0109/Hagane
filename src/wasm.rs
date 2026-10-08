@@ -27,6 +27,24 @@ mod exports {
             .map(|o| o.sign())
             .unwrap_or(2)
     }
+    /// -1/0/+1 exact 3D orientation; 2 indicates nonfinite input.
+    #[no_mangle]
+    pub extern "C" fn hagane_orient3d(
+        ax: f64,
+        ay: f64,
+        az: f64,
+        bx: f64,
+        by: f64,
+        bz: f64,
+        cx: f64,
+        cy: f64,
+        cz: f64,
+        dx: f64,
+        dy: f64,
+        dz: f64,
+    ) -> i32 {
+        crate::orient3d([ax, ay, az], [bx, by, bz], [cx, cy, cz], [dx, dy, dz]).unwrap_or(2)
+    }
     /// 0 disjoint, 1 intersecting (including contact), 2 invalid input.
     #[no_mangle]
     pub extern "C" fn hagane_segments_intersect2d(
@@ -70,6 +88,10 @@ mod exports {
     #[no_mangle]
     pub extern "C" fn hagane_convex_intersection_demo(offset: f64) -> i32 {
         generate(crate::convex_intersection_demo_json(offset))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_reframed_merge_demo(offset: f64) -> i32 {
+        generate(crate::reframed_merge_demo_json(offset))
     }
     #[no_mangle]
     pub extern "C" fn hagane_merged_contact_demo(offset: f64) -> i32 {

@@ -10,7 +10,7 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34}];
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38}];
 for(let id=0;id<expected.length;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
@@ -25,7 +25,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 19 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 20 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -208,3 +208,19 @@ for(const offset of [-8,-2,0,8]){
 for(const offset of [40,40-1e-9,100,NaN,Infinity]){const {status,result}=mergedContact(offset);assert.equal(status,1);assert.ok(result.error);}
 assert.equal(mergedContact(-2).status,0);
 console.log('Coplanar face merging: reduced topology, unchanged analytic volume, native/WASM parity, errors and recovery passed.');
+function exactOrientation3d(a,b,c,d){const aa=a.map(dyadic);const diff=p=>p.map((v,i)=>dyadic(v)-aa[i]);const u=diff(b),v=diff(c),w=diff(d);const det=(u[1]*v[2]-u[2]*v[1])*w[0]+(u[2]*v[0]-u[0]*v[2])*w[1]+(u[0]*v[1]-u[1]*v[0])*w[2];return det>0n?1:det<0n?-1:0;}
+let spatialCases=0;
+function checkOrientation3d(a,b,c,d){const expected=exactOrientation3d(a,b,c,d);assert.equal(k.hagane_orient3d(...a,...b,...c,...d),expected);assert.equal(k.hagane_orient3d(...a,...c,...b,...d),-expected||0);spatialCases++;}
+for(const s of [Number.MIN_VALUE,2**-1022,1e-200,1,1e200,Number.MAX_VALUE]){checkOrientation3d([0,0,0],[s,0,0],[0,s,0],[0,0,s]);checkOrientation3d([-s,-s,-s],[s,-s,-s],[-s,s,-s],[-s,-s,s]);}
+for(let exponent=-1000;exponent<=900;exponent+=10){const s=2**exponent,n=134217728;checkOrientation3d([0,0,0],[(n+1)*s,n*s,0],[n*s,(n-1)*s,0],[0,0,s]);}
+for(let i=0;i<1000;i++){const p=Array.from({length:4},()=>Array.from({length:3},finiteFloat));checkOrientation3d(...p);if(i%2===0)checkOrientation3d(p[0],p[1],p[2],p[0]);}
+assert.equal(k.hagane_orient3d(NaN,0,0,0,0,0,0,0,0,0,0,0),2);assert.equal(k.hagane_orient3d(0,0,0,0,0,0,Infinity,0,0,0,0,0),2);
+console.log(`Exact 3D orientation: ${spatialCases} independent BigInt cases, permutations, full exponent range and invalid inputs passed.`);
+function reframedMerge(offset){const status=k.hagane_reframed_merge_demo(offset);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const offset of [-8,-2,0,8]){
+ const {status,result}=reframedMerge(offset);assert.equal(status,0);assert.ok(Math.abs(result.volume-(176000+640*offset))<1e-8);assert.equal(result.faces,12);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','reframed_merge','--',String(offset)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+}
+for(const offset of [30,30-1e-9,100,NaN,Infinity]){const {status,result}=reframedMerge(offset);assert.equal(status,1);assert.ok(result.error);}
+assert.equal(reframedMerge(-2).status,0);
+console.log('Independent tilted UV frames: exact plane identity, merged topology, analytic volume, native/WASM parity and error recovery passed.');

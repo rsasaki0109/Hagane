@@ -178,6 +178,13 @@ through-hole parts, rigid placement and tiny dimensions. The nineteenth
 native/WASM/browser preset reduces the contact fixture from 26 to 10 faces. See
 [face merging](docs/face-merge.md).
 
+Plane support identity now uses exact dyadic scalar triple products, enabling
+coplanar face merging across independent tilted UV frames and origins. Affine
+pcurves undergo checked local frame conversion; near supports remain separate.
+Exact 3D orientation covers full finite binary64 inputs with independent native/
+WASM integer reference tests. A twentieth browser fixture merges tilted union
+faces. See [reframed merging](docs/reframed-merge.md).
+
 The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration

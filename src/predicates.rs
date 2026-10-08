@@ -67,8 +67,57 @@ pub fn orient2d(a: [f64; 2], b: [f64; 2], c: [f64; 2]) -> Result<Orientation> {
     })
 }
 
+/// Exact sign of `(b-a) × (c-a) · (d-a)` for finite binary64 inputs.
+/// No metric snapping is applied; integer arithmetic also handles overflow and
+/// underflow of the corresponding floating determinant.
+pub fn orient3d(a: [f64; 3], b: [f64; 3], c: [f64; 3], d: [f64; 3]) -> Result<i32> {
+    if a.into_iter()
+        .chain(b)
+        .chain(c)
+        .chain(d)
+        .any(|v| !v.is_finite())
+    {
+        return Err(Error::InvalidInput(
+            "3D orientation requires finite coordinates",
+        ));
+    }
+    let difference = |p: [f64; 3]| {
+        std::array::from_fn(|i| Integer::from_f64(p[i]).sub(&Integer::from_f64(a[i])))
+    };
+    Ok(triple(&difference(b), &difference(c), &difference(d)))
+}
+fn triple(a: &[Integer; 3], b: &[Integer; 3], c: &[Integer; 3]) -> i32 {
+    let x = a[1].mul(&b[2]).sub(&a[2].mul(&b[1])).mul(&c[0]);
+    let y = a[2].mul(&b[0]).sub(&a[0].mul(&b[2])).mul(&c[1]);
+    let z = a[0].mul(&b[1]).sub(&a[1].mul(&b[0])).mul(&c[2]);
+    let zero = Integer::from_f64(0.);
+    let det = x.sub(&zero.sub(&y)).sub(&zero.sub(&z));
+    if det.words.is_empty() {
+        0
+    } else if det.negative {
+        -1
+    } else {
+        1
+    }
+}
+pub(crate) fn exact_plane_support(
+    a: [f64; 3],
+    u: [f64; 3],
+    v: [f64; 3],
+    b: [f64; 3],
+    s: [f64; 3],
+    t: [f64; 3],
+) -> bool {
+    let u = u.map(Integer::from_f64);
+    let v = v.map(Integer::from_f64);
+    let offset = std::array::from_fn(|i| Integer::from_f64(b[i]).sub(&Integer::from_f64(a[i])));
+    triple(&u, &v, &s.map(Integer::from_f64)) == 0
+        && triple(&u, &v, &t.map(Integer::from_f64)) == 0
+        && triple(&u, &v, &offset) == 0
+}
+
 // Every finite binary64 is an integer multiple of 2^-1074. Coordinate
-// differences and products therefore fit in fewer than 132 u32 limbs.
+// differences and two/three-factor products fit in fewer than 132/198 u32 limbs.
 // Little-endian magnitudes keep the fallback bounded without external crates.
 struct Integer {
     negative: bool,

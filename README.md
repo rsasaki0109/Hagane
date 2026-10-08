@@ -36,10 +36,10 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`, `16`, `17`, or `18` to select four bores, a concave
+solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`, `16`, `17`, `18`, or `19` to select four bores, a concave
 polygon extrusion, a hollow tube, a rigidly placed four-bore part, a
 rounded line/arc extrusion, a concave arc-notch plate with a rounded hole,
-a cap face subdivision, a curved cap/cylinder-wall subdivision, a cut across two holes, repeated crossings of annular cap arcs, periodic bore subdivision, independent planar face sewing, a closed solid plane partition, convex solid intersection, convex operand subtraction, convex operand union, face-contact box fusion, or coplanar face merging:
+a cap face subdivision, a curved cap/cylinder-wall subdivision, a cut across two holes, repeated crossings of annular cap arcs, periodic bore subdivision, independent planar face sewing, a closed solid plane partition, convex solid intersection, convex operand subtraction, convex operand union, face-contact box fusion, coplanar face merging, or independently parameterized tilted face merging:
 
 ```sh
 cargo run --locked --example part -- 1
@@ -78,6 +78,8 @@ cargo run --locked --example box_contact -- -2
 cargo run --locked --example part -- 17
 cargo run --locked --example face_merge -- -2
 cargo run --locked --example part -- 18
+cargo run --locked --example reframed_merge -- -2
+cargo run --locked --example part -- 19
 ```
 
 Use the local kernel as a dependency during development:
@@ -152,7 +154,7 @@ Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
 slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
 a concave polygon extrusion with a polygon hole, a hollow tube, or a rotated
 four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
-a rounded hole, a split planar cap, a split curved cap, a cut across two polygon holes, repeated crossings of an annular cap, a periodic bore split, sewn independent planar patches, the positive half of a plane-cut solid, intersecting convex solids, a subtracted rectangular through-hole, the union of overlapping solids, exact face-contact box fusion, or merged coplanar faces. The split preset moves its cut offset
+a rounded hole, a split planar cap, a split curved cap, a cut across two polygon holes, repeated crossings of an annular cap, a periodic bore split, sewn independent planar patches, the positive half of a plane-cut solid, intersecting convex solids, a subtracted rectangular through-hole, the union of overlapping solids, exact face-contact box fusion, merged coplanar faces, or tilted faces with independent UV frames. The split preset moves its cut offset
 while preserving the fixed bore and volume; enable tessellation to see the seam.
 The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
@@ -201,7 +203,8 @@ fabricate the demo image.
 - [Solid point classification](docs/classification.md) for planar straight-edge
   B-reps, with Euclidean boundary bands and two checked independent rays.
 - [Coplanar face merging](docs/face-merge.md), removing shared internal boundaries
-  while preserving planar holes, geometry, original boundary edges and pcurves.
+  while preserving planar holes, geometry, original boundary edges and checked
+  pcurves across independent UV frames using exact plane-support identity.
 - [Axis-aligned box Booleans](docs/box-booleans.md), including identical/coplanar
   operands and full/partial face contact, with regularized empty results.
 - [Convex operand union](docs/convex-union.md), combining overlapping or strictly
@@ -340,7 +343,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all nineteen solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all twenty solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

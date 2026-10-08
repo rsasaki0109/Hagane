@@ -184,3 +184,158 @@ fn nearly_parallel_feature_planes_remain_separate() {
     let r = merge(&s);
     assert_eq!(r.shell.faces.len(), 7);
 }
+#[test]
+fn plane_identity_checks_different_origins_frames_and_near_planes() {
+    let u = Vec3::new(0.6, 0.8, 0.);
+    let v = Vec3::new(0., 0., 1.);
+    let a = Surface::Plane {
+        origin: Point3::new(0., 0., 0.),
+        u,
+        v,
+    };
+    let b = Surface::Plane {
+        origin: u * 4.,
+        u: v,
+        v: u * (-1.),
+    };
+    assert!(same_plane_support(&a, &b).unwrap());
+    assert!(same_plane_support(&b, &a).unwrap());
+    let near = Surface::Plane {
+        origin: Vec3::new(0., 0., 1e-12),
+        u: Vec3::new(1., 0., 0.),
+        v: Vec3::new(0., 1., 0.),
+    };
+    let xy = Surface::Plane {
+        origin: Vec3::new(0., 0., 0.),
+        u: Vec3::new(1., 0., 0.),
+        v: Vec3::new(0., 1., 0.),
+    };
+    assert!(!same_plane_support(&xy, &near).unwrap());
+    let tilted = Surface::Plane {
+        origin: Vec3::new(0., 0., 0.),
+        u: Vec3::new(1., 0., 1e-12),
+        v: Vec3::new(0., 1., 0.),
+    };
+    assert!(!same_plane_support(&xy, &tilted).unwrap());
+    let invalid = Surface::Plane {
+        origin: Vec3::new(0., 0., 0.),
+        u: Vec3::new(0., 0., 0.),
+        v,
+    };
+    assert!(same_plane_support(&a, &invalid).is_err());
+}
+#[test]
+fn independently_reframed_tilted_faces_merge_and_preserve_pcurves() {
+    let t = GeometryTolerance::default();
+    let a = make_box(block([-4., -3., -2.], [8., 6., 4.]), t.absolute()).unwrap();
+    let b = make_box(block([1., -1., -1.], [6.; 3]), t.absolute()).unwrap();
+    let mut s = union_convex_solids(&a, &b, t)
+        .unwrap()
+        .transformed(
+            Transform::rotation(Vec3::new(1., 2., 3.), 0.7).unwrap(),
+            t.absolute(),
+        )
+        .unwrap();
+    let before = s.shell.faces.len();
+    for (i, f) in s.shell.faces.iter_mut().enumerate() {
+        if i % 2 == 0 {
+            continue;
+        }
+        let Surface::Plane { origin, u, v } = f.surface else {
+            unreachable!()
+        };
+        f.surface = Surface::Plane {
+            origin,
+            u: v,
+            v: u * (-1.),
+        };
+        for c in f.wires.iter_mut().flat_map(|w| &mut w.coedges) {
+            let PCurve::Affine { origin, direction } = c.pcurve else {
+                unreachable!()
+            };
+            c.pcurve = PCurve::Affine {
+                origin: [origin[1], -origin[0]],
+                direction: [direction[1], -direction[0]],
+            };
+        }
+    }
+    s.validate(t.absolute()).unwrap();
+    let r = merge(&s);
+    assert!(r.shell.faces.len() < before);
+}
+#[test]
+fn tilted_planes_with_distinct_origins_merge() {
+    let t = GeometryTolerance::default();
+    let s = arranged(
+        block([0.; 3], [4.; 3]),
+        block([4., 0., 0.], [4.; 3]),
+        BoxBooleanOperation::Union,
+    );
+    let tr = Transform::new(
+        Point3::new(0., 0., 0.),
+        [
+            Vec3::new(0.6, 0.8, 0.),
+            Vec3::new(-0.8, 0.6, 0.),
+            Vec3::new(0., 0., 1.),
+        ],
+        t.absolute(),
+    )
+    .unwrap();
+    let placed = s.transformed(tr, t.absolute()).unwrap();
+    let r = merge(&placed);
+    assert_eq!(r.shell.faces.len(), 6);
+}
+#[test]
+fn rotated_and_reflected_uv_parameterizations_preserve_material() {
+    for reflected in [false, true] {
+        let mut s = arranged(
+            block([0.; 3], [4.; 3]),
+            block([4., 0., 0.], [4.; 3]),
+            BoxBooleanOperation::Union,
+        );
+        for (i, f) in s.shell.faces.iter_mut().enumerate() {
+            if i % 2 == 0 {
+                continue;
+            }
+            let Surface::Plane { origin, u, v } = f.surface else {
+                unreachable!()
+            };
+            if reflected {
+                f.surface = Surface::Plane { origin, u: v, v: u };
+                f.orientation *= -1;
+                for w in &mut f.wires {
+                    w.coedges.reverse();
+                    for c in &mut w.coedges {
+                        c.forward = !c.forward;
+                        let PCurve::Affine { origin, direction } = c.pcurve else {
+                            unreachable!()
+                        };
+                        c.pcurve = PCurve::Affine {
+                            origin: [origin[1], origin[0]],
+                            direction: [direction[1], direction[0]],
+                        };
+                    }
+                }
+            } else {
+                f.surface = Surface::Plane {
+                    origin,
+                    u: u * 0.6 + v * 0.8,
+                    v: u * (-0.8) + v * 0.6,
+                };
+                let map = |p: [f64; 2]| [0.6 * p[0] + 0.8 * p[1], -0.8 * p[0] + 0.6 * p[1]];
+                for c in f.wires.iter_mut().flat_map(|w| &mut w.coedges) {
+                    let PCurve::Affine { origin, direction } = c.pcurve else {
+                        unreachable!()
+                    };
+                    c.pcurve = PCurve::Affine {
+                        origin: map(origin),
+                        direction: map(direction),
+                    };
+                }
+            }
+        }
+        s.validate(Tolerance::default()).unwrap();
+        let r = merge(&s);
+        assert_eq!(r.shell.faces.len(), 6);
+    }
+}

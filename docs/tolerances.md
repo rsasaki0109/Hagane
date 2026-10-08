@@ -90,8 +90,8 @@ corner rejection still use the existing **absolute metric tolerance**.
 Segment projection uses normalized directions instead of squared lengths and
 rejects nonfinite calculations explicitly. Exact sign checks do not certify
 rounded distances, polygon areas, volume integration, intersections, circle
-relations, or tessellation. General 3D predicates and robust face intersections
-remain future work.
+relations, or tessellation. Exact 3D orientation is now available; additional 3D predicates and robust face
+intersections remain future work.
 
 ## Run and verify
 
@@ -106,7 +106,7 @@ node scripts/test-wasm.mjs
 
 The example emits the recovered determinant sign, scaled distance budget, and
 line/plane classification (point, parallel, or coincident for the cases above).
-WASM exports `hagane_orient2d` (-1/0/+1; 2 invalid),
+WASM exports `hagane_orient2d` and `hagane_orient3d` (-1/0/+1; 2 invalid),
 `hagane_segments_intersect2d` (0 disjoint, 1 intersecting, 2 invalid), and the
 shared-JSON `hagane_generate_predicates` fixture. Direct predicate calls do not
 change the output buffer; generation calls follow the existing buffer lifetime.
@@ -117,3 +117,13 @@ and intersection cases. WASM tests compare 3,399 orientation cases and 204
 segment cases against an independent JavaScript BigInt oracle, including broad
 binary64 bit patterns, overflow/underflow, near collinearity and duplicate points.
 The numerical fixture also checks native/WASM policy/classification parity.
+
+
+`orient3d(a, b, c, d)` returns the exact sign of `(b-a) × (c-a) · (d-a)`
+for finite binary64 inputs. Its integer path avoids overflow/underflow and
+certifies zero without metric snapping. Native tests include 5000 independent
+i128 reference determinants, permutations, cancellation and full exponent range.
+WASM compares 1703 cases to an independent BigInt oracle. Plane-support identity
+uses the same exact integer scalar triple products with exact origin differences;
+see [reframed merging](reframed-merge.md). Exact signs do not certify rounded
+intersection positions, distances or an intended plane before its inputs rounded.

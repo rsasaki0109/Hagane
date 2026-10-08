@@ -379,3 +379,81 @@ fn intersection_normalization_handles_overflowing_norms_and_rejects_parameter_un
     )
     .is_err());
 }
+#[test]
+fn orient3d_exact_full_range_cancellation_and_permutations() {
+    for s in [
+        f64::from_bits(1),
+        f64::MIN_POSITIVE,
+        1e-200,
+        1.,
+        1e200,
+        f64::MAX,
+    ] {
+        let a = [0.; 3];
+        let b = [s, 0., 0.];
+        let c = [0., s, 0.];
+        let d = [0., 0., s];
+        assert_eq!(orient3d(a, b, c, d).unwrap(), 1);
+        assert_eq!(orient3d(a, c, b, d).unwrap(), -1);
+        assert_eq!(orient3d(a, b, c, a).unwrap(), 0);
+    }
+    let n = 134217728.;
+    for exponent in [-1000, -500, 0, 500, 900] {
+        let s = 2f64.powi(exponent);
+        assert_eq!(
+            orient3d(
+                [0.; 3],
+                [(n + 1.) * s, n * s, 0.],
+                [n * s, (n - 1.) * s, 0.],
+                [0., 0., s]
+            )
+            .unwrap(),
+            -1
+        );
+    }
+    assert_eq!(
+        orient3d(
+            [-f64::MAX; 3],
+            [f64::MAX, -f64::MAX, -f64::MAX],
+            [-f64::MAX, f64::MAX, -f64::MAX],
+            [-f64::MAX, -f64::MAX, f64::MAX]
+        )
+        .unwrap(),
+        1
+    );
+    assert!(orient3d([f64::NAN, 0., 0.], [0.; 3], [0.; 3], [0.; 3]).is_err());
+    assert!(orient3d([0.; 3], [0.; 3], [f64::INFINITY, 0., 0.], [0.; 3]).is_err());
+}
+#[test]
+fn orient3d_matches_independent_i128_determinants() {
+    let mut seed = 1234567u64;
+    for _ in 0..5000 {
+        let mut point = || {
+            std::array::from_fn::<_, 3, _>(|_| {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+                ((seed >> 32) % 2000001) as i128 - 1000000
+            })
+        };
+        let a = point();
+        let b = point();
+        let c = point();
+        let d = point();
+        let sub = |p: [i128; 3]| std::array::from_fn::<_, 3, _>(|i| p[i] - a[i]);
+        let u = sub(b);
+        let v = sub(c);
+        let w = sub(d);
+        let det = (u[1] * v[2] - u[2] * v[1]) * w[0]
+            + (u[2] * v[0] - u[0] * v[2]) * w[1]
+            + (u[0] * v[1] - u[1] * v[0]) * w[2];
+        assert_eq!(
+            orient3d(
+                a.map(|v| v as f64),
+                b.map(|v| v as f64),
+                c.map(|v| v as f64),
+                d.map(|v| v as f64)
+            )
+            .unwrap(),
+            det.signum() as i32
+        );
+    }
+}

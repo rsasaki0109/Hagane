@@ -115,15 +115,21 @@ Scoped coplanar face merging now reconstructs outer/hole boundaries after removi
 shared interior face edges. Certified identical frames or exact axis-aligned
 supports preserve geometry, pcurves, volume, bounds and mesh closure. Rigid/tiny
 parts and hole/disconnected-region cases are covered, with a nineteenth
-native/WASM/browser preset reducing 26 faces to 10. Arbitrary plane-frame
-equivalence, collinear edge simplification and healing remain future work.
+native/WASM/browser preset reducing 26 faces to 10. Collinear edge simplification and healing remain future work.
 See [face merging](face-merge.md).
+
+Exact scalar triple products now certify plane identity across independent
+origins and tilted UV bases. Checked affine pcurve conversion broadens face
+merging without snapping near supports. Exact 3D orientation is independently
+verified natively and in WASM across the full finite binary64 range. A twentieth
+native/WASM/browser fixture exercises independent tilted frames. See
+[reframed merging](reframed-merge.md).
 
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
-  3D predicates and robust curve/surface intersections.
+  3D predicates beyond orientation and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using
