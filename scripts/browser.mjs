@@ -245,7 +245,18 @@ try {
  await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#kind').textContent(),'crossing');await page.locator('#wire').check();await page.locator('#reset').click();
  if(process.argv.includes('--capture-extrusion-intersections'))await page.screenshot({path:new URL('../docs/extrusion-intersections.png',import.meta.url).pathname});
  const hitView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),hitView);
+ await page.locator('#scope').selectOption('0');await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'2');assert.equal(await page.evaluate(()=>window.haganeIntersections.data.face),2);
+ const selectedMesh=await page.evaluate(()=>window.haganeIntersections.data.display_mesh);assert.ok(selectedMesh.positions.length<await page.evaluate(()=>window.haganeIntersections.data.mesh.positions.length));
+ await page.locator('#offset').evaluate(e=>{e.value=-14;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#scope').selectOption('1');assert.equal(await page.locator('#kind').textContent(),'crossing');assert.equal(await page.locator('#hits').textContent(),'2');
+ await page.locator('#probe').selectOption('generator');assert.equal(await page.locator('#kind').textContent(),'generator overlap');assert.equal(await page.evaluate(()=>window.haganeIntersections.data.intersection.endpoints[0].boundaries.length),2);
+ await page.locator('#scope').selectOption('0');await page.locator('#offset').evaluate(e=>{e.value=1e-9;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#offset').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'generator overlap');
+ await page.locator('#mode').selectOption('0');assert.equal(await page.locator('#kind').textContent(),'crossing');assert.equal(await page.evaluate(()=>window.haganeIntersections.data.intersection.hits.every(p=>p.boundaries.length===1 && p.boundaries[0].edge_parameter===0.5)),true);
+ await page.locator('#probe').selectOption('crossing');await page.locator('#wire').check();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-circular-face-intersections'))await page.screenshot({path:new URL('../docs/circular-face-intersections.png',import.meta.url).pathname});
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
+ console.log('Browser: circular face trim selection, original edge parameters, exact boundary overlap, ambiguity recovery and selected face meshes passed.');
  console.log('Browser: skew surface secants, tangent, empty, forward/reverse generator, ambiguity recovery, slider, marker lines, orbit and responsive layout passed.');
  console.log('Browser: 23 B-rep presets, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

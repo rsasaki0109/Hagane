@@ -151,7 +151,11 @@ pub fn intersect_line_extruded_circle(
 }
 /// Actual native/WASM intersection fixture. Mode 0 is transverse; modes 1/2
 /// follow a forward/reverse generator. Placement rotates both the line and solid.
-pub fn extrusion_intersections_demo_json(mode: u32, offset: f64, placement: f64) -> Result<String> {
+pub(crate) fn extrusion_intersections_fixture(
+    mode: u32,
+    offset: f64,
+    placement: f64,
+) -> Result<(Solid, Point3, Vec3, Surface)> {
     if mode > 2 || !offset.is_finite() || !placement.is_finite() {
         return Err(Error::InvalidInput(
             "extrusion intersection demo requires mode 0..2 and finite values",
@@ -199,6 +203,11 @@ pub fn extrusion_intersections_demo_json(mode: u32, offset: f64, placement: f64)
         ),
     };
     let (a, d) = (frame.point(a), frame.vector(d));
+    Ok((solid, a, d, surface))
+}
+pub fn extrusion_intersections_demo_json(mode: u32, offset: f64, placement: f64) -> Result<String> {
+    let (solid, a, d, surface) = extrusion_intersections_fixture(mode, offset, placement)?;
+    let tol = GeometryTolerance::default();
     let xyz = |p: Vec3| format!("[{},{},{}]", p.x, p.y, p.z);
     let result = match intersect_line_extruded_circle(a, d, &surface, tol)? {
         LineCylinderIntersection::Empty => "{\"kind\":\"empty\",\"hits\":[]}".into(),

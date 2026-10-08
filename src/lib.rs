@@ -1,6 +1,7 @@
 //! Hagane: an independent, exact analytic B-rep kernel with explicitly limited operations.
 mod booleans;
 mod box_booleans;
+mod circular_face_intersections;
 mod classification;
 mod edge_simplify;
 mod extrusion_intersections;
@@ -23,6 +24,7 @@ mod topology;
 mod wasm;
 pub use booleans::*;
 pub use box_booleans::*;
+pub use circular_face_intersections::*;
 pub use classification::*;
 pub use edge_simplify::*;
 pub use extrusion_intersections::*;

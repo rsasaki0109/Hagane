@@ -5,6 +5,17 @@ mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     #[no_mangle]
+    pub extern "C" fn hagane_circular_face_intersections_demo(
+        selection: u32,
+        mode: u32,
+        offset: f64,
+        placement: f64,
+    ) -> i32 {
+        generate(crate::circular_face_intersections_demo_json(
+            selection, mode, offset, placement,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_extrusion_intersections_demo(
         mode: u32,
         offset: f64,

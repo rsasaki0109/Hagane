@@ -265,3 +265,16 @@ for(const [mode,offset,placement] of [[0,-30,0],[0,-14,0],[0,0,0],[0,14,0],[0,24
 for(const args of [[3,0,0],[0,NaN,0],[0,Infinity,0],[0,0,NaN],[0,24-1e-9,0],[0,24+1e-9,0],[1,1e-9,0],[2,-1e-9,0]]){const {status,result}=extrusionHits(...args);assert.equal(status,1);assert.ok(result.error);}
 assert.equal(extrusionHits(0,14,0).status,0);
 console.log('Skew circular surface intersections: independent roots, contacts, signed generator intervals, placement, native/WASM mesh/query parity, errors and recovery passed.');
+
+function faceHits(selection,mode,offset,placement){const status=k.hagane_circular_face_intersections_demo(selection,mode,offset,placement);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [selection,mode,offset,placement] of [[0,0,14,0],[0,0,-14,0],[1,0,-14,0],[1,0,14,0],[0,0,24,0],[0,0,-24,0],[1,0,-24,0],[0,0,0,0],[0,1,0,0],[0,2,0,0],[1,1,0,0],[1,2,0,0],[0,0,14,0.7],[1,0,-14,-0.5]]){
+ const {status,result}=faceHits(selection,mode,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','circular_face_intersections','--',String(selection),String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ assert.equal(result.face,2+selection);assert.ok(result.display_mesh.positions.length>0 && result.display_mesh.positions.length<result.mesh.positions.length);assert.equal(result.display_mesh.normals.length,result.display_mesh.positions.length);
+ const hit=result.intersection;
+ if(mode===0){if((selection===0 && offset<0)||(selection===1 && offset>0)){assert.equal(hit.kind,'empty');}else {assert.equal(hit.kind,'points');const half=Math.sqrt(24**2-offset**2);const expected=half===0?[20]:[(40-half)/2,(40+half)/2];assert.equal(hit.hits.length,expected.length);hit.hits.forEach((p,i)=>assert.ok(Math.abs(p.parameter-expected[i])<1e-10));if(offset===0){assert.ok(hit.hits.every(p=>p.boundaries.length===1 && p.boundaries[0].edge_parameter===0.5));}else assert.ok(hit.hits.every(p=>p.boundaries.length===0));}}
+ else {assert.equal(hit.kind,'coincident');assert.ok(Math.abs(hit.range[0])<1e-12 && Math.abs(hit.range[1]-1)<1e-12);assert.ok(hit.endpoints.every(p=>p.boundaries.length===2));}
+}
+for(const args of [[2,0,14,0],[0,3,14,0],[0,0,NaN,0],[0,0,14,Infinity],[0,0,1e-9,0],[0,0,-1e-9,0],[0,1,1e-9,0],[1,1,-1e-9,0]]){const {status,result}=faceHits(...args);assert.equal(status,1);assert.ok(result.error);}
+assert.equal(faceHits(0,0,14,0).status,0);
+console.log('Circular face intersections: angular trimming, original edge provenance, certified shared-edge generators, native/WASM query/mesh parity, invalid inputs and recovery passed.');

@@ -236,3 +236,13 @@ roots, placement, tiny dimensions, conditioning and error recovery. The browser
 contact-study page uses the exact skew circular B-rep fixture. Solid classification
 and angular face clipping remain unsupported. See
 [extrusion intersections](docs/extrusion-intersections.md).
+
+Rectangular circular B-rep face intersections now clip supporting hits to
+angular trims and preserve original boundary edge parameters, periodic seam
+uses and oriented normals. Exact dyadic incidence certifies shared-edge
+generators and crossings; near-boundary inputs without certificates fail.
+Native/WASM tests cover half/quarter faces, rims/corners, placement, tiny
+geometry and world-coordinate precision loss. Browser face selection displays
+actual open face meshes from the closed parent solid. General trims and
+skew-solid classification remain unsupported. See
+[circular face intersections](docs/circular-face-intersections.md).

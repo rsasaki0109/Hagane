@@ -67,6 +67,7 @@ cargo run --locked --example sewing
 cargo run --locked --example classification -- -10 0 0
 cargo run --locked --example curved_classification -- 0 0 0 0
 cargo run --locked --example extrusion_intersections -- 0 14 0
+cargo run --locked --example circular_face_intersections -- 0 0 14 0
 cargo run --locked --example part -- 12
 cargo run --locked --example solid_split -- -2
 cargo run --locked --example part -- 13
@@ -189,6 +190,7 @@ fabricate the demo image.
 - Lines, XY and framed circles; arbitrary orthonormal planes and Z/framed cylinders.
 - Exact circular translation surfaces for [skew line/arc extrusion](docs/skew-arc-extrusion.md), including evaluation, UV, normals, volume and bounded display meshes.
 - [Line/skew-wall intersections](docs/extrusion-intersections.md), with original line parameters, bounded normal spans, tangency and generator overlap.
+- [Trimmed circular face intersections](docs/circular-face-intersections.md), including partial-wall selection, oriented normals and original shared-edge provenance.
 - Checked rigid B-rep placement, inverse/composed frames and exact placed bounds.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
   homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.

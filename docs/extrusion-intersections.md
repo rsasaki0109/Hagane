@@ -78,7 +78,8 @@ and meshes plus independent expected roots, errors and recovery. Browser checks
 cover all contact studies, slider changes, ambiguity/recovery, marker rendering,
 orbit and mobile layout, alongside the existing 23 solid presets.
 
-Solid classification, angular face clipping, curved-face subdivision and
+[Angular face clipping](circular-face-intersections.md) is now supported separately
+with original edge provenance. Solid classification, curved-face subdivision and
 general Booleans for skew circular translation walls remain unsupported. This
 milestone provides the surface intersection prerequisite for those operations.
 

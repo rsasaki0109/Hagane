@@ -149,7 +149,7 @@ Exact skew mixed-profile extrusion now constructs circular translation surfaces
 with signed vectors, curved holes, arbitrary rigid placement and checked shared
 pcurves. Analytic volume/bounds and sagitta-bounded closed meshes are verified.
 The twenty-third native/WASM/browser fixture varies skew offset at fixed volume.
-Queries and general modeling operations on the new walls remain unsupported.
+Solid classification and general modeling operations on the new walls remain unsupported.
 See [skew arc extrusion](skew-arc-extrusion.md).
 
 Line/skew circular translation surface intersections now reduce analytically
@@ -157,15 +157,24 @@ to the cylinder solver with conservative shear-scaled guards and original-space
 line/surface verification. Sorted finite hits, tangency and signed generator
 intervals are checked natively/in WASM. A browser contact-study page exercises
 secants, tangents, misses and overlaps with actual B-rep-derived geometry.
-Solid classification and face angular clipping remain unsupported. See
+Solid classification remains unsupported; face angular clipping is implemented
+separately below. See
 [extrusion intersections](extrusion-intersections.md).
+
+Trimmed circular face intersections now select rectangular cylinder/skew-wall
+angular domains, report original shared-edge parameters and oriented normals,
+and retain bounded generator overlap. Exact dyadic line incidence certifies
+boundary cases without tolerance snapping. Periodic seams, partial walls, tiny
+geometry and error recovery are verified natively/in WASM. The browser contact
+page displays either selected semicircular face. General trims and skew-solid
+classification remain unsupported. See [circular face intersections](circular-face-intersections.md).
 
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Extend face intersection clipping, classification and subdivision to skew circular translation
+- Extend general trim clipping, classification and subdivision to skew circular translation
   surfaces; support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using

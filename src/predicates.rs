@@ -100,6 +100,52 @@ fn triple(a: &[Integer; 3], b: &[Integer; 3], c: &[Integer; 3]) -> i32 {
         1
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum ExactLineRelation {
+    Skew,
+    Coplanar,
+    Parallel,
+    Collinear,
+}
+/// Exact relation of an anchor/direction line and two stored edge endpoints.
+/// Differences and products are dyadic integers, so no rounded `anchor+direction`
+/// point or overflowed endpoint subtraction is used to certify incidence.
+pub(crate) fn exact_line_relation(
+    anchor: [f64; 3],
+    direction: [f64; 3],
+    a: [f64; 3],
+    b: [f64; 3],
+) -> Result<ExactLineRelation> {
+    if anchor
+        .into_iter()
+        .chain(direction)
+        .chain(a)
+        .chain(b)
+        .any(|x| !x.is_finite())
+    {
+        return Err(Error::InvalidInput("line incidence requires finite values"));
+    }
+    let d = direction.map(Integer::from_f64);
+    let edge = std::array::from_fn(|i| Integer::from_f64(b[i]).sub(&Integer::from_f64(a[i])));
+    let offset =
+        std::array::from_fn(|i| Integer::from_f64(a[i]).sub(&Integer::from_f64(anchor[i])));
+    let parallel = |x: &[Integer; 3], y: &[Integer; 3]| {
+        [(0, 1), (0, 2), (1, 2)]
+            .iter()
+            .all(|&(i, j)| x[i].mul(&y[j]).sub(&x[j].mul(&y[i])).words.is_empty())
+    };
+    Ok(if parallel(&d, &edge) {
+        if parallel(&d, &offset) {
+            ExactLineRelation::Collinear
+        } else {
+            ExactLineRelation::Parallel
+        }
+    } else if triple(&d, &edge, &offset) == 0 {
+        ExactLineRelation::Coplanar
+    } else {
+        ExactLineRelation::Skew
+    })
+}
 pub(crate) fn exact_plane_support(
     a: [f64; 3],
     u: [f64; 3],
