@@ -272,7 +272,7 @@ meshes preserve a closed solid and its volume. Signed/placed/tiny cases, plane
 incidence, loops, bounds, chord error, conditioning and failures are verified.
 Native/WASM meshes and contours agree; the twenty-fifth browser solid preset
 varies plane tilt. Rim contacts/partial crossings, full-periodic rims, repeated
-harmonic-band cuts and solid classification on harmonic trims remain unsupported.
+harmonic-band cuts and capped solid partitions remain unsupported.
 See [oblique boundary subdivision](docs/oblique-boundary.md).
 
 
@@ -281,6 +281,16 @@ generator intervals against analytic height graphs. Exact dyadic ellipse-plane
 incidence retains shared edge parameters; uncertified near-boundary inputs fail.
 Native tests cover tangency, corners, reversal, tiny skew geometry and placement.
 Native/WASM fixtures and browser band selection share the actual subdivided
-B-rep. Harmonic solid classification, arbitrary trim loops, repeated band cuts
+B-rep. Arbitrary trim loops, repeated band cuts
 and general curved Booleans remain unsupported. See
 [harmonic face queries](docs/harmonic-face-intersections.md).
+
+Harmonic circular wall solid classification now uses Euclidean ruled-trapezoid
+distance bounds and analytic height-clipped rays. Shared ellipse edges count
+as exterior boundaries; ambiguous ray contacts are retried rather than counted
+twice. Native checks verify independent material/hole membership, signed/placed/
+tiny solids, section edges, caps, normal bands, invalid topology and an unresolved
+tolerance threshold. Native/WASM query and mesh parity and all eight browser
+classification models are verified. General trim loops, repeated band subdivision,
+capped partitions and general curved Booleans remain unsupported. See
+[harmonic classification](docs/harmonic-classification.md).

@@ -137,7 +137,7 @@ Analytic solid classification now supports planar full-circle wires and full
 periodic cylinder walls. Cylinder/tube/multiple-bore membership, cap/rim/wall
 Euclidean bands, periodic seams, placement and tiny dimensions are verified.
 4950 independent analytic grid samples accompany native/WASM probes/mesh parity;
-the browser query page offers seven solid models, including bounded arc trims, rectangular partial cylinder walls and skew circular translation walls. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
+the browser query page offers eight solid models, including bounded arc trims, rectangular partial cylinder walls, skew circular translation walls and harmonic height bands. General cylinder and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
 
 Framed line/arc region extrusion now accepts either world-space normal sign on
 arbitrary rigid planes, preserving exact walls, holes and shared pcurves.
@@ -191,7 +191,7 @@ and harmonic height pcurves, preserving closed shared topology and analytical
 volume. Wall flux quadrature, signed/placed/tiny geometry, shared mesh sampling,
 ellipse error and rejection of rim contacts/partial crossings are verified.
 Native/WASM/browser contours and meshes share the twenty-fifth solid fixture.
-Periodic rims, repeated band cuts and solid classification on harmonic trims remain unsupported.
+Periodic rims, repeated band cuts and capped solid partitions remain unsupported.
 See [oblique subdivision](oblique-boundary.md).
 
 Harmonic circular face line intersections now clip supporting roots and bounded
@@ -199,19 +199,28 @@ generator intervals against analytic height graphs. Exact dyadic ellipse-plane
 incidence retains shared edge parameters; uncertified near-boundary inputs fail.
 Native tests cover tangency, corners, reversal, tiny skew geometry and placement.
 Native/WASM fixtures and browser band selection share the actual subdivided
-B-rep. Harmonic solid classification, arbitrary trim loops, repeated band cuts
+B-rep. Arbitrary trim loops, repeated band cuts
 and general curved Booleans remain unsupported. See
 [harmonic face queries](harmonic-face-intersections.md).
+
+Harmonic circular wall solid classification now uses Euclidean ruled-trapezoid
+distance bounds and analytic height-clipped rays. Shared ellipse edges count
+as exterior boundaries; ambiguous ray contacts are retried rather than counted
+twice. Native checks verify independent material/hole membership, signed/placed/
+tiny solids, section edges, caps, normal bands, invalid topology and an unresolved
+tolerance threshold. Native/WASM query and mesh parity and all eight browser
+classification models are verified. General trim loops, repeated band subdivision,
+capped partitions and general curved Booleans remain unsupported. See
+[harmonic classification](harmonic-classification.md).
 
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
 - Extend explicit tolerance policies to more modeling operations, and add exact
   3D predicates beyond orientation and robust curve/surface intersections.
-- Extend solid classification to harmonic height trims from oblique
-  plane subdivision; support partial/rim contacts and capped solid partitions.
+- Extend oblique plane subdivision to partial/rim contacts and capped solid partitions.
 - Extend general trim clipping and subdivision to skew circular translation
-  surfaces; broaden classification beyond rectangular trims and support arbitrary cylindrical
+  surfaces; broaden classification beyond harmonic height bands and support arbitrary cylindrical
   trim loops and general face splits.
 - Broaden retained-face selection and contact handling using
   planar arrangements; extend contact handling, surface/surface curves, intersection

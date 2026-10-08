@@ -237,7 +237,21 @@ for(const [model,probes] of [[0,[[[-20,0,0],'inside'],[[0,0,0],'outside'],[[14,0
  for(const [p,expected] of probes){const {status,result}=curvedClassify(model,p);assert.equal(status,0);assert.equal(result.location,expected);const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--',String(model),...p.map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);}
  assert.equal(k.hagane_curved_classification_mesh(model),0);const mesh=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--',String(model),'--mesh'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(mesh,native);
 }
+for(const [p,expected] of [[[26,-3,0],'inside'],[[6,-3,0],'outside'],[[34,19,0],'boundary'],[[32,-6,12],'boundary'],[[44,8,12],'boundary'],[[45,30,0],'outside']]){
+ const {status,result}=curvedClassify(6,p);assert.equal(status,0);assert.equal(result.location,expected);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--','6',...p.map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);
+}
+assert.equal(k.hagane_curved_classification_mesh(6),0);
+const harmonicMesh=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));
+const harmonicNativeMesh=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--','6','--mesh'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(harmonicMesh,harmonicNativeMesh);
+assert.equal(harmonicMesh.faces,34);assert.equal(harmonicMesh.edges,80);
+assert.equal(curvedClassify(6,[NaN,0,0]).status,1);assert.equal(curvedClassify(6,[26,-3,0]).status,0);
+console.log('Harmonic solid classification: material, hole, wall, cap, vertex, native/WASM mesh parity, errors and recovery passed.');
 for(const [offset,expected] of [[-1.4e-8,'inside'],[-0.6e-8,'boundary'],[0.6e-8,'boundary'],[1.4e-8,'outside']]){const p=[34+0.6*offset/Math.sqrt(1.01),19+0.8*offset/Math.sqrt(1.01),-0.1*offset/Math.sqrt(1.01)];const {status,result}=curvedClassify(5,p);assert.equal(status,0);assert.equal(result.location,expected);const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--','5',...p.map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);}
+for(const [offset,expected] of [[-1.4e-8,'inside'],[-0.6e-8,'boundary'],[0.6e-8,'boundary'],[1.4e-8,'outside']]){
+ const p=[34+0.6*offset/Math.sqrt(1.01),19+0.8*offset/Math.sqrt(1.01),-0.1*offset/Math.sqrt(1.01)];
+ const {status,result}=curvedClassify(6,p);assert.equal(status,0);assert.equal(result.location,expected);
+}
 for(const p of [[NaN,0,0],[0,Infinity,0]])assert.equal(curvedClassify(5,p).status,1);assert.equal(curvedClassify(5,[26,-3,0]).status,0);
 assert.equal(curvedClassify(999,[0,0,0]).status,1);assert.equal(curvedClassify(0,[NaN,0,0]).status,1);assert.equal(curvedClassify(1,[0,Infinity,0]).status,1);assert.equal(curvedClassify(0,[-20,0,0]).status,0);
 console.log('Curved solid classification: normal/skew walls, rounded holes, material, voids, caps, rims, native/WASM parity, invalid inputs and recovery passed.');

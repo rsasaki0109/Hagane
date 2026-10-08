@@ -59,6 +59,6 @@ ambiguity and recovery. No dependencies were added. This is an independent
 implementation of analytic plane/parametric-curve substitution and IEEE-754
 dyadic determinant arithmetic; no OCCT source was used.
 
-Solid point classification on these height bands, arbitrary trim loops,
-repeated harmonic-band subdivision, capped solid partitions and general curved
-Booleans remain unsupported. This milestone extends face queries only.
+[Solid point classification](harmonic-classification.md) now supports these
+height bands. Arbitrary trim loops, repeated harmonic-band subdivision, capped
+solid partitions and general curved Booleans remain unsupported.

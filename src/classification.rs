@@ -86,9 +86,21 @@ struct CylinderTrim<'a> {
     height: f64,
     span: f64,
     drift: [f64; 2],
+    bands: [[f64; 3]; 2],
 }
 impl CylinderTrim<'_> {
     fn within_boundary(&self, p: Point3, budget: f64) -> Result<bool> {
+        if self.bands != [[0., 0., 0.], [self.height, 0., 0.]] {
+            return crate::skew_boundary::within_harmonic_boundary(
+                self.frame.local_point(p),
+                self.radius,
+                self.span,
+                self.drift,
+                self.bands,
+                budget,
+                32. * f64::EPSILON * p.norm().max(self.frame.origin().norm()),
+            );
+        }
         if self.drift != [0., 0.] {
             return crate::skew_boundary::within_boundary(
                 self.frame.local_point(p),
@@ -140,10 +152,10 @@ impl CylinderTrim<'_> {
         Ok(d)
     }
 }
-/// Classify validated planar line/circle/arc trims and rectangular circular walls.
+/// Classify validated planar line/circle/arc trims and circular height-band walls.
 /// Euclidean boundary distance uses a local budget. Two resolved rays must agree.
 /// Skew boundary bands use bounded Euclidean chord-patch distance refinement.
-/// General circular trims and general self-intersection detection are unsupported;
+/// Arbitrary circular trim loops and general self-intersection detection are unsupported;
 /// unresolved distance bounds or ray candidates return explicit errors.
 /// No display mesh is consulted; full-periodic seams do not duplicate crossings.
 pub fn classify_point_in_solid(
@@ -173,7 +185,8 @@ pub fn classify_point_in_solid(
                     radius,
                     height,
                     drift,
-                    span: face.cylinder_span()?,
+                    span: face.circular_span()?,
+                    bands: face.circular_bands()?,
                 });
             }
             Surface::Cylinder {
@@ -186,7 +199,8 @@ pub fn classify_point_in_solid(
                     frame: Frame3::translation(center)?,
                     radius,
                     height,
-                    span: face.cylinder_span()?,
+                    span: face.circular_span()?,
+                    bands: face.circular_bands()?,
                     drift: [0., 0.],
                 });
             }
@@ -200,7 +214,8 @@ pub fn classify_point_in_solid(
                     frame,
                     radius,
                     height,
-                    span: face.cylinder_span()?,
+                    span: face.circular_span()?,
+                    bands: face.circular_bands()?,
                     drift: [0., 0.],
                 });
             }
@@ -378,6 +393,29 @@ pub fn classify_point_in_solid(
                                     continue;
                                 }
                             }
+                            let levels = cylinder
+                                .bands
+                                .map(|b| crate::circular_trims::value(b, hit.uv[0]));
+                            let guards = cylinder.bands.map(|b| {
+                                budget
+                                    * Vec3::new(
+                                        -b[1] / cylinder.radius,
+                                        -b[2] / cylinder.radius,
+                                        1. + (b[1] / cylinder.radius) * cylinder.drift[0]
+                                            + (b[2] / cylinder.radius) * cylinder.drift[1],
+                                    )
+                                    .norm()
+                            });
+                            if guards.iter().any(|g| !g.is_finite())
+                                || (hit.uv[1] - levels[0]).abs() <= guards[0]
+                                || (hit.uv[1] - levels[1]).abs() <= guards[1]
+                            {
+                                ambiguous = true;
+                                break;
+                            }
+                            if hit.uv[1] < levels[0] || hit.uv[1] > levels[1] {
+                                continue;
+                            }
                             let denominator = d.dot(cylinder.face.surface.normal(hit.uv[0]));
                             if hit.contact == IntersectionContact::Tangent
                                 || denominator.abs() <= tol.angular().sin()
@@ -528,6 +566,16 @@ pub(crate) fn curved_classification_solid(model: u32) -> Result<Solid> {
             Vec3::new(12., -6., 24.),
             t,
         ),
+        6 => {
+            let source = curved_classification_solid(5)?;
+            Ok(subdivide_extrusion_boundary_by_plane(
+                &source,
+                Point3::new(6., -3., 0.),
+                Vec3::new(0.13, 0.08, 1.),
+                GeometryTolerance::default(),
+            )?
+            .solid)
+        }
         _ => Err(Error::InvalidInput("unknown curved classification model")),
     }
 }

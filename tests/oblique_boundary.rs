@@ -126,10 +126,10 @@ fn oblique_sections_preserve_exact_ellipses_closed_topology_and_metrics() {
             assert_eq!(ellipses, 8);
             assert!(degree.values().all(|&n| n == 2));
             closed_mesh(&r.solid, scale * 0.01, t.absolute());
-            // Existing rectangular query APIs must refuse the new trim domain.
+            // Classification validates the harmonic trim domain before bounds checks.
             assert!(matches!(
                 classify_point_in_solid(&r.solid, Point3::new(100. * scale, 0., 0.), t),
-                Err(Error::Unsupported(_))
+                Ok(PointLocation::Outside)
             ));
         }
     }
