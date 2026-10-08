@@ -1,0 +1,159 @@
+![Hagane: an exact B-rep through-bore part rendered by the Rust kernel in WebAssembly](docs/demo.gif)
+
+# Hagane
+
+**A pure Rust CAD kernel.**
+
+Hagane is an independent, open-source CAD kernel built around analytic geometry
+and boundary representations. The long-term goal is broad CAD functionality
+comparable to Open CASCADE Technology. This is an early, working foundation,
+not an OCCT binding, source translation, or general-purpose replacement.
+No OCCT source was used. Original code is licensed **MIT OR Apache-2.0**.
+
+The GIF above records this repository's actual WASM/WebGL demo. The hole is a
+trimmed B-rep solid: planar caps have inner circular wires and share exact
+circle edges with an inward-facing cylindrical wall. Tessellation happens
+**after** solid construction and validation; there is no mesh Boolean.
+
+## Quick start
+
+Install [Rust with rustup](https://rustup.rs/), then:
+
+```sh
+git clone https://github.com/rsasaki0109/Hagane.git
+cd Hagane
+cargo test --locked
+cargo run --locked --example part
+```
+
+`rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
+`wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
+solid volume as JSON. Use the local kernel as a dependency during development:
+
+```toml
+[dependencies]
+hagane = { path = "../Hagane" }
+```
+
+The package is named `hagane`; it has not been published to crates.io.
+
+## Minimal example
+
+```rust
+use hagane::{BoxSpec, CylinderSpec, Point3, Vec3, Tolerance,
+             subtract_through_cylinder};
+
+fn main() -> hagane::Result<()> {
+    let tolerance = Tolerance::new(1e-8)?; // all lengths are mm here
+    let block = BoxSpec {
+        min: Point3::new(-40.0, -30.0, -12.0),
+        size: Vec3::new(80.0, 60.0, 24.0),
+    };
+    let tool = CylinderSpec {
+        base: Point3::new(0.0, 0.0, -20.0),
+        radius: 14.0,
+        height: 40.0,
+    };
+    let part = subtract_through_cylinder(block, tool, tolerance)?;
+    part.validate(tolerance)?;
+    let exact_volume = part.volume()?;
+    let display_mesh = part.tessellate(0.05, tolerance)?;
+    assert!((exact_volume - (80.0 * 60.0 * 24.0
+        - std::f64::consts::PI * 14.0 * 14.0 * 24.0)).abs() < 1e-8);
+    println!("{} display triangles", display_mesh.triangles.len());
+    Ok(())
+}
+```
+
+## Web demo
+
+Python 3 serves static files; Node and npm are only needed for the optional
+tests/recording tools. The browser requires WebAssembly and WebGL.
+
+```sh
+./scripts/build-web.sh
+python3 -m http.server 8000 --directory web
+```
+
+Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
+slider reruns the **Rust B-rep operation** in WASM. Toggle the display mesh or
+auto rotation. Arrow keys orbit and `+` / `-` zoom when the canvas is focused.
+The renderer uses WebGL directly, with no CDN assets or JavaScript CAD library.
+The generated `web/hagane.wasm` is ignored and rebuilt from source.
+
+Optional browser regression tests and GIF recording:
+
+```sh
+npm ci
+npx playwright install chromium   # or use an installed /usr/bin/chromium
+npm test
+npm run capture                 # also requires ffmpeg
+```
+
+`HAGANE_CHROMIUM` selects an existing browser executable. The capture command
+starts its own static server and records actual rendered frames. It does not
+fabricate the demo image.
+
+## Implemented
+
+- `f64` points/vectors, right-handed rigid transforms, explicit linear tolerance.
+- Lines and XY circles; arbitrary orthonormal planes and Z-cylinder surfaces.
+- Line/plane and horizontal-plane/bounded-Z-cylinder intersections.
+- Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
+  oriented faces, shells, and solids, including periodic cylinder seams.
+- Exact axis-aligned boxes and Z cylinders; positive-Z rectangle/disk extrusion.
+- Restricted box-minus-through-cylinder difference, including off-center holes.
+- Structural/geometry validation, connected manifold shells, analytic volume,
+  exact bounds for supported solids, and face-indexed display tessellation.
+- The same Rust library on native and WASM targets; interactive browser demo.
+
+## Explicit limits
+
+The difference API accepts immutable **primitive specifications**, not arbitrary
+`Solid` operands. The box axes are global X/Y/Z; the cylinder axis is global Z.
+The cutter must strictly overhang both caps by more than the linear tolerance.
+Its circle must stay inside all four sides with clearance greater than that
+tolerance. Tangent, near-tangent, partially penetrating, disjoint, side-cutting,
+or cap-coincident cutters return `Unsupported`. Negative/nonfinite/too-small
+dimensions return `InvalidInput`. No fallback silently substitutes a mesh.
+
+Primitive lengths must exceed **10 × linear tolerance**. Use one consistent
+unit throughout; the demo uses mm. The default tolerance is `1e-8` length units.
+Small parts require a correspondingly smaller explicit tolerance. At very large
+coordinate offsets, IEEE-754 spacing can exceed the tolerance; construction
+then fails validation rather than accepting inconsistent geometry.
+
+Current face trims are rectangles, disks, rectangles with one circular hole,
+and full periodic cylinder rectangles. Partial cylinder trims, general polygon
+extrusion, tilted circles/cylinders, arbitrary shape transforms, and general
+CSG are not implemented. Topology is intentionally inspectable; callers who
+mutate it must call `validate` before using geometry results. Validation checks
+the supported trim domains, connectivity, endpoint/pcurve consistency, winding,
+vertex links, and volume. It is not a general self-intersection or shape-repair
+engine for arbitrary imported B-reps.
+
+Tessellation approximates circles with a conservative sagitta bound. The exact
+B-rep and analytic volume remain independent of display tolerance. Segment
+counts are capped at 65,536; finer requests return `Tessellation`. Mesh vertices
+are split at face boundaries for normals; equal positions still form a closed
+oriented mesh. Broad numerical robustness and industrial tolerancing remain
+ongoing work; there are no adaptive exact predicates in this milestone.
+
+## Validation
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --all-targets --locked -- -D warnings
+cargo test --locked
+./scripts/build-web.sh
+node scripts/test-wasm.mjs
+```
+
+Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
+closure/orientation, sagitta error and volume convergence, contact/near-contact,
+small dimensions, malformed topology, nonfinite inputs, unsupported operations,
+and WASM generation/error recovery. CI runs formatting, Clippy, native tests,
+WASM build/runtime checks, and browser interactions.
+
+See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and
+[references and dependency licenses](docs/references.md).

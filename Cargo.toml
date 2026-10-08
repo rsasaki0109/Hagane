@@ -1,0 +1,11 @@
+[package]
+name = "hagane"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A pure Rust CAD kernel."
+repository = "https://github.com/rsasaki0109/Hagane"
+[lib]
+crate-type = ["rlib", "cdylib"]
+[dependencies]
+earcutr = "0.4.3"

@@ -1,0 +1,12 @@
+{
+  "name": "hagane-demo-tools",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Optional browser tests and recording tools for Hagane",
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "test": "node scripts/browser.mjs",
+    "capture": "node scripts/browser.mjs --capture"
+  },
+  "devDependencies": {"playwright": "1.62.1"}
+}
