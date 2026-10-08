@@ -78,6 +78,14 @@ mod exports {
         generate(crate::classification_demo_json(x, y, z))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_classify_curved_demo(model: u32, x: f64, y: f64, z: f64) -> i32 {
+        generate(crate::curved_classification_demo_json(model, x, y, z))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_curved_classification_mesh(model: u32) -> i32 {
+        generate(crate::curved_classification_mesh_json(model))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_classification_mesh() -> i32 {
         generate(crate::classification_mesh_demo_json())
     }

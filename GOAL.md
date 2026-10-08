@@ -193,6 +193,14 @@ idempotence. A twenty-first native/WASM/browser fixture reduces the merged
 contact part from 34 to 24 shared edges. See
 [edge simplification](docs/edge-simplify.md).
 
+Analytic solid point classification now supports planar full-circle trims and
+full periodic cylinder walls, including cylinders, tubes and multiple through-bores.
+Euclidean cap/rim/wall bands, seam-independent ray crossings and two-ray agreement
+are verified with 4950 analytic grid samples, placement, tiny dimensions and
+unsupported-input checks. The browser query page now offers four exact solids;
+native/WASM parity covers their probes and meshes. See
+[curved classification](docs/curved-classification.md).
+
 The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration

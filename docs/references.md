@@ -235,3 +235,14 @@ preserves manifold adjacency and affine pcurves. This is original MIT OR Apache-
 Rust code based on elementary straight-line geometry and boundary topology,
 reusing existing exact predicates and validation. No new dependency or OCCT source
 is used; approximate straightening and healing are not part of this operation.
+
+### Full-cylinder solid classification
+
+Euclidean distance to a bounded full cylinder's lateral surface combines radial
+gap and axial interval distance. Circle-trim membership uses analytic radial
+comparison. Sorted oriented ray crossings determine regular solid membership;
+two independent nondegenerate rays must agree. This extends the existing original
+classifier and checked analytic line/cylinder roots, under MIT OR Apache-2.0.
+No mesh membership approximation, dependency addition or OCCT source use occurs.
+Full periodic walls have no angular trim boundary; the artificial parameter seam
+is excluded from physical boundary and crossing-degeneracy tests.

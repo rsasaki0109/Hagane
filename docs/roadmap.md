@@ -73,8 +73,8 @@ not healed. See [sewing](sewing.md).
 Planar straight-edge solid point classification now uses analytic plane/trim
 intersections, Euclidean boundary bands, signed entry/exit checks and agreement
 of two independent rays. Concavity, polygon holes, rigid/skew placement and
-subdivided faces are covered, with a native/WASM browser query demo. Curved
-solid classification remains unsupported; see [classification](classification.md).
+subdivided faces are covered, with a native/WASM browser query demo. Full periodic cylinders and planar circles are now supported separately below;
+see [classification](classification.md).
 
 Transverse solid plane partition now builds shared edge intersections and
 closed section loops, keeps planar material on both sides, and sews two closed
@@ -132,6 +132,13 @@ Minimal box topology, branches, classification, closed meshes, placed/tiny parts
 and idempotence are verified. A twenty-first native/WASM/browser fixture reduces
 34 shared edges to 24. Curved merging and tolerant straightening remain unsupported.
 See [edge simplification](edge-simplify.md).
+
+Analytic solid classification now supports planar full-circle wires and full
+periodic cylinder walls. Cylinder/tube/multiple-bore membership, cap/rim/wall
+Euclidean bands, periodic seams, placement and tiny dimensions are verified.
+4950 independent analytic grid samples accompany native/WASM probes/mesh parity;
+the browser query page offers four solid models. Bounded arcs, partial cylinders
+and NURBS trims remain unsupported. See [curved classification](curved-classification.md).
 
 ## Next: broaden analytic B-rep operations
 

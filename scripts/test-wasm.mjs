@@ -232,3 +232,10 @@ for(const offset of [-8,-2,0,8]){
 for(const offset of [40,40-1e-9,100,NaN,Infinity]){const {status,result}=simplifiedContact(offset);assert.equal(status,1);assert.ok(result.error);}
 assert.equal(simplifiedContact(-2).status,0);
 console.log('Shared straight edge simplification: reduced topology, unchanged analytic volume, native/WASM parity, errors and recovery passed.');
+function curvedClassify(model,p){const status=k.hagane_classify_curved_demo(model,...p);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const [model,probes] of [[0,[[[-20,0,0],'inside'],[[0,0,0],'outside'],[[14,0,0],'boundary'],[[0,0,12],'outside'],[[-20,0,12],'boundary'],[[45,0,0],'outside']]], [1,[[[12,0,0],'inside'],[[0,0,0],'inside'],[[24,0,0],'boundary'],[[24,0,12],'boundary'],[[35,0,0],'outside']]], [2,[[[20,0,0],'inside'],[[0,0,0],'outside'],[[14,0,0],'boundary'],[[20,0,12],'boundary'],[[35,0,0],'outside']]]]){
+ for(const [p,expected] of probes){const {status,result}=curvedClassify(model,p);assert.equal(status,0);assert.equal(result.location,expected);const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--',String(model),...p.map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);}
+ assert.equal(k.hagane_curved_classification_mesh(model),0);const mesh=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','curved_classification','--',String(model),'--mesh'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(mesh,native);
+}
+assert.equal(curvedClassify(999,[0,0,0]).status,1);assert.equal(curvedClassify(0,[NaN,0,0]).status,1);assert.equal(curvedClassify(1,[0,Infinity,0]).status,1);assert.equal(curvedClassify(0,[-20,0,0]).status,0);
+console.log('Curved solid classification: cylinder/tube/bore material, voids, caps, rims, native/WASM parity, invalid inputs and recovery passed.');

@@ -128,7 +128,7 @@ fn rotation_skew_and_small_scale() {
     );
 }
 #[test]
-fn unsupported_solids_bad_topology_and_nonfinite_points_are_errors() {
+fn curved_solids_supported_and_bad_topology_and_nonfinite_points_are_errors() {
     let t = GeometryTolerance::default();
     let s = make_cylinder(
         CylinderSpec {
@@ -139,9 +139,14 @@ fn unsupported_solids_bad_topology_and_nonfinite_points_are_errors() {
         t.absolute(),
     )
     .unwrap();
-    for p in [Point3::new(0., 0., 1.), Point3::new(100., 0., 1.)] {
-        assert!(classify_point_in_solid(&s, p, t).is_err());
-    }
+    assert_eq!(
+        classify_point_in_solid(&s, Point3::new(0., 0., 1.), t).unwrap(),
+        PointLocation::Inside
+    );
+    assert_eq!(
+        classify_point_in_solid(&s, Point3::new(100., 0., 1.), t).unwrap(),
+        PointLocation::Outside
+    );
     assert!(classify_point_in_solid(&cube(), Point3::new(f64::NAN, 0., 0.), t).is_err());
     let mut s = cube();
     s.shell.faces.pop();

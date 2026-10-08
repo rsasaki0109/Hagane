@@ -1,13 +1,15 @@
-# Planar solid point classification
+# Analytic solid point classification
 
 ![Actual WASM point classification demo](classification.png)
 
 `classify_point_in_solid(&Solid, Point3, GeometryTolerance)` returns
 `PointLocation::{Inside, Outside, Boundary}` for a validated closed oriented
-B-rep with planar faces and straight boundary edges. Polygon holes, concavity,
-face subdivisions, rigid placement and skew polygon extrusion are supported.
-Curved surfaces or boundaries return `Unsupported`, even for a query outside
-the bounds. Invalid topology and nonfinite coordinates return errors.
+B-rep with planar polygon/full-circle trims and complete periodic cylinder walls.
+Polygon/circular holes, concavity, planar face subdivisions, rigid placement and
+skew polygon extrusion are supported. Partial cylinder walls, bounded arc trims
+and other unsupported boundaries return `Unsupported` before a bounds shortcut.
+Invalid topology and nonfinite coordinates return errors. See
+[curved classification](curved-classification.md) for cylinders, tubes and bores.
 
 ```rust
 use hagane::*;
@@ -30,11 +32,13 @@ world offsets and query distance do not enlarge it. A point within that budget
 of a trimmed face is `Boundary`. Distance combines plane-normal distance and
 projected trim distance using `hypot`. A projection inside the material region
 has zero lateral distance; projections in holes or outside the outer loop use
-the nearest exact polygon segment. This is a Euclidean band, including edges
+the nearest analytic polygon segment or circle. Full-cylinder wall distance
+combines radial gap and distance outside its finite axial interval using `hypot`. This is a Euclidean band, including edges
 and vertices, rather than independent coordinate-wise snapping.
 
-For remaining points, ray/plane hits are evaluated against exact polygon trims
-using filtered exact 2D predicates. Near-parallel candidates, vertex/edge hits,
+For remaining points, ray/plane hits are evaluated against polygon/circle trims
+using exact 2D signs for polygons and analytic radial distance for circles.
+Line/cylinder intersections provide sorted lateral crossings and local normals. Near-parallel candidates, vertex/edge hits,
 hits within the boundary budget, and unresolved reconstruction discard that
 ray. Sorted material crossings must alternate entry/exit according to face
 orientation, end outside at infinity, and have resolvable separation. Parity
@@ -48,8 +52,8 @@ use checked f64 calculations; 3D decisions are not certified exact predicates.
 The input must be a geometrically non-self-intersecting solid within the existing
 supported trim domain. Existing structural validation checks topology, trims,
 pcurves, connectivity and orientation; it is not a general geometric
-self-intersection detector. Curved/NURBS classification, coplanar arrangements
-and Boolean selection remain subsequent work.
+self-intersection detector. Partial-cylinder/bounded-arc/NURBS classification and general Boolean selection
+remain subsequent work.
 
 ## Native/WASM/browser evidence
 
@@ -64,7 +68,13 @@ The same Rust fixture and classifier execute natively and in WASM.
 Tests cover an independent analytic box grid, concave/hollow trims, face/edge/
 vertex and near-boundary points, Euclidean corner distance, relative tolerance,
 ray vertex degeneracy, face subdivision, rigid/skew placement, tiny models,
-exhausted candidates, curved-input rejection, invalid topology and nonfinite
+exhausted candidates, unsupported bounded-arc rejection, invalid topology and nonfinite
 queries. WASM tests compare native results, boundary bands, recovery and the
 actual display mesh. Browser tests exercise all probes, coordinate changes,
 orbit and responsive layout.
+
+
+The model selector now also queries a circular-bore plate, cylinder and hollow
+tube using the same classifier. Their cap, wall, rim, axis and void probes are
+verified natively, in WASM and through browser interactions. See
+[curved classification](curved-classification.md).

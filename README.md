@@ -65,6 +65,7 @@ cargo run --locked --example periodic_face_split
 cargo run --locked --example part -- 11
 cargo run --locked --example sewing
 cargo run --locked --example classification -- -10 0 0
+cargo run --locked --example curved_classification -- 0 0 0 0
 cargo run --locked --example part -- 12
 cargo run --locked --example solid_split -- -2
 cargo run --locked --example part -- 13
@@ -202,8 +203,10 @@ fabricate the demo image.
   hole edges (including two crossings on one arc), periodic full-circle rim
   refinement, analytic hole ownership and preserved
   closed-solid geometry.
-- [Solid point classification](docs/classification.md) for planar straight-edge
-  B-reps, with Euclidean boundary bands and two checked independent rays.
+- [Solid point classification](docs/classification.md) for planar polygon/circle
+  trims and full periodic cylinder walls, with Euclidean boundary bands and two
+  checked independent rays. [Cylinder/tube/bore queries](docs/curved-classification.md)
+  are available in the browser model selector.
 - [Shared straight edge simplification](docs/edge-simplify.md), removing exact
   degree-two collinear knots while preserving features, holes and shared pcurves.
 - [Coplanar face merging](docs/face-merge.md), removing shared internal boundaries
