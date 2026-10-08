@@ -47,6 +47,10 @@ mod exports {
     pub extern "C" fn hagane_generate_predicates(scale: f64, angle: f64) -> i32 {
         generate(crate::predicates_demo_json(scale, angle))
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_generate_intersections(mode: u32, offset: f64, placement: f64) -> i32 {
+        generate(crate::intersections_demo_json(mode, offset, placement))
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

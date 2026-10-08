@@ -20,6 +20,11 @@ claim compatibility with its data structures or APIs.
   Line/circle and circle/circle distance candidates follow Cartesian equations
   and their stationary conditions. All formulas are implemented independently;
   no reference code or prose is incorporated.
+- Analytic plane/plane solve: normal cross product and local linear constraints,
+  [intersection of two planes](https://en.wikipedia.org/wiki/Plane_(geometry)#Intersection_of_two_planes).
+  Line/cylinder roots use radial closest approach and the Cartesian circle
+  equation; axial generators use a linear height interval. Implemented
+  independently from mathematical formulas, without reference source code.
 - Volume integration: [Divergence theorem](https://en.wikipedia.org/wiki/Divergence_theorem).
 - Chordal approximation bound: [Sagitta](https://en.wikipedia.org/wiki/Sagitta_(geometry)).
 - Exact predicate background: Jonathan Richard Shewchuk, *Adaptive Precision

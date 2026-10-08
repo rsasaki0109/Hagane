@@ -82,3 +82,19 @@ for(const [scale,angle,classification] of [[10,0.1,'point'],[10,1e-12,'parallel'
 for(const [scale,angle] of [[0,0.1],[-1,0.1],[NaN,0.1],[1,NaN]]){assert.equal(numericalDemo(scale,angle).status,1);}
 assert.equal(numericalDemo(10,0.1).status,0);
 console.log(`Predicates: ${predicateCases} exact BigInt orientation cases, 204 exact segment cases, tolerance/classification native/WASM parity and errors passed.`);
+function intersections(mode,offset,placement=0){const status=k.hagane_generate_intersections(mode,offset,placement);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+function compareIntersection(a,b){if(typeof a==='number'){assert.ok(Number.isFinite(a));assert.ok(Math.abs(a-b)<=1e-11*Math.max(1,Math.abs(a),Math.abs(b)));}else if(a && typeof a==='object'){assert.deepEqual(Object.keys(a),Object.keys(b));for(const key of Object.keys(a))compareIntersection(a[key],b[key]);}else assert.equal(a,b);}
+let intersectionCases=0;
+for(const mode of [0,1,2])for(const offset of (mode===0?[-3,-1.5,0,1,2,3]:mode===1?[0,5e-9,1]:[0,1,2,3]))for(const placement of (mode===2||Math.abs(offset)===2?[0]:[0,0.7,1.5])){
+ const {status,result}=intersections(mode,offset,placement);assert.equal(status,0,JSON.stringify({mode,offset,placement,result}));
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','intersections','--',String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ assert.equal(result.planes.kind,mode===1?(offset<=1e-8?'coincident':'parallel'):'line');
+ if(result.planes.kind==='line'){assert.ok(Math.abs(Math.hypot(...result.planes.direction)-1)<1e-12);}
+ if(mode===2){assert.equal(result.cylinder.kind,offset===2?'coincident':'empty');if(offset===2){assert.deepEqual(result.cylinder.range,[-0.5,1.5]);assert.equal(result.cylinder.angle,0);}}
+ else if(Math.abs(offset)>2)assert.equal(result.cylinder.kind,'empty');
+ else{const hits=result.cylinder.points;assert.equal(hits.length,Math.abs(offset)===2?1:2);const half=Math.sqrt(4-offset**2);hits.forEach((h,i)=>{assert.ok(Math.abs(h.parameter-(5+(i===0?-half:half))/2)<1e-11);assert.equal(h.contact,half===0?'tangent':'crossing');assert.ok(Math.abs(h.uv[1]-2)<1e-11);assert.ok(h.uv[0]>=0&&h.uv[0]<2*Math.PI);});}
+ intersectionCases++;
+}
+for(const args of [[0,2+1e-9,0],[0,2-1e-9,0],[2,2+1e-9,0],[3,1,0],[0,NaN,0],[0,1,Infinity]]){const {status,result}=intersections(...args);assert.equal(status,1);assert.equal(typeof result.error,'string');}
+assert.equal(intersections(0,1,0.7).status,0);
+console.log(`Intersections: ${intersectionCases} native/WASM plane/line-cylinder cases, independent roots, UV, classifications, errors and recovery passed.`);

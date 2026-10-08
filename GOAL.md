@@ -89,6 +89,13 @@ sampled trims and conforming cap triangles protect display. A seventh solid
 preset exercises the concave arc-notch and rounded hole in native/WASM/browser.
 See [mixed profiles](docs/mixed-profiles.md).
 
-The next development task is to broaden analytic surface intersections and
-trim handling needed for face splitting. General cylindrical trims and NURBS
-B-rep integration remain incomplete; the latter is stage 2 work.
+Typed plane/plane intersections now provide unit-speed lines and affine UV
+curves on both planes. Line/Z-or-framed-cylinder intersections provide sorted
+hits, parameters, UV, tangency and bounded generator overlap, with checked
+contact/axial ambiguity errors and native/WASM examples. These operate on
+surfaces and do not clip face trims. See [intersections](docs/intersections.md).
+
+The next development task is to clip intersection lines against supported
+planar face trims, preserving exact boundary events and parameter intervals,
+then use that infrastructure for face splitting. General cylindrical trims and
+NURBS B-rep integration remain incomplete; the latter is stage 2 work.

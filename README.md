@@ -36,9 +36,9 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Pass `1`, `2`, `3`, `4`, or `5` to select four bores, a concave
-polygon extrusion, a hollow tube, a rigidly placed four-bore part, or a
-rounded line/arc extrusion:
+solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, or `6` to select four bores, a concave
+polygon extrusion, a hollow tube, a rigidly placed four-bore part, a
+rounded line/arc extrusion, or a concave arc-notch plate with a rounded hole:
 
 ```sh
 cargo run --locked --example part -- 1
@@ -49,6 +49,8 @@ cargo run --locked --example placement
 cargo run --locked --example part -- 5
 cargo run --locked --example rounded
 cargo run --locked --example region
+cargo run --locked --example part -- 6
+cargo run --locked --example intersections
 ```
 
 Use the local kernel as a dependency during development:
@@ -155,6 +157,8 @@ fabricate the demo image.
   analytic U/V partials, oriented regular-point normals and uniform display grids.
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
   horizontal-plane/bounded-Z-cylinder intersections.
+- Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
+  hits with original line parameters, UV, tangency and bounded generator intervals.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
 - Exact axis-aligned boxes, Z cylinders, and hollow tubes with annular caps.
@@ -170,6 +174,11 @@ fabricate the demo image.
 - Structural/geometry validation, connected manifold shells, analytic volume,
   exact bounds for supported solids, and face-indexed display tessellation.
 - The same Rust library on native and WASM targets; interactive browser demo.
+
+Analytic [intersection APIs](docs/intersections.md) return typed results and
+parameters for future trim clipping and face splitting. Run
+`cargo run --locked --example intersections` for the native JSON fixture; the
+same fixture is exported in WASM. These APIs do not yet split B-rep faces.
 
 ## NURBS curves
 
