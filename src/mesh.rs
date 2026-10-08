@@ -241,6 +241,27 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        9 => {
+            subdivide_planar_face(
+                &extrude_polygon(
+                    &PolygonProfile {
+                        origin: Point3::new(0.0, 0.0, -12.0),
+                        outer: vec![[-40.0, -30.0], [40.0, -30.0], [40.0, 30.0], [-40.0, 30.0]],
+                        holes: vec![
+                            vec![[-24.0, -10.0], [-12.0, -10.0], [-12.0, 10.0], [-24.0, 10.0]],
+                            vec![[12.0, -10.0], [24.0, -10.0], [24.0, 10.0], [12.0, 10.0]],
+                        ],
+                    },
+                    Vec3::new(0.0, 0.0, 24.0),
+                    tol,
+                )?,
+                1,
+                Point3::new(0.0, radius - 16.0, 12.0),
+                Vec3::new(1.0, 0.0, 0.0),
+                GeometryTolerance::default(),
+            )?
+            .solid
+        }
         8 => {
             split_planar_face(
                 &extrude_arc_line(

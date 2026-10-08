@@ -36,10 +36,10 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, or `8` to select four bores, a concave
+solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, or `9` to select four bores, a concave
 polygon extrusion, a hollow tube, a rigidly placed four-bore part, a
 rounded line/arc extrusion, a concave arc-notch plate with a rounded hole,
-a cap face subdivision, or a curved cap/cylinder-wall subdivision:
+a cap face subdivision, a curved cap/cylinder-wall subdivision, or a cut across two holes:
 
 ```sh
 cargo run --locked --example part -- 1
@@ -57,6 +57,8 @@ cargo run --locked --example face_split
 cargo run --locked --example part -- 7
 cargo run --locked --example arc_face_split
 cargo run --locked --example part -- 8
+cargo run --locked --example cut_graph
+cargo run --locked --example part -- 9
 ```
 
 Use the local kernel as a dependency during development:
@@ -131,7 +133,7 @@ Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
 slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
 a concave polygon extrusion with a polygon hole, a hollow tube, or a rotated
 four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
-a rounded hole, a split planar cap, or a split curved cap. The split preset moves its cut offset
+a rounded hole, a split planar cap, a split curved cap, or a cut across two polygon holes. The split preset moves its cut offset
 while preserving the fixed bore and volume; enable tessellation to see the seam.
 The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
@@ -171,7 +173,8 @@ fabricate the demo image.
   circular/arc boundaries and holes; planar-face intersection segments with
   normalized pcurves and boundary-event provenance.
 - Scoped planar line/arc face subdivision, shared boundary/rim updates,
-  rectangular cylinder-wall refinement, analytic hole ownership and preserved
+  rectangular cylinder-wall refinement, multi-interval cut graphs through bounded
+  hole edges, analytic hole ownership and preserved
   closed-solid geometry.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
@@ -299,7 +302,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all nine solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all ten solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

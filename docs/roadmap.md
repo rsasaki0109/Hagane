@@ -55,7 +55,8 @@ bounded rims, refines rectangular cylinder walls along shared generators,
 updates opposite caps and assigns curved holes analytically. Top/bottom,
 repeated/reversed and inward-wall cuts preserve closed topology, volume and
 mesh seams. A ninth native/WASM/browser solid fixture exercises curved cap
-splitting. Hole-crossing and multiple intervals remain unsupported; see
+splitting. Multi-interval cut graphs now cross polygon/arc holes and create
+multiple connected children, with a tenth native/WASM/browser fixture; see
 [face subdivision](face-split.md).
 
 ## Next: broaden analytic B-rep operations
@@ -65,8 +66,8 @@ splitting. Hole-crossing and multiple intervals remain unsupported; see
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Broaden cut topology to hole-crossing cuts, periodic circles and multiple
-  intervals; then extend contact handling, surface/surface curves, intersection
+- Broaden cut topology to repeated crossings on the same edge and periodic
+  circles; then extend contact handling, surface/surface curves, intersection
   graphs, curved-face splits, sewing and Boolean dispatch.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
 - A stable browser API and versioned serialization.

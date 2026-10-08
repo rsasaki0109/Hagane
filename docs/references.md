@@ -96,3 +96,13 @@ geometry kernel. Playwright's bundled Apache license/notice is retained in
 `docs/third-party`. Node, Python, Rust/rustup, Chromium and FFmpeg are external
 development tools, not embedded kernel dependencies. The included GIF was
 captured from the actual app with Chromium/Playwright and encoded with FFmpeg.
+
+### Planar cut graphs
+
+The multi-interval face subdivision uses elementary oriented planar graph cycle
+tracing: retain directed boundary subedges in each half-plane, add oppositely
+oriented exact interval chords, then trace cycles through their shared vertices.
+Green's theorem gives line/arc signed wire area; analytic point-in-ring tests
+assign negative cycles to positive cycles. This independently implemented
+construction reuses the existing documented clipping and arc-refinement math.
+It adds no dependencies and uses no OCCT source.

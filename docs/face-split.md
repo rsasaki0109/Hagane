@@ -34,7 +34,7 @@ The earlier straight cap with a fixed bore remains preset 7, with its
 [actual screenshot](face-split.png). Run `cargo run --locked --example face_split`
 for a simple box subdivision.
 
-## Supported domain
+## Single-interval API supported domain
 
 - A validated planar face with a simple line/arc outer ring. Concavity works
   when the line produces exactly one interior interval and two proper crossings
@@ -106,9 +106,49 @@ circular or 3D predicates.
 Native tests cover box/rounded/disk/notch parts, polygon and curved holes,
 analytic volume, top/bottom and repeated/reversed cuts, inward cylinder walls,
 rigid placement, microscopic dimensions, shared pcurves and closed oriented
-meshes. Native/WASM fixture parity and browser offset controls exercise nine
+meshes. Native/WASM fixture parity and browser offset controls exercise ten
 solid presets. Vertex, tangent, unresolved and same-edge cuts are rejected.
 
-Cuts through holes, multiple intervals, periodic full-circle subdivision,
-arbitrary curved-face trims, contact graphs, sewing and general Boolean
-operations remain future work. No OCCT source or additional dependency is used.
+Repeated hits on one original edge, periodic full-circle subdivision, arbitrary
+curved-face trims, contact graphs, sewing and general Boolean operations remain
+future work. No OCCT source or additional dependency is used.
+
+## Multi-interval cut graphs
+
+![Actual WASM two-hole cut graph](cut-graph.png)
+
+`subdivide_planar_face(solid, face_index, anchor, direction, tolerance)` returns
+`PlanarFaceSubdivision { solid, faces, cut_edges }`. Unlike the original
+`split_planar_face` API, it cuts every strict material interval and permits
+crossings on polygon/arc holes. It can produce more than two children when a
+half-plane intersection of a concave face is disconnected. The first child
+replaces the original face; others follow any refined cylinder walls.
+
+Each crossing must use a **distinct original bounded line or arc edge**.
+Periodic circle crossings, repeated hits on one edge, vertex/tangent/overlap
+contacts, unresolved side decisions and intervals shorter than ten linear
+tolerances return errors. Arc neighbor requirements match the single-interval
+API. Uncrossed full-circle hole wires remain exact. `split_planar_face` retains
+its existing one-interval contract for API compatibility.
+
+On a clone, shared boundaries are refined before tracing the graph. Analytic
+edge midpoint evaluations assign subedges to the two open half-planes; each
+material interval adds one exact line with two opposite coedge uses. Directed
+cycles yield outer boundaries and hole rings. Signed analytic wire area
+identifies their winding, and analytic containment assigns each remaining hole
+to exactly one child. Ambiguous branches, open cycles and unresolved ownership
+fail explicitly. Final B-rep validation and unchanged analytic volume are
+required before return. This changes the face partition, not the solid's shape.
+
+Run `cargo run --locked --example cut_graph` or `--example part -- 9`.
+The **Split across two holes** browser preset contains an 80×60×24 mm extrusion
+with two 12×20 mm rectangular holes. Three shared cut intervals produce two
+cap children. Its volume stays at 103680 mm³, with 15 faces and 45 edges.
+The slider maps 8..24 to cut offsets -8..8 mm; its displayed value is the actual
+offset. Enable tessellation to inspect all three seams.
+
+Regression tests cover two crossed holes, remaining hole ownership, concavity
+with three children, reversed direction, rigid placement, tiny dimensions,
+arc-hole inward-wall refinement, contact rejection, unchanged input, volume,
+bounds and closed oriented mesh seams. Native/WASM geometry parity and browser
+controls exercise the same Rust fixture. No modeling boundary is polygonized.

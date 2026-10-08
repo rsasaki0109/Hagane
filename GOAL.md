@@ -108,7 +108,12 @@ holes. Closed topology, pcurves, geometry, volume and mesh seams are verified
 natively and in WASM, with the ninth browser preset. See
 [face subdivision](docs/face-split.md).
 
-The next development task is to broaden cut topology for holes, multiple
-intersection intervals and periodic circular boundaries. Contact graphs,
+Multi-interval planar cut graphs now split polygon/arc holes and concave caps
+into connected child faces. Shared boundary refinement and analytic cycle/hole
+ownership preserve closure, volume and conforming meshes. A tenth browser
+preset cuts through two polygon holes, with native/WASM parity.
+
+The next development task is repeated hits on one boundary edge and periodic
+circular boundary subdivision. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

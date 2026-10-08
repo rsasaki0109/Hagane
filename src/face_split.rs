@@ -479,3 +479,175 @@ fn split_boundary_edge(
     });
     Ok(if index == bottom { bv } else { tv })
 }
+
+/// A cut graph can create several children and shared material-interval edges.
+#[derive(Clone, Debug)]
+pub struct PlanarFaceSubdivision {
+    pub solid: Solid,
+    pub faces: Vec<usize>,
+    pub cut_edges: Vec<usize>,
+}
+/// Subdivide all transverse material intervals, including polygon/arc holes.
+/// Each event must hit a distinct bounded line/arc edge. Periodic circles,
+/// contacts and repeated hits on an edge are explicitly unsupported.
+pub fn subdivide_planar_face(
+    solid: &Solid,
+    face_index: usize,
+    anchor: Point3,
+    direction: Vec3,
+    tol: GeometryTolerance,
+) -> Result<PlanarFaceSubdivision> {
+    let clip = clip_line_to_planar_face(solid, face_index, anchor, direction, tol)?;
+    if clip.intervals.is_empty() {
+        return Err(Error::Unsupported(
+            "subdivision requires material intervals",
+        ));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for e in &clip.events {
+        if !seen.insert(e.edge)
+            || !matches!(
+                solid.edges[e.edge].curve,
+                Curve::Line { .. } | Curve::Arc { .. }
+            )
+        {
+            return Err(Error::Unsupported(
+                "cut graph requires distinct bounded boundary edges",
+            ));
+        }
+    }
+    let volume = solid.volume()?;
+    let mut s = solid.clone();
+    let mut vertices = std::collections::BTreeMap::new();
+    for e in &clip.events {
+        let v = split_boundary_edge(&mut s, e.edge, e.edge_parameter, e.point, tol.absolute())?;
+        vertices.insert(e.edge, v);
+    }
+    let face = s.shell.faces[face_index].clone();
+    let origin = face.surface.parameters(anchor);
+    let unit = direction.normalized()?;
+    let Surface::Plane { u, v, .. } = face.surface else {
+        unreachable!()
+    };
+    let d = [unit.dot(u), unit.dot(v)];
+    let mut halves: [Vec<Coedge>; 2] = [Vec::new(), Vec::new()];
+    for w in &face.wires {
+        for c in &w.coedges {
+            let range = s.edges[c.edge].curve.range();
+            let p = c.pcurve.evaluate((range[0] + range[1]) * 0.5);
+            let side = d[0] * (p[1] - origin[1]) - d[1] * (p[0] - origin[0]);
+            if side.abs() <= tol.linear() {
+                return Err(Error::Unsupported(
+                    "boundary side is unresolved at cut tolerance",
+                ));
+            }
+            halves[usize::from(side < 0.0)].push(c.clone());
+        }
+    }
+    let mut cut_edges = Vec::new();
+    for interval in &clip.intervals {
+        let a = vertices[&interval.start.edge];
+        let b = vertices[&interval.end.edge];
+        let pa = s.vertices[a].point;
+        let pb = s.vertices[b].point;
+        if (pb - pa).norm() <= 10.0 * tol.absolute().linear {
+            return Err(Error::Unsupported("cut interval is too small"));
+        }
+        let edge = s.edges.len();
+        s.edges.push(Edge {
+            vertices: [a, b],
+            curve: Curve::Line { a: pa, b: pb },
+        });
+        cut_edges.push(edge);
+        let uv = face.surface.parameters(pa);
+        let end = face.surface.parameters(pb);
+        for (i, half) in halves.iter_mut().enumerate() {
+            half.push(Coedge {
+                edge,
+                forward: i == 0,
+                pcurve: PCurve::Affine {
+                    origin: uv,
+                    direction: [end[0] - uv[0], end[1] - uv[1]],
+                },
+            });
+        }
+    }
+    let mut children = Vec::new();
+    for half in halves {
+        let mut outgoing = std::collections::BTreeMap::new();
+        for c in half {
+            if outgoing.insert(start_vertex(&s, &c), c).is_some() {
+                return Err(Error::Unsupported("cut graph has ambiguous outgoing edges"));
+            }
+        }
+        let mut loops = Vec::new();
+        while let Some((&first, _)) = outgoing.first_key_value() {
+            let mut vertex = first;
+            let mut coedges = Vec::new();
+            loop {
+                let c = outgoing
+                    .remove(&vertex)
+                    .ok_or(Error::InvalidTopology("cut graph is open"))?;
+                vertex = s.edges[c.edge].vertices[usize::from(c.forward)];
+                coedges.push(c);
+                if vertex == first {
+                    break;
+                }
+            }
+            loops.push(Wire { coedges });
+        }
+        let (outer, holes): (Vec<_>, Vec<_>) = loops
+            .into_iter()
+            .partition(|w| crate::topology::wire_area(w) > 0.0);
+        let mut faces: Vec<_> = outer
+            .into_iter()
+            .map(|w| Face {
+                surface: face.surface.clone(),
+                orientation: face.orientation,
+                wires: vec![w],
+            })
+            .collect();
+        for hole in holes {
+            let c = &hole.coedges[0];
+            let range = s.edges[c.edge].curve.range();
+            let p = c.pcurve.evaluate(range[usize::from(!c.forward)]);
+            let mut owner = None;
+            for (i, f) in faces.iter().enumerate() {
+                let ring = crate::face_intersections::rings(f).remove(0);
+                match crate::mixed::point_location(p, &ring, tol.absolute())? {
+                    PointLocation::Inside => {
+                        if owner.replace(i).is_some() {
+                            return Err(Error::Unsupported("hole has multiple owners"));
+                        }
+                    }
+                    PointLocation::Outside => (),
+                    PointLocation::Boundary => {
+                        return Err(Error::Unsupported("hole ownership touches boundary"))
+                    }
+                }
+            }
+            faces[owner.ok_or(Error::InvalidTopology("cut hole has no owner"))?]
+                .wires
+                .push(hole);
+        }
+        children.extend(faces);
+    }
+    if children.len() < 2 {
+        return Err(Error::Unsupported("cut does not subdivide the face"));
+    }
+    let mut faces = vec![face_index];
+    s.shell.faces[face_index] = children.remove(0);
+    for child in children {
+        faces.push(s.shell.faces.len());
+        s.shell.faces.push(child);
+    }
+    s.validate(tol.absolute())?;
+    if (s.volume()? - volume).abs() > volume.abs() * 1e-10 {
+        return Err(Error::InvalidTopology("cut graph changes volume"));
+    }
+    Ok(PlanarFaceSubdivision {
+        solid: s,
+        faces,
+        cut_edges,
+    })
+}
