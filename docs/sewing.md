@@ -73,3 +73,12 @@ skew extrusion, rigid placement, tiny dimensions, positive triangle winding,
 closed mesh seams, unchanged bounds/volume and rejected near coincidences,
 open/duplicate/reversed/disconnected shells. Native/WASM geometry parity and
 browser subdivision controls run the same kernel operation.
+
+## Generated Boolean arrangements
+
+The public independent-patch API remains strict. The difference implementation
+has a separate internal assembler for its own checked generated arrangements.
+It reconciles coordinate coincidences and collinear subdivisions only within
+`min(64*EPSILON*local_diagonal, linear/1024)`, followed by full solid and volume
+validation. It never exposes model-tolerance snapping for arbitrary patches.
+See [convex difference](convex-difference.md) for the construction and limitations.

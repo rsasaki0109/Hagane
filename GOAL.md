@@ -149,7 +149,15 @@ B-reps. Analytic box and independently computed rotated-diamond volumes,
 placement and microscopic cases are verified. A fifteenth native/WASM/browser
 preset exercises two solid operands. See [convex intersection](docs/convex-intersection.md).
 
-The next development task is scoped difference/union and broader retained-face
-selection using planar arrangements. Contact graphs,
+Scoped convex operand difference now selects original exterior fragments and
+reversed cutter boundary faces, then sews one closed result. Nonconvex partial
+cuts and rectangular through-holes, typed empty/unchanged results, volume
+conservation, placement and tiny dimensions are verified. Internal generated
+arrangements reconcile only bounded arithmetic roundoff; standalone sewing
+stays strict. A sixteenth browser preset exercises a true two-solid subtraction.
+See [convex difference](docs/convex-difference.md).
+
+The next development task is scoped union and broader retained-face selection
+using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

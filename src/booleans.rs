@@ -1,4 +1,4 @@
-//! Scoped solid intersection using checked convex half-space clipping.
+//! Scoped convex operand intersection/difference using checked half-space clipping.
 use crate::*;
 #[derive(Clone, Debug)]
 pub enum SolidIntersection {
@@ -9,7 +9,7 @@ fn convex_planes(solid: &Solid, tol: GeometryTolerance) -> Result<Vec<Surface>> 
     let patches = planar_face_patches(solid, tol.absolute())?;
     if patches.len() > 128 {
         return Err(Error::Unsupported(
-            "convex intersection supports at most 128 faces per operand",
+            "convex Boolean operations support at most 128 faces per operand",
         ));
     }
     let mut planes = Vec::new();
@@ -56,12 +56,23 @@ fn convex_planes(solid: &Solid, tol: GeometryTolerance) -> Result<Vec<Surface>> 
 /// Proper cuts must clear all current vertices by ten local length budgets.
 /// Contact/coplanar/near-contact arrangements are rejected. Strict containment
 /// legitimately returns the contained solid; strict separation returns Empty.
-/// Curved/nonconvex operands and general union/difference are unsupported.
+/// Curved/nonconvex operands, contacts and coplanar overlays are unsupported.
 pub fn intersect_convex_solids(
     first: &Solid,
     second: &Solid,
     tol: GeometryTolerance,
 ) -> Result<SolidIntersection> {
+    let (common, _) = convex_partition(first, second, tol)?;
+    Ok(match common {
+        Some(s) => SolidIntersection::Solid(s),
+        None => SolidIntersection::Empty,
+    })
+}
+fn convex_partition(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<(Option<Solid>, Vec<Solid>)> {
     convex_planes(first, tol)?;
     let planes = convex_planes(second, tol)?;
     let a = first.bounds();
@@ -75,9 +86,10 @@ pub fn intersect_convex_solids(
         || a.max.z < b.min.z - 10.0 * budget
         || b.max.z < a.min.z - 10.0 * budget
     {
-        return Ok(SolidIntersection::Empty);
+        return Ok((None, vec![first.clone()]));
     }
     let mut result = first.clone();
+    let mut outside = Vec::new();
     for plane in &planes {
         let Surface::Plane { origin, u, v } = *plane else {
             unreachable!()
@@ -92,13 +104,16 @@ pub fn intersect_convex_solids(
             .iter()
             .any(|d| !d.is_finite() || d.abs() <= 10.0 * budget)
         {
-            return Err(Error::Unsupported("convex intersection requires cuts clear of current vertices; contact/coplanar arrangements are unsupported"));
+            return Err(Error::Unsupported("convex clipping requires cuts clear of current vertices; contact/coplanar arrangements are unsupported"));
         }
         if distances.iter().all(|&d| d > 0.) {
-            return Ok(SolidIntersection::Empty);
+            outside.push(result);
+            return Ok((None, outside));
         }
         if distances.iter().any(|&d| d > 0.) {
-            result = split_solid_by_plane(&result, plane, tol)?.negative;
+            let split = split_solid_by_plane(&result, plane, tol)?;
+            outside.push(split.positive);
+            result = split.negative;
         }
     }
     result.validate(tol.absolute())?;
@@ -121,7 +136,7 @@ pub fn intersect_convex_solids(
             "intersection volume exceeds an operand",
         ));
     }
-    Ok(SolidIntersection::Solid(result))
+    Ok((Some(result), outside))
 }
 pub(crate) fn convex_intersection_demo(offset: f64) -> Result<SolidIntersection> {
     let t = GeometryTolerance::default();
@@ -152,6 +167,99 @@ pub fn convex_intersection_demo_json(offset: f64) -> Result<String> {
     match convex_intersection_demo(offset)? {
         SolidIntersection::Empty => Ok("{\"kind\":\"empty\"}".into()),
         SolidIntersection::Solid(s) => Ok(format!(
+            "{{\"kind\":\"solid\",\"mesh\":{}}}",
+            s.mesh_json(0.05, Tolerance::default())?
+        )),
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum SolidDifference {
+    Empty,
+    Solid(Solid),
+}
+fn original_plane(surface: &Surface, source: &Solid) -> bool {
+    source
+        .shell
+        .faces
+        .iter()
+        .any(|f| match (&f.surface, surface) {
+            (
+                Surface::Plane {
+                    origin: a,
+                    u: b,
+                    v: c,
+                },
+                Surface::Plane {
+                    origin: d,
+                    u: e,
+                    v: g,
+                },
+            ) => a == d && b == e && c == g,
+            _ => false,
+        })
+}
+/// Subtract checked convex planar operands and sew the retained outer boundary.
+/// Results may be nonconvex or have through-holes. One closed connected shell
+/// is required; enclosed cavities and disconnected material are unsupported.
+/// Contacts/coplanar/near-contact cases follow convex intersection's contract.
+pub fn subtract_convex_solids(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<SolidDifference> {
+    let (common, outside) = convex_partition(first, second, tol)?;
+    let Some(common) = common else {
+        return Ok(SolidDifference::Solid(first.clone()));
+    };
+    if outside.is_empty() {
+        return Ok(SolidDifference::Empty);
+    }
+    let mut retained = Vec::new();
+    for piece in outside {
+        retained.extend(
+            planar_face_patches(&piece, tol.absolute())?
+                .into_iter()
+                .filter(|p| original_plane(&p.surface, first)),
+        );
+    }
+    for mut patch in planar_face_patches(&common, tol.absolute())? {
+        if !original_plane(&patch.surface, first) {
+            patch.orientation *= -1;
+            retained.push(patch);
+        }
+    }
+    let solid = crate::sewing::sew_generated_planar_faces(&retained, tol)?;
+    if (solid.volume()? + common.volume()? - first.volume()?).abs() > first.volume()?.abs() * 1e-10
+    {
+        return Err(Error::InvalidTopology(
+            "convex difference does not conserve removed volume",
+        ));
+    }
+    Ok(SolidDifference::Solid(solid))
+}
+pub(crate) fn convex_difference_demo(offset: f64) -> Result<SolidDifference> {
+    let t = GeometryTolerance::default();
+    let a = make_box(
+        BoxSpec {
+            min: Point3::new(-40., -30., -12.),
+            size: Vec3::new(80., 60., 24.),
+        },
+        t.absolute(),
+    )?;
+    let b = make_box(
+        BoxSpec {
+            min: Point3::new(offset - 10., -8., -20.),
+            size: Vec3::new(20., 16., 40.),
+        },
+        t.absolute(),
+    )?;
+    subtract_convex_solids(&a, &b, t)
+}
+pub fn convex_difference_demo_json(offset: f64) -> Result<String> {
+    match convex_difference_demo(offset)? {
+        SolidDifference::Empty => Ok("{\"kind\":\"empty\"}".into()),
+        SolidDifference::Solid(s) => Ok(format!(
             "{{\"kind\":\"solid\",\"mesh\":{}}}",
             s.mesh_json(0.05, Tolerance::default())?
         )),

@@ -36,10 +36,10 @@ cargo run --locked --example part
 
 `rust-toolchain.toml` pins Rust 1.99.0, rustfmt, clippy, and the
 `wasm32-unknown-unknown` target. The `part` example emits the demo mesh and exact
-solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `11`, `12`, `13`, or `14` to select four bores, a concave
+solid volume as JSON. Pass `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, or `15` to select four bores, a concave
 polygon extrusion, a hollow tube, a rigidly placed four-bore part, a
 rounded line/arc extrusion, a concave arc-notch plate with a rounded hole,
-a cap face subdivision, a curved cap/cylinder-wall subdivision, a cut across two holes, repeated crossings of annular cap arcs, periodic bore subdivision, independent planar face sewing, a closed solid plane partition, or convex solid intersection:
+a cap face subdivision, a curved cap/cylinder-wall subdivision, a cut across two holes, repeated crossings of annular cap arcs, periodic bore subdivision, independent planar face sewing, a closed solid plane partition, convex solid intersection, or convex operand subtraction:
 
 ```sh
 cargo run --locked --example part -- 1
@@ -70,6 +70,8 @@ cargo run --locked --example solid_split -- -2
 cargo run --locked --example part -- 13
 cargo run --locked --example convex_intersection -- -2
 cargo run --locked --example part -- 14
+cargo run --locked --example convex_difference -- -2
+cargo run --locked --example part -- 15
 ```
 
 Use the local kernel as a dependency during development:
@@ -144,7 +146,7 @@ Open port 8000 in your local browser. Drag to orbit; scroll to zoom. The radius
 slider reruns the **Rust B-rep operation** in WASM. Select single/four bores,
 a concave polygon extrusion with a polygon hole, a hollow tube, or a rotated
 four-bore part, a rounded line/arc extrusion, or a concave arc-notch plate with
-a rounded hole, a split planar cap, a split curved cap, a cut across two polygon holes, repeated crossings of an annular cap, a periodic bore split, sewn independent planar patches, the positive half of a plane-cut solid, or intersecting convex solids. The split preset moves its cut offset
+a rounded hole, a split planar cap, a split curved cap, a cut across two polygon holes, repeated crossings of an annular cap, a periodic bore split, sewn independent planar patches, the positive half of a plane-cut solid, intersecting convex solids, or a subtracted rectangular through-hole. The split preset moves its cut offset
 while preserving the fixed bore and volume; enable tessellation to see the seam.
 The corner/notch radius controls exact geometry. The polygon
 preset has a fixed profile, so its radius slider is disabled. Toggle the display mesh or
@@ -192,6 +194,8 @@ fabricate the demo image.
   closed-solid geometry.
 - [Solid point classification](docs/classification.md) for planar straight-edge
   B-reps, with Euclidean boundary bands and two checked independent rays.
+- [Convex operand subtraction](docs/convex-difference.md), sewn into one
+  connected boundary, with nonconvex/through-hole results and typed empty output.
 - [Convex solid intersection](docs/convex-intersection.md), with checked planar
   convex operands, typed empty results and exact closed B-rep construction.
 - [Solid plane partition](docs/solid-split.md) for transverse planar straight-edge
@@ -324,7 +328,7 @@ Tests cover analytic dimensions/volumes/bounds, offset holes, shell and mesh
 closure/orientation, sagitta error and volume convergence, contact/near-contact,
 small dimensions, malformed topology, nonfinite inputs, multiple-hole overlap,
 concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
-and WASM generation/error recovery with native geometry parity for all fifteen solid presets. Mixed-profile tests verify exact rounded/capsule volume,
+and WASM generation/error recovery with native geometry parity for all sixteen solid presets. Mixed-profile tests verify exact rounded/capsule volume,
 partial bounds, shared arcs and walls, sharp/concave regions, curved holes,
 either winding, analytic point classification, closed mesh seams, coarse-trim
 rejection, and rejected inputs. Rigid-placement tests check analytic volume, transformed

@@ -170,3 +170,14 @@ University Press, 2004, §2.2 (hyperplanes, half-spaces and polyhedra), availabl
 from [Stanford](https://web.stanford.edu/~boyd/cvxbook/). This is a mathematical
 reference, not copied source code. The independent implementation adds no
 library dependency and uses no OCCT source.
+
+### Convex operand difference boundary selection
+
+Sequential convex half-space clipping partitions the first operand into common
+material and disjoint outside regions. Exterior face fragments inherited from
+the first operand, together with oppositely oriented cutter faces bounding the
+common material, define the difference boundary. Artificial partition interfaces
+are omitted before sewing. Generated arrangements reconcile only floating-point
+roundoff bounded by `min(64*EPSILON*local_diagonal, linear/1024)`; independent
+patch sewing remains strict. This independently implemented boundary selection
+adds no dependency and uses no OCCT source.

@@ -59,6 +59,35 @@ fn exact_collinear(a: Point3, b: Point3, p: Point3) -> Result<bool> {
 /// Input patch interiors must not intersect; arbitrary surface sewing/healing
 /// and geometric self-intersection detection are outside this API's domain.
 pub fn sew_planar_faces(patches: &[PlanarFacePatch], tol: GeometryTolerance) -> Result<Solid> {
+    sew_planar_faces_impl(patches, tol, 0.0)
+}
+// Internal generated arrangements already clear modeling contacts. Reconcile
+// only arithmetic roundoff, far below model tolerance; the public sewing API
+// retains its exact-coincidence contract for untrusted independent patches.
+pub(crate) fn sew_generated_planar_faces(
+    patches: &[PlanarFacePatch],
+    tol: GeometryTolerance,
+) -> Result<Solid> {
+    let mut min = Point3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+    let mut max = Point3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+    for &p in patches.iter().flat_map(|p| &p.rings).flatten() {
+        min = Point3::new(min.x.min(p.x), min.y.min(p.y), min.z.min(p.z));
+        max = Point3::new(max.x.max(p.x), max.y.max(p.y), max.z.max(p.z));
+    }
+    let scale = (max - min).norm();
+    if !scale.is_finite() {
+        return Err(Error::InvalidInput(
+            "generated sewing needs a finite local scale",
+        ));
+    }
+    let roundoff = (64.0 * f64::EPSILON * scale).min(tol.linear() / 1024.0);
+    sew_planar_faces_impl(patches, tol, roundoff)
+}
+fn sew_planar_faces_impl(
+    patches: &[PlanarFacePatch],
+    tol: GeometryTolerance,
+    roundoff: f64,
+) -> Result<Solid> {
     if patches.is_empty()
         || patches.len() > 512
         || patches
@@ -109,7 +138,9 @@ pub fn sew_planar_faces(patches: &[PlanarFacePatch], tol: GeometryTolerance) -> 
                 }
                 let mut id = None;
                 for (i, vertex) in s.vertices.iter().enumerate() {
-                    if vertex.point == p {
+                    if vertex.point == p
+                        || (roundoff > 0.0 && (vertex.point - p).norm() <= roundoff)
+                    {
                         id = Some(i);
                         break;
                     }
@@ -164,9 +195,12 @@ pub fn sew_planar_faces(patches: &[PlanarFacePatch], tol: GeometryTolerance) -> 
                     if t <= 0.0 || t >= 1.0 {
                         continue;
                     }
-                    if exact_collinear(pa, pb, vertex.point)? {
+                    let residual = (vertex.point - (pa + d * t)).norm();
+                    if exact_collinear(pa, pb, vertex.point)?
+                        || (roundoff > 0.0 && residual <= roundoff)
+                    {
                         points.push((t, j));
-                    } else if (vertex.point - (pa + d * t)).norm() <= tol.linear() {
+                    } else if residual <= tol.linear() {
                         return Err(Error::Unsupported(
                             "near-collinear sewing junction requires explicit healing",
                         ));

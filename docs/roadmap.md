@@ -90,6 +90,13 @@ small dimensions are verified, with a fifteenth native/WASM/browser preset.
 Contacts/coplanar cases and nonconvex/curved operands remain unsupported. See
 [convex intersection](convex-intersection.md).
 
+Convex operand difference now discards artificial partition interfaces and
+sews original exterior fragments plus reversed cutter boundary faces into one
+closed shell. Nonconvex/through-hole outputs, empty/unchanged cases, placement
+and tiny models are verified, with a sixteenth native/WASM/browser fixture.
+Enclosed cavities, disconnected results and general contacts remain unsupported.
+See [convex difference](convex-difference.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -97,7 +104,7 @@ Contacts/coplanar cases and nonconvex/curved operands remain unsupported. See
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement scoped difference/union and broader retained-face selection using
+- Implement scoped union and broader retained-face selection using
   planar arrangements; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.

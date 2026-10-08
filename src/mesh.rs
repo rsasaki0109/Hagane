@@ -241,6 +241,10 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        15 => match crate::booleans::convex_difference_demo(radius - 16.0)? {
+            SolidDifference::Solid(s) => s,
+            SolidDifference::Empty => return Err(Error::Unsupported("demo difference is empty")),
+        },
         14 => match crate::booleans::convex_intersection_demo(radius - 16.0)? {
             SolidIntersection::Solid(s) => s,
             SolidIntersection::Empty => {
