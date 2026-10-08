@@ -45,7 +45,7 @@ an outward orientation. Corners come directly from the shared coordinate arrays;
 no accumulated cell-coordinate arithmetic or fuzzy welding is used. The strict
 planar sewing API shares vertices/edges and generates plane pcurves, then verifies
 closed manifold topology, orientation and geometry. A planar region may retain
-several adjacent patches; merging coplanar faces is future work.
+several adjacent patches; [Scoped face merging](face-merge.md) is available as a separate operation.
 
 The resulting volume must agree within relative `1e-10` with the independent
 analytic box overlap formula and inclusion-exclusion. Empty results are explicit.

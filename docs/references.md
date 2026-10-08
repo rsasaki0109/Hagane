@@ -201,3 +201,15 @@ discards zero-volume face/edge/point intersections. This follows elementary set
 operations and orthogonal polyhedron boundary construction, implemented originally
 in Rust under MIT OR Apache-2.0. Corners use exact shared input coordinates and
 strict planar sewing. No new dependency or OCCT source is used.
+
+### Coplanar face boundary merging
+
+Within an edge-connected component of faces on the same oriented plane, shared
+coedges cancel from the exterior boundary. The remaining directed cycles define
+outer rings and holes via signed planar area and containment. This is elementary
+oriented boundary cancellation and polygon topology, implemented originally in
+Rust under MIT OR Apache-2.0. Plane identity is certified only by exact frame
+identity or exact axis-aligned support; no approximate coplanarity inference is
+used. Original affine pcurves survive frame-preserving merges. This reuses the
+existing boundary graph and planar sewing code and adds no dependency. No OCCT
+source was consulted, copied or translated.

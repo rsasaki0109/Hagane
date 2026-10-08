@@ -111,6 +111,14 @@ covered by an eighteenth native/WASM/browser fixture. Near contacts and
 nonmanifold/disconnected/cavity results fail. General convex contact handling
 remains unsupported. See [box arrangements](box-booleans.md).
 
+Scoped coplanar face merging now reconstructs outer/hole boundaries after removing
+shared interior face edges. Certified identical frames or exact axis-aligned
+supports preserve geometry, pcurves, volume, bounds and mesh closure. Rigid/tiny
+parts and hole/disconnected-region cases are covered, with a nineteenth
+native/WASM/browser preset reducing 26 faces to 10. Arbitrary plane-frame
+equivalence, collinear edge simplification and healing remain future work.
+See [face merging](face-merge.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.

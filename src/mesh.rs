@@ -241,6 +241,7 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        18 => crate::merged_contact_demo(radius - 16.0)?,
         17 => crate::box_contact_demo(radius - 16.0)?,
         16 => crate::booleans::convex_union_demo(radius - 16.0)?,
         15 => match crate::booleans::convex_difference_demo(radius - 16.0)? {

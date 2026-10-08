@@ -8,7 +8,7 @@ pub struct SolidPlaneSplit {
     /// Exact section faces, oriented along the plane normal.
     pub section: Vec<PlanarFacePatch>,
 }
-fn cycles(mut edges: Vec<(usize, usize)>) -> Result<Vec<Vec<usize>>> {
+pub(crate) fn cycles(mut edges: Vec<(usize, usize)>) -> Result<Vec<Vec<usize>>> {
     let mut outgoing = std::collections::BTreeMap::new();
     for (a, b) in edges.drain(..) {
         if outgoing.insert(a, b).is_some() {
@@ -32,7 +32,7 @@ fn cycles(mut edges: Vec<(usize, usize)>) -> Result<Vec<Vec<usize>>> {
     }
     Ok(rings)
 }
-fn patches(
+pub(crate) fn patches(
     surface: &Surface,
     orientation: i8,
     rings: Vec<Vec<usize>>,

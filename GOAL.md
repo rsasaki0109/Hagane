@@ -171,6 +171,13 @@ contacts and nonmanifold/disconnected/cavity results fail. An eighteenth
 native/WASM/browser fixture demonstrates partial-face fusion. See
 [box arrangements](docs/box-booleans.md).
 
+Scoped coplanar face merging now removes interior face boundaries and reconstructs
+outer/hole wires on certified identical supports. Geometry, shared topology,
+original UV trims, volume, bounds and mesh closure are verified for contact and
+through-hole parts, rigid placement and tiny dimensions. The nineteenth
+native/WASM/browser preset reduces the contact fixture from 26 to 10 faces. See
+[face merging](docs/face-merge.md).
+
 The next development task is broader retained-face selection and contact handling
 using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration

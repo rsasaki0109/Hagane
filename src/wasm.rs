@@ -72,6 +72,10 @@ mod exports {
         generate(crate::convex_intersection_demo_json(offset))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_merged_contact_demo(offset: f64) -> i32 {
+        generate(crate::merged_contact_demo_json(offset))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_box_contact_demo(offset: f64) -> i32 {
         generate(crate::box_contact_demo_json(offset))
     }

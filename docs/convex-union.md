@@ -30,7 +30,8 @@ Partition each operand by the outward supporting planes of the other. From each
 outside cell, retain only fragments of that operand's original boundary. Discard
 all artificial partition caps and faces inside the other operand. Sew the combined
 exterior fragments into a single shared, oriented boundary. Original outward
-orientations stay intact. Coplanar adjacent exterior fragments are not merged.
+orientations stay intact. Coplanar adjacent exterior fragments are not merged by the Boolean operation.
+[Scoped face merging](face-merge.md) is available separately.
 
 The private generated-arrangement sewing path reconciles only arithmetic roundoff:
 its distance bound is the smaller of `64 * f64::EPSILON * local_diagonal` and
