@@ -222,9 +222,8 @@ Native tests cover roots, reversal, polygon-face intersection, tilt signs,
 placement, microscopic dimensions, nonorthogonal axes, conditioning, malformed
 inputs and contact rejection. Native/WASM queries and meshes and browser cap
 selection/error recovery are verified. The initial domain was one complete two-half-arc
-ellipse wire. The extensions below support specific mixed loops; ellipse holes,
-arbitrary ellipse-face subdivision
-and general capped partitions remain unsupported. See
+ellipse wire. The extensions below support specific mixed loops and concentric ellipse holes;
+arbitrary ellipse-face subdivision and general capped partitions remain unsupported. See
 [ellipse planar trims](ellipse-planar.md).
 
 Diameter-closed half-ellipse planar trims now support a single exact pi-sweep
@@ -234,7 +233,7 @@ analytic volume and conforming tessellation cover the mixed boundary. A closed
 half-cylinder fixture retains material below an oblique plane. Native/WASM and
 browser tests cover both crossings, reversal, placement, microscopic dimensions,
 contact rejection and recovery. This domain is extended below; arbitrary mixed ellipse
-loops, ellipse holes and general capped partitions remain unsupported. See [half-ellipse trims](half-ellipse-planar.md).
+loops, holes in arc/chord regions and general capped partitions remain unsupported. See [half-ellipse trims](half-ellipse-planar.md).
 
 Minor ellipse arcs closed by straight chords now extend the mixed trim domain
 to resolved sweeps in `(0, pi]`. Analytic clipping preserves original line,
@@ -243,9 +242,22 @@ volume and conforming tessellation use the actual arc interval. A symmetric
 circular-segment extrusion with an oblique exact cap provides a closed fixture.
 Independent bounds, roots, volume and display-chord error, rotated/tiny solids,
 nonorthogonal axes, near contacts and unresolved thickness are tested.
-Native/WASM parity and a 90-degree browser demo are verified. Larger sweeps,
-arbitrary composite loops, ellipse holes and general capped partitions remain
-unsupported. See [minor ellipse/chord trims](ellipse-segment-planar.md).
+Native/WASM parity and a 90-degree browser demo are verified. Larger sweeps, arbitrary composite loops and general capped partitions remain
+unsupported. The ellipse-hole extension follows below. See [minor ellipse/chord trims](ellipse-segment-planar.md).
+
+
+Concentric homothetic full-ellipse holes now support exact annular planar caps.
+Checked axis/center agreement and a physical clearance lower bound reject
+unsupported or unresolved holes. Analytic clipping preserves outer/inner wire
+provenance and returns two material intervals through the hole; polygon-face
+intersections share those intervals. Classification, signed analytic area/volume
+and conforming tessellation retain the hole. A closed obliquely capped tube
+fixture, native/WASM example and actual browser demo are implemented. Tests cover
+independent roots/volume/bounds, rotated/tiny solids, nonorthogonal axes, physical
+bands, shared orientation, display-chord error and no triangles filling the hole.
+Eccentric or multiple ellipse holes, holes in arc/chord loops, arbitrary mixed
+loops and general capped partitions remain unsupported. See
+[ellipse annuli](ellipse-annulus-planar.md).
 
 ## Next: broaden analytic B-rep operations
 

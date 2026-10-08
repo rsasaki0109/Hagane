@@ -25,7 +25,8 @@ distance and root precision guards.
 
 [Minor ellipse arcs with a straight closing chord](ellipse-segment-planar.md),
 including the [half ellipse and diameter](half-ellipse-planar.md), are also supported.
-Other mixed line/circle/ellipse loops, ellipse holes, more general arc partitions and
+[Concentric homothetic full-ellipse holes](ellipse-annulus-planar.md) are supported.
+Other mixed loops, eccentric/multiple ellipse holes, more general arc partitions and
 ellipse-face subdivision are not yet supported. Invalid topology and unsupported
 trim domains fail before query/bounds shortcuts. Independent ellipse pcurve
 values do not imply support for arbitrary ellipse-trimmed modeling operations.

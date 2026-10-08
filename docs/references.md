@@ -294,3 +294,18 @@ original parameters. Existing Green's theorem, Taylor interpolation and physical
 segment-distance arguments apply on the restricted angular interval. This is
 original MIT OR Apache-2.0 Rust code based on the mathematical sources above,
 with no new dependencies or OCCT source consultation, copying or translation.
+
+
+### Concentric homothetic ellipse holes
+
+An affine ellipse annulus maps to concentric circles when the inner and outer
+axis matrices differ by one positive scale (or both axes are negated). A lower
+singular-value bound maps the radial gap to a conservative physical clearance;
+coefficient deviation is bounded by the sum of center and axis-vector errors.
+Sorted shared-parameter boundary events subtract the inner convex interval from
+the outer interval. Green's theorem integrates CW hole area with opposite sign.
+Shared edge orientation includes each face's orientation, so inward tube walls
+close consistently with the annular cap. The existing mathematical references
+for affine-circle roots, interpolation and ray classification apply to both wires.
+This is original MIT OR Apache-2.0 Rust code, with no new dependency or OCCT
+source consultation, copying or translation.

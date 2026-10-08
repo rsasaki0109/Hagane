@@ -63,6 +63,7 @@ cargo run --locked --example curved_classification -- 6 26 -3 0
 cargo run --locked --example ellipse_planar -- 14 0
 cargo run --locked --example half_ellipse_planar -- 1 0 0
 cargo run --locked --example ellipse_segment_planar -- 1.5707963267948966 0 20 0
+cargo run --locked --example ellipse_annulus_planar -- 6 0
 cargo run --locked --example part -- 8
 cargo run --locked --example cut_graph
 cargo run --locked --example part -- 9
@@ -232,8 +233,9 @@ fabricate the demo image.
   [Diameter-closed half ellipses](docs/half-ellipse-planar.md) also support exact
   line/arc clipping, solid classification and conforming meshes.
   [Minor arcs closed by chords](docs/ellipse-segment-planar.md) extend this to
-  resolved sweeps in `(0, pi]`. Other mixed
-  ellipse loops, holes and general capped partitions remain unsupported.
+  resolved sweeps in `(0, pi]`. [Concentric homothetic ellipse holes](docs/ellipse-annulus-planar.md)
+  support annular caps, two material intervals, classification and conforming meshes.
+  Other mixed loops, eccentric/multiple ellipse holes and general capped partitions remain unsupported.
 - [Harmonic circular face line queries](docs/harmonic-face-intersections.md):
   analytic height clipping, bounded generator overlaps, certified shared ellipse
   contacts and browser selection of faces above/below an oblique section.

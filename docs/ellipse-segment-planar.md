@@ -7,7 +7,9 @@ followed by one straight closing chord. This extends the existing
 [half ellipse and diameter](half-ellipse-planar.md) domain. The pcurve axes can
 be nonorthogonal; each coedge retains its owning 3D edge parameter and direction.
 The ellipse coedge must be first in the two-coedge wire. More than one arc,
-holes, sweeps above `pi` and general curved face subdivision remain unsupported.
+holes in arc/chord regions, sweeps above `pi` and general curved face subdivision
+remain unsupported. [Complete concentric ellipse annuli](ellipse-annulus-planar.md)
+are supported separately.
 
 ## Checked domain and algorithms
 

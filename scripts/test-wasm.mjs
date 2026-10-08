@@ -396,3 +396,21 @@ for(const [mode,offset,placement] of [[3,20,0],[0,24,0],[0,24+1e-9,0],[0,24*Math
 assert.equal(ellipseSegment(Math.PI/2,0,14).result.intersection.kind,'empty');
 assert.equal(ellipseSegment(Math.PI/2,1,0).status,0);
 console.log('Minor ellipse/chord trims: independent roots and volumes, angular/line provenance, native/WASM parity, contacts, unsupported sweeps and recovery passed.');
+
+function ellipseAnnulus(offset,placement=0){
+ const status=k.hagane_ellipse_annulus_planar_demo(offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const placement of [0,0.37])for(const offset of [-6,6,18,30]){
+ const {status,result}=ellipseAnnulus(offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','ellipse_annulus_planar','--',String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ const outer=Math.sqrt(576-offset**2)*Math.sqrt(1.0625),inner=Math.sqrt(144-offset**2)*Math.sqrt(1.0625);
+ const expected=offset===30?[]:Math.abs(offset)>12?[(34-outer)/2,(34+outer)/2]:[(34-outer)/2,(34-inner)/2,(34+inner)/2,(34+outer)/2];
+ assert.equal(result.intersection.hits.length,expected.length);assert.equal(result.intersection.intervals.length,expected.length/2);
+ result.intersection.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-expected[i])<1e-10));
+ if(Math.abs(offset)<12)assert.deepEqual(result.intersection.hits.map(h=>h.boundaries[0].wire),[0,1,1,0]);
+ assert.equal(result.mesh.faces,6);assert.equal(result.mesh.edges,12);assert.equal(result.face,5);assert.ok(Math.abs(result.mesh.volume-Math.PI*(576-144)*12)<1e-8);
+}
+for(const [offset,placement] of [[0,0],[12,0],[12+1e-9,0],[24,0],[24+1e-9,0],[NaN,0],[6,Infinity]])assert.equal(ellipseAnnulus(offset,placement).status,1);
+assert.equal(ellipseAnnulus(6).status,0);
+console.log('Ellipse annulus: independent roots/volume, two material intervals, hole provenance, native/WASM parity, contacts and recovery passed.');

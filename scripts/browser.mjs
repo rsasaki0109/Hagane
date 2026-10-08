@@ -347,5 +347,18 @@ try {
  const segmentView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),segmentView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: minor ellipse arc/chord clipping, provenance, empty/contact errors, recovery and orbit passed.');
+ await page.locator('#scope').selectOption('annulusEllipsePlane');assert.equal(await page.locator('#hits').textContent(),'4');
+ const annulusData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.equal(annulusData.intersection.intervals.length,2);assert.deepEqual(annulusData.intersection.hits.map(h=>h.boundaries[0].wire),[0,1,1,0]);
+ assert.equal(annulusData.mesh.faces,6);assert.ok(Math.abs(annulusData.mesh.volume-Math.PI*(576-144)*12)<1e-8);
+ assert.ok(await page.locator('#mode option[value="1"]').isDisabled());
+ await page.locator('#offset').evaluate(e=>{e.value=18;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#hits').textContent(),'2');assert.equal(await page.evaluate(()=>window.haganeIntersections.data.intersection.intervals.length),1);
+ await page.locator('#offset').evaluate(e=>{e.value=12;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('empty');assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('crossing');assert.equal(await page.locator('#hits').textContent(),'4');await page.locator('#reset').click();
+ if(process.argv.includes('--capture-ellipse-annulus-planar'))await page.screenshot({path:new URL('../docs/ellipse-annulus-planar.png',import.meta.url).pathname});
+ const annulusView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),annulusView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: elliptic cap hole, two material intervals, original hole parameters, contacts/empty results, recovery and orbit passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

@@ -1,7 +1,7 @@
 //! Checked ray classification against analytic planar and circular translation boundaries.
 use crate::*;
 enum AnalyticRing {
-    Ellipse(crate::ellipse_planar::EllipseRing),
+    Ellipse(crate::ellipse_planar::EllipseRegion),
     Polygon(Vec<[f64; 2]>),
     Mixed(Vec<PlanarSegment>),
     Circle { center: [f64; 2], radius: f64 },
