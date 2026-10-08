@@ -23,9 +23,13 @@ No cap mesh is used to create the solid. A hollow tube similarly reuses annular
 caps and two oppositely oriented analytic cylindrical walls.
 
 The standalone `nurbs` geometry module implements checked homogeneous de Boor
-curve evaluation and analytic rational first derivatives. Its immutable objects
+curve evaluation and analytic rational first derivatives. Shared checked
+axis/weight/de Boor utilities also support the `nurbs_surface` tensor-product
+surface evaluator and analytic U/V partials. Its immutable objects
 are not yet `Curve` enum variants or B-rep edges; the existing topology validator
-must not be used to imply NURBS trim support. See [nurbs.md](nurbs.md).
+must not be used to imply NURBS trim support. Standalone `NurbsSurface` values
+are likewise not `Surface` enum variants or topological faces. See
+[nurbs.md](nurbs.md) and [nurbs-surface.md](nurbs-surface.md).
 
 ## Geometry and units
 

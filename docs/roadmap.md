@@ -10,6 +10,9 @@ exact metrics; bounded display tessellation; and four native/WASM interactive
 presets with recorded demos. Standalone positive-weight clamped NURBS curves
 now support position and analytic first-derivative evaluation, validated knots,
 explicit one-sided limits, and an interactive native/WASM curve demo.
+Standalone tensor-product NURBS surfaces now support points, analytic U/V
+partials, regular-point normals, knot-side selection, and checked uniform
+display grids, with a 3D native/WASM surface demo.
 
 ## Next: broaden analytic B-rep operations
 
@@ -24,7 +27,8 @@ explicit one-sided limits, and an interactive native/WASM curve demo.
 ## Later: full CAD kernel work
 
 - NURBS knot refinement, higher derivatives, periodic curves, certified adaptive
-  subdivision, surface evaluation, intersections, and integration with B-rep edges.
+  subdivision, higher/mixed surface derivatives, surface trimming, intersections,
+  and integration with B-rep edges/faces.
 - General Boolean operations on arbitrary manifold solids.
 - Fillets/chamfers and continuity constraints.
 - Shape healing, tolerant sewing, and imported-shape diagnostics.

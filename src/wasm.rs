@@ -16,6 +16,10 @@ mod exports {
     pub extern "C" fn hagane_generate_nurbs(weight: f64, parameter: f64) -> i32 {
         generate(crate::nurbs_demo_json(weight, parameter))
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_generate_surface(height: f64, weight: f64, u: f64, v: f64) -> i32 {
+        generate(crate::nurbs_surface_demo_json(height, weight, u, v))
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

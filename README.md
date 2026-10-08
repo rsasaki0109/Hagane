@@ -132,6 +132,8 @@ fabricate the demo image.
 - Lines and XY circles; arbitrary orthonormal planes and Z-cylinder surfaces.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
   homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
+- Standalone tensor-product NURBS surfaces: checked rectangular control nets,
+  analytic U/V partials, oriented regular-point normals and uniform display grids.
 - Line/plane and horizontal-plane/bounded-Z-cylinder intersections.
 - Vertices, shared curve edges, oriented coedges with exact pcurves, wires,
   oriented faces, shells, and solids, including periodic cylinder seams.
@@ -165,7 +167,22 @@ let tangent = curve.derivative(0.5)?;
 The solid demo links to a separate **NURBS curves** page with weight and
 parameter controls. [Curve documentation](docs/nurbs.md) explains knot-side
 semantics, numerical limits and the actual WASM demo. These curves are not yet
-integrated with B-rep edges; NURBS surfaces and intersections remain future work.
+integrated with B-rep edges; intersections and trimming remain future work.
+
+## NURBS surfaces
+
+`NurbsSurface::new([degree_u, degree_v], [knots_u, knots_v], [count_u, count_v],
+points, weights)` accepts an immutable U-major rectangular control net.
+`evaluate(u,v)`, `partials(u,v)` and `normal(u,v)` provide checked point,
+analytic derivatives and oriented unit normals. Singular tangent planes fail
+explicitly; C0 knot lines require an explicit side in each parameter direction.
+
+Run `cargo run --locked --example nurbs_surface` for the native JSON fixture.
+The **Surfaces** link opens the interactive 3D WASM demo with height, weight,
+U/V and normal-marker controls. Its 24-by-24 display grid has no certified
+chord-error bound. These are untrimmed standalone patches, **not B-rep faces or
+solids**. [Surface documentation](docs/nurbs-surface.md) describes the API,
+control ordering, mathematical formulas, numerical guards and remaining work.
 
 ## Explicit limits
 
@@ -224,7 +241,10 @@ concave/hollow/skew/reversed extrusions, annular tubes, unsupported operations,
 and WASM generation/error recovery with native geometry parity for all four presets.
 NURBS tests cover analytic quarter circles/lines, independent basis/Bezier
 formulas, nonuniform knots, C0 one-sided limits, weight-scale invariance, range
-errors and 16 native/WASM curve cases. Browser tests cover both demos. CI runs formatting, Clippy, native tests,
+errors and 16 native/WASM curve cases. Surface tests add bilinear/rational
+patches, exact quarter-cylinder geometry, partials in both axes, crease-side
+normals, singularities, sampling checks, and six native/WASM grid/derivative
+cases. Browser tests cover solids, curves and surfaces. CI runs formatting, Clippy, native tests,
 WASM build/runtime checks, and browser interactions.
 
 See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and

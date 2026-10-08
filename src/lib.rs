@@ -3,6 +3,7 @@ mod geometry;
 mod math;
 mod mesh;
 mod nurbs;
+mod nurbs_surface;
 mod operations;
 mod planar;
 mod topology;
@@ -11,6 +12,7 @@ pub use geometry::*;
 pub use math::*;
 pub use mesh::*;
 pub use nurbs::*;
+pub use nurbs_surface::*;
 pub use operations::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]

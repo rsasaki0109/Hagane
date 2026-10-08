@@ -84,6 +84,8 @@ not a general NURBS serialization or editor API.
 ## Remaining work
 
 Knot insertion/refinement, derivatives of higher order, periodic curves, curve
-frames/trims, certified adaptive subdivision, NURBS surfaces, intersections,
-and integration with B-rep coedges/pcurves remain unimplemented. They must not
+frames/trims, certified adaptive subdivision, intersections,
+and integration with B-rep coedges/pcurves remain unimplemented. Standalone
+NURBS surface evaluation and first partials are implemented separately; see
+[nurbs-surface.md](nurbs-surface.md). They must not
 be inferred from the presence of a curve evaluator.

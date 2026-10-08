@@ -39,72 +39,8 @@ impl NurbsCurve {
         points: Vec<Point3>,
         weights: Vec<f64>,
     ) -> Result<Self> {
-        if !(1..=16).contains(&degree) || points.len() <= degree || points.len() > 65536 {
-            return Err(Error::InvalidInput(
-                "NURBS requires degree 1..16 and degree+1..65536 control points",
-            ));
-        }
-        if knots.len() != points.len() + degree + 1 || weights.len() != points.len() {
-            return Err(Error::InvalidInput(
-                "NURBS knot/control/weight counts disagree",
-            ));
-        }
-        if points.iter().any(|p| !p.finite())
-            || knots.iter().any(|k| !k.is_finite())
-            || weights.iter().any(|w| !w.is_finite() || *w <= 0.0)
-        {
-            return Err(Error::InvalidInput(
-                "NURBS data must be finite with strictly positive weights",
-            ));
-        }
-        if knots.windows(2).any(|k| k[0] > k[1]) {
-            return Err(Error::InvalidInput("NURBS knots must be nondecreasing"));
-        }
-        let start = knots[degree];
-        let end = knots[points.len()];
-        if start >= end || !(end - start).is_finite() {
-            return Err(Error::InvalidInput(
-                "NURBS domain must have a positive finite span",
-            ));
-        }
-        if knots[..=degree].iter().any(|k| *k != start)
-            || knots[points.len()..].iter().any(|k| *k != end)
-        {
-            return Err(Error::Unsupported(
-                "only clamped nonperiodic NURBS curves are supported",
-            ));
-        }
-        let mut i = degree + 1;
-        while i < points.len() {
-            let knot = knots[i];
-            let mut next = i + 1;
-            while next < points.len() && knots[next] == knot {
-                next += 1;
-            }
-            if knot <= start || knot >= end || next - i > degree {
-                return Err(Error::InvalidInput("interior NURBS knots must be strictly inside the domain with multiplicity at most degree"));
-            }
-            i = next;
-        }
-        // Common weight scaling preserves the rational curve and avoids overflow
-        // in weighted coordinates. Reject dynamic ranges that underflow to zero.
-        let max = weights.iter().copied().fold(0.0, f64::max);
-        let mut homogeneous = Vec::with_capacity(points.len());
-        for (p, w) in points.iter().zip(&weights) {
-            let w = w / max;
-            if w == 0.0 {
-                return Err(Error::InvalidInput("NURBS weight dynamic range underflows"));
-            }
-            let h = [p.x * w, p.y * w, p.z * w, w];
-            if [p.x, p.y, p.z]
-                .iter()
-                .zip(&h[..3])
-                .any(|(p, h)| *p != 0.0 && *h == 0.0)
-            {
-                return Err(Error::InvalidInput("NURBS weighted coordinate underflows"));
-            }
-            homogeneous.push(h);
-        }
+        validate_axis(degree, &knots, points.len())?;
+        let homogeneous = weighted_controls(&points, &weights)?;
         Ok(Self {
             degree,
             knots,
@@ -129,23 +65,7 @@ impl NurbsCurve {
         [self.knots[self.degree], self.knots[self.points.len()]]
     }
     fn span(&self, u: f64, side: KnotSide) -> Result<usize> {
-        let [start, end] = self.domain();
-        if !u.is_finite() || u < start || u > end {
-            return Err(Error::InvalidInput(
-                "NURBS parameter is outside its closed domain",
-            ));
-        }
-        if u == end {
-            return Ok(self.points.len() - 1);
-        }
-        if u == start {
-            return Ok(self.degree);
-        }
-        let index = match side {
-            KnotSide::Right => self.knots.partition_point(|k| *k <= u),
-            KnotSide::Left => self.knots.partition_point(|k| *k < u),
-        };
-        Ok(index - 1)
+        knot_span(self.degree, &self.knots, self.points.len(), u, side)
     }
     pub fn evaluate(&self, u: f64) -> Result<Point3> {
         let span = self.span(u, KnotSide::Right)?;
@@ -172,7 +92,7 @@ impl NurbsCurve {
     }
     pub fn evaluate_with_derivative(&self, u: f64, side: KnotSide) -> Result<(Point3, Vec3)> {
         let span = self.span(u, side)?;
-        let h = de_boor(
+        let (h, dh) = homogeneous_jet(
             self.degree,
             &self.knots,
             span,
@@ -180,37 +100,10 @@ impl NurbsCurve {
             self.homogeneous[span - self.degree..=span].to_vec(),
         )?;
         let point = project(h)?;
-        let mut controls = Vec::with_capacity(self.degree);
-        for i in span - self.degree..span {
-            let denominator = self.knots[i + self.degree + 1] - self.knots[i + 1];
-            let mut q = [0.0; 4];
-            for (j, value) in q.iter_mut().enumerate() {
-                *value = (self.homogeneous[i + 1][j] - self.homogeneous[i][j])
-                    * (self.degree as f64 / denominator);
-            }
-            controls.push(q);
-        }
-        let dh = de_boor(
-            self.degree - 1,
-            &self.knots[1..self.knots.len() - 1],
-            span - 1,
-            u,
-            controls,
-        )?;
-        let derivative = Vec3::new(
-            (dh[0] - point.x * dh[3]) / h[3],
-            (dh[1] - point.y * dh[3]) / h[3],
-            (dh[2] - point.z * dh[3]) / h[3],
-        );
-        if !derivative.finite() {
-            return Err(Error::InvalidInput(
-                "NURBS derivative exceeds finite numerical range",
-            ));
-        }
-        Ok((point, derivative))
+        Ok((point, rational_partial(point, h, dh)?))
     }
 }
-fn project(h: [f64; 4]) -> Result<Point3> {
+pub(crate) fn project(h: [f64; 4]) -> Result<Point3> {
     if h[3] <= 0.0 || !h[3].is_finite() {
         return Err(Error::InvalidInput(
             "NURBS homogeneous denominator is unusable",
@@ -224,7 +117,7 @@ fn project(h: [f64; 4]) -> Result<Point3> {
     }
     Ok(p)
 }
-fn de_boor(
+pub(crate) fn de_boor(
     degree: usize,
     knots: &[f64],
     span: usize,
@@ -281,4 +174,149 @@ pub fn nurbs_demo_json(middle_weight: f64, parameter: f64) -> Result<String> {
     }
     output.push_str("]}");
     Ok(output)
+}
+
+// Shared axis/weight validation for curves and tensor-product surfaces.
+pub(crate) fn validate_axis(degree: usize, knots: &[f64], count: usize) -> Result<()> {
+    if !(1..=16).contains(&degree) || count <= degree || count > 65536 {
+        return Err(Error::InvalidInput(
+            "NURBS requires degree 1..16 and degree+1..65536 control points per axis",
+        ));
+    }
+    if knots.len() != count + degree + 1 {
+        return Err(Error::InvalidInput(
+            "NURBS knot and control counts disagree",
+        ));
+    }
+    if knots.iter().any(|k| !k.is_finite()) || knots.windows(2).any(|k| k[0] > k[1]) {
+        return Err(Error::InvalidInput(
+            "NURBS knots must be finite and nondecreasing",
+        ));
+    }
+    let start = knots[degree];
+    let end = knots[count];
+    if start >= end || !(end - start).is_finite() {
+        return Err(Error::InvalidInput(
+            "NURBS domain must have a positive finite span",
+        ));
+    }
+    if knots[..=degree].iter().any(|k| *k != start) || knots[count..].iter().any(|k| *k != end) {
+        return Err(Error::Unsupported(
+            "only clamped nonperiodic NURBS axes are supported",
+        ));
+    }
+    let mut i = degree + 1;
+    while i < count {
+        let knot = knots[i];
+        let mut next = i + 1;
+        while next < count && knots[next] == knot {
+            next += 1;
+        }
+        if knot <= start || knot >= end || next - i > degree {
+            return Err(Error::InvalidInput(
+                "interior NURBS knots must lie inside the domain with multiplicity at most degree",
+            ));
+        }
+        i = next;
+    }
+    Ok(())
+}
+pub(crate) fn weighted_controls(points: &[Point3], weights: &[f64]) -> Result<Vec<[f64; 4]>> {
+    if weights.len() != points.len() || weights.is_empty() {
+        return Err(Error::InvalidInput(
+            "NURBS control and weight counts disagree",
+        ));
+    }
+    if points.iter().any(|p| !p.finite()) || weights.iter().any(|w| !w.is_finite() || *w <= 0.0) {
+        return Err(Error::InvalidInput(
+            "NURBS controls must be finite with strictly positive weights",
+        ));
+    }
+    let max = weights.iter().copied().fold(0.0, f64::max);
+    let mut output = Vec::with_capacity(points.len());
+    for (p, w) in points.iter().zip(weights) {
+        let w = w / max;
+        if w == 0.0 {
+            return Err(Error::InvalidInput("NURBS weight dynamic range underflows"));
+        }
+        let h = [p.x * w, p.y * w, p.z * w, w];
+        if [p.x, p.y, p.z]
+            .iter()
+            .zip(&h[..3])
+            .any(|(p, h)| *p != 0.0 && *h == 0.0)
+        {
+            return Err(Error::InvalidInput("NURBS weighted coordinate underflows"));
+        }
+        output.push(h);
+    }
+    Ok(output)
+}
+pub(crate) fn knot_span(
+    degree: usize,
+    knots: &[f64],
+    count: usize,
+    u: f64,
+    side: KnotSide,
+) -> Result<usize> {
+    let start = knots[degree];
+    let end = knots[count];
+    if !u.is_finite() || u < start || u > end {
+        return Err(Error::InvalidInput(
+            "NURBS parameter is outside its closed domain",
+        ));
+    }
+    if u == end {
+        return Ok(count - 1);
+    }
+    if u == start {
+        return Ok(degree);
+    }
+    let index = match side {
+        KnotSide::Right => knots.partition_point(|k| *k <= u),
+        KnotSide::Left => knots.partition_point(|k| *k < u),
+    };
+    Ok(index - 1)
+}
+pub(crate) fn is_c0(degree: usize, knots: &[f64], count: usize, u: f64) -> bool {
+    u != knots[degree] && u != knots[count] && knots.iter().filter(|k| **k == u).count() == degree
+}
+pub(crate) fn homogeneous_jet(
+    degree: usize,
+    knots: &[f64],
+    span: usize,
+    u: f64,
+    controls: Vec<[f64; 4]>,
+) -> Result<([f64; 4], [f64; 4])> {
+    let mut derivative = Vec::with_capacity(degree);
+    for j in 0..degree {
+        let i = span - degree + j;
+        let denominator = knots[i + degree + 1] - knots[i + 1];
+        let mut q = [0.0; 4];
+        for (k, value) in q.iter_mut().enumerate() {
+            *value = (controls[j + 1][k] - controls[j][k]) * (degree as f64 / denominator);
+        }
+        derivative.push(q);
+    }
+    let h = de_boor(degree, knots, span, u, controls)?;
+    let dh = de_boor(
+        degree - 1,
+        &knots[1..knots.len() - 1],
+        span - 1,
+        u,
+        derivative,
+    )?;
+    Ok((h, dh))
+}
+pub(crate) fn rational_partial(point: Point3, h: [f64; 4], dh: [f64; 4]) -> Result<Vec3> {
+    let d = Vec3::new(
+        (dh[0] - point.x * dh[3]) / h[3],
+        (dh[1] - point.y * dh[3]) / h[3],
+        (dh[2] - point.z * dh[3]) / h[3],
+    );
+    if !d.finite() {
+        return Err(Error::InvalidInput(
+            "NURBS derivative exceeds finite numerical range",
+        ));
+    }
+    Ok(d)
 }
