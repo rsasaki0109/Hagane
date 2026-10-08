@@ -7,8 +7,8 @@ The planar trim validator accepts one wire with exactly two coedges: an
 its diameter. Each keeps its owning 3D edge parameter and traversal direction.
 Endpoints must agree at checked binary64 precision as well as model tolerance;
 finite axes, conditioning, closure, surface correspondence and orientation
-remain checked. Other mixed loops, ellipse holes and general curved face
-subdivision return errors.
+remain checked. [Minor arcs with non-diameter chords](ellipse-segment-planar.md) are also supported.
+Other mixed loops, ellipse holes and general curved face subdivision return errors.
 
 Inverse ellipse coordinates identify the region as the unit disk intersected
 with `y >= 0`. In-plane clipping combines circle roots on the retained half

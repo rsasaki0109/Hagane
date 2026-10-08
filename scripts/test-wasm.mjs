@@ -373,3 +373,26 @@ for(const placement of [0,0.37])for(const [mode,offset] of [[0,14],[0,-14],[0,30
 for(const args of [[3,14,0],[0,0,0],[0,1e-9,0],[0,24,0],[0,24+1e-9,0],[0,NaN,0],[1,0,Infinity]])assert.equal(halfEllipse(...args).status,1);
 assert.equal(halfEllipse(1,0).status,0);
 console.log('Half-ellipse planar trims: independent arc/diameter roots, original parameters, analytic volume, native/WASM parity, errors and recovery passed.');
+
+function ellipseSegment(sweep,mode,offset,placement=0){
+ const status=k.hagane_ellipse_segment_planar_demo(sweep,mode,offset,placement);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};
+}
+for(const sweep of [0.6,Math.PI/2,2.5,Math.PI])for(const placement of [0,0.37])for(const mode of [0,1,2]){
+ const chordY=sweep===Math.PI?0:24*Math.cos(sweep/2),offset=mode===0?(24+chordY)/2:0;
+ const {status,result}=ellipseSegment(sweep,mode,offset,placement);assert.equal(status,0);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','ellipse_segment_planar','--',String(sweep),String(mode),String(offset),String(placement)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ compareIntersection(result,native);
+ const half=24*Math.sqrt(1.0625)*Math.sqrt(1-(offset/24)**2);
+ const expected=mode===0?[(34-half)/2,(34+half)/2]:mode===1?[(34+chordY)/2,29]:[5,(34-chordY)/2];
+ assert.equal(result.intersection.hits.length,2);assert.equal(result.intersection.intervals.length,1);
+ result.intersection.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-expected[i])<1e-10));
+ if(mode!==0){const chord=result.intersection.hits.find(h=>h.boundaries[0].coedge===1);assert.ok(Math.abs(chord.boundaries[0].edge_parameter-0.5)<1e-12);const arc=result.intersection.hits.find(h=>h.boundaries[0].coedge===0);assert.ok(Math.abs(arc.boundaries[0].edge_parameter-sweep/2)<1e-12);}
+ assert.ok(Math.abs(result.mesh.volume-24**3*(sweep-Math.sin(sweep))/4)<1e-8);
+ assert.equal(result.mesh.faces,4);assert.equal(result.mesh.edges,6);
+}
+for(const sweep of [0,-0.1,Math.PI+0.1,2*Math.PI,1e-6,NaN,Infinity])assert.equal(ellipseSegment(sweep,0,20).status,1);
+for(const [mode,offset,placement] of [[3,20,0],[0,24,0],[0,24+1e-9,0],[0,24*Math.cos(Math.PI/4),0],[0,NaN,0],[1,0,Infinity]])assert.equal(ellipseSegment(Math.PI/2,mode,offset,placement).status,1);
+assert.equal(ellipseSegment(Math.PI/2,0,14).result.intersection.kind,'empty');
+assert.equal(ellipseSegment(Math.PI/2,1,0).status,0);
+console.log('Minor ellipse/chord trims: independent roots and volumes, angular/line provenance, native/WASM parity, contacts, unsupported sweeps and recovery passed.');

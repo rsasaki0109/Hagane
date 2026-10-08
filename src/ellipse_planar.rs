@@ -1,4 +1,4 @@
-//! Checked full ellipses and diameter-closed half ellipses; arbitrary mixed loops are unsupported.
+//! Checked full ellipses and chord-closed minor ellipse arcs; arbitrary mixed loops are unsupported.
 use crate::*;
 use std::f64::consts::{PI, TAU};
 type P2 = [f64; 2];
@@ -14,13 +14,23 @@ fn cross(a: P2, b: P2) -> f64 {
 fn norm(a: P2) -> f64 {
     a[0].hypot(a[1])
 }
+// The retained disk lies on the arc side of its closing chord. Keep the
+// exact semicircle plane to preserve existing half-ellipse arithmetic.
+fn chord_plane(sweep: f64) -> (P2, f64) {
+    if sweep == PI {
+        ([0., 1.], 0.)
+    } else {
+        let half = sweep / 2.;
+        ([half.cos(), half.sin()], half.cos())
+    }
+}
 #[derive(Clone)]
 pub(crate) struct EllipseRing {
     center: P2,
     cosine: P2,
     sine: P2,
     coherence_error: f64,
-    half: bool,
+    segment_sweep: Option<f64>,
 }
 impl EllipseRing {
     fn scale(&self) -> f64 {
@@ -54,11 +64,15 @@ impl EllipseRing {
     pub(crate) fn location(&self, p: P2) -> Result<PointLocation> {
         let uv = self.inverse(p)?;
         let r = norm(uv);
-        if self.half && uv[1] < 0. {
-            return Ok(PointLocation::Outside);
-        }
-        if self.half && uv[1] == 0. && r <= 1. {
-            return Ok(PointLocation::Boundary);
+        if let Some(sweep) = self.segment_sweep {
+            let (n, level) = chord_plane(sweep);
+            let side = dot(n, uv) - level;
+            if side < 0. {
+                return Ok(PointLocation::Outside);
+            }
+            if side == 0. && r <= 1. {
+                return Ok(PointLocation::Boundary);
+            }
         }
         Ok(if r == 1. {
             PointLocation::Boundary
@@ -80,10 +94,10 @@ impl EllipseRing {
         }
         let uv = self.inverse(p)?;
         let angle = uv[1].atan2(uv[0]).rem_euclid(TAU);
-        let mut diameter_unresolved = false;
-        if self.half {
+        let mut chord_unresolved = false;
+        if let Some(sweep) = self.segment_sweep {
             let a = self.point(0.);
-            let b = self.point(PI);
+            let b = self.point(sweep);
             let e = sub(b, a);
             let length = norm(e);
             let unit = e.map(|x| x / length);
@@ -92,13 +106,21 @@ impl EllipseRing {
             if distance + roundoff <= budget {
                 return Ok(true);
             }
-            diameter_unresolved = (distance - budget).abs() <= roundoff;
+            chord_unresolved = (distance - budget).abs() <= roundoff;
         }
-        if (!self.half || angle <= PI) && norm(sub(p, self.point(angle))) + roundoff <= budget {
+        let sweep = self.segment_sweep.unwrap_or(TAU);
+        if angle <= sweep && norm(sub(p, self.point(angle))) + roundoff <= budget {
             return Ok(true);
         }
-        let mut pending: Vec<_> = (0..if self.half { 2 } else { 4 })
-            .map(|i| (i as f64 * PI / 2., (i + 1) as f64 * PI / 2., 0))
+        let patches = (sweep / (PI / 2.)).ceil() as usize;
+        let mut pending: Vec<_> = (0..patches)
+            .map(|i| {
+                (
+                    sweep * i as f64 / patches as f64,
+                    sweep * (i + 1) as f64 / patches as f64,
+                    0,
+                )
+            })
             .collect();
         let mut visits = 0;
         while let Some((lo, hi, depth)) = pending.pop() {
@@ -136,10 +158,8 @@ impl EllipseRing {
             pending.push((lo, middle, depth + 1));
             pending.push((middle, hi, depth + 1));
         }
-        if diameter_unresolved {
-            return Err(Error::Unsupported(
-                "half-ellipse diameter distance is unresolved",
-            ));
+        if chord_unresolved {
+            return Err(Error::Unsupported("ellipse chord distance is unresolved"));
         }
         Ok(false)
     }
@@ -150,7 +170,7 @@ pub(crate) fn has_ellipse(f: &Face) -> bool {
         .flat_map(|w| &w.coedges)
         .any(|c| matches!(c.pcurve, PCurve::EllipseArc { .. }))
 }
-/// One full ellipse, or a half ellipse followed by its closing diameter.
+/// One full ellipse, or a minor ellipse arc followed by its closing chord.
 pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
     if !matches!(face.surface, Surface::Plane { .. })
         || face.wires.len() != 1
@@ -177,12 +197,12 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
         cosine,
         sine,
         coherence_error: 0.,
-        half: false,
+        segment_sweep: None,
     };
     if let PCurve::Affine { origin, direction } = coedges[1].pcurve {
-        if sweep != PI {
+        if !sweep.is_finite() || sweep <= 0. || sweep > PI {
             return Err(Error::Unsupported(
-                "mixed ellipse trim requires a half ellipse",
+                "ellipse/chord trim requires a sweep in (0, pi]",
             ));
         }
         if [center, cosine, sine, origin, direction]
@@ -192,12 +212,10 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
             || norm(cosine) <= tol.linear
             || norm(sine) <= tol.linear
         {
-            return Err(Error::InvalidTopology(
-                "invalid half-ellipse/diameter coefficients",
-            ));
+            return Err(Error::InvalidTopology("invalid ellipse/chord coefficients"));
         }
-        let first = ellipse.point(if coedges[0].forward { PI } else { 0. });
-        let last = ellipse.point(if coedges[0].forward { 0. } else { PI });
+        let first = ellipse.point(if coedges[0].forward { sweep } else { 0. });
+        let last = ellipse.point(if coedges[0].forward { 0. } else { sweep });
         let start = coedges[1]
             .pcurve
             .evaluate(if coedges[1].forward { 0. } else { 1. });
@@ -207,17 +225,27 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRing> {
         let error = norm(sub(first, start)) + norm(sub(last, end));
         if error > tol.linear {
             return Err(Error::InvalidTopology(
-                "half ellipse and diameter endpoints disagree",
+                "ellipse and chord endpoints disagree",
             ));
         }
         if error > 512. * f64::EPSILON * (ellipse.scale() + norm(center)) {
             return Err(Error::Unsupported(
-                "half-ellipse diameter differs beyond checked arithmetic precision",
+                "ellipse chord differs beyond checked arithmetic precision",
             ));
         }
         ellipse.coherence_error = error;
-        ellipse.half = true;
+        ellipse.segment_sweep = Some(sweep);
         ellipse.inverse(center)?;
+        let scale = ellipse.scale();
+        let a = cosine.map(|x| x / scale);
+        let b = sine.map(|x| x / scale);
+        let sigma_lower = scale * cross(a, b).abs() / (norm(a) + norm(b));
+        let sagitta = 2. * (sweep / 4.).sin().powi(2) * sigma_lower;
+        if !sagitta.is_finite() || sagitta <= 10. * tol.linear {
+            return Err(Error::Unsupported(
+                "ellipse segment thickness is unresolved",
+            ));
+        }
         return Ok(ellipse);
     }
     let PCurve::EllipseArc {
@@ -334,38 +362,43 @@ pub(crate) fn clip(
     for travel in [along - half, along + half] {
         let circle = [q[0] + h[0] * travel, q[1] + h[1] * travel];
         let angle = circle[1].atan2(circle[0]).rem_euclid(TAU);
-        if ellipse.half && angle > PI {
+        if ellipse.segment_sweep.is_some_and(|sweep| angle > sweep) {
             continue;
         }
-        let coedge = if ellipse.half {
+        let coedge = if ellipse.segment_sweep.is_some() {
             0
         } else {
             usize::from(angle >= PI)
         };
         roots.push((travel, coedge, angle - coedge as f64 * PI));
     }
-    if ellipse.half {
-        if h[1].abs() <= tol.angular().sin() {
-            if q[1].abs() <= guard {
+    if let Some(sweep) = ellipse.segment_sweep {
+        let (n, level) = chord_plane(sweep);
+        let denominator = dot(n, h);
+        let distance = dot(n, q) - level;
+        if denominator.abs() <= tol.angular().sin() {
+            if distance.abs() <= guard {
                 return Err(Error::Unsupported(
-                    "line overlaps or nearly overlaps half-ellipse diameter",
+                    "line overlaps or nearly overlaps ellipse chord",
                 ));
             }
         } else {
-            let travel = -q[1] / h[1];
-            let x = q[0] + h[0] * travel;
-            if (x.abs() - 1.).abs() <= guard {
+            let travel = -distance / denominator;
+            let circle = [q[0] + h[0] * travel, q[1] + h[1] * travel];
+            if norm(sub(circle, [1., 0.])).min(norm(sub(circle, [sweep.cos(), sweep.sin()])))
+                <= guard
+            {
                 return Err(Error::Unsupported(
-                    "half-ellipse cut is unresolved near a diameter vertex",
+                    "ellipse cut is unresolved near a chord vertex",
                 ));
             }
-            if x.abs() < 1. {
+            let tangent = [n[1], -n[0]];
+            if dot(tangent, circle).abs() < (sweep / 2.).sin() {
                 let a = face.wires[0].coedges[1].pcurve.evaluate(0.);
                 let b = face.wires[0].coedges[1].pcurve.evaluate(1.);
-                let target = [
-                    ellipse.center[0] + ellipse.cosine[0] * x,
-                    ellipse.center[1] + ellipse.cosine[1] * x,
-                ];
+                let target: P2 = std::array::from_fn(|i| {
+                    ellipse.center[i] + ellipse.cosine[i] * circle[0] + ellipse.sine[i] * circle[1]
+                });
                 let delta = sub(b, a);
                 let coordinate = usize::from(delta[1].abs() > delta[0].abs());
                 let t = (target[coordinate] - a[coordinate]) / delta[coordinate];
@@ -382,7 +415,7 @@ pub(crate) fn clip(
     }
     if roots.len() != 2 {
         return Err(Error::Unsupported(
-            "half-ellipse crossing count is unresolved",
+            "ellipse/chord crossing count is unresolved",
         ));
     }
     let mut events = Vec::new();
@@ -449,7 +482,7 @@ pub fn ellipse_planar_demo_solid(
     slope: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
-    ellipse_cap_fixture(radius, height, slope, tol, false)
+    ellipse_cap_fixture(radius, height, slope, tol, None)
 }
 /// Closed half-cylinder fixture with a half-ellipse/straight-diameter cap.
 pub fn half_ellipse_planar_demo_solid(
@@ -458,14 +491,31 @@ pub fn half_ellipse_planar_demo_solid(
     slope: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
-    ellipse_cap_fixture(radius, height, slope, tol, true)
+    ellipse_segment_planar_demo_solid(radius, height, slope, PI, tol)
+}
+/// Closed circular-segment fixture capped by an oblique ellipse arc and chord.
+/// Positive sweeps up to pi are supported; the profile is symmetric about +Y.
+/// The cutting plane must remain strictly between both source rims.
+pub fn ellipse_segment_planar_demo_solid(
+    radius: f64,
+    height: f64,
+    slope: f64,
+    sweep: f64,
+    tol: GeometryTolerance,
+) -> Result<Solid> {
+    if !sweep.is_finite() || sweep <= 0. || sweep > PI {
+        return Err(Error::InvalidInput(
+            "ellipse segment fixture requires sweep in (0, pi]",
+        ));
+    }
+    ellipse_cap_fixture(radius, height, slope, tol, Some(sweep))
 }
 fn ellipse_cap_fixture(
     radius: f64,
     height: f64,
     slope: f64,
     tol: GeometryTolerance,
-    half: bool,
+    segment_sweep: Option<f64>,
 ) -> Result<Solid> {
     if !radius.is_finite()
         || !height.is_finite()
@@ -481,17 +531,17 @@ fn ellipse_cap_fixture(
         &ArcLineRegion {
             origin: Point3::new(0., 0., -height / 2.),
             holes: vec![],
-            outer: if half {
+            outer: if let Some(sweep) = segment_sweep {
                 vec![
                     PlanarSegment::Arc {
                         center: [0., 0.],
                         radius,
-                        start_angle: 0.,
-                        sweep: PI,
+                        start_angle: (PI - sweep) / 2.,
+                        sweep,
                     },
                     PlanarSegment::Line {
-                        a: [-radius, 0.],
-                        b: [radius, 0.],
+                        a: [-radius * (sweep / 2.).sin(), radius * chord_plane(sweep).1],
+                        b: [radius * (sweep / 2.).sin(), radius * chord_plane(sweep).1],
                     },
                 ]
             } else {
@@ -688,6 +738,31 @@ pub fn half_ellipse_planar_demo_json(mode: u32, offset: f64, placement: f64) -> 
     };
     ellipse_planar_query_json(&solid, a, d)
 }
+/// Native/WASM segment fixture; query axes are physical X/Z and Y in the cap.
+pub fn ellipse_segment_planar_demo_json(
+    sweep: f64,
+    mode: u32,
+    offset: f64,
+    placement: f64,
+) -> Result<String> {
+    if mode > 2 || !offset.is_finite() || !placement.is_finite() {
+        return Err(Error::InvalidInput(
+            "ellipse segment demo requires mode 0..2 and finite values",
+        ));
+    }
+    let t = GeometryTolerance::default();
+    let transform = Transform::rotation(Vec3::new(1., 2., 3.), placement)?;
+    let solid = ellipse_segment_planar_demo_solid(24., 24., 0.25, sweep, t)?
+        .transformed(transform, t.absolute())?;
+    let u = Vec3::new(1., 0., -0.25).normalized()?;
+    let v = Vec3::new(0., 1., 0.);
+    let (a, d) = match mode {
+        0 => (u * (-34.) + v * offset, u * 2.),
+        1 => (u * offset - v * 34., v * 2.),
+        _ => (u * offset + v * 34., v * (-2.)),
+    };
+    ellipse_planar_query_json(&solid, transform.point(a), transform.vector(d))
+}
 fn ellipse_planar_query_json(solid: &Solid, anchor: Point3, direction: Vec3) -> Result<String> {
     let face = 3;
     let t = GeometryTolerance::default();
@@ -733,13 +808,63 @@ fn ellipse_planar_query_json(solid: &Solid, anchor: Point3, direction: Vec3) -> 
 mod tests {
     use super::*;
     #[test]
+    fn minor_segment_nonorthogonal_membership_and_physical_chord_bands() {
+        for sweep in [0.6, PI / 2., 2.5] {
+            let ellipse = EllipseRing {
+                center: [10., -2.],
+                cosine: [2., 0.],
+                sine: [1., 1.],
+                coherence_error: 0.,
+                segment_sweep: Some(sweep),
+            };
+            let (n, level) = chord_plane(sweep);
+            let map = |q: P2| {
+                std::array::from_fn(|i| {
+                    ellipse.center[i] + ellipse.cosine[i] * q[0] + ellipse.sine[i] * q[1]
+                })
+            };
+            assert_eq!(
+                ellipse
+                    .location(map(n.map(|x| x * (1. + level) / 2.)))
+                    .unwrap(),
+                PointLocation::Inside
+            );
+            assert_eq!(
+                ellipse.location(map(n.map(|x| x * (level - 0.1)))).unwrap(),
+                PointLocation::Outside
+            );
+            let midpoint = map(n.map(|x| x * level));
+            let e = sub(ellipse.point(sweep), ellipse.point(0.));
+            let normal = [-e[1] / norm(e), e[0] / norm(e)];
+            let budget = 1e-5;
+            assert!(ellipse.within_boundary(midpoint, budget).unwrap());
+            for distance in [-2. * budget, 2. * budget] {
+                assert!(!ellipse
+                    .within_boundary(
+                        std::array::from_fn(|i| midpoint[i] + normal[i] * distance),
+                        budget
+                    )
+                    .unwrap());
+            }
+            assert!(ellipse
+                .within_boundary(
+                    std::array::from_fn(|i| midpoint[i] + normal[i] * budget),
+                    budget
+                )
+                .is_err());
+            assert!(!ellipse
+                .within_boundary(ellipse.point(sweep + 0.2), budget)
+                .unwrap());
+        }
+    }
+    #[test]
     fn nonorthogonal_axes_inverse_distance_and_conditioning() {
         let ellipse = EllipseRing {
             center: [100., -20.],
             cosine: [2., 0.],
             sine: [1., 1.],
             coherence_error: 0.,
-            half: false,
+            segment_sweep: None,
         };
         let uv = ellipse.inverse(ellipse.point(0.37)).unwrap();
         assert!((uv[0] - 0.37f64.cos()).abs() < 1e-13);
@@ -767,7 +892,7 @@ mod tests {
             cosine: [1., 0.],
             sine: [1., 1e-12],
             coherence_error: 0.,
-            half: false,
+            segment_sweep: None,
         };
         assert!(bad.inverse([0., 0.]).is_err());
     }

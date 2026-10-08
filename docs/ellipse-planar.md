@@ -23,7 +23,8 @@ coincident but distinct ellipses are rejected even when their difference fits
 the model tolerance. Their accepted arithmetic deviation is included in
 distance and root precision guards.
 
-A [diameter-closed half ellipse](half-ellipse-planar.md) is also supported.
+[Minor ellipse arcs with a straight closing chord](ellipse-segment-planar.md),
+including the [half ellipse and diameter](half-ellipse-planar.md), are also supported.
 Other mixed line/circle/ellipse loops, ellipse holes, more general arc partitions and
 ellipse-face subdivision are not yet supported. Invalid topology and unsupported
 trim domains fail before query/bounds shortcuts. Independent ellipse pcurve

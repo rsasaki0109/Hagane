@@ -280,3 +280,17 @@ Taylor interpolation bound and point-to-segment distance bound physical boundary
 proximity. This is independently authored MIT OR Apache-2.0 Rust code using the
 mathematical sources already listed for planar ellipse trims. No new dependency
 or OCCT source consultation, copying or translation is involved.
+
+
+### Minor ellipse/chord trims
+
+An affine minor ellipse arc and its endpoint chord map to a unit disk cut by
+`dot([cos(s/2), sin(s/2)], q) >= cos(s/2)`. The circular-segment area is
+`R^2*(s - sin(s))/2`; symmetry about Y makes the X first moment vanish, giving
+the obliquely capped fixture volume directly. The resolved-thickness bound uses
+`1-cos(s/2) = 2*sin(s/4)^2` and a lower singular-value bound, avoiding subtractive
+cancellation for small angles. Line/circle and finite-chord intersections retain
+original parameters. Existing Green's theorem, Taylor interpolation and physical
+segment-distance arguments apply on the restricted angular interval. This is
+original MIT OR Apache-2.0 Rust code based on the mathematical sources above,
+with no new dependencies or OCCT source consultation, copying or translation.

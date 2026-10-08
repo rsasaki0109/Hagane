@@ -330,5 +330,22 @@ try {
  if(process.argv.includes('--capture-half-ellipse-planar'))await page.screenshot({path:new URL('../docs/half-ellipse-planar.png',import.meta.url).pathname});
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: half ellipse and diameter, arc/line provenance, empty/tangent/overlap errors and recovery passed.');
+ await page.locator('#scope').selectOption('segmentEllipsePlane');assert.equal(await page.locator('#hits').textContent(),'2');
+ const segmentData=await page.evaluate(()=>window.haganeIntersections.data);
+ assert.ok(Math.abs(segmentData.mesh.volume-24**3*(Math.PI/2-1)/4)<1e-8);
+ assert.ok(segmentData.intersection.hits.every(h=>h.boundaries[0].coedge===0));
+ for(const probe of ['generator','reverse']){
+  await page.locator('#probe').selectOption(probe);assert.equal(await page.locator('#kind').textContent(),'crossing');
+  const hits=await page.evaluate(()=>window.haganeIntersections.data.intersection.hits);
+  assert.ok(hits.some(h=>h.boundaries[0].coedge===1&&Math.abs(h.boundaries[0].edge_parameter-0.5)<1e-12));
+  assert.ok(hits.some(h=>h.boundaries[0].coedge===0&&Math.abs(h.boundaries[0].edge_parameter-Math.PI/4)<1e-12));
+ }
+ await page.locator('#probe').selectOption('crossing');await page.locator('#offset').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});assert.equal(await page.locator('#kind').textContent(),'empty');
+ await page.locator('#probe').selectOption('tangent');assert.equal(await page.locator('#kind').textContent(),'unresolved');
+ await page.locator('#probe').selectOption('generator');await page.locator('#reset').click();
+ if(process.argv.includes('--capture-ellipse-segment-planar'))await page.screenshot({path:new URL('../docs/ellipse-segment-planar.png',import.meta.url).pathname});
+ const segmentView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),segmentView);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: minor ellipse arc/chord clipping, provenance, empty/contact errors, recovery and orbit passed.');
  console.log('Browser: 25 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

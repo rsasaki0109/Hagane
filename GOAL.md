@@ -303,8 +303,9 @@ classification and conforming tessellation accept the closed ellipse-cap fixture
 Native tests cover roots, reversal, polygon-face intersection, tilt signs,
 placement, microscopic dimensions, nonorthogonal axes, conditioning, malformed
 inputs and contact rejection. Native/WASM queries and meshes and browser cap
-selection/error recovery are verified. The domain is one complete two-half-arc
-ellipse wire; mixed loops, ellipse holes, arbitrary ellipse-face subdivision
+selection/error recovery are verified. The initial domain was one complete two-half-arc
+ellipse wire. The extensions below support specific mixed loops; ellipse holes,
+arbitrary ellipse-face subdivision
 and general capped partitions remain unsupported. See
 [ellipse planar trims](docs/ellipse-planar.md).
 
@@ -314,5 +315,16 @@ line and ellipse parameters; boundary distance checks, solid classification,
 analytic volume and conforming tessellation cover the mixed boundary. A closed
 half-cylinder fixture retains material below an oblique plane. Native/WASM and
 browser tests cover both crossings, reversal, placement, microscopic dimensions,
-contact rejection and recovery. Other mixed ellipse loops, ellipse holes and
-general capped partitions remain unsupported. See [half-ellipse trims](docs/half-ellipse-planar.md).
+contact rejection and recovery. This domain is extended below; arbitrary mixed ellipse
+loops, ellipse holes and general capped partitions remain unsupported. See [half-ellipse trims](docs/half-ellipse-planar.md).
+
+Minor ellipse arcs closed by straight chords now extend the mixed trim domain
+to resolved sweeps in `(0, pi]`. Analytic clipping preserves original line,
+ellipse and chord parameters; physical boundary checks, classification, area,
+volume and conforming tessellation use the actual arc interval. A symmetric
+circular-segment extrusion with an oblique exact cap provides a closed fixture.
+Independent bounds, roots, volume and display-chord error, rotated/tiny solids,
+nonorthogonal axes, near contacts and unresolved thickness are tested.
+Native/WASM parity and a 90-degree browser demo are verified. Larger sweeps,
+arbitrary composite loops, ellipse holes and general capped partitions remain
+unsupported. See [minor ellipse/chord trims](docs/ellipse-segment-planar.md).
