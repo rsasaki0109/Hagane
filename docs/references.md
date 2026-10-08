@@ -147,3 +147,14 @@ ambiguous vertex/edge/near-parallel rays are retried, and two independent rays
 must agree. Metric 3D calculations remain checked f64 operations. This is an
 independent implementation of elementary ray casting, with no new dependency
 and no OCCT source.
+
+### Solid plane partition
+
+A plane defines two signed half-spaces. Original straight edges crossing it
+receive one canonical shared intersection vertex. Existing analytic planar
+clipping yields material intervals; oriented boundary graphs trace retained
+face regions and section loops, including polygon holes. Section edges combine
+face orientation with half-space orientation to construct complementary caps.
+The existing exact planar sewing machinery assembles both parts, and analytic
+volume conservation checks the result. This independent construction uses no
+mesh modeling, no new dependency and no OCCT source.

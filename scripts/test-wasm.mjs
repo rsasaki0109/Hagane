@@ -10,7 +10,7 @@ assert.equal(generate(14,0).status,1);
 assert.equal(generate(14).status,0);
 console.log('WASM runtime: 11 generation/error/recovery checks passed.');
 function preset(id,radius=14,error=0.05){const status=k.hagane_generate_preset(id,radius,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13}];
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12}];
 for(let id=0;id<expected.length;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
@@ -25,7 +25,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 13 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 14 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -160,3 +160,10 @@ assert.equal(k.hagane_classification_mesh(),0);
 const classMesh=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));
 const nativeClassMesh=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','classification','--','--mesh'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(classMesh,nativeClassMesh);
 console.log('Solid classification: analytic probes, native/WASM parity, boundary bands, display fixture, invalid points and recovery passed.');
+
+function partition(offset){const status=k.hagane_partition_demo(offset);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const offset of [-8,-2,0,8]){const {status,result}=partition(offset);assert.equal(status,0);assert.equal(result.negative.volume,4800*(offset+12));assert.equal(result.positive.volume,4800*(12-offset));assert.equal(result.negative.volume+result.positive.volume,result.original_volume);assert.equal(result.section_faces,1);
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','solid_split','--',String(offset)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.deepEqual(result,native);}
+for(const offset of [-12,-12+1e-9,12,13,NaN,Infinity])assert.equal(partition(offset).status,1);
+assert.equal(partition(0).status,0);assert.equal(preset(13,24).result.volume,19200);
+console.log('Solid plane partition: two closed parts, analytic volume conservation, native/WASM parity, contacts and recovery passed.');

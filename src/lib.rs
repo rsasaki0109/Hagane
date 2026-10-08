@@ -13,6 +13,7 @@ mod operations;
 mod planar;
 mod predicates;
 mod sewing;
+mod solid_split;
 mod topology;
 mod wasm;
 pub use classification::*;
@@ -28,6 +29,7 @@ pub use nurbs_surface::*;
 pub use operations::*;
 pub use predicates::*;
 pub use sewing::*;
+pub use solid_split::*;
 pub use topology::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

@@ -135,7 +135,14 @@ Euclidean boundary distance uses a local tolerance budget; two independent
 nondegenerate rays must agree. A native/WASM browser probe demo exercises exact
 inside/outside/boundary queries. See [classification](docs/classification.md).
 
-The next development task is planar face arrangements toward
-scoped solid Boolean operations. Contact graphs,
+Scoped solid plane partition now constructs shared intersection vertices,
+traces face/cap arrangements and sews negative/positive closed solids with
+conserved analytic volume. Planar concave/hollow/skew and rigidly placed parts
+are covered when both results are connected and the plane clears input vertices.
+A fourteenth browser preset shows the positive part; native/WASM fixtures
+verify both. See [solid partition](docs/solid-split.md).
+
+The next development task is retained-face selection and scoped solid Boolean
+dispatch using planar arrangements. Contact graphs,
 arbitrary curved-face splitting, general sewing and NURBS B-rep integration
 remain incomplete; the latter is stage 2 work.

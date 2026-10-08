@@ -241,6 +241,18 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        13 => {
+            split_solid_by_plane(
+                &make_box(b, tol)?,
+                &Surface::Plane {
+                    origin: Point3::new(0.0, 0.0, radius - 16.0),
+                    u: Vec3::new(1.0, 0.0, 0.0),
+                    v: Vec3::new(0.0, 1.0, 0.0),
+                },
+                GeometryTolerance::default(),
+            )?
+            .positive
+        }
         12 => {
             if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
                 return Err(Error::InvalidInput(

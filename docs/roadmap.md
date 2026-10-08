@@ -76,6 +76,13 @@ of two independent rays. Concavity, polygon holes, rigid/skew placement and
 subdivided faces are covered, with a native/WASM browser query demo. Curved
 solid classification remains unsupported; see [classification](classification.md).
 
+Transverse solid plane partition now builds shared edge intersections and
+closed section loops, keeps planar material on both sides, and sews two closed
+solids with conserved volume. Concave/hollow/skew and placed parts are supported
+when each result stays connected and the cut clears original vertices. Native/
+WASM fixtures verify both parts; a fourteenth browser preset shows the positive
+part. See [solid partition](solid-split.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.
@@ -83,8 +90,8 @@ solid classification remains unsupported; see [classification](classification.md
   3D predicates and robust curve/surface intersections.
 - Broaden mixed-profile placement/extrusion and support arbitrary cylindrical
   trim loops and general face splits.
-- Implement shared planar face arrangements for scoped solid Boolean
-  operations; extend contact handling, surface/surface curves, intersection
+- Implement retained-face selection and scoped solid Boolean dispatch using
+  planar arrangements; extend contact handling, surface/surface curves, intersection
   graphs and curved-face splits.
 - Native/WASM property tests, difficult intersection corpora, and benchmarks.
 - A stable browser API and versioned serialization.

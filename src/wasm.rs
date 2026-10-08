@@ -63,6 +63,10 @@ mod exports {
     pub extern "C" fn hagane_classification_mesh() -> i32 {
         generate(crate::classification_mesh_demo_json())
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_partition_demo(offset: f64) -> i32 {
+        generate(crate::solid_split_demo_json(offset))
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),
