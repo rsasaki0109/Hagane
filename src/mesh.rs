@@ -8,13 +8,29 @@ pub struct Mesh {
     pub face_ids: Vec<usize>,
 }
 impl Mesh {
+    /// Signed enclosed volume of a closed, oriented mesh; closure is not checked.
+    /// Recentered tetrahedra and compensated summation avoid world-origin cancellation.
     pub fn signed_volume(&self) -> f64 {
-        self.triangles
-            .iter()
-            .map(|t| {
-                self.positions[t[0]].dot(self.positions[t[1]].cross(self.positions[t[2]])) / 6.0
-            })
-            .sum()
+        let Some(first) = self.triangles.first() else {
+            return 0.;
+        };
+        let reference = self.positions[first[0]];
+        let mut sum: f64 = 0.;
+        let mut correction = 0.;
+        for t in &self.triangles {
+            let a = self.positions[t[0]] - reference;
+            let b = self.positions[t[1]] - reference;
+            let c = self.positions[t[2]] - reference;
+            let term = a.dot(b.cross(c)) / 6.;
+            let next = sum + term;
+            correction += if sum.abs() >= term.abs() {
+                (sum - next) + term
+            } else {
+                (term - next) + sum
+            };
+            sum = next;
+        }
+        sum + correction
     }
     fn triangle(&mut self, mut p: [Point3; 3], mut n: [Vec3; 3], face: usize, orientation: i8) {
         if orientation < 0 {
@@ -52,6 +68,98 @@ pub fn arc_segments(radius: f64, sweep: f64, chord_error: f64) -> Result<usize> 
     Ok((circle_segments(radius, chord_error)? as f64 * sweep / TAU)
         .ceil()
         .max(1.0) as usize)
+}
+
+fn absolute(p: Vec3) -> Vec3 {
+    Vec3::new(p.x.abs(), p.y.abs(), p.z.abs())
+}
+// Absolute coefficient envelopes cover intermediate arithmetic, not only the
+// final bounding box. Thus large cancelling plane origins are not overlooked.
+fn coordinate_roundoff_budget(solid: &Solid) -> Result<f64> {
+    let mut scale: f64 = 0.;
+    let mut observe = |p: Vec3| -> Result<()> {
+        if !p.finite() {
+            return Err(Error::Tessellation(
+                "coordinate evaluation envelope overflows",
+            ));
+        }
+        scale = scale.max(p.x.abs()).max(p.y.abs()).max(p.z.abs());
+        Ok(())
+    };
+    for v in &solid.vertices {
+        observe(v.point)?;
+    }
+    for edge in &solid.edges {
+        match edge.curve {
+            Curve::Line { a, b } => {
+                observe(a)?;
+                observe(b)?;
+            }
+            Curve::Circle { center, radius } => {
+                observe(absolute(center) + Vec3::new(radius, radius, 0.))?;
+            }
+            Curve::FramedCircle { frame, radius } | Curve::Arc { frame, radius, .. } => {
+                let axes = frame.axes();
+                observe(
+                    absolute(frame.origin()) + (absolute(axes[0]) + absolute(axes[1])) * radius,
+                )?;
+            }
+            Curve::EllipseArc {
+                center,
+                cosine,
+                sine,
+                ..
+            } => {
+                observe(absolute(center) + absolute(cosine) + absolute(sine))?;
+            }
+        }
+    }
+    for face in &solid.shell.faces {
+        if let Surface::Plane { origin, u, v } = face.surface {
+            for c in face.wires.iter().flat_map(|w| &w.coedges) {
+                let range = solid.edges[c.edge].curve.range();
+                let parameter = range[0].abs().max(range[1].abs());
+                let uv = match c.pcurve {
+                    PCurve::Affine { origin, direction } => {
+                        std::array::from_fn(|i| origin[i].abs() + direction[i].abs() * parameter)
+                    }
+                    PCurve::Circle { center, radius } | PCurve::Arc { center, radius, .. } => {
+                        center.map(|x| x.abs() + radius)
+                    }
+                    PCurve::EllipseArc {
+                        center,
+                        cosine,
+                        sine,
+                        ..
+                    } => std::array::from_fn(|i| center[i].abs() + cosine[i].abs() + sine[i].abs()),
+                    PCurve::HeightGraph {
+                        offset,
+                        cosine,
+                        sine,
+                        ..
+                    } => [parameter, offset.abs() + cosine.abs() + sine.abs()],
+                };
+                observe(absolute(origin) + absolute(u) * uv[0] + absolute(v) * uv[1])?;
+            }
+        } else {
+            let (frame, radius, _, drift) = crate::circular_trims::surface_data(&face.surface)?;
+            let axial = face
+                .circular_bands()?
+                .iter()
+                .map(|b| b[0].abs() + b[1].abs() + b[2].abs())
+                .fold(0., f64::max);
+            let axes = frame.axes();
+            observe(
+                absolute(frame.origin())
+                    + (absolute(axes[0]) + absolute(axes[1])) * radius
+                    + (absolute(axes[2])
+                        + absolute(axes[0]) * drift[0].abs()
+                        + absolute(axes[1]) * drift[1].abs())
+                        * axial,
+            )?;
+        }
+    }
+    Ok(32. * f64::EPSILON * scale)
 }
 // Opposite rims use the same angular grid. Union propagation keeps cap/wall
 // and ellipse/wall samples conforming even after oblique cuts increase accuracy.
@@ -104,12 +212,27 @@ pub(crate) fn shared_edge_counts(solid: &Solid, error: f64) -> Result<Vec<usize>
         .collect())
 }
 impl Solid {
+    /// Conservative allowance for floating coordinate evaluation during meshing.
+    /// It includes placement and trim coefficients, including cancelling origins.
+    /// This is an arithmetic guard, not an interval proof for arbitrary libm.
+    pub fn tessellation_roundoff_budget(&self, tol: Tolerance) -> Result<f64> {
+        self.validate(tol)?;
+        coordinate_roundoff_budget(self)
+    }
     /// Meshes the exact supported B-rep surfaces and trims; never performs mesh CSG.
+    /// Coordinate roundoff is reserved from the chord error. Unresolved requests fail.
     pub fn tessellate(&self, chord_error: f64, tol: Tolerance) -> Result<Mesh> {
         self.validate(tol)?;
         if !chord_error.is_finite() || chord_error <= 0.0 {
             return Err(Error::InvalidInput("positive finite chord error required"));
         }
+        let roundoff = coordinate_roundoff_budget(self)?;
+        if roundoff >= chord_error * 0.25 {
+            return Err(Error::Tessellation(
+                "coordinate precision cannot resolve requested chord error; use a local frame or coarser display tolerance",
+            ));
+        }
+        let chord_error = chord_error - roundoff;
         let counts = shared_edge_counts(self, chord_error)?;
         let mut mesh = Mesh::default();
         for (fi, f) in self.shell.faces.iter().enumerate() {

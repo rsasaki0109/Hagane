@@ -742,7 +742,8 @@ impl Builder<'_> {
             }
             let curve = Curve::FramedCircle { frame, radius };
             let budget = (64. * f64::EPSILON * radius).min(self.tol.linear / 1024.);
-            if (curve.evaluate(0.) - self.solid.vertices[a].point).norm() > budget {
+            let local = frame.local_point(self.solid.vertices[a].point);
+            if !local.finite() || (local - Vec3::new(radius, 0., 0.)).norm() > budget {
                 return Err(Error::Unsupported(
                     "STEP circle vertex must resolve the placement's zero-angle seam",
                 ));

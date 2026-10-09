@@ -459,3 +459,15 @@ including existing triangulation dependencies, so these notices accompany web ar
   difference. Only existing bounded arithmetic-roundoff reconciliation is used
   for internally generated patches. Implemented independently without new
   dependencies, copied code or mesh Boolean operations.
+
+
+- Floating coordinate guards use absolute coefficient envelopes and
+  [Rust f64::EPSILON](https://doc.rust-lang.org/std/primitive.f64.html#associatedconstant.EPSILON)
+  for binary64 spacing. The conservative factor and quarter-error acceptance
+  policy are Hagane's bounded implementation choices, independently tested;
+  they are not a copied CAD algorithm or a formal interval-libm proof.
+- Stable closed display-mesh volume uses recentered scalar triple products
+  (the divergence-theorem tetrahedral formula) and the publicly described
+  [Neumaier compensated-sum variant](https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements).
+  Implemented independently from these mathematical operations without new
+  libraries, OCCT code or translated implementation source.

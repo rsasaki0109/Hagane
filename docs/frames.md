@@ -38,8 +38,11 @@ linear tolerance. This is a numerical guard, not a claim of arbitrary precision.
 
 World-axis bounds use the exact circle extent
 `radius * hypot(u_i, v_i)` in each coordinate, rather than a rotated local box.
-Tessellation evaluates placed surfaces and rotates analytic normals; its circle
-sagitta bound is preserved by rigid placement.
+Tessellation evaluates placed surfaces and rotates analytic normals. Rigid
+placement preserves the geometric sagitta bound; floating coordinates must also
+satisfy the [coordinate precision allowance](coordinate-precision.md). Curved
+endpoints are checked in local coordinates so a large origin cannot hide a
+rounded-away radius.
 
 `extrude_polygon_in_frame(profile, world_direction, frame, tolerance)` uses the
 existing polygon validation and construction in local coordinates, followed by

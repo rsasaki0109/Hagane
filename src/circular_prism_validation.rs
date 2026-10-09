@@ -102,7 +102,8 @@ pub(crate) fn certify_validated_circular_prism(
             };
             if edge.vertices[0] != edge.vertices[1]
                 || (r - radius).abs() > budget
-                || (center - axis.point(Vec3::new(0., 0., z))).norm() > budget
+                || (!axis.local_point(center).finite()
+                    || (axis.local_point(center) - Vec3::new(0., 0., z)).norm() > budget)
                 || axes
                     .iter()
                     .zip(axis.axes())
@@ -112,7 +113,8 @@ pub(crate) fn certify_validated_circular_prism(
                 return Err(DOMAIN);
             }
             let vertex = s.vertices[edge.vertices[0]].point;
-            if (vertex - axis.point(Vec3::new(radius, 0., z))).norm() > budget
+            if !axis.local_point(vertex).finite()
+                || (axis.local_point(vertex) - Vec3::new(radius, 0., z)).norm() > budget
                 || line.vertices[if index == 0 { 0 } else { 1 }] != edge.vertices[0]
             {
                 return Err(DOMAIN);
@@ -197,7 +199,8 @@ pub(crate) fn certify_validated_circular_prism(
                 inner_radius.ok_or(DOMAIN)?
             };
             if (radius - expected).abs() > budget
-                || (center - axis.point(Vec3::new(0., 0., z))).norm() > budget
+                || (!axis.local_point(center).finite()
+                    || (axis.local_point(center) - Vec3::new(0., 0., z)).norm() > budget)
             {
                 return Err(DOMAIN);
             }

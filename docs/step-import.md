@@ -116,6 +116,11 @@ f64 unit conversion can change the final bits across repeated imports; round
 trips check bounded geometric agreement, not source-byte identity. Native and
 WASM re-exported bytes agree for the same input. Vertices retain their converted
 coordinates; neither curves nor vertices are snapped to repair a discrepancy.
+Circle seams are compared in their local parameter frame before adding a world
+origin. A radius lost to world-coordinate rounding fails explicitly. Display
+requests also use the [coordinate precision allowance](coordinate-precision.md);
+exact `import_step_mm` can retain geometry whose default JSON display request
+cannot resolve its requested chord error.
 
 The polygon-stock bore extension below also accepts a bounded mixed
 planar/cylindrical domain. Arcs, elliptical/oblique caps and other

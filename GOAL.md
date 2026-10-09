@@ -604,3 +604,22 @@ floor checks accompany the actual opposing-blind STEP fixture and screenshot.
 Oblique/intersecting bores, arbitrary floors, internal cavities, subdivided stock
 and general curved Boolean results remain unsupported imports. The long-term
 estimate remains 15–25%, toward the 80% target; see the STEP import document.
+
+
+## Large-placement numerical precision
+
+Curved endpoints now validate in local coordinates before adding their world
+origin, preventing a rounded-away radius from passing native rigid placement or
+STEP seam reconstruction. Tessellation exposes a coordinate arithmetic allowance,
+including cancelling parameter origins and circular height-band/skew coefficients,
+reserves it from chord error and explicitly rejects unresolved display requests.
+Closed mesh volume uses recentered tetrahedra with compensated summation.
+Native regressions check collapsed circles, translated/reversed mesh volume,
+far-cylinder chord error, cancelling UV origins and explicit local-frame recovery.
+Native/WASM report/position/byte parity and independent WASM chord checks pass;
+the actual far-coordinate STEP browser upload/orbit/download and rejected-input
+recovery are tested and recorded. Existing external STEP regressions pass.
+This strengthens the existing analytic domain without adding general curved
+Booleans, NURBS B-rep integration or arbitrary numerical conditioning support.
+The long-term estimate remains 15–25%, toward the 80% target. See
+[coordinate precision](docs/coordinate-precision.md).

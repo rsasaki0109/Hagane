@@ -291,10 +291,31 @@ impl Solid {
                 return Err(Error::InvalidTopology("invalid vertex index"));
             }
             let [a, b] = e.curve.range();
-            if !tol.coincident(self.vertices[e.vertices[0]].point, e.curve.evaluate(a))
-                || !tol.coincident(self.vertices[e.vertices[1]].point, e.curve.evaluate(b))
-            {
-                return Err(Error::InvalidTopology("edge endpoints disagree with curve"));
+            // Compare curved endpoints before adding a large world origin.
+            // Two rounded world evaluations can otherwise agree off the curve.
+            for (vertex, parameter) in e.vertices.into_iter().zip([a, b]) {
+                let point = self.vertices[vertex].point;
+                let (cosine, sine) = (parameter.cos(), parameter.sin());
+                let error = match e.curve {
+                    Curve::Circle { center, radius } => {
+                        (point - center) - Vec3::new(radius * cosine, radius * sine, 0.)
+                    }
+                    Curve::FramedCircle { frame, radius } | Curve::Arc { frame, radius, .. } => {
+                        frame.local_point(point) - Vec3::new(radius * cosine, radius * sine, 0.)
+                    }
+                    Curve::EllipseArc {
+                        center,
+                        cosine: u,
+                        sine: v,
+                        ..
+                    } => (point - center) - (u * cosine + v * sine),
+                    Curve::Line { .. } => point - e.curve.evaluate(parameter),
+                };
+                if !error.finite() || error.norm() > tol.linear {
+                    return Err(Error::InvalidTopology(
+                        "edge endpoints disagree with curve in local coordinates",
+                    ));
+                }
             }
             match e.curve {
                 Curve::EllipseArc {

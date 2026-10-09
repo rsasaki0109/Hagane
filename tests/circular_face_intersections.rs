@@ -356,7 +356,7 @@ fn certified_boundary_crossing_preserves_a_hit_without_snapping_nearby_lines() {
 fn generator_certificates_do_not_hide_lost_radius_at_large_world_coordinates() {
     let t = GeometryTolerance::default();
     let centre = Point3::new(1e15, -1e15, 1e15);
-    let s = make_cylinder(
+    assert!(make_cylinder(
         CylinderSpec {
             base: centre,
             radius: 2.01,
@@ -364,7 +364,27 @@ fn generator_certificates_do_not_hide_lost_radius_at_large_world_coordinates() {
         },
         t.absolute(),
     )
+    .is_err());
+    // A malformed raw boundary must still be rejected by the query API.
+    let mut s = make_cylinder(
+        CylinderSpec {
+            base: Point3::new(0., 0., 0.),
+            radius: 2.01,
+            height: 4.,
+        },
+        t.absolute(),
+    )
     .unwrap();
+    let placement = Transform::translation(centre).unwrap();
+    for v in &mut s.vertices {
+        v.point = placement.point(v.point);
+    }
+    for e in &mut s.edges {
+        e.curve = e.curve.transformed(placement).unwrap();
+    }
+    for f in &mut s.shell.faces {
+        f.surface = f.surface.transformed(placement).unwrap();
+    }
     let a = s.edges[s.shell.faces[2].wires[0].coedges[1].edge]
         .curve
         .evaluate(0.);
