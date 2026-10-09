@@ -87,6 +87,11 @@ full world-axis tensor at uniform unit density, with explicit numerical failures
 [Affine-UV roof sections](docs/nurbs-graph-roof-section.md) produce exact degree-four
 NURBS intersection curves along diagonal source paths, retaining global parameters
 and material spans around a rectangular opening.
+[Closed convex polygon graph solids](docs/nurbs-graph-polygon.md) additionally
+retain oblique 3–16-corner boundaries as actual closed B-reps with ruled NURBS
+walls, volume/centroid and conforming bounded display. `web/graph-polygon.html`
+edits the CCW polygon on restricted or placed sources; openings and general
+curved Booleans remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

@@ -184,5 +184,15 @@ pub use nurbs_graph_inertia::*;
 mod nurbs_graph_roof_section;
 pub use nurbs_graph_roof_section::*;
 
+mod nurbs_graph_polygon;
+pub use nurbs_graph_polygon::*;
+
+mod nurbs_graph_polygon_display;
+
+mod nurbs_graph_polygon_mass;
+
+mod nurbs_graph_polygon_demo;
+pub use nurbs_graph_polygon_demo::*;
+
 mod nurbs_graph_roof_section_demo;
 pub use nurbs_graph_roof_section_demo::*;

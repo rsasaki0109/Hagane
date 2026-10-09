@@ -733,3 +733,14 @@ four, with affine XY coordinates elevated to the same degree. Rectangular
 opening slab intervals retain the original path parameter. These are elementary
 polynomial/B-spline and interval-clipping identities, independently implemented
 under MIT OR Apache-2.0 without new dependencies or OCCT source.
+
+Convex polygon graph solids reuse the public rational Bernstein parameter-curve
+restriction and ruled-surface construction described above. Positive fan
+triangles use the elementary Duffy map
+`P=C+r*(A-C)+(1-r)*s*(B-C)`, with Jacobian
+`det(A-C,B-C)*(1-r)`. Tensor five-point Gauss–Legendre quadrature
+(NIST DLMF 3.5(v), linked above) integrates height-square total degree eight
+and its degree-one Jacobian exactly in real arithmetic. Convex combinations
+and polynomial Hessian bounds control display error, with explicit binary64
+engineering allowances. Original MIT OR Apache-2.0 code adds no dependency
+and copies or translates no OCCT source.

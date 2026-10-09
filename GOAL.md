@@ -1098,3 +1098,15 @@ and browser overlays use exact curves plus bounded display tessellation. Closed
 section profiles, arbitrary shell/plane intersections and oblique solid splitting
 remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [roof sections](docs/nurbs-graph-roof-section.md).
+
+## Closed convex polygon graph solids
+
+Polynomial graph solids now retain strictly convex 3–16-corner source-UV
+boundaries as closed B-reps with shared exact lifted edges and ruled NURBS
+walls. Trimmed and placed sources preserve original UV pcurves. Positive
+triangle integration gives volume and world centroid; conforming bounded
+display evaluates actual retained faces. Native/WASM and an editable browser
+demo verify accepted solids and explicit invalid-input rejection. Concave
+boundaries, polygon openings, general curved Booleans and polygon graph STEP
+interchange remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [closed polygon graph solids](docs/nurbs-graph-polygon.md).
