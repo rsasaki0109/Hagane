@@ -158,6 +158,8 @@ demos download STEP from the last accepted model; polygon STEP import is pending
 [Polygon graph point classification](docs/nurbs-graph-polygon-classification.md)
 now checks actual retained faces against a Euclidean tolerance band, including
 convex through openings. The browser demos show world-point queries and markers.
+Guarded footprint separation resolves deep opening and far outer queries before
+subdivision, while retaining the actual boundary-distance checks near walls.
 
 [Convex polygon through openings](docs/nurbs-graph-polygon-hole.md) now retain
 closed NURBS B-reps with annular caps, positive volume integration and an editable

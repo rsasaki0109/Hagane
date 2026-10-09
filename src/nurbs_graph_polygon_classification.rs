@@ -244,6 +244,27 @@ fn witnesses(
     }
     Ok(upper)
 }
+fn physical_margins(
+    source: &NurbsGraphSolid,
+    polygon: &[[f64; 2]],
+    local: Point3,
+) -> Result<Vec<f64>> {
+    let [l, w, _] = source.dimensions();
+    let mut out = vec![];
+    for i in 0..polygon.len() {
+        let a = polygon[i];
+        let b = polygon[(i + 1) % polygon.len()];
+        let dx = l * (b[0] - a[0]);
+        let dy = w * (b[1] - a[1]);
+        let length = dx.hypot(dy);
+        let gap = (dx / length) * (local.y - w * a[1]) - (dy / length) * (local.x - l * a[0]);
+        if !gap.is_finite() {
+            return Err(unsupported());
+        }
+        out.push(gap);
+    }
+    Ok(out)
+}
 fn membership(
     source: &NurbsGraphSolid,
     outer: &[[f64; 2]],
@@ -252,29 +273,13 @@ fn membership(
     guard: f64,
 ) -> Result<PointLocation> {
     let [l, w, h] = source.dimensions();
-    let margins = |polygon: &[[f64; 2]]| -> Result<Vec<f64>> {
-        let mut out = vec![];
-        for i in 0..polygon.len() {
-            let a = polygon[i];
-            let b = polygon[(i + 1) % polygon.len()];
-            let dx = l * (b[0] - a[0]);
-            let dy = w * (b[1] - a[1]);
-            let length = dx.hypot(dy);
-            let gap = (dx / length) * (local.y - w * a[1]) - (dy / length) * (local.x - l * a[0]);
-            if !gap.is_finite() {
-                return Err(unsupported());
-            }
-            out.push(gap);
-        }
-        Ok(out)
-    };
-    let outer = margins(outer)?;
+    let outer = physical_margins(source, outer, local)?;
     if outer.iter().any(|d| *d < -guard) || local.z < -guard {
         return Ok(PointLocation::Outside);
     }
     let mut hole_outside = true;
     if let Some(hole) = hole {
-        let margins = margins(hole)?;
+        let margins = physical_margins(source, hole, local)?;
         if margins.iter().all(|d| *d > guard) {
             return Ok(PointLocation::Outside);
         }
@@ -322,6 +327,27 @@ fn classify(
         + 256. * f64::EPSILON * query.x.abs().max(query.y.abs()).max(query.z.abs());
     if !arithmetic.is_finite() || arithmetic >= budget / 4. {
         return Err(unsupported());
+    }
+    // Every retained face projects into the convex outer footprint and outside
+    // the strict convex opening. A separating support line therefore bounds
+    // distance to ALL actual faces, independently of the query's height.
+    // Keep the existing world/source arithmetic allowance and an extra guard
+    // for normalized signed-distance evaluation; do not classify near walls.
+    let separation = budget + 4. * arithmetic;
+    if !separation.is_finite() {
+        return Err(unsupported());
+    }
+    if physical_margins(source, outer, local)?
+        .iter()
+        .any(|d| *d < -separation)
+        || match hole {
+            Some(h) => physical_margins(source, h, local)?
+                .iter()
+                .all(|d| *d > separation),
+            None => false,
+        }
+    {
+        return Ok(PointLocation::Outside);
     }
     let originals = solid
         .shell

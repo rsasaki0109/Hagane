@@ -1076,3 +1076,14 @@ trigonometric inputs rather than replacing them with dyadic fixtures. Browser
 workflow import/download/autosave checks cover actual model coordinates.
 Geometry limitations remain unchanged; the estimate stays **15–25%**, toward
 **80%**. See [JSON binary64 preservation](json-float-roundtrip.md).
+
+## Guarded polygon footprint exclusion
+
+Polygon point queries can now prove `Outside` from physical support-line
+distances before curved-face subdivision. Deep opening points and separated
+outer points avoid unnecessary refinement; near-wall queries retain the actual
+Euclidean boundary search. Canonical validation and source/world precision
+guards remain mandatory. The placed removed-roof example now resolves at
+1e-8 mm without relaxing its requested band. Very small unresolved bands and
+arbitrary NURBS bodies still return explicit errors. The estimate remains
+**15–25%**, toward **80%**. See [point classification](nurbs-graph-polygon-classification.md).

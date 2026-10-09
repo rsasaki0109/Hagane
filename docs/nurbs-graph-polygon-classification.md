@@ -37,6 +37,14 @@ inner ruled walls retain finite domains, so their line extensions do not
 create false boundaries. After excluding the boundary band, checked source
 height and oriented polygon membership determine inside or outside.
 
+Before subdivision, physical supporting-line distances can exclude all faces:
+a point beyond an outer support line, or farther than the boundary band from
+every opening support line on its inward side, is `Outside`. This proof uses
+the convex XY footprint, independently of height, with four source/world
+arithmetic allowances added to the band. Canonical B-rep validation and the
+global precision gate still run first. Near-wall and corner-band queries use
+the retained-face Euclidean search; support lines never report `Boundary`.
+
 Absolute tolerance uses source length units. Relative tolerance uses the
 local source enclosure; world translation does not enlarge the geometric
 band. Separate source/world arithmetic allowances, subdivision limits (48 levels,
@@ -72,8 +80,8 @@ as JSON. The browser offers named fields instead.
 
 The recorded browser example queries the removed roof position over the opening
 and correctly reports `Outside` with a 0.01 mm band; its marker is not
-interpreted as material. At this same placed point, a 1e-8 mm request is
-explicitly unresolved under the subdivision arithmetic guard. Very small
+interpreted as material. At this same placed point, a 1e-8 mm request now
+also reports `Outside` using the guarded footprint exclusion. Very small
 bands can be rejected even for otherwise well-formed queries. Browser tests
 require a fresh successful result, preventing preserved old labels from
 masquerading as success.
@@ -86,3 +94,9 @@ the actual Outside capture on the same final WASM binary.
 
 [STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
 B-reps with retained rational weights. Polygon STEP import remains unsupported.
+
+The guarded footprint follow-up passed 654 native tests, formatting and strict
+Clippy. Independent checks cover a rigidly placed removed roof at 1e-8 mm,
+wall/corner Euclidean bands, mutation rejection and unresolved world precision.
+The final WASM build, full native/WASM regression and full browser regression
+passed, including a fresh successful placed removed-roof query at 1e-8 mm.
