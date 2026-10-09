@@ -424,3 +424,13 @@ classification, tolerance bands, microscopic/rotated solids, mesh closure and
 wrong-face/breakthrough rejection. Native/WASM parity and side-entry browser
 preset 30 are verified. Mixed-face, intersecting and oblique blind tools remain
 unsupported. See [six-face blind bores](box-face-blind-bore.md).
+
+## Initial planar STEP export
+
+[Exact planar STEP export](step-export.md) now preserves analytic lines and
+planes, shared oriented topology, polygon openings and explicit mm units in one
+validated AP214 solid. Native/WASM byte parity and browser downloads are tested;
+an optional independent reader verifies bounds, face count and signed volume.
+Curved export (including cylindrical bores), import and assemblies remain
+unsupported. This advances interchange without completing the long-term STEP
+goal; the overall engineering estimate remains 15–25%, toward the 80% target.

@@ -509,3 +509,13 @@ or persistent topology naming. Incremental sessions reuse unchanged validated
 B-rep prefixes with explicit rebuilt-node counts, atomic failure recovery and
 native/WASM parity. Other operation types, display-cache optimization and
 comparative user-value measurements remain next work.
+
+## Initial planar STEP export
+
+[Exact planar STEP export](docs/step-export.md) now preserves analytic lines and
+planes, shared oriented topology, polygon openings and explicit mm units in one
+validated AP214 solid. Native/WASM byte parity and browser downloads are tested;
+an optional independent reader verifies bounds, face count and signed volume.
+Curved export (including cylindrical bores), import and assemblies remain
+unsupported. This advances interchange without completing the long-term STEP
+goal; the overall engineering estimate remains 15–25%, toward the 80% target.

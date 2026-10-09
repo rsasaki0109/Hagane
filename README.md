@@ -19,6 +19,10 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Planar STEP export](docs/step-export.md) now writes exact closed B-rep geometry
+with shared topology and mm units, from native Rust or the editable browser.
+Curved export and STEP import remain unsupported.
+
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
 box/bore dimensions or extrude an editable polygon profile with inner openings
 and an optional skew direction with disjoint Z-axis through/blind bores,
@@ -468,3 +472,13 @@ top-entry box differences, independent depths and real retained B-rep floors.
 [Six-face blind bores](docs/box-face-blind-bore.md) extend exact blind cuts to
 either end of every box axis, with a side-entry browser preset and explicit
 world-coordinate mouth centers.
+
+## Initial planar STEP export
+
+[Exact planar STEP export](docs/step-export.md) now preserves analytic lines and
+planes, shared oriented topology, polygon openings and explicit mm units in one
+validated AP214 solid. Native/WASM byte parity and browser downloads are tested;
+an optional independent reader verifies bounds, face count and signed volume.
+Curved export (including cylindrical bores), import and assemblies remain
+unsupported. This advances interchange without completing the long-term STEP
+goal; the overall engineering estimate remains 15–25%, toward the 80% target.

@@ -34,6 +34,25 @@ mod exports {
     pub extern "C" fn hagane_workflow_finish() -> i32 {
         finish_workflow(false)
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_finish_step_export() -> i32 {
+        let (bytes, bad) = {
+            let mut input = WORKFLOW_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), input.1)
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "STEP workflow input exceeds 64 KiB or has invalid bytes",
+            )));
+        }
+        match std::str::from_utf8(&bytes) {
+            Ok(text) => generate(crate::export_workflow_step_mm_json(text)),
+            Err(_) => generate(Err(crate::Error::InvalidInput(
+                "STEP workflow input must be UTF-8",
+            ))),
+        }
+    }
+
     fn finish_workflow(incremental: bool) -> i32 {
         let (bytes, bad) = {
             let mut input = WORKFLOW_INPUT.lock().unwrap();
