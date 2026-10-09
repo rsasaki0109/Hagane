@@ -64,10 +64,14 @@ retained B-rep. Dense rational evaluations, U/V row ordering, every pcurve,
 face-bound kinds and oriented shared incidence are checked, including signed
 roofs, trimmed/placed stock and differing polygon corner counts.
 
-This milestone adds export. Hagane's scoped NURBS STEP importer continues to
-reject polygon and polygon-opening families outside its supported plain/
-rectangular-hole subset. No general NURBS import or export-import round trip
-is claimed. Multiple openings and general curved Boolean tools remain unsupported.
+This milestone adds export. A separate [strict polygon importer](nurbs-graph-polygon-step-import.md)
+now reads unplaced full-source-UV plain convex polygon B-reps, retaining actual
+rational weights and checking raw affine serialization before restoring its
+canonical pcurve representative. Polygon-opening, placed and trimmed imports
+remain unsupported. The existing generic and automatic graph import APIs keep
+their prior scopes; no general NURBS interchange is claimed. Multiple-opening
+modeling/export has its [typed workflow](nurbs-graph-polygon-multi-hole-step.md),
+and general curved Boolean tools remain unsupported.
 
 The optional external reader check uses the existing `occt-import-js` 0.0.23
 installation, solely as a test oracle (LGPL-2.1 wrapper and bundled OCCT

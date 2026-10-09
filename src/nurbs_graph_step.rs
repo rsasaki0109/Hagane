@@ -50,6 +50,26 @@ fn knot_data(knots: &[f64]) -> Result<(String, String)> {
         values.into_iter().map(number).collect::<Vec<_>>().join(","),
     ))
 }
+pub(crate) fn decompose_affine(origin: [f64; 2], direction: [f64; 2]) -> Result<([f64; 2], f64)> {
+    // Use the same elementary operations on native and WASM: platform
+    // hypot implementations can round differently and change STEP bytes.
+    // Scaling avoids squaring large coordinates or underflowing tiny ones.
+    let scale = direction[0].abs().max(direction[1].abs());
+    let length = if scale > 0. && scale.is_finite() {
+        let x = direction[0] / scale;
+        let y = direction[1] / scale;
+        scale * (x * x + y * y).sqrt()
+    } else {
+        scale
+    };
+    if origin.iter().chain(&direction).any(|x| !x.is_finite())
+        || !length.is_finite()
+        || length == 0.
+    {
+        return Err(Error::InvalidTopology("graph STEP pcurve is unresolved"));
+    }
+    Ok(([direction[0] / length, direction[1] / length], length))
+}
 impl Writer {
     fn entity(&mut self, body: String) -> Result<usize> {
         if self.records.len() >= 100000 {
@@ -141,23 +161,7 @@ impl Writer {
                 "graph STEP export requires retained affine pcurves",
             ));
         };
-        // Use the same elementary operations on native and WASM: platform
-        // hypot implementations can round differently and change STEP bytes.
-        // Scaling avoids squaring large coordinates or underflowing tiny ones.
-        let scale = direction[0].abs().max(direction[1].abs());
-        let length = if scale > 0. && scale.is_finite() {
-            let x = direction[0] / scale;
-            let y = direction[1] / scale;
-            scale * (x * x + y * y).sqrt()
-        } else {
-            scale
-        };
-        if origin.iter().chain(direction).any(|x| !x.is_finite())
-            || !length.is_finite()
-            || length == 0.
-        {
-            return Err(Error::InvalidTopology("graph STEP pcurve is unresolved"));
-        }
+        let (ratios, length) = decompose_affine(*origin, *direction)?;
         let point = self.entity(format!(
             "CARTESIAN_POINT('',({},{}))",
             number(origin[0]),
@@ -165,8 +169,8 @@ impl Writer {
         ))?;
         let axis = self.entity(format!(
             "DIRECTION('',({},{}))",
-            number(direction[0] / length),
-            number(direction[1] / length)
+            number(ratios[0]),
+            number(ratios[1])
         ))?;
         let vector = self.entity(format!("VECTOR('',#{axis},{})", number(length)))?;
         let line = self.entity(format!("LINE('',#{point},#{vector})"))?;

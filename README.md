@@ -154,7 +154,11 @@ STEP output from trigonometric polygon inputs.
 
 [Polygon graph STEP export](docs/nurbs-graph-polygon-step.md) now preserves
 actual rational curves/surfaces, annular bounds and shared topology. The Web
-demos download STEP from the last accepted model; polygon STEP import is pending.
+demos download STEP from the last accepted model. A separate
+[strict polygon importer](docs/nurbs-graph-polygon-step-import.md) now retains
+unplaced full-source-UV 3–16-corner plain polygon B-reps, including actual
+rational weights and verified affine pcurve representations. Hole, placed and
+trimmed polygon imports remain unsupported.
 
 [Polygon graph point classification](docs/nurbs-graph-polygon-classification.md)
 now checks actual retained faces against a Euclidean tolerance band, including

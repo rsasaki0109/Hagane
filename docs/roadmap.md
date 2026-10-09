@@ -1018,8 +1018,8 @@ walls. Trimmed and placed sources preserve original UV pcurves. Positive
 triangle integration gives volume and world centroid; conforming bounded
 display evaluates actual retained faces. Native/WASM and an editable browser
 demo verify accepted solids and explicit invalid-input rejection. Concave
-boundaries, general curved Booleans and polygon graph STEP
-import remains unsupported. The estimate remains **15–25%**, toward **80%**.
+boundaries and general curved Booleans remain unsupported. Strict polygon
+STEP import now supports the unplaced full-source-UV plain profile. The estimate remains **15–25%**, toward **80%**.
 See [closed polygon graph solids](nurbs-graph-polygon.md).
 
 ## Source-vertical oblique graph partitions
@@ -1153,6 +1153,21 @@ measurements separate recognition cost from export and display work. The local
 three-sample WASM finish medians were 7.6–23.8% lower; native medians were mixed
 in the shared environment. These measurements do not establish a universal or
 whole-browser speedup. This adds
-no dependency and does not broaden STEP import to polygon/multiple openings or
-general NURBS shells. The estimate remains **15–25%**, toward **80%**.
+no dependency and does not broaden this rectangular-opening importer to polygon
+or multiple openings or general NURBS shells. The estimate remains **15–25%**, toward **80%**.
 See [holed import recognition cost](nurbs-graph-holed-step-import-performance.md).
+
+## Strict plain polygon graph STEP import
+
+A separate typed AP214 reader now retains actual unplaced full-source-UV
+3–16-corner convex polygon graph B-reps. Positive rational weights and 3D
+controls/knots are preserved. Raw affine line origin, direction ratios and
+magnitude must exactly match the writer’s canonical preimage before a pcurve
+representative is restored; rounded ratio products do not establish acceptance.
+Full canonical geometry/topology validation follows, with bounded coefficient
+recovery and stable re-export after canonical ordering. The 1 MiB parser and
+finite resource limits remain. Native/WASM and browser workflows display the
+checked imported body and preserve accepted state after rejection. Generic and
+existing automatic graph import APIs retain their scopes; polygon holes, pose,
+trim and general rational shells remain unsupported. The estimate remains
+**15–25%**, toward **80%**. See [strict polygon STEP import](nurbs-graph-polygon-step-import.md).

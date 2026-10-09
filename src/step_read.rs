@@ -215,12 +215,15 @@ impl<'a> Parser<'a> {
         Ok((name, self.args(0)?))
     }
     fn document(self) -> Result<Database> {
-        self.document_mode(false)
+        self.document_mode(false, false)
     }
     pub(crate) fn document_graph(self) -> Result<Database> {
-        self.document_mode(true)
+        self.document_mode(true, false)
     }
-    fn document_mode(mut self, graph: bool) -> Result<Database> {
+    pub(crate) fn document_polygon_graph(self) -> Result<Database> {
+        self.document_mode(true, true)
+    }
+    fn document_mode(mut self, graph: bool, polygon: bool) -> Result<Database> {
         self.keyword("ISO-10303-21")?;
         self.symbol(b';')?;
         self.keyword("HEADER")?;
@@ -308,7 +311,7 @@ impl<'a> Parser<'a> {
             records,
             used: RefCell::new(BTreeSet::new()),
         };
-        db.check_records(graph)?;
+        db.check_records(graph, polygon)?;
         Ok(db)
     }
 }
@@ -363,7 +366,7 @@ fn all_refs(value: &Value, output: &mut Vec<u32>) {
     }
 }
 impl Database {
-    fn check_records(&self, graph: bool) -> Result<()> {
+    fn check_records(&self, graph: bool, polygon: bool) -> Result<()> {
         const SIMPLE: &[&str] = &[
             "CARTESIAN_POINT",
             "DIRECTION",
@@ -412,7 +415,9 @@ impl Database {
                         ]
                         .contains(&record[0].0.as_str()))
                 {
-                    return Err(Error::Unsupported("unsupported STEP entity (unknown curves, assemblies and extensions are rejected)"));
+                    return Err(Error::Unsupported(
+                        "unsupported STEP entity (unknown curves, assemblies and extensions are rejected)",
+                    ));
                 }
                 let signature = match record[0].0.as_str() {
                     "APPLICATION_CONTEXT" => Some("s"),
@@ -448,7 +453,31 @@ impl Database {
                     == ["GEOMETRIC_REPRESENTATION_CONTEXT", "REPRESENTATION_CONTEXT"]
                         .into_iter()
                         .collect();
-                if !is_context && !is_unit && !is_uv_context {
+                let rational_curve: BTreeSet<_> = [
+                    "BOUNDED_CURVE",
+                    "B_SPLINE_CURVE",
+                    "B_SPLINE_CURVE_WITH_KNOTS",
+                    "CURVE",
+                    "GEOMETRIC_REPRESENTATION_ITEM",
+                    "RATIONAL_B_SPLINE_CURVE",
+                    "REPRESENTATION_ITEM",
+                ]
+                .into_iter()
+                .collect();
+                let rational_surface: BTreeSet<_> = [
+                    "BOUNDED_SURFACE",
+                    "B_SPLINE_SURFACE",
+                    "B_SPLINE_SURFACE_WITH_KNOTS",
+                    "SURFACE",
+                    "GEOMETRIC_REPRESENTATION_ITEM",
+                    "RATIONAL_B_SPLINE_SURFACE",
+                    "REPRESENTATION_ITEM",
+                ]
+                .into_iter()
+                .collect();
+                let is_polygon_spline =
+                    polygon && (names == rational_curve || names == rational_surface);
+                if !is_context && !is_unit && !is_uv_context && !is_polygon_spline {
                     return Err(Error::Unsupported("unsupported complex STEP entity"));
                 }
             }
@@ -937,7 +966,9 @@ impl Builder<'_> {
                     || !offset.norm().is_finite()
                     || offset.dot(u.cross(*v)).abs() > budget
                 {
-                    return Err(Error::Unsupported("STEP circular cap requires an aligned positive circle/plane parameter frame"));
+                    return Err(Error::Unsupported(
+                        "STEP circular cap requires an aligned positive circle/plane parameter frame",
+                    ));
                 }
                 Ok(PCurve::Circle {
                     center: surface.parameters(frame.origin()),
@@ -963,7 +994,9 @@ impl Builder<'_> {
                         .zip(frame.axes())
                         .any(|(a, b)| (*a - b).norm() > 64. * f64::EPSILON)
                 {
-                    return Err(Error::Unsupported("STEP cylindrical rims require equal radius and aligned coaxial circle frames"));
+                    return Err(Error::Unsupported(
+                        "STEP cylindrical rims require equal radius and aligned coaxial circle frames",
+                    ));
                 }
                 Ok(PCurve::Affine {
                     origin: [0., local.z],
@@ -1088,7 +1121,9 @@ impl Builder<'_> {
                 || !upper[1].is_finite()
                 || upper[1] <= 10. * self.tol.linear
             {
-                return Err(Error::Unsupported("STEP cylinder placement must start at the lower rim with resolved positive height"));
+                return Err(Error::Unsupported(
+                    "STEP cylinder placement must start at the lower rim with resolved positive height",
+                ));
             }
             surface = Surface::FramedCylinder {
                 frame,

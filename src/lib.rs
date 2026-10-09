@@ -237,3 +237,9 @@ pub use nurbs_graph_polygon_multi_hole_step_demo::*;
 
 mod nurbs_graph_polygon_multi_hole_classification_demo;
 pub use nurbs_graph_polygon_multi_hole_classification_demo::*;
+
+mod nurbs_graph_polygon_step_import;
+mod nurbs_graph_polygon_step_read;
+pub use nurbs_graph_polygon_step_import::*;
+mod nurbs_graph_polygon_step_import_demo;
+pub use nurbs_graph_polygon_step_import_demo::*;

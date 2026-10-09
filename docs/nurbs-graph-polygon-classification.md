@@ -93,7 +93,9 @@ successful queries, blank/invalid-input result and marker preservation, and
 the actual Outside capture on the same final WASM binary.
 
 [STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
-B-reps with retained rational weights. Polygon STEP import remains unsupported.
+B-reps with retained rational weights. [Strict plain-polygon import](nurbs-graph-polygon-step-import.md)
+now accepts the unplaced full-source-UV profile; polygon-opening, placed and
+trimmed imports remain unsupported.
 
 The guarded footprint follow-up passed 654 native tests, formatting and strict
 Clippy. Independent checks cover a rigidly placed removed roof at 1e-8 mm,

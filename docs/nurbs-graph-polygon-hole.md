@@ -92,4 +92,6 @@ the WASM build and native/WASM regression checks.
 world points against actual retained faces, including polygon openings.
 
 [STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
-B-reps with retained rational weights. Polygon STEP import remains unsupported.
+B-reps with retained rational weights. Polygon-opening STEP import remains
+unsupported; the separate [plain-polygon importer](nurbs-graph-polygon-step-import.md)
+accepts only unplaced full-source-UV parts without openings.

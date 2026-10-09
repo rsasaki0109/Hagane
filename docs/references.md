@@ -831,6 +831,17 @@ give a conservative deep-void exclusion before subdivision. Engineering
 arithmetic and work guards remain unchanged. Original Rust implementation;
 no new dependency, external CAD source or license change.
 
+### Strict polygon graph STEP recognition
+
+The opt-in Part 21 reader uses the public AP214 rational spline component
+mapping recorded above, retaining positive weight arrays and spline bases.
+Affine uses are accepted only when their serialized origin, direction ratios
+and magnitude match the same original writer decomposition of a canonical
+representative. This is checked representation recovery, not arbitrary input
+vector normalization. Full actual-geometry reindexing and canonical topology
+validation remain required. Original Rust code; no new dependency, external
+CAD source or license change. See [polygon import](nurbs-graph-polygon-step-import.md).
+
 ### Holed graph STEP recognition performance
 
 Canonical recognition reuses the same original graph-roof construction and

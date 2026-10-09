@@ -91,8 +91,9 @@ offset, source UV limits, placement and CCW polygon. Rotation and zoom inspect
 the accepted actual solid; rejected edits preserve it. Native and WASM use
 the same Rust JSON entry point and safe bounded numeric transport.
 
-This stage does not add concave polygons, arbitrary curved
-Boolean tools or polygon graph STEP import.
+Concave polygons and arbitrary curved Boolean tools remain unsupported.
+The separate strict STEP importer below accepts a narrower unplaced full-UV
+plain polygon representation.
 Checked [centroidal inertia](nurbs-graph-polygon-inertia.md) now uses the
 positive polynomial material integral and returns the full world tensor.
 The separate [source-vertical oblique partition API](nurbs-graph-polygon-split.md)
@@ -106,4 +107,6 @@ one strictly contained convex through opening as a closed solid.
 world points against actual retained faces, including polygon openings.
 
 [STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
-B-reps with retained rational weights. Polygon STEP import remains unsupported.
+B-reps with retained rational weights. [Strict polygon STEP import](nurbs-graph-polygon-step-import.md)
+now accepts unplaced full-source-UV plain convex polygons; holes, placed and
+trimmed polygon imports remain unsupported.

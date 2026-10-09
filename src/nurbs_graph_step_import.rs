@@ -281,7 +281,7 @@ impl Builder<'_> {
         Ok(())
     }
 }
-fn same_curve(a: &Curve, b: &Curve) -> bool {
+pub(crate) fn same_curve(a: &Curve, b: &Curve) -> bool {
     let (Curve::Nurbs(a), Curve::Nurbs(b)) = (a, b) else {
         return false;
     };
@@ -290,7 +290,7 @@ fn same_curve(a: &Curve, b: &Curve) -> bool {
         && a.weights() == b.weights()
         && a.control_points() == b.control_points()
 }
-fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
+pub(crate) fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
     let (Surface::Nurbs(a), Surface::Nurbs(b)) = (a, b) else {
         return Ok(false);
     };
@@ -301,7 +301,7 @@ fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
         && a.weights() == b.weights()
         && a.control_points() == b.control_points())
 }
-fn reindex(mut actual: Solid, expected: &Solid) -> Result<Solid> {
+pub(crate) fn reindex(mut actual: Solid, expected: &Solid) -> Result<Solid> {
     let mut vertex_map = Vec::new();
     let mut seen = BTreeSet::new();
     for vertex in &actual.vertices {
