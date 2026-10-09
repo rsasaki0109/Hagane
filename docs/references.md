@@ -506,3 +506,13 @@ homogeneous de Casteljau subdivision. Corner mismatch and the engineering
 floating-point allowance are separate implementation guards, not a formal
 interval arithmetic proof. No reference code, OCCT source, or new dependency
 is used; see [bounded surface display](nurbs-surface-tessellation.md).
+
+
+Tensor-product Bezier extraction raises each interior knot's multiplicity to
+its degree using the same independently implemented homogeneous insertion
+formula, then restricts controls to each nonzero parameter rectangle. The
+Bernstein coefficient bounds above apply per extracted patch; a shared global
+subdivision level preserves the tensor grid across nonuniform knot spans.
+Original-source evaluation supplies shared positions and C1 seam normals.
+Extraction rounding is handled by the engineering arithmetic allowance, not
+formal interval certification. No reference code or new dependency is used.

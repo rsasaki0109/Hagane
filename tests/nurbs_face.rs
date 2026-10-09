@@ -235,3 +235,35 @@ fn bounded_face_mesh_respects_orientation_and_rejects_dirty_boundaries() {
         .tessellate_bounded(0.01, 4096, Tolerance::default())
         .is_err());
 }
+#[test]
+fn bounded_multispan_face_preserves_orientation_and_rejects_c0_lines() {
+    let smooth = surface()
+        .insert_knot(0, 3., 1)
+        .unwrap()
+        .insert_knot(0, 5., 1)
+        .unwrap();
+    let a = NurbsFace::new(smooth.clone(), 1, Tolerance::default()).unwrap();
+    let b = NurbsFace::new(smooth, -1, Tolerance::default()).unwrap();
+    let ma = a
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    let mb = b
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    assert_eq!(ma.mesh.positions, mb.mesh.positions);
+    assert_eq!(ma.error_bounds, mb.error_bounds);
+    for (a, b) in ma.mesh.triangles.iter().zip(&mb.mesh.triangles) {
+        assert_eq!(*b, [a[0], a[2], a[1]]);
+    }
+    let c0 = NurbsFace::new(
+        surface().insert_knot(0, 4., 2).unwrap(),
+        1,
+        Tolerance::default(),
+    )
+    .unwrap();
+    c0.validate_boundary(Tolerance::default()).unwrap();
+    assert!(matches!(
+        c0.tessellate_bounded(0.01, 4096, Tolerance::default()),
+        Err(Error::Unsupported(_))
+    ));
+}

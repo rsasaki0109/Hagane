@@ -155,8 +155,8 @@ impl NurbsFace {
         }
         Ok(mesh)
     }
-    /// Approximate a single rational Bezier face with per-cell geometric bounds.
-    /// Faces with interior knots are explicitly unsupported by this first path.
+    /// Approximate a C1 rational surface face with per-cell geometric bounds.
+    /// Interior C0 knot lines remain unsupported by this display path.
     pub fn tessellate_bounded(
         &self,
         chord_error: f64,

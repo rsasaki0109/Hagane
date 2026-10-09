@@ -1,11 +1,12 @@
-# Bounded display of rational Bezier surfaces
+# Bounded display of rational spline surfaces
 
 `NurbsSurface::tessellate_bounded(error, max_cells)` now produces a conforming
-triangle mesh with a per-cell surface approximation bound for **single-span,
-positive-weight rational Bezier patches**. `NurbsFace::tessellate_bounded(error,
+triangle mesh with a per-cell surface approximation bound for **positive-weight
+rational Bezier patches and C1 multi-span surfaces**. `NurbsFace::tessellate_bounded(error,
 max_cells, tolerance)` first validates the retained rectangular B-rep boundary
-and applies face orientation to the result. Multi-span surfaces, arbitrary trims,
-cross-face stitching and generic NURBS solid tessellation remain unsupported.
+and applies face orientation to the result. [Exact patch extraction](nurbs-surface-extraction.md) extends this to nonuniform
+C1 multi-span sources. C0 knot lines, arbitrary trims, cross-face stitching and
+generic NURBS solid tessellation remain unsupported.
 
 ![Actual Rust/WASM bounded NURBS face display](nurbs-surface-bounded.png)
 
@@ -28,8 +29,8 @@ let face_display = face.tessellate_bounded(0.05, 16_384, tolerance)?;
 
 Triangle entries `2*i` and `2*i+1` correspond to cell `i`. The parameter
 rectangle is `[[u_start,u_end],[v_start,v_end]]`. Its diagonal joins the lower-left
-and upper-right corners. All grid vertices are evaluated from the original
-surface at their stored UV coordinates; adjacent cells share vertex indices.
+and upper-right corners. All patches share the same dyadic level; grid vertices are evaluated from the original
+source surface at their stored UV coordinates; adjacent cells share vertex indices.
 The face wrapper reverses triangle winding and normals for negative orientation.
 
 The chord error and control coordinates use the caller's consistent length
@@ -100,10 +101,14 @@ all cell bounds satisfy the requested error. This uniform-level policy avoids
 T-junctions within the patch; it may generate more cells than local adaptive
 refinement. There is no cross-face grid coordination.
 
-- Both axis control counts must equal `degree+1`; otherwise return `Unsupported`.
-  Existing degrees 1..16 and positive clamped weights remain required.
+- Exact Bezier extraction handles C1 multi-span source axes. Interior
+  multiplicity equal to degree is rejected even when the particular source is
+  geometrically smooth. Existing degrees 1..16 and positive clamped weights remain required.
+- Source knot-span product is checked against `max_cells` before extraction;
+  extraction has its own control/patch/cumulative-work preflight.
 - The error must be finite and positive; `max_cells` is 1..65,536.
-- At most eight subdivision levels are allowed: up to 256-by-256 cells.
+- At most eight subdivision levels are allowed: up to 256-by-256 cells per
+  original span rectangle, subject to the total cell limit.
 - Before allocating a level, `new_cell_count*(p+1)*(q+1)` must not exceed
   16,000,000 estimated control work units.
 - Exhausted resources or unrepresentable parameter midpoints return an error,
@@ -113,7 +118,7 @@ refinement. There is no cross-face grid coordination.
 
 These sampled normal/orientation checks are **not** a global regularity,
 nonfolding or manifold certificate. A singular patch may pass structural face
-validation and fail display. General trim loops, multi-span/C0 patches and
+validation and fail display. General trim loops, C0 patches and
 sewing adjacent rational faces remain future work.
 
 ## Native and browser demo
@@ -133,10 +138,16 @@ produces 1,024 cells and 2,048 triangles, with maximum bound approximately
 0.0339312 for a requested error of 0.05. Geometry, bounds, original cell ranges,
 selected analytic point/normal and section curves come from Rust/WASM.
 
+The browser fixture's 16,384-cell budget can reject demanding control/error
+combinations. Its refined height 60, weight 4, error 0.02 case fails explicitly;
+error 0.1 recovers. The previous accepted mesh remains visible after rejection.
+See [multi-span display](nurbs-surface-extraction.md) for this resource example.
+
 `sample_grid`, the older `nurbs_surface` CLI and `hagane_generate_surface`
 remain uniform-grid compatibility paths with **no whole-surface chord-error
-bound**. Bounded tessellation uses the original single-span retained face;
-refined multi-span section geometry does not silently broaden its domain.
+bound**. Bounded tessellation uses the original retained source face. The optional
+[refined multi-span fixture](nurbs-surface-extraction.md) now exercises four
+actual source spans through the same API.
 
 Tests independently check dense same-parameter surface-to-triangle differences
 and point-to-triangle distances, rational quarter cylinders, nonuniform weights,

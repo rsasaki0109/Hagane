@@ -76,10 +76,11 @@ This is a numerical angular guard, not a general surface-regularity certificate.
 
 ## Display sampling and demo
 
-The browser now uses [bounded single-span surface triangles](nurbs-surface-tessellation.md)
+The browser now uses [bounded single/C1 multi-span surface triangles](nurbs-surface-tessellation.md)
 through the retained `NurbsFace`. `tessellate_bounded(error,max_cells)` returns
-shared vertices, original UV cell ranges and per-cell Bernstein bounds. Multi-span
-surfaces remain explicitly unsupported by that method. The uniform API below
+shared vertices, original UV cell ranges and per-cell Bernstein bounds.
+[Bezier extraction](nurbs-surface-extraction.md) supports exact patches including
+C0, while the bounded mesh conservatively requires C1 interior knot lines. The uniform API below
 is retained for compatibility.
 
 
@@ -124,7 +125,7 @@ parameter changes, geometry changes, error controls and bound compliance.
 
 ## Remaining work
 
-Periodic axes, higher/mixed derivatives, bounded multi-span/trimmed surface display
+Periodic axes, higher/mixed derivatives, bounded C0/trimmed surface display
 meshing, arbitrary trimming, intersections, cross-face sewing and closed
 NURBS solids remain unimplemented. Rectangular open-face topology is supported
 by [NurbsFace](nurbs-face.md). Surface evaluation alone does

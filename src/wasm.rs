@@ -253,6 +253,22 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_surface_multispan(
+        height: f64,
+        weight: f64,
+        u: f64,
+        v: f64,
+        chord_error: f64,
+    ) -> i32 {
+        generate(crate::nurbs_surface_multispan_demo_json(
+            height,
+            weight,
+            u,
+            v,
+            chord_error,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_surface_bounded(
         height: f64,
         weight: f64,

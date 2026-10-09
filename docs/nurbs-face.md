@@ -90,9 +90,10 @@ recommended route for rational geometry.
 ## Display and supported operations
 
 `NurbsFace::tessellate_bounded(error, max_cells, tolerance)` now provides
-[bounded single-span surface display](nurbs-surface-tessellation.md), preserving
+[bounded single/C1 multi-span surface display](nurbs-surface-tessellation.md), preserving
 shared grid vertices and applying face orientation after boundary validation.
-Multi-span surfaces and arbitrary trims remain unsupported.
+C0 knot lines and arbitrary trims remain unsupported; [Bezier extraction](nurbs-surface-extraction.md)
+handles C1 multi-span sources.
 
 
 `NurbsFace::sample_grid(cells, tolerance)` validates the retained boundary and
@@ -128,7 +129,8 @@ open face with four vertices and four edges. Its 32-by-8 display grid emits
 whole-surface error bound.
 
 The **Surfaces** browser page now generates bounded triangles from the retained
-single-span open face (see [bounded display](nurbs-surface-tessellation.md)),
+single-span or optionally refined C1 multi-span open face (see
+[bounded display](nurbs-surface-tessellation.md)),
 with exact boundaries and selected sections evaluated by Rust/WASM. Tests cover
 actual topology types, canonical validation, shared vertices and UV identity,
 orientation reversal, exact placement, singular display failure, geometry enum
@@ -137,7 +139,7 @@ dispatch and explicit rejection of generic solid operations.
 ## Next steps
 
 Shared edges across adjacent NURBS patches, general trims and trim validation,
-patch regularity diagnostics, bounded multi-span/trimmed face meshing, sewing, intersections and
+patch regularity diagnostics, C0/trimmed face meshing, sewing, intersections and
 STEP interchange remain future work. This milestone supplies the first retained
 rectangular rational face and makes those next steps concrete; it does not
 complete general NURBS B-rep integration.

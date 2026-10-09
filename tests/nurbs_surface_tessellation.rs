@@ -76,9 +76,25 @@ fn verify(surface: &NurbsSurface, tess: &NurbsSurfaceMesh, error: f64) {
         }
     }
     assert!(edges.values().all(|n| *n == 1 || *n == 2));
-    let level = (tess.uv_ranges.len() as f64).sqrt() as usize;
-    assert_eq!(tess.mesh.positions.len(), (level + 1) * (level + 1));
-    assert_eq!(edges.values().filter(|n| **n == 1).count(), 4 * level);
+    let mut us = tess.uv_ranges.iter().flat_map(|r| r[0]).collect::<Vec<_>>();
+    let mut vs = tess.uv_ranges.iter().flat_map(|r| r[1]).collect::<Vec<_>>();
+    us.sort_by(f64::total_cmp);
+    vs.sort_by(f64::total_cmp);
+    us.dedup();
+    vs.dedup();
+    let nx = us.len() - 1;
+    let ny = vs.len() - 1;
+    assert_eq!(tess.uv_ranges.len(), nx * ny);
+    assert_eq!(tess.mesh.positions.len(), (nx + 1) * (ny + 1));
+    assert_eq!(edges.values().filter(|n| **n == 1).count(), 2 * (nx + ny));
+    let area = tess
+        .uv_ranges
+        .iter()
+        .map(|r| (r[0][1] - r[0][0]) * (r[1][1] - r[1][0]))
+        .sum::<f64>();
+    let domain = surface.domain();
+    let expected = (domain[0][1] - domain[0][0]) * (domain[1][1] - domain[1][0]);
+    assert!((area - expected).abs() < expected * 1e-12);
 }
 #[test]
 fn bilinear_warp_has_two_triangle_bound_and_conforming_mesh() {
@@ -173,7 +189,7 @@ fn rounded_original_parameter_midpoints_match_mesh() {
     assert!(surface.tessellate_bounded(1e-4, 65536).is_err());
 }
 #[test]
-fn rejects_invalid_multispan_singular_precision_and_resources() {
+fn rejects_invalid_c0_singular_precision_and_resources() {
     let s = warped(1., 1.);
     for error in [0., -1., f64::NAN, f64::INFINITY] {
         assert!(s.tessellate_bounded(error, 10).is_err());
@@ -263,4 +279,55 @@ fn sampled_fold_orientation_is_rejected() {
     )
     .unwrap();
     assert!(folded.tessellate_bounded(1., 1).is_err());
+}
+
+#[test]
+fn c1_nonuniform_spans_conform_and_preserve_rational_error_bounds() {
+    let mut points = Vec::new();
+    let mut weights = Vec::new();
+    for (p, w) in [
+        (Point3::new(1., 0., 0.), 1.),
+        (Point3::new(1., 1., 0.), std::f64::consts::FRAC_1_SQRT_2),
+        (Point3::new(0., 1., 0.), 1.),
+    ] {
+        for z in [0., 1., 2.] {
+            points.push(Point3::new(p.x, p.y, z));
+            weights.push(w);
+        }
+    }
+    let surface = NurbsSurface::new(
+        [2, 2],
+        [knots(2, 2., 6.), knots(2, -3., 5.)],
+        [3, 3],
+        points,
+        weights,
+    )
+    .unwrap()
+    .insert_knot(0, 2.75, 1)
+    .unwrap()
+    .insert_knot(0, 5., 1)
+    .unwrap()
+    .insert_knot(1, 0.25, 1)
+    .unwrap();
+    let mesh = surface.tessellate_bounded(0.02, 4096).unwrap();
+    verify(&surface, &mesh, 0.02);
+    assert!(mesh
+        .uv_ranges
+        .iter()
+        .all(|r| !((r[0][0] < 2.75 && r[0][1] > 2.75)
+            || (r[0][0] < 5. && r[0][1] > 5.)
+            || (r[1][0] < 0.25 && r[1][1] > 0.25))));
+    assert!(matches!(
+        surface.tessellate_bounded(0.02, 5),
+        Err(hagane::Error::Tessellation(
+            "surface knot span count exceeds cell limit"
+        ))
+    ));
+    // Every seam vertex is emitted once and uses original, unambiguous C1 normals.
+    for (index, p) in mesh.mesh.positions.iter().enumerate() {
+        if (p.z - (0.25 + 3.) / 4.).abs() < 1e-12 {
+            let n = mesh.mesh.normals[index];
+            assert!((n.x - p.x).abs() < 1e-12 && (n.y - p.y).abs() < 1e-12 && n.z.abs() < 1e-12);
+        }
+    }
 }

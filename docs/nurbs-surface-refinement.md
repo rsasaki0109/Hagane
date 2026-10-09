@@ -102,7 +102,7 @@ normal remain analytic kernel evaluations.
 The compatibility 24-by-24 `sample_grid` remains uniform display sampling with
 **no certified surface chord-error bound**. Bounded section curves do not
 establish bounded approximation of the entire surface. The browser now uses [bounded surface triangles](nurbs-surface-tessellation.md)
-on the original single-span retained face, independently of its refined section
+on the original single-span or optional refined C1 multi-span retained face, independently of its section
 curves. The compatibility grid and section bounds alone do not certify surface
 triangles or a closed solid.
 
@@ -114,7 +114,9 @@ checks exercise the same section and boundary demo.
 
 ## Remaining work
 
-Cross-face shared NURBS B-rep edges, general surface trims, bounded multi-span surface
+[Exact Bezier patch extraction](nurbs-surface-extraction.md) now retains original
+parameter rectangles and supports C1 multi-span bounded display.
+Cross-face shared NURBS B-rep edges, general surface trims, bounded C0/trimmed surface
 meshing, patch sewing, intersections and wider STEP interchange remain future
 work. Periodic axes and higher/mixed derivatives are also unsupported. Published
 mathematical provenance is recorded in [references](references.md); no OCCT

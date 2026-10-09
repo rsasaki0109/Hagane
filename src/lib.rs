@@ -101,3 +101,6 @@ pub use nurbs_surface_tessellation::*;
 
 mod nurbs_surface_bounded_demo;
 pub use nurbs_surface_bounded_demo::*;
+
+mod nurbs_surface_extraction;
+pub use nurbs_surface_extraction::*;

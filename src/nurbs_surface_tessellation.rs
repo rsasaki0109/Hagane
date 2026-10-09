@@ -1,4 +1,4 @@
-//! Bounded tensor-Bernstein display of single rational Bezier patches.
+//! Bounded tensor-Bernstein display of C1 tensor-product rational patches.
 use crate::nurbs::{project, weighted_controls};
 use crate::{Error, Mesh, NurbsSurface, Point3, Result, Vec3};
 
@@ -16,8 +16,8 @@ struct Cell {
     uv: [[f64; 2]; 2],
 }
 impl NurbsSurface {
-    /// Conforming bounded tessellation of a single positive rational Bezier
-    /// patch. Multi-span axes are unsupported. All cells share one dyadic level.
+    /// Conforming bounded tessellation of positive rational Bezier spans.
+    /// C0 interior knot lines are unsupported. All spans share one dyadic level.
     pub fn tessellate_bounded(
         &self,
         chord_error: f64,
@@ -29,10 +29,27 @@ impl NurbsSurface {
             ));
         }
         let [p, q] = self.degrees();
-        let [nu, nv] = self.control_counts();
-        if nu != p + 1 || nv != q + 1 {
-            return Err(Error::Unsupported(
-                "bounded surface tessellation requires one Bezier span per axis",
+        let counts = self.control_counts();
+        let [nu, nv] = [p + 1, q + 1];
+        let mut spans = [0usize; 2];
+        for axis in 0..2 {
+            let degree = self.degrees()[axis];
+            let knots = self.knots(axis)?;
+            spans[axis] = knots.windows(2).filter(|pair| pair[0] < pair[1]).count();
+            let mut i = degree + 1;
+            while i < counts[axis] {
+                let next = knots.partition_point(|v| *v <= knots[i]);
+                if next - i == degree {
+                    return Err(Error::Unsupported(
+                        "bounded surface tessellation requires C1 interior knot lines",
+                    ));
+                }
+                i = next;
+            }
+        }
+        if spans[0].saturating_mul(spans[1]) > max_cells {
+            return Err(Error::Tessellation(
+                "surface knot span count exceeds cell limit",
             ));
         }
         let scale = self
@@ -50,15 +67,20 @@ impl NurbsSurface {
             ));
         }
         let origin = self.control_points()[0];
-        let points = self
-            .control_points()
-            .iter()
-            .map(|v| *v - origin)
-            .collect::<Vec<_>>();
-        let mut cells = vec![Cell {
-            h: weighted_controls(&points, self.weights())?,
-            uv: self.domain(),
-        }];
+        let patches = self.bezier_patches()?;
+        let mut cells = Vec::with_capacity(patches.len());
+        for patch in patches {
+            let points = patch
+                .surface
+                .control_points()
+                .iter()
+                .map(|point| *point - origin)
+                .collect::<Vec<_>>();
+            cells.push(Cell {
+                h: weighted_controls(&points, patch.surface.weights())?,
+                uv: patch.parameter_ranges,
+            });
+        }
         for depth in 0..=8 {
             let mut bounds = Vec::with_capacity(cells.len());
             let mut all = true;

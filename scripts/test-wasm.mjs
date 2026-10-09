@@ -102,15 +102,15 @@ console.log('NURBS surfaces: 6 native/WASM grid/partial/normal/exact-section cas
 function boundedSurface(height,weight,u,v,error){const status=k.hagane_generate_surface_bounded(height,weight,u,v,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 function checkSurfaceMesh(data){
  assert.equal(data.triangles,2*data.cells);assert.equal(data.positions.length,data.cells*18);assert.equal(data.normals.length,data.positions.length);assert.equal(data.cell_bounds.length,data.cells);assert.equal(data.cell_ranges.length,data.cells);
- const grid=new Map(),rectangles=new Set(),side=Math.sqrt(data.cells);assert.ok(Number.isInteger(side));let area=0;
+ const patches=data.patch_ranges??[[[0,1],[0,1]]],grid=new Map(),rectangles=new Set(),side=Math.sqrt(data.cells/patches.length),counts=patches.map(()=>0);assert.ok(Number.isInteger(side));let area=0;
  for(let i=0;i<data.cells;i++){
-  const [[u0,u1],[v0,v1]]=data.cell_ranges[i],bound=data.cell_bounds[i];assert.ok(0<=u0&&u0<u1&&u1<=1&&0<=v0&&v0<v1&&v1<=1);assert.equal(u1-u0,1/side);assert.equal(v1-v0,1/side);assert.ok(Number.isInteger(u0*side)&&Number.isInteger(v0*side));assert.ok(Number.isFinite(bound)&&bound>0&&bound<=data.surface_error);const rect=JSON.stringify(data.cell_ranges[i]);assert.ok(!rectangles.has(rect));rectangles.add(rect);area+=(u1-u0)*(v1-v0);
+  const [[u0,u1],[v0,v1]]=data.cell_ranges[i],bound=data.cell_bounds[i];assert.ok(0<=u0&&u0<u1&&u1<=1&&0<=v0&&v0<v1&&v1<=1);const index=patches.findIndex(([[a,b],[c,d]])=>u0>=a&&u1<=b&&v0>=c&&v1<=d);assert.ok(index>=0);counts[index]++;const [[a,b],[c,d]]=patches[index];assert.ok(Math.abs((u1-u0)-(b-a)/side)<1e-14&&Math.abs((v1-v0)-(d-c)/side)<1e-14);for(const x of [(u0-a)*side/(b-a),(v0-c)*side/(d-c)])assert.ok(Math.abs(x-Math.round(x))<1e-10);assert.ok(Number.isFinite(bound)&&bound>0&&bound<=data.surface_error);const rect=JSON.stringify(data.cell_ranges[i]);assert.ok(!rectangles.has(rect));rectangles.add(rect);area+=(u1-u0)*(v1-v0);
   const uv=[[u0,v0],[u1,v0],[u1,v1],[u0,v0],[u1,v1],[u0,v1]],p=uv.map((_,j)=>data.positions.slice(i*18+j*3,i*18+j*3+3));
   uv.forEach(([u,v],j)=>{compareIntersection(p[j],surfacePoint(data.height,data.weight,u,v));const key=`${u},${v}`;if(grid.has(key))assert.deepEqual(p[j],grid.get(key));else grid.set(key,p[j]);const normal=data.normals.slice(i*18+j*3,i*18+j*3+3);assert.ok(Math.abs(Math.hypot(...normal)-1)<1e-12);assert.ok(normal[2]>0);});
   for(let triangle=0;triangle<2;triangle++){const [a,b,c]=p.slice(triangle*3,triangle*3+3),ab=b.map((x,j)=>x-a[j]),ac=c.map((x,j)=>x-a[j]);assert.ok(ab[0]*ac[1]-ab[1]*ac[0]>0);}
   for(let a=0;a<=4;a++)for(let b=0;b<=4;b++){const s=a/4,t=b/4,exact=surfacePoint(data.height,data.weight,u0+(u1-u0)*s,v0+(v1-v0)*t),linear=s>=t?p[0].map((x,j)=>(1-s)*x+(s-t)*p[1][j]+t*p[2][j]):p[0].map((x,j)=>(1-t)*x+s*p[2][j]+(t-s)*p[5][j]);assert.ok(Math.hypot(...exact.map((x,j)=>x-linear[j]))<=bound+1e-10,`surface cell=${i}, s=${s}, t=${t}`);}
  }
- assert.equal(area,1);assert.equal(grid.size,(side+1)**2);assert.equal(rectangles.size,side**2);
+ assert.ok(Math.abs(area-1)<1e-10);const nu=new Set(patches.flatMap(p=>p[0])).size-1,nv=new Set(patches.flatMap(p=>p[1])).size-1;assert.equal(grid.size,(nu*side+1)*(nv*side+1));assert.equal(rectangles.size,data.cells);counts.forEach(n=>assert.equal(n,side**2));
 }
 for(const args of [[0,1,0.5,0.5,0.05],[35,1,0.3,0.7,0.1],[-35,0.5,0.2,0.4,0.1],[60,4,0,1,0.1]]){
  const {status,result}=boundedSurface(...args);assert.equal(status,0,JSON.stringify(result));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface_bounded','--',...args.map(String)],{encoding:'utf8',maxBuffer:32*1024*1024,cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);checkSurfaceMesh(result);
@@ -118,6 +118,16 @@ for(const args of [[0,1,0.5,0.5,0.05],[35,1,0.3,0.7,0.1],[-35,0.5,0.2,0.4,0.1],[
 for(const error of [0,-1,NaN,Infinity,1e-14]){const {status,result}=boundedSurface(35,1,0.5,0.5,error);assert.equal(status,1);assert.equal(typeof result.error,'string');}
 assert.equal(boundedSurface(35,1,0.5,0.5,0.05).status,0);
 console.log('Bounded surfaces: 4 native/WASM mesh cases, independent tensor-to-triangle bounds, UV coverage, shared grid vertices, orientation and errors/recovery passed.');
+function multispanSurface(height,weight,u,v,error){const status=k.hagane_generate_surface_multispan(height,weight,u,v,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+const fourPatches=[[[0,0.35],[0,0.7]],[[0,0.35],[0.7,1]],[[0.35,1],[0,0.7]],[[0.35,1],[0.7,1]]];
+for(const args of [[0,1,0.5,0.5,0.1],[35,1,0.3,0.7,0.1],[-35,0.5,0.2,0.4,0.1],[60,4,0,1,0.1]]){
+ const {status,result}=multispanSurface(...args);assert.equal(status,0,JSON.stringify(result));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface_multispan','--',...args.map(String)],{encoding:'utf8',maxBuffer:32*1024*1024,cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);assert.equal(result.refined,true);assert.deepEqual(result.control_counts,[4,4]);assert.deepEqual(result.patch_ranges,fourPatches);checkSurfaceMesh(result);
+ const {status:sourceStatus,result:source}=boundedSurface(...args);assert.equal(sourceStatus,0);assert.equal(source.refined,false);assert.deepEqual(source.control_counts,[3,3]);assert.deepEqual(source.patch_ranges,[[[0,1],[0,1]]]);for(const field of ['point','du','dv','normal'])compareIntersection(result[field],source[field]);compareIntersection(result.brep.vertices,source.brep.vertices);
+}
+for(const error of [0,NaN,Infinity,1e-14])assert.equal(multispanSurface(35,1,0.5,0.5,error).status,1);
+assert.equal(multispanSurface(35,1,0.5,0.5,0.1).status,0);
+const exhaustedSurface=multispanSurface(60,4,0.5,0.5,0.02);assert.equal(exhaustedSurface.status,1);assert.match(exhaustedSurface.result.error,/cell|depth|limit/i);assert.equal(multispanSurface(60,4,0.5,0.5,0.1).status,0);
+console.log('Multi-span surfaces: 4 native/WASM refined shape cases, independent triangle bounds, per-patch UV coverage, identical shared seam vertices, original shape preservation and errors/recovery passed.');
 
 // Independent BigInt oracle: decode exact IEEE-754 coordinates to integers
 // in units of 2^-1074. No floating arithmetic in the reference determinant.

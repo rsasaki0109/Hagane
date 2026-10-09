@@ -706,3 +706,27 @@ distance tests cover rational/warped/degree16/tiny/nonunit cases and failures.
 
 The estimate remains **15–25%**, toward the **80%** target. See
 [bounded surface display](docs/nurbs-surface-tessellation.md).
+
+
+## Exact rational patch extraction and C1 multi-span bounded display
+
+`NurbsSurface::bezier_patches()` refines both tensor axes to Bezier multiplicity
+with a common homogeneous control-net weight scale and returns original-domain
+rational patches. Public extraction supports C0 boundaries and one-sided patch
+partials; bounded display conservatively requires C1 from knot multiplicity,
+even for smooth geometry represented with nominal C0 knots. Final control grid,
+patch count and cumulative refinement work are preflighted before refinement.
+
+The bounded surface API now uses all extracted nonuniform patches with one
+global dyadic level, shared original UV vertex indices and original-source
+analytic normals. Previous Bernstein/twist/corner error bounds remain; the
+engineering arithmetic guard accounts for extraction separately from the exact
+mathematical inequalities, without claiming formal interval proof. The source
+span product is checked against max_cells before extraction. The actual retained
+browser source can be refined from 3-by-3 to 4-by-4/four spans with shape preserved,
+and exposes patch count, ranges and bounded display metrics.
+
+C0 meshing, arbitrary trims, cross-face sharing/sewing, global regularity, closed
+NURBS solids, intersections and STEP remain incomplete. Legacy single-span and
+uniform compatibility APIs remain available. The estimate remains **15–25%**,
+toward the **80%** target. See [surface extraction](docs/nurbs-surface-extraction.md).
