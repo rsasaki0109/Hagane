@@ -41,7 +41,8 @@ Bounded circular arcs, ellipses, oblique bore rims, skew circular extrusion
 surfaces, height-graph cylinder trims and invalid topology return errors. No
 unsupported geometry is tessellated or replaced by an approximate CAD surface.
 [STEP import](step-import.md) supports a narrower planar/cylinder subset:
-convex solids, certified polygon prisms and complete cylinders/concentric tubes
+convex solids, certified polygon prisms with separated normal through bores,
+and complete cylinders/concentric tubes
 with aligned frames and explicit periodic seam pcurves. General curved import/
 export, uncertified nonconvex import, assemblies and rich product metadata remain
 future work. This is a supported subset, not general AP214 conformance.

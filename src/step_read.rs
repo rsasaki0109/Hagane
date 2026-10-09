@@ -1100,9 +1100,9 @@ pub fn import_step_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid>
 pub fn import_step_convex_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
     import_supported(input, tolerance, true, false)
 }
-/// Import the planar subset or one certified full circular cylinder/tube.
+/// Import the planar subset, a full cylinder/tube, or polygon stock with normal through bores.
 /// Circular imports require aligned zero-angle circle/plane/cylinder frames and
-/// two explicit seam pcurves. Partial circles and general bored solids fail.
+/// two explicit seam pcurves. Blind, partial-circle and general curved inputs fail.
 pub fn import_step_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
     import_supported(input, tolerance, false, true)
 }
@@ -1174,10 +1174,19 @@ fn import_supported(
             .iter()
             .any(|f| !matches!(f.surface, Surface::Plane { .. }))
     {
-        crate::circular_prism_validation::certify_validated_circular_prism(
+        match crate::circular_prism_validation::certify_validated_circular_prism(
             &builder.solid,
             tolerance,
-        )?;
+        ) {
+            Ok(_) => {}
+            Err(Error::Unsupported(_)) => {
+                crate::bored_prism_validation::certify_validated_bored_prism(
+                    &builder.solid,
+                    tolerance,
+                )?;
+            }
+            Err(error) => return Err(error),
+        }
     } else {
         match crate::booleans::convex_planes(
             &builder.solid,

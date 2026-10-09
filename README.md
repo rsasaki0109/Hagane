@@ -24,10 +24,11 @@ B-rep geometry with shared topology, periodic seam pcurves and mm units, from
 native Rust or the editable browser. Cylinders, tubes and through/blind bore
 workflows are supported; arcs, ellipses and general curved export remain
 unsupported. [STEP import](docs/step-import.md) reads one convex planar solid,
-a certified polygon prism with openings, or a complete cylinder/concentric tube
-with checked periodic seam pcurves, preserving topology and converting SI mm/m
+a certified polygon prism with polygon openings and disjoint normal through
+bores, or a complete cylinder/concentric tube with checked periodic seam
+pcurves, preserving topology and converting SI mm/m
 to mm. The `web/step.html` page imports, inspects and re-exports the validated
-solid. Partial arcs, other curved solids, uncertified nonconvex imports and
+solid. Blind bores, partial arcs, other curved solids, uncertified nonconvex imports and
 assemblies remain unsupported.
 
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change

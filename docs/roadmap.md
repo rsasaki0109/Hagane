@@ -484,6 +484,21 @@ available. Independent hand-authored metre geometry, three-scale/rigid round
 trips, empty tube interior, chord errors and near-inconsistent seam/radius/height
 rejection are verified natively; WASM report/byte parity, browser rotated-tube
 import/re-export/recovery and independent external reading are tested. Partial
-arcs, differently parameterized cylinders, bored planar stock and other mixed
-curved imports remain unsupported. The long-term estimate remains 15–25%, toward
+arcs and differently parameterized cylinders remain unsupported. Normal bores
+in planar prism stock are supported by the subsequent milestone below. The long-term estimate remains 15–25%, toward
 the 80% target. See the STEP import document for the bounded domain.
+
+## Through-bored polygon STEP import
+
+The reader now imports straight polygon stock with disjoint normal cylindrical
+through bores, including concavity, polygon openings, skew extrusion and rigid
+placement. A new public certificate verifies exact stock/tool boundary subsets,
+shared cap ownership and complete swept-footprint clearance, retaining the
+original imported B-rep. Native tests cover multiple tools, three scales,
+reordered/reversed shells, analytic metrics/material, near contacts and blind
+floor rejection. A closed local B-rep whose tool crosses a moving opening only
+at mid-depth is explicitly rejected. Native/WASM parity, real browser import/
+re-export/recovery and independent external reading are verified. Blind/opposing
+and oblique cuts, other mixed curved inputs and general Boolean results remain
+unsupported imports. The long-term estimate remains 15–25%, toward the 80% target;
+see the STEP import document for the precise supported domain.

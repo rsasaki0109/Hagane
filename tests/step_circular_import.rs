@@ -212,13 +212,13 @@ fn malformed_or_out_of_domain_circular_geometry_is_explicitly_rejected() {
     )
     .unwrap();
     assert!(certify_circular_prism(&source, t).is_err());
-    let bored = subtract_through_cylinder(
+    let bored = subtract_blind_cylinder(
         BoxSpec {
             min: Point3::new(-4., -4., 0.),
             size: Vec3::new(8., 8., 3.),
         },
         CylinderSpec {
-            base: Point3::new(0., 0., -1.),
+            base: Point3::new(0., 0., 1.),
             radius: 1.,
             height: 5.,
         },
