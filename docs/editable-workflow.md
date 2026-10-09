@@ -188,7 +188,46 @@ validation on newly built prefixes and final display tessellation are still
 performed; there is no incremental mesh cache or performance superiority claim.
 The session holds at most 257 prefix snapshots, with cumulative topology storage
 quadratic in the number of holes. It has no persistence across page reloads or
-undo-history cache. Native/WASM tests compare incremental results to fresh exact
+cache of older edit branches. Browser Undo/Redo stores documents separately and
+uses the session to reconstruct them. Native/WASM tests compare incremental results to fresh exact
 rebuilds, exercise failure recovery and reset, and verify the rebuilt IDs. Browser
 tests check the displayed counts, earlier/later edits, policy/stock invalidation
 and cached suffix removal.
+
+
+## Undo and redo browser edits
+
+![Actual browser Undo/Redo with an editable mixed-bore part](workflow-undo.png)
+
+**Undo** and **Redo** restore accepted operation documents, including dimensions,
+operation IDs, references and the selected bore. Dimension changes, adding or
+removing a bore, and successful JSON imports all participate. Each accepted
+input event is one edit; identical model reloads do not add duplicate entries.
+The editor keeps up to 64 previous accepted edits in memory. Old entries are
+removed when that limit is exceeded.
+
+A rejected geometry or document edit is never added to accepted history.
+While a rejected edit is visible, Undo first discards that edit and restores the
+current accepted model without stepping back another accepted edit. A second
+Undo steps through accepted history. Redo is disabled until the rejected edit
+is discarded or corrected. A failed edit preserves an existing redo branch;
+a new successful changed edit after Undo clears that branch.
+
+Restoration sends the saved document through the same pure Rust/WASM incremental
+session, validates it and regenerates its display mesh. The undo cursor moves
+only after successful restoration. It does not restore a mesh as a CAD model,
+skip supported-domain checks, or claim cached old geometry is available.
+Rebuild statistics describe this restoration's actual geometry work.
+
+With focus outside text, numeric or selection controls, **Ctrl/Cmd+Z** undoes
+and **Ctrl/Cmd+Shift+Z** or **Ctrl/Cmd+Y** redoes. Input controls retain their
+normal text-editing shortcuts. Buttons are available regardless of focus.
+Unloaded text in the JSON editor is not a model edit; use Load document to apply
+it. Undo/Redo does not restore camera position, unsubmitted JSON text or rejected
+input text. Download still saves only the current validated modeling document,
+not undo stacks. Reloading the page starts a new edit history.
+
+Browser regression checks exercise exact restored documents and volumes, bore
+selection, add/remove/import recovery, rejected edits without lost redo,
+branch replacement, keyboard focus and the 64-edit bound. Existing native/WASM
+session parity and geometry validation remain the modeling path.
