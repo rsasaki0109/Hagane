@@ -885,3 +885,14 @@ homogeneous de Casteljau restriction, graph Hessian bounds and an explicit
 circular trim chord allowance. Floating-point guards are engineering bounds,
 not interval certificates. Original code is MIT OR Apache-2.0; no dependency
 or license change. See [circular graph bores](nurbs-graph-circular-hole.md).
+
+### Rational circular-bore STEP export
+
+The original ISO 10303-21 / AP214 writer uses the public STEP entity semantics
+already cited above: `PCURVE`, `DEFINITIONAL_REPRESENTATION`,
+`B_SPLINE_CURVE_WITH_KNOTS`, `RATIONAL_B_SPLINE_CURVE` and
+`GEOMETRIC_REPRESENTATION_CONTEXT`. Rational UV curves retain their actual
+two-coordinate control points, weights and knots in context dimension two;
+three-dimensional geometry remains in millimetres. No fitting or mesh export
+is used. Independent tests decode the actual entities and compare the retained
+geometry and oriented shared topology. This adds no dependency or license change.

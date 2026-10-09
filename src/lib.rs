@@ -252,3 +252,5 @@ mod nurbs_graph_circular_hole_mass;
 pub use nurbs_graph_circular_hole::*;
 mod nurbs_graph_circular_hole_demo;
 pub use nurbs_graph_circular_hole_demo::*;
+mod nurbs_graph_circular_hole_step_demo;
+pub use nurbs_graph_circular_hole_step_demo::*;

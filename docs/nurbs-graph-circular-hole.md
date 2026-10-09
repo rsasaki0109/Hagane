@@ -106,8 +106,40 @@ rectangular graph family. Overlapping tools, blind circular cuts on the graph
 roof, side intersections, arbitrary curve/surface Booleans, shape repair and
 general rational trimmed-solid operations remain unsupported. Generic `Solid`
 validation, volume, classification and STEP export do not accept this new trim
-type; use the dedicated checked APIs for the implemented operations. STEP
-interchange and editable operation-document integration remain subsequent work.
+type; use the dedicated checked APIs for the implemented operations. Circular
+bore STEP import and editable operation-document integration remain subsequent work.
+
+## Exact STEP export
+
+The dedicated `body.export_step_mm(tolerance)` API writes the validated retained
+B-rep as ISO 10303-21 / AP214 in millimetres. It preserves degree-eight rational
+rim curves, the inward ruled spline walls and degree-two rational circular UV
+pcurves. UV controls have two coordinates in a two-dimensional representation
+context; their weights, knots and original parameter interval are unchanged.
+Each shared edge carries both surface pcurves. Clockwise inner cap wires retain
+their actual orientation without a second inversion in `FACE_BOUND`.
+
+```sh
+cargo run --locked --example nurbs_graph_circular_hole_step
+```
+
+The CLI returns JSON containing the STEP text and metadata, and accepts the same
+16-number array as the display demo. The browser page downloads the actual STEP
+for its last accepted model. Export does not tessellate, so a positive display
+error too small for the mesh budget does not prevent model-only export. Invalid
+geometry and malformed parameters still fail explicitly. Importing these new
+files through Hagane's existing restricted STEP readers remains unsupported.
+
+An optional external `occt-import-js` check read three actual exported fixtures:
+flat trimmed stock, a curved roof and signed-curvature trimmed/placed stock.
+Each produced one mesh with ten faces. Observed mesh-volume differences from
+the analytical material volumes were approximately 0.000706, 0.003019 and
+0.004578 mm³. Welding coordinates to a 1e-6 mm grid for this diagnostic gave
+two opposed uses of every mesh edge. These are interoperability observations,
+not certified external tessellation errors or exact external B-rep mass checks;
+the requested external deflection is not treated as a proven bound. The reader
+is an optional development oracle, with provenance/licenses recorded in the
+references; it is not a kernel dependency.
 
 The implementation is original Rust under MIT OR Apache-2.0. It adds no
 dependency; its mathematical provenance and existing dependency licenses are
@@ -115,8 +147,11 @@ recorded in [references](references.md).
 
 ## Verification
 
-All 751 native tests pass, together with `cargo fmt --all -- --check`,
+All 757 native tests pass, together with `cargo fmt --all -- --check`,
 `cargo clippy --all-targets --locked -- -D warnings`, the WebAssembly build,
 the full native/WASM parity suite and the full browser regression suite.
 The focused circular-bore browser checks also pass and produced the screenshot
 above from the actual implementation.
+STEP-specific checks independently decode retained spline geometry and shared
+topology, preserve existing affine export bytes, compare native/WASM STEP text
+byte for byte, and verify actual browser downloads and rejected-edit recovery.

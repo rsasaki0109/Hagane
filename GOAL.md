@@ -1269,9 +1269,9 @@ surface patches through original homogeneous Bernstein algebra, retaining
 actual weights and the curve parameter interval. Checked rational pcurves
 provide matching UV evaluation; unsupported analytic trim/area operations
 reject this boundary type. A degree-eight roof-circle path demo retains
-actual geometry and leaves the stock solid unchanged. Circular-bore topology,
-curved cap trims and their bounded display remain next prerequisites, not
-completed Boolean operations. The estimate remains **15–25%**, toward **80%**.
+actual geometry and leaves the stock solid unchanged. The separate checked
+circular-bore milestone below builds on this foundation. The estimate remains
+**15–25%**, toward **80%**.
 See [rational roof-circle paths](docs/nurbs-graph-rational-roof-circle.md).
 
 ## Closed circular graph bores
@@ -1283,6 +1283,16 @@ Volume, centroid and full world inertia use real-exact polynomial quadrature
 with cancellation and scaling guards. Display samples the actual B-rep;
 its bounds include circular trim approximation rather than claiming exact
 mesh coverage of the circle. General curved Booleans, blind graph bores,
-interacting tools, STEP interchange and editable document integration remain
+interacting tools, STEP import and editable document integration remain
 subsequent work. The estimate remains **15–25%**, toward **80%**.
 See [circular graph bores](docs/nurbs-graph-circular-hole.md).
+
+## Circular-bore STEP export
+
+Dedicated AP214 export retains the actual rational rims, ruled spline walls,
+two-dimensional rational cap pcurves and both uses of every shared edge.
+Model-only export does not depend on display tessellation. The web demo exports
+its accepted model; rejected edits preserve that state. Existing affine STEP
+output remains unchanged. Circular-bore STEP import, general curved Booleans
+and editable operation-document integration remain unsupported. The estimate
+remains **15–25%**, toward **80%**.

@@ -102,9 +102,36 @@ impl Writer {
             .iter()
             .map(|p| self.point(*p))
             .collect::<Result<Vec<_>>>()?;
+        self.curve_definition(curve, &points)
+    }
+    fn curve_uv(&mut self, curve: &NurbsCurve) -> Result<usize> {
+        if curve
+            .control_points()
+            .iter()
+            .any(|p| !p.finite() || p.z != 0.)
+            || curve.weights().iter().any(|w| !w.is_finite() || *w <= 0.)
+        {
+            return Err(Error::InvalidInput(
+                "STEP rational UV curve must have finite planar controls and positive weights",
+            ));
+        }
+        let points = curve
+            .control_points()
+            .iter()
+            .map(|p| {
+                self.entity(format!(
+                    "CARTESIAN_POINT('',({},{}))",
+                    number(p.x),
+                    number(p.y)
+                ))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        self.curve_definition(curve, &points)
+    }
+    fn curve_definition(&mut self, curve: &NurbsCurve, points: &[usize]) -> Result<usize> {
         let (mults, knots) = knot_data(curve.knots())?;
         if curve.weights().iter().all(|w| *w == 1.) {
-            self.entity(format!("B_SPLINE_CURVE_WITH_KNOTS('',{},({}),.UNSPECIFIED.,.F.,.F.,({mults}),({knots}),.UNSPECIFIED.)",curve.degree(),refs(&points)))
+            self.entity(format!("B_SPLINE_CURVE_WITH_KNOTS('',{},({}),.UNSPECIFIED.,.F.,.F.,({mults}),({knots}),.UNSPECIFIED.)",curve.degree(),refs(points)))
         } else {
             let weights = curve
                 .weights()
@@ -113,7 +140,7 @@ impl Writer {
                 .map(number)
                 .collect::<Vec<_>>()
                 .join(",");
-            self.entity(format!("(BOUNDED_CURVE() B_SPLINE_CURVE({},({}),.UNSPECIFIED.,.F.,.F.) B_SPLINE_CURVE_WITH_KNOTS(({mults}),({knots}),.UNSPECIFIED.) CURVE() GEOMETRIC_REPRESENTATION_ITEM() RATIONAL_B_SPLINE_CURVE(({weights})) REPRESENTATION_ITEM(''))",curve.degree(),refs(&points)))
+            self.entity(format!("(BOUNDED_CURVE() B_SPLINE_CURVE({},({}),.UNSPECIFIED.,.F.,.F.) B_SPLINE_CURVE_WITH_KNOTS(({mults}),({knots}),.UNSPECIFIED.) CURVE() GEOMETRIC_REPRESENTATION_ITEM() RATIONAL_B_SPLINE_CURVE(({weights})) REPRESENTATION_ITEM(''))",curve.degree(),refs(points)))
         }
     }
     fn surface(&mut self, surface: &NurbsSurface) -> Result<usize> {
@@ -156,6 +183,13 @@ impl Writer {
         }
     }
     fn pcurve(&mut self, surface: usize, pcurve: &PCurve, context: usize) -> Result<usize> {
+        if let PCurve::Nurbs(curve) = pcurve {
+            let geometry = self.curve_uv(curve)?;
+            let representation = self.entity(format!(
+                "DEFINITIONAL_REPRESENTATION('',(#{geometry}),#{context})"
+            ))?;
+            return self.entity(format!("PCURVE('',#{surface},#{representation})"));
+        }
         let PCurve::Affine { origin, direction } = pcurve else {
             return Err(Error::Unsupported(
                 "graph STEP export requires retained affine pcurves",
@@ -203,6 +237,11 @@ fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
             ));
         };
         controls = controls.saturating_add(s.control_points().len());
+        for coedge in face.wires.iter().flat_map(|w| &w.coedges) {
+            if let PCurve::Nurbs(curve) = &coedge.pcurve {
+                controls = controls.saturating_add(curve.control_points().len());
+            }
+        }
     }
     if controls > 65536 {
         return Err(Error::Unsupported(
@@ -367,6 +406,15 @@ impl NurbsGraphPolygonHoledSolid {
 impl NurbsGraphPolygonMultiHoledSolid {
     /// Export the actual multiply-holed manifold B-rep as AP214 in millimetres.
     /// Every cap wire, shared edge, affine pcurve and rational weight is retained.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
+
+impl NurbsGraphCircularHoledSolid {
+    /// Export the actual circular bore, including degree-eight rational rims and
+    /// degree-two rational UV pcurves, as AP214 with three-dimensional lengths in mm.
     pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
         self.validate(tol)?;
         write(self.brep(), tol)
