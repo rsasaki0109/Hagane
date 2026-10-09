@@ -157,3 +157,9 @@ mod nurbs_graph_classification_demo;
 pub use nurbs_graph_classification_demo::*;
 
 mod nurbs_graph_classification;
+
+mod nurbs_graph_section_demo;
+pub use nurbs_graph_section_demo::*;
+
+mod nurbs_graph_vertical_section;
+pub use nurbs_graph_vertical_section::*;

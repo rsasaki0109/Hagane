@@ -81,7 +81,7 @@ pub fn nurbs_graph_hole_point_demo_json(
         "polynomial graph solid with rectangular through hole",
     ))
 }
-fn query_source(
+pub(crate) fn query_source(
     dimensions: [f64; 3],
     bulge: f64,
     error: f64,

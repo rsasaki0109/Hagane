@@ -670,3 +670,12 @@ graph membership is used only after separation from retained boundary patches.
 This independent MIT OR Apache-2.0 implementation adds no dependency and uses
 no OCCT source. Floating-point guards are engineering bounds, not interval
 arithmetic certificates.
+
+Source-vertical graph sections use the canonical polynomial roof height at
+original UV coordinates and the actual retained cap evaluations and partials.
+Rigid frames preserve physical height parameters and outward crossing normals.
+The minimum distance from an infinite source-vertical line to a finite vertical
+wall is its horizontal distance to the wall's rectangular base segment; endpoint
+clamping and hypot preserve Euclidean corner contacts. Section metadata is
+checked against the canonical retained construction. This independent
+MIT OR Apache-2.0 implementation adds no dependency or OCCT source.

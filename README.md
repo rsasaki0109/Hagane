@@ -64,6 +64,9 @@ and boundary-conforming display; general curved Booleans remain unsupported.
 [Scoped graph-solid point queries](docs/nurbs-graph-classification.md) distinguish
 material, the through-opening void and Euclidean boundary bands directly from
 retained NURBS faces. Unresolved tolerance thresholds return explicit errors.
+[Source-vertical sections](docs/nurbs-graph-section.md) return physical-height
+material intervals, cap crossing points and outward normals for this family,
+including empty opening lines and explicit wall-contact rejection.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

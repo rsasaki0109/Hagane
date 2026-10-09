@@ -912,3 +912,14 @@ conditions return explicit errors rather than guesses; generic NURBS shell
 classification remains unsupported. Native and browser queries share Rust.
 See [scoped graph classification](nurbs-graph-classification.md).
 The long-term estimate remains **15–25%**, toward the **80%** target.
+
+## Scoped source-vertical material sections
+
+Graph-solid wrappers now expose exact source-height material intervals and
+retained cap crossing points, outward normals and face IDs. Source-UV
+restriction, rigid placement and opening/exterior empty sections are supported.
+Euclidean rectangle-perimeter contact checks reject ambiguous wall lines;
+invalid metadata and insufficient precision return errors. The browser overlays
+the actual query line, material segment and crossing normals, sharing Rust
+with native JSON examples. Arbitrary directions and general NURBS intersection
+remain unsupported. See [source-vertical sections](nurbs-graph-section.md).

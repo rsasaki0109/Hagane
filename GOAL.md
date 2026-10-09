@@ -1000,3 +1000,14 @@ browser point inputs and a world-coordinate marker. This is groundwork for
 curved-solid queries; it does not implement general NURBS classification or
 Boolean intersections. The long-term estimate remains **15–25%**, toward the
 **80%** target. See [query contract](docs/nurbs-graph-classification.md).
+
+## Scoped source-vertical material sections
+
+Retained graph solids now return physical-height material intervals, cap
+crossing events with actual normals and exact finite line segments at original
+source UV coordinates. Restricted/placed sources and through-opening voids
+share native/WASM and browser queries. Euclidean wall contact, invalid source
+certificates and unresolved precision return explicit errors. Arbitrary line
+directions and general curved-solid intersections remain unsupported. The
+estimate remains **15–25%**, toward **80%**.
+See [source-vertical sections](docs/nurbs-graph-section.md).
