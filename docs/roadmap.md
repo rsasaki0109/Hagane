@@ -1099,3 +1099,17 @@ actual moment overflow; fixed-tolerance public demos reject oversized geometry
 before evaluation. Optional report errors remain separate from shape data. Generic rational-shell inertia, variable density and principal axes
 remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [polygon inertia](nurbs-graph-polygon-inertia.md).
+
+## Multiple convex polygon graph openings
+
+A new typed polynomial graph family supports 1–4 strictly convex, separated
+through openings with at most 64 total corners. Actual cap inner wires and
+inward walls retain closed genus-g B-reps. Positive material integration
+provides volume, centroid and world inertia; bounded display follows actual
+faces and excludes every opening. Exact collinear input-vertex edge splits
+handle aligned holes without nudging geometry. Native and WASM share an
+editable Web demo and checked count-based numeric transport. Pair contact,
+overlap/nesting and unresolved precision/resource requests are rejected.
+STEP import/export and point queries for this new family remain pending.
+The estimate remains **15–25%**, toward **80%**.
+See [multiple polygon openings](nurbs-graph-polygon-multi-hole.md).

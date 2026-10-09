@@ -222,3 +222,12 @@ mod nurbs_graph_roof_section_demo;
 pub use nurbs_graph_roof_section_demo::*;
 
 mod nurbs_graph_polygon_inertia;
+
+mod nurbs_graph_polygon_multi_hole;
+pub use nurbs_graph_polygon_multi_hole::*;
+
+mod nurbs_graph_polygon_multi_hole_display;
+mod nurbs_graph_polygon_multi_hole_mass;
+
+mod nurbs_graph_polygon_multi_hole_demo;
+pub use nurbs_graph_polygon_multi_hole_demo::*;

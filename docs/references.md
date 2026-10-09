@@ -801,3 +801,13 @@ quadrature (public NIST DLMF https://dlmf.nist.gov/3.5#v) integrates through
 degree thirteen in each mapped coordinate, including the degree-twelve h³
 term and the Duffy Jacobian. Original Pure Rust code; no new dependency,
 external CAD implementation source or license change.
+
+### Multiple polygon graph openings
+
+Physical supporting-edge separation reuses convex half-space geometry;
+multiply connected planar material regions have Euler characteristic 1-g
+and n+2g-2 triangles without Steiner vertices. Exact collinear edge splits,
+oriented boundary/interior incidence and nonintersection checks preserve
+that embedding. Positive Duffy/Gauss polynomial properties and world inertia
+reuse the references above. The existing Rust earcutr dependency remains ISC;
+no new library, external CAD source or license change is introduced.

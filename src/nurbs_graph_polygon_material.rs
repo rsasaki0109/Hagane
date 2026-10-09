@@ -1,4 +1,4 @@
-//! Checked straight-UV annulus decomposition; no three-dimensional mesh Boolean.
+//! Checked straight-UV multiply connected material decomposition; no three-dimensional mesh Boolean.
 use crate::*;
 use std::collections::{BTreeMap, BTreeSet};
 type EdgeUses = BTreeMap<(usize, usize), Vec<(usize, usize, usize)>>;
@@ -12,22 +12,49 @@ pub(crate) fn material_triangles(
     physical: [f64; 2],
     margin: f64,
 ) -> Result<NurbsGraphMaterial> {
-    let points: Vec<_> = outer.iter().chain(inner).copied().collect();
-    let n = points.len();
-    if !(3..=16).contains(&outer.len()) || !(3..=16).contains(&inner.len()) {
+    material_regions(outer, &[inner.to_vec()], physical, margin)
+}
+pub(crate) fn material_regions(
+    outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
+    physical: [f64; 2],
+    margin: f64,
+) -> Result<NurbsGraphMaterial> {
+    if !(3..=16).contains(&outer.len())
+        || !(1..=4).contains(&holes.len())
+        || holes.iter().any(|h| !(3..=16).contains(&h.len()))
+    {
         return Err(Error::Unsupported(
-            "polygon annulus needs 3 through 16 corners per wire",
+            "polygon material supports 1 through 4 openings with 3 through 16 corners per wire",
         ));
     }
+    let n = outer.len() + holes.iter().map(Vec::len).sum::<usize>();
+    if n > 64 {
+        return Err(Error::Unsupported(
+            "polygon material exceeds 64 total corners",
+        ));
+    }
+    let points: Vec<_> = outer
+        .iter()
+        .chain(holes.iter().flatten())
+        .copied()
+        .collect();
+    let mut offsets = Vec::new();
+    let mut offset = outer.len();
+    for hole in holes {
+        offsets.push(offset);
+        offset += hole.len();
+    }
+    let target = n + 2 * holes.len() - 2;
     let coords: Vec<_> = points.iter().flat_map(|p| p.iter().copied()).collect();
-    let indices = earcutr::earcut(&coords, &[outer.len()], 2)
+    let indices = earcutr::earcut(&coords, &offsets, 2)
         .map_err(|_| Error::InvalidTopology("UV annulus triangulation failed"))?;
     let bad = || {
         Error::InvalidTopology(
             "UV annulus decomposition is not a conforming connected oriented material region",
         )
     };
-    if indices.len() > 3 * n || indices.len() % 3 != 0 {
+    if indices.len() > 3 * target || indices.len() % 3 != 0 {
         return Err(bad());
     }
     let mut triangles = Vec::new();
@@ -44,15 +71,60 @@ pub(crate) fn material_triangles(
         };
         triangles.push(tri);
     }
+    // Earcut can remove aligned bridge vertices. Split a triangle edge only
+    // at an existing EXACTLY collinear input vertex in its open segment. The
+    // positive subtriangles cover precisely the same triangle, without nudging
+    // coordinates or creating Steiner geometry. Final embedding checks remain.
+    for _ in 0..n * n {
+        let mut split = None;
+        'find: for (id, tri) in triangles.iter().enumerate() {
+            for edge in 0..3 {
+                let a = tri[edge];
+                let b = tri[(edge + 1) % 3];
+                let c = tri[(edge + 2) % 3];
+                for (v, p) in points.iter().enumerate() {
+                    if tri.contains(&v) {
+                        continue;
+                    }
+                    if orient2d(points[a], points[b], *p)? == Orientation::Collinear
+                        && p[0] >= points[a][0].min(points[b][0])
+                        && p[0] <= points[a][0].max(points[b][0])
+                        && p[1] >= points[a][1].min(points[b][1])
+                        && p[1] <= points[a][1].max(points[b][1])
+                        && *p != points[a]
+                        && *p != points[b]
+                    {
+                        split = Some((id, [a, v, c], [v, b, c]));
+                        break 'find;
+                    }
+                }
+            }
+        }
+        let Some((id, first, second)) = split else {
+            break;
+        };
+        if triangles.len() >= target
+            || orient2d(points[first[0]], points[first[1]], points[first[2]])?
+                != Orientation::CounterClockwise
+            || orient2d(points[second[0]], points[second[1]], points[second[2]])?
+                != Orientation::CounterClockwise
+        {
+            return Err(bad());
+        }
+        triangles[id] = first;
+        triangles.push(second);
+    }
     // Earcut may omit a rounded nearly-collinear bridge triangle. Restore
     // only a bounded, uniquely oriented triangular gap, without moving a vertex.
-    for _ in triangles.len()..n {
+    for _ in triangles.len()..target {
         let mut expected_boundary = BTreeSet::new();
         for i in 0..outer.len() {
             expected_boundary.insert((i, (i + 1) % outer.len()));
         }
-        for i in 0..inner.len() {
-            expected_boundary.insert((outer.len() + (i + 1) % inner.len(), outer.len() + i));
+        for (hole, offset) in holes.iter().zip(&offsets) {
+            for i in 0..hole.len() {
+                expected_boundary.insert((offset + (i + 1) % hole.len(), offset + i));
+            }
         }
         let mut uses: EdgeUses = BTreeMap::new();
         for (id, tri) in triangles.iter().enumerate() {
@@ -203,10 +275,12 @@ pub(crate) fn material_triangles(
         let j = (i + 1) % outer.len();
         boundary.insert((i.min(j), i.max(j)), (i, j));
     }
-    for i in 0..inner.len() {
-        let a = outer.len() + i;
-        let b = outer.len() + (i + 1) % inner.len();
-        boundary.insert((a.min(b), a.max(b)), (b, a));
+    for (hole, offset) in holes.iter().zip(&offsets) {
+        for i in 0..hole.len() {
+            let a = offset + i;
+            let b = offset + (i + 1) % hole.len();
+            boundary.insert((a.min(b), a.max(b)), (b, a));
+        }
     }
     let mut adjacency = vec![Vec::new(); triangles.len()];
     for (edge, uses) in &edges {
@@ -222,7 +296,9 @@ pub(crate) fn material_triangles(
             adjacency[uses[1].2].push(uses[0].2);
         }
     }
-    if boundary.keys().any(|e| !edges.contains_key(e)) || n + triangles.len() != edges.len() {
+    if boundary.keys().any(|e| !edges.contains_key(e))
+        || n + triangles.len() + holes.len() - 1 != edges.len()
+    {
         return Err(bad());
     }
     let keys: Vec<_> = edges.keys().copied().collect();

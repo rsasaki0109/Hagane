@@ -70,13 +70,18 @@ implementation and checked bounded numeric transport.
 Tests check independent analytic moments, thin material frames, full cap
 triangle exclusion from the opening, closed oriented mesh incidence, inward
 cavity normals, actual surface approximation, corruption and rejected inputs.
-Contact, CW/nonconvex wires, multiple openings, arbitrary curved Boolean tools,
+Contact, CW/nonconvex wires, arbitrary curved Boolean tools,
 polygon-hole STEP import and splitting holed
 stock remain unsupported. Existing affine UV precision guards also apply;
 near-axis directions and unresolved arithmetic are rejected rather than snapped.
 
 Checked [centroidal inertia](nurbs-graph-polygon-inertia.md) now integrates
 positive material triangles without subtracting large stock/hole tensors.
+
+This wrapper remains a single-opening API. The separate
+[multiple-opening family](nurbs-graph-polygon-multi-hole.md) supports 1–4
+separated convex openings with positive material properties and a Web demo;
+its STEP and point-query APIs remain pending.
 
 The captured placed pentagonal-stock demo above has 11 faces and 27 shared
 edges, with 30,276 display triangles. Its volume is 39,249.800 mm³ (rounded

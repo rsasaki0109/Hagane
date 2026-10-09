@@ -169,6 +169,11 @@ openings. The browser displays uniform-density results in mm⁵.
 closed NURBS B-reps with annular caps, positive volume integration and an editable
 Web demo. This remains a scoped operation; general curved Booleans are incomplete.
 
+[Multiple convex polygon openings](docs/nurbs-graph-polygon-multi-hole.md) now
+support 1–4 separated through openings in a closed NURBS graph B-rep, with
+checked volume, centroid, inertia and an editable browser demo. The new family's
+STEP I/O and point queries are pending.
+
 ## Quick start
 
 Install [Rust with rustup](https://rustup.rs/), then:

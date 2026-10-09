@@ -49,8 +49,9 @@ construction tolerance: very large dimensions are rejected by the existing
 curve-identity precision guard before inertia evaluation. They do not claim
 to display these oversized parts. Failed shape edits preserve the accepted part.
 
-This extends the scoped polynomial graph family. Multiple openings, generic
-`Solid` inertia, principal-axis extraction and variable density remain
+The separate [multiple-opening family](nurbs-graph-polygon-multi-hole.md) now
+provides the same property type for 1–4 separated convex openings.
+Generic `Solid` inertia, principal-axis extraction and variable density remain
 unsupported. See [graph inertia conventions](nurbs-graph-inertia.md),
 [polygon parts](nurbs-graph-polygon.md) and
 [polygon openings](nurbs-graph-polygon-hole.md).
