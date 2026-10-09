@@ -31,8 +31,10 @@ excluding a singular point of the source surface.
 diagonal rational curves and same-parameter pcurves, with an editable
 `web/surface-edge.html` demo. General trimmed faces and closed NURBS solids
 remain unsupported. [Convex UV surface wires](docs/nurbs-surface-wire.md)
-now connect lifted edges with shared closing vertices; polygon interior display
-remains future work.
+now connect lifted edges with shared closing vertices.
+[Convex UV polygon faces](docs/nurbs-polygon-face.md) retain those boundaries as
+open faces and provide scoped affine-patch interior display; curved polygon
+interior display remains unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

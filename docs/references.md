@@ -571,3 +571,8 @@ This is a mathematical convexity criterion, not an OCCT implementation or a
 borrowed triangulation routine. Lifted geometry uses the Bernstein composition
 already recorded above. No new dependencies or third-party code were added;
 original implementation remains MIT OR Apache-2.0.
+
+Convex polygon-face display uses independent fan triangulation on the UV
+polygon and affine invariance, with an engineering reserve for residual bilinear
+twist and coordinate arithmetic. No third-party code or new dependencies were
+introduced (MIT OR Apache-2.0 original code).

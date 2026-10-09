@@ -125,3 +125,6 @@ pub use nurbs_surface_edge_demo::*;
 
 mod nurbs_surface_wire;
 pub use nurbs_surface_wire::*;
+
+mod nurbs_polygon_face;
+pub use nurbs_polygon_face::*;

@@ -752,3 +752,13 @@ Native tests and an executable example verify rational edge/surface identity
 and bounded boundary display. Face interior tessellation, arbitrary trim loops,
 sewing and closed NURBS solids remain incomplete. The long-term estimate remains
 15–25%, toward 80%. See [surface wires](nurbs-surface-wire.md).
+
+## Convex UV polygon faces
+
+`NurbsPolygonFace` retains an open face with an exact convex straight-UV outer
+wire, shared boundary topology and an independent signed face orientation.
+A scoped affine-patch interior tessellator and OBJ example verify analytic area
+and normals. Curved face construction is supported, while curved interior display
+returns an explicit unsupported error. General trims, holes, sewing and closed
+rational solids remain incomplete. The estimate remains 15–25%, toward 80%.
+See [polygon faces](nurbs-polygon-face.md).
