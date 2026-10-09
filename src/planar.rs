@@ -52,7 +52,7 @@ fn checked_distance(a: P2, b: P2) -> Result<f64> {
     }
     Ok(result)
 }
-fn segments_distance(a: P2, b: P2, c: P2, d: P2) -> Result<f64> {
+pub(crate) fn segments_distance(a: P2, b: P2, c: P2, d: P2) -> Result<f64> {
     if segments_intersect2d(a, b, c, d)? {
         return Ok(0.0);
     }

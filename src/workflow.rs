@@ -1,7 +1,7 @@
 //! Versioned, deliberately scoped editable modeling intent, not B-rep interchange.
 use crate::operations::{
     apply_checked_prism_bore, checked_box_bore_tools, checked_polygon_region_prism_stock,
-    polygon_region_bore_clearance,
+    swept_polygon_region_bore_clearance,
 };
 use crate::*;
 use serde::{Deserialize, Serialize};
@@ -276,16 +276,16 @@ impl WorkflowDocument {
                     "Only bores may follow the initial stock operation.",
                 ));
             };
-            if direction.x != 0. || direction.y != 0. {
+            if (direction.x != 0. || direction.y != 0.) && *mode == WorkflowBoreMode::Blind {
                 let mut d = diagnostic(
                     "unsupported_skew_bore",
                     Some(id),
                     Some("offset"),
-                    "Bore operations on a skew extrusion are not yet supported.",
+                    "Blind bores on a skew extrusion are not yet supported.",
                 );
                 d.category = "unsupported";
                 d.suggestion =
-                    Some("Remove the bore nodes or set both extrusion offsets to zero.".into());
+                    Some("Use a through bore or set both extrusion offsets to zero.".into());
                 return Err(d);
             }
             if ids.contains(&id.as_str()) || input != ids.last().unwrap() {
@@ -311,8 +311,15 @@ impl WorkflowDocument {
                 return Err(d);
             }
             let (clearance, profile_hole) = if let Some(profile) = &profile {
-                polygon_region_bore_clearance(&profile.outer, &profile.holes, *center, *radius)
-                    .map_err(|e| geometry_error(e, id))?
+                swept_polygon_region_bore_clearance(
+                    &profile.outer,
+                    &profile.holes,
+                    *center,
+                    *radius,
+                    [direction.x, direction.y],
+                    size.z,
+                )
+                .map_err(|e| geometry_error(e, id))?
             } else {
                 (
                     (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius,

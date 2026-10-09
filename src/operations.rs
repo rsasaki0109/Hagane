@@ -1044,3 +1044,101 @@ pub(crate) fn polygon_region_bore_clearance(
     }
     Ok((gap, boundary))
 }
+
+/// Exact skew polygon stock minus disjoint world-Z through cylinders.
+/// The lower profile is at Z=-height/2; its upper copy is translated by offset.
+/// The complete swept tool footprint must clear every profile boundary by
+/// more than ten linear tolerances. Blind and side-crossing tools are rejected.
+pub fn subtract_skew_polygon_region_prism_bores(
+    outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
+    height: f64,
+    offset: [f64; 2],
+    bores: &[BoxBore],
+    t: Tolerance,
+) -> Result<Solid> {
+    let stock = checked_polygon_region_prism_stock(outer, holes, height, t)?;
+    if offset.iter().any(|v| !v.is_finite()) || bores.len() > 256 {
+        return Err(Error::InvalidInput(
+            "invalid skew offset or excessive tool count",
+        ));
+    }
+    for bore in bores {
+        if bore.depth.is_some() {
+            return Err(Error::Unsupported("skew stock supports only through bores"));
+        }
+        if swept_polygon_region_bore_clearance(
+            outer,
+            holes,
+            bore.center,
+            bore.radius,
+            offset,
+            height,
+        )?
+        .0 <= 10. * t.linear
+        {
+            return Err(Error::Unsupported(
+                "through tool crosses or nearly touches a swept stock boundary",
+            ));
+        }
+    }
+    let tools = checked_box_bore_tools(stock, bores, t)?;
+    let mut solid = extrude_polygon(
+        &PolygonProfile {
+            origin: Point3::new(0., 0., -height / 2.),
+            outer: outer.to_vec(),
+            holes: holes.to_vec(),
+        },
+        Vec3::new(offset[0], offset[1], height),
+        t,
+    )?;
+    for (&bore, tool) in bores.iter().zip(tools) {
+        apply_checked_prism_bore(&mut solid, stock, bore, tool, t)?;
+    }
+    solid.validate(t)?;
+    Ok(solid)
+}
+// In moving profile coordinates, a fixed world-Z tool traces c -> c-offset.
+// Segment/boundary separation certifies every intermediate cross section,
+// including concave re-entry and an opening crossed between two valid caps.
+// Divide by a slope bound to obtain a conservative physical wall clearance.
+pub(crate) fn swept_polygon_region_bore_clearance(
+    outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
+    center: [f64; 2],
+    radius: f64,
+    offset: [f64; 2],
+    height: f64,
+) -> Result<(f64, Option<usize>)> {
+    if offset == [0., 0.] {
+        return polygon_region_bore_clearance(outer, holes, center, radius);
+    }
+    let end = [center[0] - offset[0], center[1] - offset[1]];
+    let factor = 1_f64.hypot(offset[0].hypot(offset[1]) / height);
+    if end.iter().any(|v| !v.is_finite()) || !factor.is_finite() || height <= 0. {
+        return Err(Error::Unsupported("unresolved swept tool coordinates"));
+    }
+    let mut result = polygon_region_bore_clearance(outer, holes, center, radius)?;
+    let endpoint = polygon_region_bore_clearance(outer, holes, end, radius)?;
+    if endpoint.0 < result.0 {
+        result = endpoint;
+    }
+    for (index, boundary) in std::iter::once(outer)
+        .chain(holes.iter().map(Vec::as_slice))
+        .enumerate()
+    {
+        for i in 0..boundary.len() {
+            let gap = crate::planar::segments_distance(
+                center,
+                end,
+                boundary[i],
+                boundary[(i + 1) % boundary.len()],
+            )? - radius;
+            if gap < result.0 {
+                result = (gap, index.checked_sub(1));
+            }
+        }
+    }
+    result.0 /= factor;
+    Ok(result)
+}

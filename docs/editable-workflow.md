@@ -410,16 +410,50 @@ the stock node; Undo/Redo, downloads, local autosave and reload preserve directi
 and profile openings. Applying profile edits also preserves offsets. Switching
 to Box explicitly replaces skew stock with a centered box and clears offsets.
 
-**Bore nodes on skew stock are unsupported.** Any nonzero offset, including one
-smaller than linear tolerance, returns `unsupported_skew_bore` at the bore ID;
-it is not snapped to zero and an existing bore is not silently dropped. Remove
-bore nodes to create skew stock, or set both offsets to zero to use the supported
-vertical-stock bores. Failed combinations preserve the previous validated model,
-accepted cache and local save. This does not claim vertical cylinder clipping
-against moving/skew side walls or a general Boolean operation.
+## Z-axis through bores in skew stock
 
-Tests cover exact volume, bounds, opening/material/boundary probes, closed
-oriented topology, display volume, tiny/large geometry, native/WASM equality,
-direction invalidation and failure cache recovery. Browser checks cover direction
-editing, profile application, Undo/Redo, JSON download/reload and rejecting a
-bore before returning to supported zero-offset cuts.
+![Actual skew stock with a cylindrical through bore](workflow-skew-bores.png)
+
+Skew polygon roots now accept disjoint `through` bore nodes. The bore center is
+fixed in **world XY**, not translated along the stock direction. Both caps
+retain exact circular inner wires, shared with the inward-facing Z-axis cylinder
+wall and its seam pcurves. The existing cylinder/plane intersection constructs
+the actual cap rims; display meshes are generated only after B-rep validation.
+The [skew-bore example](workflow-skew-bores-example.json) works with the native
+workflow example and browser document import. Its exact volume is
+`(4408 - 16*pi) * 24` cubic millimetres.
+
+The entire cylinder footprint must stay inside material throughout the Z span.
+In moving profile coordinates its center traces the segment from `center` to
+`center - offset`. Exact filtered segment-contact predicates and minimum
+segment/boundary distances test that complete path against every polygon edge,
+including openings and concave boundaries. Two clear cap footprints alone do
+not certify a valid cut: an opening or notch can cross the tool midway.
+A conservative slope factor `sqrt(1 + (length(offset)/height)^2)` converts the
+footprint gap into a lower bound on physical side-wall clearance. That bound
+must exceed ten linear tolerances. Pairwise circle separation also exceeds ten
+linear tolerances. `side_clearance` and `profile_hole_clearance` retain the bore
+ID, measured lower bound and required margin; profile hole indices are zero-based.
+This certificate is conservative and may reject valid tightly spaced geometry.
+
+The native operation is `subtract_skew_polygon_region_prism_bores(outer, holes,
+height, offset, bores, tolerance)`. Existing limits remain 256 total profile
+corners, 64 openings and 256 disjoint tools. Stock height must be positive and
+resolved; tool radii, centers and offsets must be finite. Through nodes omit
+`depth`. The same operation is evaluated incrementally by the document session;
+adding/editing a bore reuses unchanged prefixes, while changing an offset
+invalidates the root. Undo/Redo, downloads, autosave and validated reload retain
+both direction and machining nodes.
+
+**Blind bores on skew stock remain unsupported**, returning
+`unsupported_skew_bore` at the bore ID. Side-crossing, touching, overlapping and
+unresolved tools are rejected, with no replacement mesh or accepted-cache
+change. Offsets smaller than tolerance are not snapped to zero. General curved
+Boolean operations, side-entry and oblique-axis tools remain outside this
+workflow's domain.
+
+Native tests cover independently calculated volume, shared topology/pcurves,
+material/hole/rim classification, sagitta-bounded display, tiny/large geometry,
+contacts, concave re-entry and an opening crossing between clear caps.
+Native/WASM comparisons check full reports and meshes; browser checks exercise
+through-bore editing, Undo/Redo, download/reload, blind rejection and recovery.

@@ -81,6 +81,12 @@ claim compatibility with its data structures or APIs.
   leave a simple polygon or enter a polygon opening without crossing a boundary
   (see the
   [Jordan curve theorem](https://en.wikipedia.org/wiki/Jordan_curve_theorem)).
+  Skew-stock tool containment follows a moving-coordinate change: the fixed
+  world-axis center traces a segment in the translated profile. Endpoint
+  classification plus segment/boundary separation certifies the complete swept
+  disk. Dividing the gap by the wall-slope norm gives a conservative physical
+  clearance bound by Cauchy–Schwarz. Implemented independently from these
+  mathematical facts, with no copied code and no additional dependencies.
   Exact removed volumes use circular area times depth; display volume bounds
   use the inscribed circle chord/sagitta bound. No reference code or prose was copied.
 - Rational B-spline formulas and homogeneous evaluation: Les Piegl and Wayne

@@ -34,8 +34,10 @@ profiles, including concave boundaries and disjoint polygon profile openings,
 followed by disjoint mixed blind/through
 bores. Profile/height edits, incremental suffix rebuilding, Undo/Redo and saved
 document restoration share the same Rust kernel. Optional XY offsets now
-create skew polygon stock with openings in the same editable history; following
-bore nodes on skew stock are explicitly rejected rather than approximated.
+create skew polygon stock with openings and disjoint Z-axis through bores in
+the same editable history. Complete swept-footprint clearance checks reject
+side/opening crossings even when both caps are clear. Blind bores on skew stock
+remain explicitly unsupported.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel

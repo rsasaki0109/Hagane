@@ -63,17 +63,17 @@ fn skew_history_preserves_exact_volume_openings_and_closure_across_scales() {
     }
 }
 #[test]
-fn skew_tools_and_invalid_offsets_are_rejected_without_committing_or_ignoring() {
+fn skew_blind_tools_and_invalid_offsets_are_rejected_without_committing_or_ignoring() {
     let mut session = WorkflowSession::new();
     let mut doc = fixture();
     session.rebuild(&doc).unwrap();
     doc.operations.push(WorkflowOperation::Bore {
         id: "bore-1".into(),
         input: "extrusion-1".into(),
-        mode: WorkflowBoreMode::Through,
+        mode: WorkflowBoreMode::Blind,
         center: [0., 0.],
         radius: 4.,
-        depth: None,
+        depth: Some(8.),
     });
     let diagnostic = session.rebuild(&doc).unwrap_err();
     assert_eq!(diagnostic.code, "unsupported_skew_bore");
