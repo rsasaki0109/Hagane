@@ -117,12 +117,12 @@ impl WorkflowDocument {
         )
         .map_err(|e| diagnostic("invalid_tolerance", None, Some("tolerance"), e.to_string()))?;
         let t = policy.absolute();
-        if self.operations.is_empty() || self.operations.len() > 2 {
+        if self.operations.is_empty() || self.operations.len() > 257 {
             let mut d = diagnostic(
                 "unsupported_history",
                 None,
                 Some("operations"),
-                "History must contain one box followed by at most one bore.",
+                "History must contain one box followed by at most 256 chained bores.",
             );
             d.category = "unsupported";
             return Err(d);
@@ -171,133 +171,166 @@ impl WorkflowDocument {
         if self.operations.len() == 1 {
             return Ok(base);
         }
-        let WorkflowOperation::Bore {
-            id,
-            input,
-            mode,
-            center,
-            radius,
-            depth,
-        } = &self.operations[1]
-        else {
-            return Err(diagnostic(
-                "unsupported_history",
-                None,
-                Some("operations"),
-                "Only a bore may follow the box in version 1.",
-            ));
-        };
-        if id == box_id || input != box_id {
-            return Err(diagnostic(
+        let mut bores: Vec<BoxBore> = Vec::new();
+        let mut ids = vec![box_id.as_str()];
+        for operation in &self.operations[1..] {
+            let WorkflowOperation::Bore {
+                id,
+                input,
+                mode,
+                center,
+                radius,
+                depth,
+            } = operation
+            else {
+                return Err(diagnostic(
+                    "unsupported_history",
+                    None,
+                    Some("operations"),
+                    "Only bores may follow the initial box.",
+                ));
+            };
+            if ids.contains(&id.as_str()) || input != ids.last().unwrap() {
+                return Err(diagnostic(
                 "invalid_reference",
                 Some(id),
                 Some("input"),
-                "Bore ID must be unique and input must reference the preceding box.",
+                "Bore ID must be unique and input must reference the immediately preceding operation.",
             ));
-        }
-        if center.iter().any(|v| !v.is_finite()) || !radius.is_finite() || *radius <= 10. * t.linear
-        {
-            let mut d = diagnostic(
-                "invalid_bore_parameters",
-                Some(id),
-                Some("radius_or_center"),
-                "Radius and center must be finite; radius must exceed ten linear tolerances.",
-            );
-            d.suggestion = Some("Enter a positive, resolved radius and finite XY center.".into());
-            return Err(d);
-        }
-        let clearance = (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius;
-        let required = 10. * t.linear;
-        if !clearance.is_finite() {
-            let mut d = diagnostic(
-                "finite_clearance",
-                Some(id),
-                Some("center_or_radius"),
-                "Clearance cannot be represented with finite binary64 arithmetic.",
-            );
-            d.category = "numerically_unresolved";
-            return Err(d);
-        }
-        if clearance <= required {
-            let mut d = diagnostic(
-                "side_clearance",
-                Some(id),
-                Some("center_or_radius"),
-                "The circular tool reaches or nearly touches a box side.",
-            );
-            d.category = "unsupported";
-            d.measured_clearance = Some(clearance);
-            d.required_clearance = Some(required);
-            d.suggestion=Some("Reduce the radius, move the center inward, or enlarge the box until clearance exceeds the required margin.".into());
-            return Err(d);
-        }
-        match mode {
-            WorkflowBoreMode::Through => {
-                if depth.is_some() {
-                    return Err(diagnostic(
-                        "unexpected_depth",
-                        Some(id),
-                        Some("depth"),
-                        "Through bores must omit depth; it is not silently ignored.",
-                    ));
-                }
-                subtract_through_cylinder(
-                    b,
-                    CylinderSpec {
-                        base: Point3::new(center[0], center[1], -size.z),
-                        radius: *radius,
-                        height: 2. * size.z,
-                    },
-                    t,
-                )
-                .map_err(|e| geometry_error(e, id))
             }
-            WorkflowBoreMode::Blind => {
-                let depth = depth
-                    .filter(|v| v.is_finite() && *v > required)
-                    .ok_or_else(|| {
-                        diagnostic(
+            if center.iter().any(|v| !v.is_finite())
+                || !radius.is_finite()
+                || *radius <= 10. * t.linear
+            {
+                let mut d = diagnostic(
+                    "invalid_bore_parameters",
+                    Some(id),
+                    Some("radius_or_center"),
+                    "Radius and center must be finite; radius must exceed ten linear tolerances.",
+                );
+                d.suggestion =
+                    Some("Enter a positive, resolved radius and finite XY center.".into());
+                return Err(d);
+            }
+            let clearance =
+                (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius;
+            let required = 10. * t.linear;
+            if !clearance.is_finite() {
+                let mut d = diagnostic(
+                    "finite_clearance",
+                    Some(id),
+                    Some("center_or_radius"),
+                    "Clearance cannot be represented with finite binary64 arithmetic.",
+                );
+                d.category = "numerically_unresolved";
+                return Err(d);
+            }
+            if clearance <= required {
+                let mut d = diagnostic(
+                    "side_clearance",
+                    Some(id),
+                    Some("center_or_radius"),
+                    "The circular tool reaches or nearly touches a box side.",
+                );
+                d.category = "unsupported";
+                d.measured_clearance = Some(clearance);
+                d.required_clearance = Some(required);
+                d.suggestion=Some("Reduce the radius, move the center inward, or enlarge the box until clearance exceeds the required margin.".into());
+                return Err(d);
+            }
+            for (previous, previous_id) in bores.iter().zip(&ids[1..]) {
+                let gap = (center[0] - previous.center[0]).hypot(center[1] - previous.center[1])
+                    - radius
+                    - previous.radius;
+                if !gap.is_finite() || gap <= required {
+                    let mut d = diagnostic(
+                        "bore_clearance",
+                        Some(id),
+                        Some("center_or_radius"),
+                        format!(
+                            "Tool overlaps, touches or nearly touches operation {previous_id}."
+                        ),
+                    );
+                    d.category = if gap.is_finite() {
+                        "unsupported"
+                    } else {
+                        "numerically_unresolved"
+                    };
+                    d.measured_clearance = gap.is_finite().then_some(gap);
+                    d.required_clearance = Some(required);
+                    d.suggestion = Some(
+                        "Move the center or reduce radii so the XY footprints are separated."
+                            .into(),
+                    );
+                    return Err(d);
+                }
+            }
+            match mode {
+                WorkflowBoreMode::Through => {
+                    if depth.is_some() {
+                        return Err(diagnostic(
+                            "unexpected_depth",
+                            Some(id),
+                            Some("depth"),
+                            "Through bores must omit depth; it is not silently ignored.",
+                        ));
+                    }
+                    bores.push(BoxBore {
+                        center: *center,
+                        radius: *radius,
+                        depth: None,
+                    });
+                }
+                WorkflowBoreMode::Blind => {
+                    let depth = depth
+                        .filter(|v| v.is_finite() && *v > required)
+                        .ok_or_else(|| {
+                            diagnostic(
                             "invalid_depth",
                             Some(id),
                             Some("depth"),
                             "Blind bores require finite depth greater than ten linear tolerances.",
                         )
-                    })?;
-                let floor = size.z - depth;
-                if floor <= required {
-                    let mut d = diagnostic(
+                        })?;
+                    let floor = size.z - depth;
+                    if floor <= required {
+                        let mut d = diagnostic(
                         "floor_thickness",
                         Some(id),
                         Some("depth"),
                         "The requested blind depth breaks through or leaves an unresolved floor.",
                     );
-                    d.category = "unsupported";
-                    d.measured_clearance = Some(floor);
-                    d.required_clearance = Some(required);
-                    d.suggestion=Some("Reduce depth or increase box height so the remaining floor exceeds the required margin.".into());
-                    return Err(d);
-                }
-                subtract_blind_cylinder(
-                    b,
-                    CylinderSpec {
-                        base: Point3::new(center[0], center[1], size.z / 2. - depth),
+                        d.category = "unsupported";
+                        d.measured_clearance = Some(floor);
+                        d.required_clearance = Some(required);
+                        d.suggestion=Some("Reduce depth or increase box height so the remaining floor exceeds the required margin.".into());
+                        return Err(d);
+                    }
+                    bores.push(BoxBore {
+                        center: *center,
                         radius: *radius,
-                        height: depth + size.z,
-                    },
-                    t,
-                )
-                .map_err(|e| geometry_error(e, id))
+                        depth: Some(depth),
+                    });
+                }
             }
+            ids.push(id.as_str());
         }
+        subtract_box_bores(b, &bores, t).map_err(|e| geometry_error(e, ids.last().unwrap()))
     }
-    fn candidate_segments(&self) -> Vec<[[f64; 3]; 2]> {
-        let [WorkflowOperation::Box { size, .. }, WorkflowOperation::Bore {
+    fn candidate_segments(&self, failed: Option<&str>) -> Vec<[[f64; 3]; 2]> {
+        let Some(WorkflowOperation::Box { size, .. }) = self.operations.first() else {
+            return vec![];
+        };
+        let Some(WorkflowOperation::Bore {
             center,
             radius,
             depth,
             mode,
             ..
-        }] = self.operations.as_slice()
+        }) = self
+            .operations
+            .iter()
+            .find(|op| matches!(op,WorkflowOperation::Bore{id,..} if Some(id.as_str())==failed))
         else {
             return vec![];
         };
@@ -366,11 +399,11 @@ pub fn evaluate_workflow_json(input: &str) -> Result<String> {
                 d.operation_id = None;
                 d.field = Some("display");
                 d.code = "display_rejected";
-                json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(),"attempted_document":document})
+                json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(d.operation_id.as_deref()),"attempted_document":document})
             }
         },
         Err(d) => {
-            json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(),"attempted_document":document})
+            json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(d.operation_id.as_deref()),"attempted_document":document})
         }
     };
     serde_json::to_string(&report).map_err(|_| Error::InvalidInput("workflow serialization failed"))

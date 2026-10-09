@@ -20,7 +20,8 @@ its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
-box/bore dimensions, inspect measured failure diagnostics, correct rejected
+box/bore dimensions, add/select/remove multiple mixed through/blind cuts,
+inspect measured side/floor/hole-pair diagnostics, correct rejected
 edits and save/load a versioned operation document in the browser. Open
 `web/workflow.html` after the normal WASM build. This is a scoped exact workflow,
 not a general parametric CAD system.

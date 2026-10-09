@@ -12,7 +12,9 @@ editing, typed failure diagnostics, visible failed candidate tools and versioned
 JSON operation-document round trips shared by native and WASM. A
 [first scoped implementation](editable-workflow.md) now passes browser
 failure/correction and round-trip tests, exact B-rep validation and independent
-geometry checks for a box plus optional through/blind bore. Broader histories,
+geometry checks for a box plus up to 256 disjoint mixed through/blind bores,
+including selection, editing, deletion/relinking and pair-clearance diagnostics.
+Other operation types,
 incremental rebuilding and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.

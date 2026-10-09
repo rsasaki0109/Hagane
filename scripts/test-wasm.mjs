@@ -577,3 +577,10 @@ console.log('Editable workflow: versioned document round trips, independent volu
 
 const extremeWorkflow=structuredClone(workflowFixture);extremeWorkflow.operations[1].center=[Number.MAX_VALUE,0];extremeWorkflow.operations[1].radius=Number.MAX_VALUE;
 assert.equal(workflow(extremeWorkflow).diagnostic.category,'numerically_unresolved');assert.equal(workflow(extremeWorkflow).diagnostic.code,'finite_clearance');
+
+const mixedWorkflow=structuredClone(workflowFixture);mixedWorkflow.operations.push({kind:'bore',id:'bore-2',input:'bore-1',mode:'through',center:[24,0],radius:4});
+const mixedFile=new URL('../target/workflow-mixed-parity.json',import.meta.url);
+try {writeFileSync(mixedFile,JSON.stringify(mixedWorkflow));const nativeMixed=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','workflow','--',mixedFile.pathname],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(workflow(mixedWorkflow),nativeMixed);} finally {unlinkSync(mixedFile);}
+const mixedReport=workflow(mixedWorkflow);assert.equal(mixedReport.ok,true);assert.ok(Math.abs(mixedReport.mesh.volume-(115200-Math.PI*(196*16+16*24)))<1e-8);assert.equal(mixedReport.mesh.faces,9);assert.deepEqual(workflow(mixedReport.document),mixedReport);
+mixedWorkflow.operations[2].center=[18,0];const mixedFailure=workflow(mixedWorkflow);assert.equal(mixedFailure.diagnostic.code,'bore_clearance');assert.equal(mixedFailure.diagnostic.operation_id,'bore-2');assert.equal('mesh' in mixedFailure,false);
+console.log('Mixed operation history: both cuts retained, analytic volume, topology, round trips and second-operation contact diagnostics passed.');

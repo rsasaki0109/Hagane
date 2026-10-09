@@ -497,6 +497,15 @@ try {
  if(process.argv.includes('--capture-workflow'))await page.screenshot({path:new URL('../docs/workflow.png',import.meta.url).pathname});
  await page.locator('#width').fill('100');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(144000-Math.PI*196*12))<1e-8);await page.locator('#width').fill('80');
  await page.locator('canvas').focus();const workflowCanvas=await page.locator('canvas').screenshot();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),workflowCanvas);
+ await page.locator('#add-bore').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);assert.equal(await page.locator('#selected-bore').inputValue(),'2');
+ assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*(196*12+16*24)))<1e-8);
+ const multiSaved=await page.locator('#document').inputValue();
+ await page.locator('#cx').fill('18');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.code),'bore_clearance');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.operation_id),'bore-2');assert.match(await page.locator('#result-state').textContent(),/previous valid/);
+ await page.locator('#cx').fill('24');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);
+ await page.locator('#selected-bore').selectOption('1');assert.equal(await page.locator('#radius').inputValue(),'14');await page.locator('#depth').fill('16');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*(196*16+16*24)))<1e-8);
+ await page.locator('#document').fill(multiSaved);await page.locator('#load').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.document.operations.length),3);
+ if(process.argv.includes('--capture-workflow-multiple'))await page.screenshot({path:new URL('../docs/workflow-multiple.png',import.meta.url).pathname});
+ await page.locator('#remove-bore').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.document.operations[1].input),'box-1');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*16*24))<1e-8);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: editable operation history, side/floor diagnostics, previous valid result, corrections, download/import round trips, modes and exact metrics passed.');
  console.log('Browser: 31 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');

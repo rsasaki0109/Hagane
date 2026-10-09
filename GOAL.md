@@ -19,7 +19,10 @@ See [product direction](docs/product-direction.md) for target outcomes, evaluati
 and the next acceptance milestone.
 
 The first scoped editable box-and-bore workflow now implements operation
-history, structured diagnostics and versioned document round trips.
+history, structured diagnostics and versioned document round trips. Multiple
+disjoint mixed through/blind machining nodes can be added, selected, edited and
+removed while preserving remaining cuts. Full rebuilds remain the current
+evaluation strategy; incremental rebuilding is still a next milestone.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
@@ -431,10 +434,12 @@ preset 30 are verified. Mixed-face, intersecting and oblique blind tools remain
 unsupported. See [six-face blind bores](docs/box-face-blind-bore.md).
 
 The first [editable workflow](docs/editable-workflow.md) rebuilds a centered box
-with an optional through/blind bore from schema-versioned millimetre JSON.
-Typed operation IDs, measured side/floor diagnostics, rejected-tool outlines,
+with up to 256 mixed disjoint through/blind bores from schema-versioned
+millimetre JSON.
+Typed operation IDs, measured side/floor/pair diagnostics, rejected-tool outlines,
 clearly labeled previous valid results, correction and save/load round trips
-are verified natively, in WASM and in browser tests. This is a two-node supported
-history, not general parametric CAD or persistent topology naming. Broader
-histories, incremental rebuilds and comparative user-value measurements remain
-next work.
+are verified natively, in WASM and in browser tests. Added nodes can be selected,
+edited and removed with reference relinking; earlier edits preserve later cuts.
+This remains a scoped linear box-and-bore history, not general parametric CAD
+or persistent topology naming. Other operation types, incremental rebuilds and
+comparative user-value measurements remain next work.

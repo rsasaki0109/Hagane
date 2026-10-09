@@ -235,64 +235,10 @@ pub fn subtract_through_cylinders(
     cutters: &[CylinderSpec],
     t: Tolerance,
 ) -> Result<Solid> {
-    check_box(b, t)?;
-    if cutters.len() > 256 {
-        return Err(Error::Unsupported(
-            "at most 256 independent bores are supported",
-        ));
-    }
-    let max = b.min + b.size;
-    for (i, &c) in cutters.iter().enumerate() {
-        check_cylinder(c, t)?;
-        if c.base.z >= b.min.z - t.linear || c.base.z + c.height <= max.z + t.linear {
-            return Err(Error::Unsupported(
-                "cylinder must strictly overhang both box caps",
-            ));
-        }
-        if c.base.x - c.radius <= b.min.x + t.linear
-            || c.base.y - c.radius <= b.min.y + t.linear
-            || c.base.x + c.radius >= max.x - t.linear
-            || c.base.y + c.radius >= max.y - t.linear
-        {
-            return Err(Error::Unsupported("hole must be strictly inside box sides; tangencies and intersections are unsupported"));
-        }
-        for prev in &cutters[..i] {
-            if (c.base.x - prev.base.x).hypot(c.base.y - prev.base.y)
-                <= c.radius + prev.radius + t.linear
-            {
-                return Err(Error::Unsupported(
-                    "bores overlap, nest, touch or nearly touch",
-                ));
-            }
-        }
-    }
+    check_through_bores(b, cutters, t)?;
     let mut s = make_box(b, t)?;
     for &c in cutters {
-        let base = Point3::new(c.base.x, c.base.y, b.min.z);
-        let cutter_surface = Surface::Cylinder {
-            center: c.base,
-            radius: c.radius,
-            height: c.height,
-        };
-        let lower = cylinder_plane(&cutter_surface, &s.shell.faces[0].surface, t)?;
-        let upper = cylinder_plane(&cutter_surface, &s.shell.faces[1].surface, t)?;
-        let bottom = circle_edge(&mut s, lower);
-        let top = circle_edge(&mut s, upper);
-        for (fi, e) in [(0, bottom), (1, top)] {
-            let w = cap_ring(&s, e, &s.shell.faces[fi].surface, false);
-            s.shell.faces[fi].wires.push(w);
-        }
-        cylindrical_face(
-            &mut s,
-            bottom,
-            top,
-            CylinderSpec {
-                base,
-                radius: c.radius,
-                height: b.size.z,
-            },
-            -1,
-        );
+        append_through_bore(&mut s, b, c, t)?;
     }
     s.validate(t)?;
     Ok(s)
@@ -311,72 +257,10 @@ pub fn subtract_blind_cylinders(
     cutters: &[CylinderSpec],
     t: Tolerance,
 ) -> Result<Solid> {
-    check_box(b, t)?;
-    if cutters.len() > 256 {
-        return Err(Error::Unsupported(
-            "at most 256 independent blind bores are supported",
-        ));
-    }
-    let max = b.min + b.size;
-    for (i, &c) in cutters.iter().enumerate() {
-        check_cylinder(c, t)?;
-        if c.base.z - b.min.z <= 10. * t.linear
-            || max.z - c.base.z <= 10. * t.linear
-            || c.base.z + c.height - max.z <= 10. * t.linear
-        {
-            return Err(Error::Unsupported(
-                "blind tool requires an interior resolved floor and strict top overhang",
-            ));
-        }
-        if c.base.x - c.radius - b.min.x <= 10. * t.linear
-            || c.base.y - c.radius - b.min.y <= 10. * t.linear
-            || max.x - c.base.x - c.radius <= 10. * t.linear
-            || max.y - c.base.y - c.radius <= 10. * t.linear
-        {
-            return Err(Error::Unsupported(
-                "blind bore must stay strictly inside box sides",
-            ));
-        }
-        for previous in &cutters[..i] {
-            if (c.base.x - previous.base.x).hypot(c.base.y - previous.base.y)
-                - c.radius
-                - previous.radius
-                <= 10. * t.linear
-            {
-                return Err(Error::Unsupported(
-                    "blind bores overlap, nest, touch or nearly touch",
-                ));
-            }
-        }
-    }
+    check_blind_bores(b, cutters, t)?;
     let mut solid = make_box(b, t)?;
     for &c in cutters {
-        let bottom = ring(&mut solid, c.base, c.radius);
-        let top = ring(&mut solid, Point3::new(c.base.x, c.base.y, max.z), c.radius);
-        let wire = cap_ring(&solid, top, &solid.shell.faces[1].surface, false);
-        solid.shell.faces[1].wires.push(wire);
-        cylindrical_face(
-            &mut solid,
-            bottom,
-            top,
-            CylinderSpec {
-                base: c.base,
-                radius: c.radius,
-                height: max.z - c.base.z,
-            },
-            -1,
-        );
-        let surface = Surface::Plane {
-            origin: c.base,
-            u: Vec3::new(1., 0., 0.),
-            v: Vec3::new(0., 1., 0.),
-        };
-        let wire = cap_ring(&solid, bottom, &surface, true);
-        solid.shell.faces.push(Face {
-            surface,
-            orientation: 1,
-            wires: vec![wire],
-        });
+        append_blind_bore(&mut solid, b, c);
     }
     solid.validate(t)?;
     Ok(solid)
@@ -757,4 +641,226 @@ pub fn extrude_polygon_in_frame(
     tol: Tolerance,
 ) -> Result<Solid> {
     extrude_polygon(profile, frame.local_vector(world_direction), tol)?.transformed(frame, tol)
+}
+
+fn append_through_bore(s: &mut Solid, b: BoxSpec, c: CylinderSpec, t: Tolerance) -> Result<()> {
+    let base = Point3::new(c.base.x, c.base.y, b.min.z);
+    let cutter_surface = Surface::Cylinder {
+        center: c.base,
+        radius: c.radius,
+        height: c.height,
+    };
+    let lower = cylinder_plane(&cutter_surface, &s.shell.faces[0].surface, t)?;
+    let upper = cylinder_plane(&cutter_surface, &s.shell.faces[1].surface, t)?;
+    let bottom = circle_edge(s, lower);
+    let top = circle_edge(s, upper);
+    for (fi, e) in [(0, bottom), (1, top)] {
+        let w = cap_ring(s, e, &s.shell.faces[fi].surface, false);
+        s.shell.faces[fi].wires.push(w);
+    }
+    cylindrical_face(
+        s,
+        bottom,
+        top,
+        CylinderSpec {
+            base,
+            radius: c.radius,
+            height: b.size.z,
+        },
+        -1,
+    );
+    Ok(())
+}
+
+fn append_blind_bore(solid: &mut Solid, b: BoxSpec, c: CylinderSpec) {
+    let max = b.min + b.size;
+    let bottom = ring(solid, c.base, c.radius);
+    let top = ring(solid, Point3::new(c.base.x, c.base.y, max.z), c.radius);
+    let wire = cap_ring(solid, top, &solid.shell.faces[1].surface, false);
+    solid.shell.faces[1].wires.push(wire);
+    cylindrical_face(
+        solid,
+        bottom,
+        top,
+        CylinderSpec {
+            base: c.base,
+            radius: c.radius,
+            height: max.z - c.base.z,
+        },
+        -1,
+    );
+    let surface = Surface::Plane {
+        origin: c.base,
+        u: Vec3::new(1., 0., 0.),
+        v: Vec3::new(0., 1., 0.),
+    };
+    let wire = cap_ring(solid, bottom, &surface, true);
+    solid.shell.faces.push(Face {
+        surface,
+        orientation: 1,
+        wires: vec![wire],
+    });
+}
+
+/// Mixed top-entry blind and through bores with disjoint XY footprints.
+/// `None` means through; `Some(depth)` is measured inward from the +Z cap.
+#[derive(Clone, Copy, Debug)]
+pub struct BoxBore {
+    pub center: [f64; 2],
+    pub radius: f64,
+    pub depth: Option<f64>,
+}
+/// Exact box difference; at most 256 bores, all clearances exceed ten linear tolerances.
+pub fn subtract_box_bores(b: BoxSpec, bores: &[BoxBore], t: Tolerance) -> Result<Solid> {
+    check_box(b, t)?;
+    if bores.len() > 256 {
+        return Err(Error::Unsupported("at most 256 box bores are supported"));
+    }
+    let mut through = Vec::new();
+    let mut blind = Vec::new();
+    let mut tools = Vec::new();
+    for (i, bore) in bores.iter().enumerate() {
+        let depth = bore.depth.unwrap_or(b.size.z);
+        if !depth.is_finite() || depth <= 10. * t.linear {
+            return Err(Error::InvalidInput(
+                "bore depth must be finite and resolved",
+            ));
+        }
+        let c = CylinderSpec {
+            base: Point3::new(
+                bore.center[0],
+                bore.center[1],
+                if bore.depth.is_some() {
+                    b.min.z + b.size.z - depth
+                } else {
+                    b.min.z - b.size.z
+                },
+            ),
+            radius: bore.radius,
+            height: if bore.depth.is_some() {
+                depth + b.size.z
+            } else {
+                3. * b.size.z
+            },
+        };
+        check_cylinder(c, t)?;
+        let max = b.min + b.size;
+        let clearance = (c.base.x - b.min.x)
+            .min(max.x - c.base.x)
+            .min(c.base.y - b.min.y)
+            .min(max.y - c.base.y)
+            - c.radius;
+        if !clearance.is_finite() || clearance <= 10. * t.linear {
+            return Err(Error::Unsupported(
+                "box bore requires resolved side clearance",
+            ));
+        }
+        for previous in &bores[..i] {
+            let gap = (bore.center[0] - previous.center[0])
+                .hypot(bore.center[1] - previous.center[1])
+                - bore.radius
+                - previous.radius;
+            if !gap.is_finite() || gap <= 10. * t.linear {
+                return Err(Error::Unsupported(
+                    "box bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+        if bore.depth.is_some() {
+            blind.push(c);
+        } else {
+            through.push(c);
+        }
+        tools.push(c);
+    }
+    // Reuse the same checked domains as the single-mode public operations.
+    check_through_bores(b, &through, t)?;
+    check_blind_bores(b, &blind, t)?;
+    let mut solid = make_box(b, t)?;
+    for (bore, c) in bores.iter().zip(tools) {
+        if bore.depth.is_some() {
+            append_blind_bore(&mut solid, b, c);
+        } else {
+            append_through_bore(&mut solid, b, c, t)?;
+        }
+    }
+    solid.validate(t)?;
+    Ok(solid)
+}
+
+fn check_through_bores(b: BoxSpec, cutters: &[CylinderSpec], t: Tolerance) -> Result<()> {
+    check_box(b, t)?;
+    if cutters.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 independent bores are supported",
+        ));
+    }
+    let max = b.min + b.size;
+    for (i, &c) in cutters.iter().enumerate() {
+        check_cylinder(c, t)?;
+        if c.base.z >= b.min.z - t.linear || c.base.z + c.height <= max.z + t.linear {
+            return Err(Error::Unsupported(
+                "cylinder must strictly overhang both box caps",
+            ));
+        }
+        if c.base.x - c.radius <= b.min.x + t.linear
+            || c.base.y - c.radius <= b.min.y + t.linear
+            || c.base.x + c.radius >= max.x - t.linear
+            || c.base.y + c.radius >= max.y - t.linear
+        {
+            return Err(Error::Unsupported("hole must be strictly inside box sides; tangencies and intersections are unsupported"));
+        }
+        for prev in &cutters[..i] {
+            if (c.base.x - prev.base.x).hypot(c.base.y - prev.base.y)
+                <= c.radius + prev.radius + t.linear
+            {
+                return Err(Error::Unsupported(
+                    "bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn check_blind_bores(b: BoxSpec, cutters: &[CylinderSpec], t: Tolerance) -> Result<()> {
+    check_box(b, t)?;
+    if cutters.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 independent blind bores are supported",
+        ));
+    }
+    let max = b.min + b.size;
+    for (i, &c) in cutters.iter().enumerate() {
+        check_cylinder(c, t)?;
+        if c.base.z - b.min.z <= 10. * t.linear
+            || max.z - c.base.z <= 10. * t.linear
+            || c.base.z + c.height - max.z <= 10. * t.linear
+        {
+            return Err(Error::Unsupported(
+                "blind tool requires an interior resolved floor and strict top overhang",
+            ));
+        }
+        if c.base.x - c.radius - b.min.x <= 10. * t.linear
+            || c.base.y - c.radius - b.min.y <= 10. * t.linear
+            || max.x - c.base.x - c.radius <= 10. * t.linear
+            || max.y - c.base.y - c.radius <= 10. * t.linear
+        {
+            return Err(Error::Unsupported(
+                "blind bore must stay strictly inside box sides",
+            ));
+        }
+        for previous in &cutters[..i] {
+            if (c.base.x - previous.base.x).hypot(c.base.y - previous.base.y)
+                - c.radius
+                - previous.radius
+                <= 10. * t.linear
+            {
+                return Err(Error::Unsupported(
+                    "blind bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
