@@ -87,3 +87,8 @@ impl std::fmt::Display for Error {
 }
 impl std::error::Error for Error {}
 pub type Result<T> = std::result::Result<T, Error>;
+
+mod nurbs_surface_refinement;
+
+mod nurbs_surface_boundary;
+pub use nurbs_surface_boundary::*;

@@ -313,11 +313,27 @@ try {
  await page.setViewportSize({width:1440,height:900});
  await page.goto(`http://127.0.0.1:${server.address().port}/surface.html`);await page.waitForFunction(()=>window.haganeSurface?.ready);
  let patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(patch.point[2]-8.75)<1e-13);assert.deepEqual(patch.normal,[0,0,1]);const initialPatch=await page.locator('canvas').screenshot();
+ function checkSurfaceSections(data){
+  assert.equal(data.sections.length,6);assert.equal(data.section_chord_error,0.05);assert.deepEqual(data.refined_control_counts,[4,4]);
+  const point=(u,v)=>{const bu=[(1-u)**2,2*u*(1-u),u*u],bv=[(1-v)**2,2*v*(1-v),v*v],p=[0,0,0];let sum=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++){const center=i===1&&j===1,w=bu[i]*bv[j]*(center?data.weight:1),control=[-40+40*i,-30+30*j,center?data.height:0];sum+=w;control.forEach((x,k)=>p[k]+=w*x);}return p.map(x=>x/sum);};
+  const near=(a,b)=>a.forEach((x,i)=>assert.ok(Math.abs(x-b[i])<1e-10));near(data.point,point(data.u,data.v));
+  const configs=[[1,0,true,true],[0,1,true,true],[1,1,true,false],[0,0,true,false],[0,data.u,false,true],[1,data.v,false,true]];
+  data.sections.forEach((section,index)=>{
+   assert.deepEqual([section.fixed_axis,section.fixed_parameter,section.boundary,section.forward],configs[index]);assert.equal(section.samples.length,3*section.parameters.length);assert.equal(section.error_bounds.length,section.parameters.length-1);assert.equal(section.parameters[0],0);assert.equal(section.parameters.at(-1),1);
+   const exact=t=>point(section.fixed_axis===0?section.fixed_parameter:t,section.fixed_axis===1?section.fixed_parameter:t);
+   section.parameters.forEach((t,i)=>near(section.samples.slice(i*3,i*3+3),exact(t)));
+   section.error_bounds.forEach((bound,i)=>{assert.ok(Number.isFinite(bound)&&bound>0&&bound<=data.section_chord_error);const start=section.parameters[i],end=section.parameters[i+1];assert.ok(end>start);const a=section.samples.slice(i*3,i*3+3),b=section.samples.slice(i*3+3,i*3+6),d=b.map((x,k)=>x-a[k]),length2=d.reduce((s,x)=>s+x*x,0);for(let j=0;j<=8;j++){const p=exact(start+(end-start)*j/8),fraction=length2?Math.max(0,Math.min(1,d.reduce((s,x,k)=>s+x*(p[k]-a[k]),0)/length2)):0;assert.ok(Math.hypot(...p.map((x,k)=>x-a[k]-fraction*d[k]))<=bound+1e-10);}});
+  });
+  for(let i=0;i<4;i++){const a=data.sections[i],b=data.sections[(i+1)%4];near(a.forward?a.samples.slice(-3):a.samples.slice(0,3),b.forward?b.samples.slice(0,3):b.samples.slice(-3));}
+ }
+ checkSurfaceSections(patch);
  await page.locator('#height').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.equal(patch.point[2],0);assert.notDeepEqual(await page.locator('canvas').screenshot(),initialPatch);
  await page.locator('#height').evaluate(e=>{e.value=35;e.dispatchEvent(new Event('input'));});await page.locator('#weight').evaluate(e=>{e.value=2;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(patch.point[2]-14)<1e-13);
  await page.locator('#u').evaluate(e=>{e.value=0.3;e.dispatchEvent(new Event('input'));});await page.locator('#v').evaluate(e=>{e.value=0.7;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(Math.hypot(...patch.normal)-1)<1e-13);assert.ok(Math.abs(patch.normal[0])+Math.abs(patch.normal[1])>0.01);
+ checkSurfaceSections(patch);assert.equal(patch.sections[4].fixed_parameter,0.3);assert.equal(patch.sections[5].fixed_parameter,0.7);
  const shaded=await page.locator('canvas').screenshot();await page.locator('#wire').check();assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);await page.locator('#wire').uncheck();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);
  if(process.argv.includes('--capture')){await page.locator('#height').evaluate(e=>{e.value=60;e.dispatchEvent(new Event('input'));});await page.locator('#weight').evaluate(e=>{e.value=2;e.dispatchEvent(new Event('input'));});await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-surface.png',import.meta.url).pathname});}
+ if(process.argv.includes('--capture-surface-sections')){await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-surface-sections.png',import.meta.url).pathname});}
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  await page.setViewportSize({width:1440,height:900});
  await page.goto(`http://127.0.0.1:${server.address().port}/classification.html`);await page.waitForFunction(()=>window.haganeClassification?.ready);
@@ -346,7 +362,7 @@ try {
  const classifierView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),classifierView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: planar and full-cylinder solid point classification, eight models including harmonic circular wall bands, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
- console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
+ console.log('Browser: NURBS surface height/weight/UV, six exact sections, independent interval chord bounds and boundary closure, open-patch shading, wireframe, orbit and responsive layout passed.');
  console.log('Browser: NURBS weight/parameter/error controls, exact-circle reset, knot refinement, independent chord bounds, adaptive segment counts, canvas changes and responsive layout passed.');
  await page.setViewportSize({width:1440,height:900});await page.goto(`http://127.0.0.1:${server.address().port}/intersections.html`);await page.waitForFunction(()=>window.haganeIntersections?.ready);
  for(const [probe,kind,hits] of [['crossing','crossing','2'],['tangent','tangent','1'],['empty','empty','0'],['generator','generator overlap','0'],['reverse','generator overlap','0']]){

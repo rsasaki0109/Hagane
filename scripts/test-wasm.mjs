@@ -66,17 +66,35 @@ for(const args of [[0,0.5,0.001],[-1,0.5,0.001],[NaN,0.5,0.001],[Infinity,0.5,0.
 assert.equal(boundedNurbs(Math.SQRT1_2,0.5,0.001).status,0);
 console.log(`Bounded NURBS: ${boundedCases} refined-curve native/WASM cases, independent interval chord errors, knot preservation, invalid input and recovery passed.`);
 function surface(height,weight,u,v){const status=k.hagane_generate_surface(height,weight,u,v);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+// Tensor Bernstein oracle uses the original 3x3 patch, before any knot insertion.
+function surfacePoint(height,weight,u,v){const bu=[(1-u)**2,2*u*(1-u),u*u],bv=[(1-v)**2,2*v*(1-v),v*v];let denominator=0;const p=[0,0,0];for(let i=0;i<3;i++)for(let j=0;j<3;j++){const center=i===1&&j===1,w=bu[i]*bv[j]*(center?weight:1),control=[-40+40*i,-30+30*j,center?height:0];denominator+=w;for(let k=0;k<3;k++)p[k]+=w*control[k];}return p.map(x=>x/denominator);}
+function sectionPoint(section,t){const n=section.control_points.length,knots=section.knots;function basis(i,d){if(d===0)return t===knots.at(-1)?Number(i===n-1):Number(knots[i]<=t&&t<knots[i+1]);const left=knots[i+d]-knots[i],right=knots[i+d+1]-knots[i+1];return (left?(t-knots[i])/left*basis(i,d-1):0)+(right?(knots[i+d+1]-t)/right*basis(i+1,d-1):0);}let denominator=0;const p=[0,0,0];for(let i=0;i<n;i++){const b=basis(i,section.degree)*section.weights[i];denominator+=b;for(let j=0;j<3;j++)p[j]+=b*section.control_points[i][j];}return p.map(x=>x/denominator);}
 for(const [height,weight,u,v] of [[0,1,0.5,0.5],[35,1,0.5,0.5],[35,2,0.3,0.7],[-35,0.5,0.2,0.4],[60,4,0,1],[-60,0.2,1,0]]){
  const {status,result}=surface(height,weight,u,v);assert.equal(status,0);assert.equal(result.positions.length,24*24*2*9);assert.equal(result.positions.length,result.normals.length);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface','--',...[height,weight,u,v].map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
  for(const field of ['point','du','dv','normal','positions','normals']){assert.equal(result[field].length,native[field].length);native[field].forEach((value,i)=>assert.ok(Math.abs(value-result[field][i])<1e-10));}
+ for(const field of ['sections','section_chord_error','refined_control_counts'])compareIntersection(result[field],native[field]);
+ assert.deepEqual(result.refined_control_counts,[4,4]);assert.equal(result.section_chord_error,0.05);assert.equal(result.sections.length,6);
+ const configs=[[1,0,true,true],[0,1,true,true],[1,1,true,false],[0,0,true,false],[0,u,false,true],[1,v,false,true]];
+ for(let s=0;s<6;s++){
+  const section=result.sections[s];assert.deepEqual(section.pcurve_origin,section.fixed_axis===0?[section.fixed_parameter,0]:[0,section.fixed_parameter]);assert.deepEqual(section.pcurve_direction,section.fixed_axis===0?[0,1]:[1,0]);assert.deepEqual([section.fixed_axis,section.fixed_parameter,section.boundary,section.forward],configs[s]);assert.deepEqual(section.parameter_range,[0,1]);assert.equal(section.degree,2);assert.equal(section.control_points.length,4);assert.equal(section.weights.length,4);assert.equal(section.knots.length,7);assert.ok(section.weights.every(w=>w>0&&Number.isFinite(w)));
+  assert.equal(section.parameters[0],0);assert.equal(section.parameters.at(-1),1);assert.equal(section.samples.length,section.parameters.length*3);assert.equal(section.error_bounds.length,section.parameters.length-1);
+  const exact=t=>surfacePoint(height,weight,section.fixed_axis===0?section.fixed_parameter:t,section.fixed_axis===1?section.fixed_parameter:t);
+  for(let i=0;i<section.parameters.length;i++)compareIntersection(section.samples.slice(i*3,i*3+3),exact(section.parameters[i]));
+  for(let i=0;i<section.error_bounds.length;i++){
+   const start=section.parameters[i],end=section.parameters[i+1],bound=section.error_bounds[i],a=section.samples.slice(i*3,i*3+3),b=section.samples.slice(i*3+3,i*3+6);assert.ok(end>start);assert.ok(bound>0&&bound<=result.section_chord_error);
+   for(let j=0;j<=16;j++){const t=start+(end-start)*j/16;assert.ok(pointChordDistance(exact(t),a,b)<=bound+1e-10);compareIntersection(sectionPoint(section,t),exact(t));}
+  }
+  if(!section.boundary)compareIntersection(sectionPoint(section,section.fixed_axis===0?v:u),result.point);
+ }
+ for(let i=0;i<4;i++){const section=result.sections[i],next=result.sections[(i+1)%4];compareIntersection(section.forward?section.samples.slice(-3):section.samples.slice(0,3),next.forward?next.samples.slice(0,3):next.samples.slice(-3));}
  assert.ok(Math.abs(Math.hypot(...result.normal)-1)<1e-13);const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);assert.ok(Math.abs(dot(result.du,result.normal))<1e-10);assert.ok(Math.abs(dot(result.dv,result.normal))<1e-10);
  if(height===0){assert.ok(Math.abs(result.point[0]-(80*u-40))<1e-12);assert.ok(Math.abs(result.point[1]-(60*v-30))<1e-12);assert.equal(result.point[2],0);assert.deepEqual(result.normal,[0,0,1]);}
  if(height===35&&weight===1&&u===0.5){assert.ok(Math.abs(result.point[2]-8.75)<1e-13);}
 }
 for(const args of [[0,0,0.5,0.5],[101,1,0.5,0.5],[NaN,1,0.5,0.5],[0,1,1.1,0.5],[0,1,0.5,-0.1]]){assert.equal(surface(...args).status,1);}
 assert.equal(surface(35,1,0.5,0.5).status,0);
-console.log('NURBS surfaces: 6 native/WASM grid/partial/normal parity cases, analytic fixtures and errors/recovery passed.');
+console.log('NURBS surfaces: 6 native/WASM grid/partial/normal/exact-section cases, independent tensor evaluation, interval chord bounds, oriented boundary closure and errors/recovery passed.');
 
 // Independent BigInt oracle: decode exact IEEE-754 coordinates to integers
 // in units of 2^-1074. No floating arithmetic in the reference determinant.

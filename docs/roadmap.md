@@ -366,7 +366,7 @@ checks. General curved Booleans and document history integration remain next wor
 
 ## Later: full CAD kernel work
 
-- Higher NURBS derivatives, periodic curves, surface refinement, bounded trimmed
+- Higher NURBS derivatives, periodic curves, surface patch splitting, bounded trimmed
   surface tessellation, higher/mixed surface derivatives, surface trimming, intersections,
   and integration with B-rep edges/faces.
 - General Boolean operations on arbitrary manifold solids.
@@ -559,3 +559,22 @@ NURBS B-rep edges/pcurves, trimmed surfaces, intersections, general Booleans and
 broader STEP interchange remain incomplete. This prerequisite does not establish
 those capabilities. The overall estimate remains **15–25%**, toward the **80%**
 target. See [NURBS refinement](nurbs-refinement.md).
+
+
+## NURBS tensor refinement and oriented boundary milestone
+
+Standalone surfaces now support knot insertion on either axis using one common
+homogeneous control-net weight scale, preserving shape and first partials.
+Fixed-axis contraction returns exact rational isocurves with the other axis's
+original knots and parameter domain. Rectangular boundaries expose four exact
+curves, same-parameter affine UV maps and explicit counterclockwise traversal;
+this is geometry data, not yet shared B-rep topology. Tests include independent
+rational bilinear formulas, degree 16, C0/non-unit domains, large common weight
+scaling, tiny dimensions, oriented closure and explicit resource failures.
+The native/WASM surface demo now displays four boundaries and two selected
+sections using bounded curve sampling after a shape-preserving 4-by-4 refinement.
+
+The surface display grid remains uniform and has no certified surface chord
+error. General trims, shared B-rep NURBS edges/faces, sewing, intersections and
+broader STEP interchange remain incomplete. The overall estimate remains
+**15–25%**, toward the **80%** target. See [surface refinement](nurbs-surface-refinement.md).

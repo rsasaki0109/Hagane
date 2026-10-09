@@ -2,7 +2,9 @@
 
 `NurbsSurface` is an immutable standalone geometry object for an **untrimmed,
 clamped, nonperiodic, positive-weight rational B-spline surface**. It evaluates
-points, analytic first partials, and oriented normals. It does not create a
+points, analytic first partials, and oriented normals. [Surface refinement and
+sections](nurbs-surface-refinement.md) adds shape-preserving knot insertion, exact
+isocurves and oriented rectangular boundary data. It does not create a
 B-rep face, shell or solid, and provides no surface intersections or Boolean
 operations. Existing B-rep faces still use analytic planes and Z cylinders.
 
@@ -92,7 +94,9 @@ python3 -m http.server 8000 --directory web
 ```
 
 Choose the **Surfaces** link in the browser. The demo is a degree-2-by-2 patch
-with a 3-by-3 control net and variable center height/weight. U/V controls select
+with a 3-by-3 control net and variable center height/weight. A shape-preserving
+4-by-4 refinement supplies bounded display curves for four boundaries and two
+selected U/V sections, with same-parameter affine UV maps. U/V controls select
 a point and its analytic normal (cyan marker). Drag/keyboard orbit, wheel zoom,
 sampling mesh and rotation controls use the same display-only WebGL viewer as
 the solid demo. The open patch is drawn from either side; back-side lighting
@@ -105,11 +109,11 @@ to `[-100,100]`; core surfaces do not have that arbitrary demo limit. Any
 compare full sampled grids, selected points, partials and normals for six
 fixtures; browser tests verify parameter changes, geometry changes and controls.
 
-![Actual Rust/WASM NURBS surface demo](nurbs-surface.png)
+![Actual Rust/WASM NURBS surface sections](nurbs-surface-sections.png)
 
 ## Remaining work
 
-Periodic axes, higher/mixed derivatives, refinement, certified adaptive display
+Periodic axes, higher/mixed derivatives, certified adaptive surface display
 meshing, trimming, intersections, and NURBS integration with B-rep faces,
 coedges/pcurves and solids remain unimplemented. Surface evaluation alone does
 not imply support for any of those operations.

@@ -107,6 +107,14 @@ claim compatibility with its data structures or APIs.
   The numerical allowance and resource policy are Hagane implementation choices,
   not claims supplied by those references. No reference code or prose was copied
   and no new dependency is required.
+- Tensor-product surface knot insertion applies the same homogeneous formula
+  independently along one axis while retaining a common control-net weight
+  scale. Isoparametric curves follow by contracting the fixed-axis B-spline
+  basis; the remaining coefficients and degree/knots form a rational curve.
+  Rectangular boundaries use these curves with same-parameter affine UV maps
+  and counterclockwise UV traversal. These are direct consequences of the
+  tensor-product definition, implemented independently from the references
+  above without copied code or additional dependencies.
 - Browser integration specifications: [WebAssembly core specification](https://webassembly.github.io/spec/core/),
   [WebGL 1.0 specification](https://registry.khronos.org/webgl/specs/latest/1.0/).
 - Planar polygon triangulation: [Mapbox Earcut](https://github.com/mapbox/earcut),

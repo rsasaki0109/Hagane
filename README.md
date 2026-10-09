@@ -258,7 +258,9 @@ fabricate the demo image.
   shape-preserving knot insertion, rational Bezier spans and [bounded adaptive
   curve display](docs/nurbs-refinement.md).
 - Standalone tensor-product NURBS surfaces: checked rectangular control nets,
-  analytic U/V partials, oriented regular-point normals and uniform display grids.
+  analytic U/V partials, oriented regular-point normals and uniform display grids;
+  [shape-preserving tensor refinement, exact isocurves and oriented rectangular
+  boundaries](docs/nurbs-surface-refinement.md).
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
   horizontal-plane/bounded-Z-cylinder intersections.
 - Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
@@ -378,10 +380,15 @@ points, weights)` accepts an immutable U-major rectangular control net.
 `evaluate(u,v)`, `partials(u,v)` and `normal(u,v)` provide checked point,
 analytic derivatives and oriented unit normals. Singular tangent planes fail
 explicitly; C0 knot lines require an explicit side in each parameter direction.
+`insert_knot(axis, parameter, times)` preserves the rational surface,
+`isocurve(axis, parameter)` returns an exact section with the other axis
+parameter, and `boundary_edges()` supplies four oriented curves and same-parameter
+UV maps. These data are not yet shared B-rep edges.
 
 Run `cargo run --locked --example nurbs_surface` for the native JSON fixture.
 The **Surfaces** link opens the interactive 3D WASM demo with height, weight,
-U/V and normal-marker controls. Its 24-by-24 display grid has no certified
+U/V and normal-marker controls, four boundary curves and selected U/V sections.
+Section curves have bounded adaptive display polylines; the 24-by-24 surface grid has no certified
 chord-error bound. These are untrimmed standalone patches, **not B-rep faces or
 solids**. [Surface documentation](docs/nurbs-surface.md) describes the API,
 control ordering, mathematical formulas, numerical guards and remaining work.

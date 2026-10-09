@@ -311,5 +311,43 @@ pub fn nurbs_surface_demo_json(height: f64, weight: f64, u: f64, v: f64) -> Resu
         output.push_str(&format!("{},{},{}", n.x, n.y, n.z));
     }
     output.push_str("]}");
-    Ok(output)
+    let refined = surface.insert_knot(0, 0.35, 1)?.insert_knot(1, 0.7, 1)?;
+    let boundaries = refined.boundary_edges()?;
+    let mut sections = Vec::new();
+    for (axis, parameter, boundary, forward) in [
+        (1, 0.0, true, true),
+        (0, 1.0, true, true),
+        (1, 1.0, true, false),
+        (0, 0.0, true, false),
+        (0, u, false, true),
+        (1, v, false, true),
+    ] {
+        let boundary_index = sections.len();
+        let curve = if boundary {
+            boundaries[boundary_index].curve.clone()
+        } else {
+            refined.isocurve(axis, parameter)?
+        };
+        let polyline = curve.tessellate_bounded(0.05, 16384)?;
+        let samples: Vec<_> = polyline
+            .points
+            .iter()
+            .flat_map(|p| [p.x, p.y, p.z])
+            .collect();
+        sections.push(serde_json::json!({
+            "pcurve_origin": if axis == 0 { [parameter,0.] } else { [0.,parameter] },
+            "pcurve_direction": if axis == 0 { [0.,1.] } else { [1.,0.] },
+            "fixed_axis": axis, "fixed_parameter": parameter, "boundary": boundary,
+            "forward": forward, "samples": samples, "parameters": polyline.parameters,
+            "error_bounds": polyline.error_bounds, "degree": curve.degree(), "knots": curve.knots(),
+            "control_points": curve.control_points().iter().map(|p| [p.x,p.y,p.z]).collect::<Vec<_>>(),
+            "weights": curve.weights(), "parameter_range": curve.domain()
+        }));
+    }
+    let mut json: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|_| Error::InvalidInput("surface demo serialization failed"))?;
+    json["sections"] = serde_json::json!(sections);
+    json["refined_control_counts"] = serde_json::json!(refined.control_counts());
+    json["section_chord_error"] = serde_json::json!(0.05);
+    Ok(json.to_string())
 }
