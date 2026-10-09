@@ -454,6 +454,62 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_graph_roof_section(
+        width: f64,
+        depth: f64,
+        height: f64,
+        bulge: f64,
+        error: f64,
+        angle: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
+        u0: f64,
+        u1: f64,
+        v0: f64,
+        v1: f64,
+        start_u: f64,
+        start_v: f64,
+        end_u: f64,
+        end_v: f64,
+        linear: f64,
+    ) -> i32 {
+        generate(crate::nurbs_graph_roof_section_demo_json(
+            width, depth, height, bulge, error, angle, tx, ty, tz, u0, u1, v0, v1, start_u,
+            start_v, end_u, end_v, linear,
+        ))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_hole_roof_section(
+        width: f64,
+        depth: f64,
+        height: f64,
+        bulge: f64,
+        error: f64,
+        angle: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
+        u0: f64,
+        u1: f64,
+        v0: f64,
+        v1: f64,
+        hu0: f64,
+        hu1: f64,
+        hv0: f64,
+        hv1: f64,
+        start_u: f64,
+        start_v: f64,
+        end_u: f64,
+        end_v: f64,
+        linear: f64,
+    ) -> i32 {
+        generate(crate::nurbs_graph_hole_roof_section_demo_json(
+            width, depth, height, bulge, error, angle, tx, ty, tz, u0, u1, v0, v1, hu0, hu1, hv0,
+            hv1, start_u, start_v, end_u, end_v, linear,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_classify_graph_hole(
         width: f64,
         depth: f64,

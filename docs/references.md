@@ -725,3 +725,11 @@ Four-point tensor Gauss–Legendre integration exactly integrates degree-six
 polynomials in real arithmetic; the public NIST quadrature reference above
 applies. Geometric unit-density tensors have length-to-the-fifth units.
 Original MIT OR Apache-2.0 code adds no dependency or OCCT source.
+
+Affine graph roof sections use the public Bernstein product identity:
+`B_i^n(t) B_j^m(t) = C(n,i) C(m,j) / C(n+m,i+j) B_(i+j)^(n+m)(t)`.
+Pullback of the polynomial tensor roof along an affine UV path yields degree
+four, with affine XY coordinates elevated to the same degree. Rectangular
+opening slab intervals retain the original path parameter. These are elementary
+polynomial/B-spline and interval-clipping identities, independently implemented
+under MIT OR Apache-2.0 without new dependencies or OCCT source.

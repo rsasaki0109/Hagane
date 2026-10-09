@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id);
 try{
  const viewer=createMeshViewer($('view')),response=await fetch('hagane.wasm');if(!response.ok)throw Error('Build WASM first: ./scripts/build-web.sh');
  const {instance}=await WebAssembly.instantiate(await response.arrayBuffer(),{}),k=instance.exports;window.haganeGraphSolid={ready:false,data:null};
- let accepted=null,displayCenter=[0,0,0],boundarySegments=[],pointSegments=[],sectionSegments=[];
+ let accepted=null,displayCenter=[0,0,0],boundarySegments=[],pointSegments=[],sectionSegments=[],roofSegments=[];
  function generate(){
   const [width,depth,height,bulge,error]=['width','depth','height','bulge','surface-error'].map(id=>Number($(id).value));
   const angle=Number($('angle').value)*Math.PI/180,[tx,ty,tz]=['tx','ty','tz'].map(id=>Number($(id).value));
@@ -15,7 +15,7 @@ try{
   const error=data.error;
   const center=[0,1,2].map(axis=>{let lo=Infinity,hi=-Infinity;for(let i=axis;i<data.positions.length;i+=3){lo=Math.min(lo,data.positions[i]);hi=Math.max(hi,data.positions[i]);}return (lo+hi)/2;});
   const segments=[];for(const samples of data.boundary_samples)for(let i=3;i<samples.length;i+=3)segments.push([samples.slice(i-3,i),samples.slice(i,i+3)]);
-  viewer.setMesh({positions:data.positions.map((x,i)=>x-center[i%3]),normals:data.normals});viewer.setSegments(segments.map(segment=>segment.map(point=>point.map((x,i)=>x-center[i]))));window.haganeGraphSolid.data=data;accepted=data;displayCenter=center;boundarySegments=segments;window.haganeGraphSolid.query=null;$('classification').textContent='Model accepted. Classify a world point.';window.haganeGraphSolid.section=null;pointSegments=[];sectionSegments=[];$('section-result').textContent='Model accepted. Query a source-vertical section.';window.haganeGraphSolid.step=null;$('step-status').textContent='Exports the accepted B-rep model.';window.haganeGraphSolid.imported=data.import??null;$('import-status').textContent=data.import?'✓ Canonical graph imported · exact basis and topology validated · mm':'Full source UV · unplaced · six-face polynomial graph only.';
+  viewer.setMesh({positions:data.positions.map((x,i)=>x-center[i%3]),normals:data.normals});viewer.setSegments(segments.map(segment=>segment.map(point=>point.map((x,i)=>x-center[i]))));window.haganeGraphSolid.data=data;accepted=data;displayCenter=center;boundarySegments=segments;window.haganeGraphSolid.query=null;$('classification').textContent='Model accepted. Classify a world point.';window.haganeGraphSolid.section=null;pointSegments=[];sectionSegments=[];$('section-result').textContent='Model accepted. Query a source-vertical section.';window.haganeGraphSolid.roof=null;window.haganeGraphSolid.roof_error=null;roofSegments=[];$('roof-result').textContent='Model accepted. Query a finite affine UV roof path.';window.haganeGraphSolid.step=null;$('step-status').textContent='Exports the accepted B-rep model.';window.haganeGraphSolid.imported=data.import??null;$('import-status').textContent=data.import?'✓ Canonical graph imported · exact basis and topology validated · mm':'Full source UV · unplaced · six-face polynomial graph only.';
   $('surface-error-label').value=error.toFixed(3);$('volume').textContent=data.volume.toFixed(3)+' mm³';$('centroid').textContent=data.mass_properties.centroid.map(x=>x.toFixed(4)).join(', ');$('inertia').textContent=data.inertia_properties?data.inertia_properties.inertia.map((row,i)=>row[i].toExponential(4)).join(' · '):'Unavailable ('+data.inertia_error+')';$('faces').textContent=String(data.brep.faces);$('edges').textContent=String(data.brep.edges);$('triangles').textContent=String(data.mesh.triangles.length);$('surface-bound').textContent=data.error_bounds.reduce((maximum,bound)=>Math.max(maximum,bound),0).toExponential(3);$('status').textContent='✓ Closed graph B-rep validated · exact volume · bounded triangles';
  }
  function showPoint(point){
@@ -23,7 +23,7 @@ try{
   const cross=[];for(let axis=0;axis<3;axis++){const a=[...point],b=[...point];a[axis]-=2.5;b[axis]+=2.5;cross.push([a,b]);}
   pointSegments=cross;renderOverlays();
  }
- function renderOverlays(){viewer.setSegments([...boundarySegments,...pointSegments,...sectionSegments].map(segment=>segment.map(point=>point.map((x,i)=>x-displayCenter[i]))));}
+ function renderOverlays(){viewer.setSegments([...boundarySegments,...pointSegments,...sectionSegments,...roofSegments].map(segment=>segment.map(point=>point.map((x,i)=>x-displayCenter[i]))));}
  function classify(){
   if(!accepted)return;const p=['point-x','point-y','point-z'].map(id=>Number($(id).value)),tolerance=Number($('point-tolerance').value),d=accepted,domain=d.source_domain.flat();
   try{const status=k.hagane_classify_graph(d.width,d.depth,d.height,d.bulge,d.error,d.placement.angle,...d.placement.translation,...domain,...p,tolerance),query=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(query.error);window.haganeGraphSolid.query=query;$('classification').textContent=query.location+' · '+query.reason;if(p.every(Number.isFinite))showPoint(p);}
@@ -39,6 +39,15 @@ try{
   }catch(e){window.haganeGraphSolid.section={error:e.message,source_uv:uv};$('section-result').textContent='Section rejected: '+e.message;}
  }
  $('section-query').addEventListener('click',verticalSection);
+ function roofSection(){
+  if(!accepted)return;const path=['roof-u0','roof-v0','roof-u1','roof-v1'].map(id=>Number($(id).value)),linear=Number($('roof-tolerance').value),d=accepted;
+  try{const status=k.hagane_graph_roof_section(d.width,d.depth,d.height,d.bulge,d.error,d.placement.angle,...d.placement.translation,...d.source_domain.flat(),...path,linear),roof=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(roof.error);
+   roofSegments=roof.spans.flatMap(span=>span.polyline.positions.slice(1).map((point,i)=>[span.polyline.positions[i],point]));window.haganeGraphSolid.roof=roof;window.haganeGraphSolid.roof_error=null;renderOverlays();
+   $('roof-result').textContent=roof.spans.length?'Exact degree-four roof curve · '+roof.spans.length+' material span(s) · global t '+roof.spans.map(s=>'['+s.parameter_range.map(t=>t.toFixed(4)).join(', ')+']').join(' · '):'Empty roof intersection · path lies within the opening.';
+  }catch(e){window.haganeGraphSolid.roof_error=e.message;$('roof-result').textContent='Roof query rejected: '+e.message;}
+ }
+ $('roof-query').addEventListener('click',roofSection);
+
 
 
  function downloadStep(){

@@ -711,6 +711,17 @@ impl ImportedNurbsGraph {
             Self::Holed(body) => body.inertia_properties(tol),
         }
     }
+    pub fn roof_section(
+        &self,
+        start: [f64; 2],
+        end: [f64; 2],
+        tol: GeometryTolerance,
+    ) -> Result<NurbsGraphRoofSection> {
+        match self {
+            Self::Plain(body) => body.roof_section(start, end, tol),
+            Self::Holed(body) => body.roof_section(start, end, tol),
+        }
+    }
     pub fn tessellate_bounded(
         &self,
         error: f64,

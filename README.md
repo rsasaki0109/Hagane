@@ -84,6 +84,9 @@ compute volume and world centroid from retained polynomial geometry, including
 source trims, rigid placement and rectangular openings, without mesh integration.
 [Centroidal graph inertia](docs/nurbs-graph-inertia.md) additionally evaluates the
 full world-axis tensor at uniform unit density, with explicit numerical failures.
+[Affine-UV roof sections](docs/nurbs-graph-roof-section.md) produce exact degree-four
+NURBS intersection curves along diagonal source paths, retaining global parameters
+and material spans around a rectangular opening.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

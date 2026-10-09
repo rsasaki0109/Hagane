@@ -996,3 +996,15 @@ record explicit units/reference; unresolved numeric results remain errors.
 General-shell mass, mixed density, principal-axis solvers and surface area
 remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [graph inertia](nurbs-graph-inertia.md).
+
+## Exact affine-UV graph roof sections
+
+Roof queries now preserve exact degree-four NURBS curves along arbitrary finite
+affine source-UV paths, including restrictions, placement and rectangular-hole
+material gaps. Five algebraic Bernstein controls, unit weights and global path
+knots retain the roof pcurve after clipping; private certificates reject public
+mutation. Contact/conditioning cases remain explicit errors. Native/WASM reports
+and browser overlays use exact curves plus bounded display tessellation. Closed
+section profiles, arbitrary shell/plane intersections and oblique solid splitting
+remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [roof sections](nurbs-graph-roof-section.md).
