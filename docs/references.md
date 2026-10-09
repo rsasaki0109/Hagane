@@ -763,3 +763,12 @@ incidence and connectivity; bounded convex diagonal flips preserve the same
 planar domain without moving vertices. Positive Duffy/Gauss quadrature integrates
 polynomial column moments. These use planar geometry and polynomial quadrature
 identities; no OCCT source is copied or translated.
+
+### Retained polygon graph point classification
+
+Positive rational Bernstein convex hulls bound actual retained NURBS surfaces.
+Evaluated material-only surface points provide upper distance witnesses;
+iteration candidates never establish convergence or a closest-point proof.
+Planar convex clipping restricts search cells without changing the B-rep.
+Original code combines these mathematical identities with bounded subdivision
+and explicit engineering precision guards; no external CAD source is used.

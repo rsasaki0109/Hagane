@@ -92,10 +92,13 @@ the accepted actual solid; rejected edits preserve it. Native and WASM use
 the same Rust JSON entry point and safe bounded numeric transport.
 
 This stage does not add concave polygons, arbitrary curved
-Boolean tools, polygon graph STEP interchange, classification or inertia.
+Boolean tools, polygon graph STEP interchange, inertia.
 The separate [source-vertical oblique partition API](nurbs-graph-polygon-split.md)
 now uses these boundaries to return two closed parts and a finite cut face.
 General NURBS Boolean operations remain incomplete.
 
 The separate [polygon opening API](nurbs-graph-polygon-hole.md) now retains
 one strictly contained convex through opening as a closed solid.
+
+[Typed point classification](nurbs-graph-polygon-classification.md) now checks
+world points against actual retained faces, including polygon openings.

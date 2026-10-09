@@ -71,7 +71,7 @@ Tests check independent analytic moments, thin material frames, full cap
 triangle exclusion from the opening, closed oriented mesh incidence, inward
 cavity normals, actual surface approximation, corruption and rejected inputs.
 Contact, CW/nonconvex wires, multiple openings, arbitrary curved Boolean tools,
-polygon-hole STEP interchange, classification, inertia and splitting holed
+polygon-hole STEP interchange, inertia and splitting holed
 stock remain unsupported. Existing affine UV precision guards also apply;
 near-axis directions and unresolved arithmetic are rejected rather than snapped.
 
@@ -79,3 +79,6 @@ The captured placed pentagonal-stock demo above has 11 faces and 27 shared
 edges, with 30,276 display triangles. Its volume is 39,249.800 mm³ (rounded
 for display). Final validation passed 629 native tests, strict Clippy, formatting,
 the WASM build and native/WASM regression checks.
+
+[Typed point classification](nurbs-graph-polygon-classification.md) now checks
+world points against actual retained faces, including polygon openings.

@@ -1041,6 +1041,18 @@ opening, annular cap wires and shared inward NURBS walls. Positive material-doma
 quadrature gives volume and centroid; checked conforming display preserves the
 void. Native/WASM and the editable browser demo validate topology, precision
 and rejected inputs. Multiple openings, general curved Booleans, polygon-hole
-STEP interchange, classification and inertia remain unsupported. The estimate
+STEP interchange and inertia remain unsupported. The estimate
 remains **15–25%**, toward **80%**.
 See [polygon through openings](nurbs-graph-polygon-hole.md).
+
+## Polygon graph point classification
+
+Typed convex polygon and single-opening graph solids now classify world points
+against the Euclidean boundary band of actual retained faces. Checked Bernstein
+lower bounds and material-only surface witnesses exclude removed roof/base
+regions and finite-wall extensions. Native/WASM queries and browser point
+markers preserve the last accepted model/results after invalid edits. Precision
+and subdivision limits return explicit errors. General NURBS classification,
+multiple openings and curved Booleans remain unsupported. The estimate remains
+**15–25%**, toward **80%**.
+See [polygon graph point classification](nurbs-graph-polygon-classification.md).
