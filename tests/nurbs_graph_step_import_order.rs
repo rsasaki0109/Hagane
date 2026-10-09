@@ -36,3 +36,36 @@ fn shell_face_order_and_cyclic_wire_starts_preserve_actual_geometry() {
         PointLocation::Inside
     );
 }
+
+#[test]
+fn annular_face_bound_order_does_not_change_the_retained_opening() {
+    let tolerance = Tolerance::default();
+    let source = NurbsGraphSolid::new([80., 60., 20.], 30., tolerance).unwrap();
+    let part = NurbsGraphHoledSolid::new(&source, [[0.3, 0.7], [0.35, 0.65]], tolerance).unwrap();
+    let original = part.export_step_mm(tolerance).unwrap();
+    let reordered = original
+        .lines()
+        .map(|line| {
+            let start = "ADVANCED_FACE('',(";
+            if let Some((prefix, rest)) = line.split_once(start) {
+                let (values, suffix) = rest.split_once("),").unwrap();
+                let mut bounds = values.split(',').collect::<Vec<_>>();
+                bounds.reverse();
+                return format!("{prefix}{start}{}),{suffix}", bounds.join(","));
+            }
+            line.to_owned()
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let imported = import_step_nurbs_graph_holed_mm(&reordered, tolerance).unwrap();
+    imported.validate(tolerance).unwrap();
+    assert_eq!(imported.export_step_mm(tolerance).unwrap(), original);
+    assert_eq!(
+        imported
+            .classify_point(Point3::new(40., 30., 10.), GeometryTolerance::default())
+            .unwrap(),
+        PointLocation::Outside
+    );
+    assert_eq!(imported.brep().shell.faces[0].wires.len(), 2);
+    assert_eq!(imported.brep().shell.faces[1].wires.len(), 2);
+}

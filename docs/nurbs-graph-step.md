@@ -50,13 +50,13 @@ the exchange text to 32 MiB.
 This adds export for the graph-solid family. Existing generic
 `export_step_mm(&Solid, ...)` remains restricted to its documented analytic
 subset and rejects generic NURBS solids. General rational shells, arbitrary
-NURBS trims, STEP import of restricted/placed/holed graphs, assemblies and rich product
+NURBS trims, STEP import of restricted/placed graphs, assemblies and rich product
 metadata remain unsupported. This is a tested AP214 subset, not a claim of
 general application-protocol conformance.
 
 [Strict graph STEP import](nurbs-graph-step-import.md) now supports the full,
-unplaced six-face subset of these files. Restricted, placed and holed graph
-imports remain unsupported.
+unplaced six-face subset of these files. The separate [holed importer](nurbs-graph-holed-step-import.md)
+supports one rectangular through opening. Restricted and placed imports remain unsupported.
 
 ## Run and verify
 

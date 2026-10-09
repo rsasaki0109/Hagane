@@ -72,8 +72,10 @@ graph solids with original spline bases, shared topology and both pcurve uses
 per edge. The browser downloads the accepted model in explicit mm units.
 [Strict graph STEP import](docs/nurbs-graph-step-import.md) reads full, unplaced
 six-face graph solids from actual spline geometry and shared references, with
-mm/metre conversion and no snapping. Restricted, placed and holed imports remain
-unsupported; the browser preserves its accepted model on rejected loads.
+mm/metre conversion and no snapping. A separate [holed graph importer](docs/nurbs-graph-holed-step-import.md)
+retains one rectangular through opening with sixteen vertices, twenty-four edges
+and ten faces. Restricted and placed imports remain unsupported; rejected browser
+loads preserve the accepted model.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

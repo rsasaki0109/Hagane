@@ -3,7 +3,9 @@ use crate::step_read::{boolean, list, number, reference, Database, Parser, Value
 use crate::*;
 use std::collections::{BTreeMap, BTreeSet};
 fn unsupported() -> Error {
-    Error::Unsupported("STEP NURBS graph import requires an exact unplaced full-domain canonical six-face graph solid")
+    Error::Unsupported(
+        "STEP NURBS graph import requires an exact unplaced full-domain canonical graph B-rep",
+    )
 }
 fn integer(value: &Value, maximum: usize) -> Result<usize> {
     let v = number(value)?;
@@ -149,13 +151,14 @@ struct Builder<'a> {
     edges: BTreeMap<u32, usize>,
     associations: BTreeMap<usize, Vec<(u32, PCurve)>>,
     surfaces: Vec<u32>,
+    holed: bool,
 }
 impl Builder<'_> {
     fn vertex(&mut self, id: u32) -> Result<usize> {
         if let Some(&v) = self.vertices.get(&id) {
             return Ok(v);
         }
-        if self.solid.vertices.len() >= 8 {
+        if self.solid.vertices.len() >= if self.holed { 16 } else { 8 } {
             return Err(unsupported());
         }
         let a = self.db.simple(id, "VERTEX_POINT", 2)?;
@@ -169,7 +172,7 @@ impl Builder<'_> {
         if let Some(&edge) = self.edges.get(&id) {
             return Ok(edge);
         }
-        if self.solid.edges.len() >= 12 {
+        if self.solid.edges.len() >= if self.holed { 24 } else { 12 } {
             return Err(unsupported());
         }
         let a = self.db.simple(id, "EDGE_CURVE", 5)?;
@@ -208,7 +211,7 @@ impl Builder<'_> {
     fn face(&mut self, id: u32) -> Result<()> {
         let a = self.db.simple(id, "ADVANCED_FACE", 4)?;
         let bounds = list(&a[1])?;
-        if bounds.len() != 1 {
+        if bounds.is_empty() || bounds.len() > if self.holed { 2 } else { 1 } {
             return Err(unsupported());
         }
         let surface_id = reference(&a[2])?;
@@ -216,41 +219,63 @@ impl Builder<'_> {
             return Err(unsupported());
         }
         let surface = surface(self.db, surface_id, self.scale)?;
-        let bound = self
-            .db
-            .simple(reference(&bounds[0])?, "FACE_OUTER_BOUND", 3)?;
-        if !boolean(&bound[2])? {
-            return Err(unsupported());
-        }
-        let edge_loop = self.db.simple(reference(&bound[1])?, "EDGE_LOOP", 2)?;
-        let uses = list(&edge_loop[1])?;
-        if uses.len() != 4 {
-            return Err(unsupported());
-        }
-        let mut coedges = Vec::new();
-        for value in uses {
-            let oriented = self.db.simple(reference(value)?, "ORIENTED_EDGE", 5)?;
-            if oriented[1] != Value::Derived || oriented[2] != Value::Derived {
+        let mut outer = None;
+        let mut inner = None;
+        for bound in bounds {
+            let id = reference(bound)?;
+            let record = self.db.records.get(&id).ok_or_else(unsupported)?;
+            if record.len() != 1 {
                 return Err(unsupported());
             }
-            let edge = self.edge(reference(&oriented[3])?)?;
-            let associations = &self.associations[&edge];
-            let pcurve = associations
-                .iter()
-                .find(|(id, _)| *id == surface_id)
-                .ok_or_else(unsupported)?
-                .1
-                .clone();
-            coedges.push(Coedge {
-                edge,
-                forward: boolean(&oriented[4])?,
-                pcurve,
-            });
+            let kind = record[0].0.as_str();
+            if kind != "FACE_OUTER_BOUND" && !(self.holed && kind == "FACE_BOUND") {
+                return Err(unsupported());
+            }
+            let bound = self.db.simple(id, kind, 3)?;
+            if !boolean(&bound[2])? {
+                return Err(unsupported());
+            }
+            let edge_loop = self.db.simple(reference(&bound[1])?, "EDGE_LOOP", 2)?;
+            let uses = list(&edge_loop[1])?;
+            if uses.len() != 4 {
+                return Err(unsupported());
+            }
+            let mut coedges = Vec::new();
+            for value in uses {
+                let oriented = self.db.simple(reference(value)?, "ORIENTED_EDGE", 5)?;
+                if oriented[1] != Value::Derived || oriented[2] != Value::Derived {
+                    return Err(unsupported());
+                }
+                let edge = self.edge(reference(&oriented[3])?)?;
+                let pcurve = self.associations[&edge]
+                    .iter()
+                    .find(|(id, _)| *id == surface_id)
+                    .ok_or_else(unsupported)?
+                    .1
+                    .clone();
+                coedges.push(Coedge {
+                    edge,
+                    forward: boolean(&oriented[4])?,
+                    pcurve,
+                });
+            }
+            let slot = if kind == "FACE_OUTER_BOUND" {
+                &mut outer
+            } else {
+                &mut inner
+            };
+            if slot.replace(Wire { coedges }).is_some() {
+                return Err(unsupported());
+            }
+        }
+        let mut wires = vec![outer.ok_or_else(unsupported)?];
+        if let Some(inner) = inner {
+            wires.push(inner);
         }
         self.surfaces.push(surface_id);
         self.solid.shell.faces.push(Face {
             surface: Surface::Nurbs(Box::new(surface)),
-            wires: vec![Wire { coedges }],
+            wires,
             orientation: if boolean(&a[3])? { 1 } else { -1 },
         });
         Ok(())
@@ -276,37 +301,7 @@ fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
         && a.weights() == b.weights()
         && a.control_points() == b.control_points())
 }
-fn recognize(mut actual: Solid, tol: Tolerance) -> Result<NurbsGraphSolid> {
-    if actual.vertices.len() != 8 || actual.edges.len() != 12 || actual.shell.faces.len() != 6 {
-        return Err(unsupported());
-    }
-    let mut candidates = Vec::new();
-    for face in &actual.shell.faces {
-        let Surface::Nurbs(s) = &face.surface else {
-            return Err(unsupported());
-        };
-        if s.degrees() != [2, 2]
-            || s.control_counts() != [3, 3]
-            || s.domain() != [[0., 1.], [0., 1.]]
-        {
-            continue;
-        }
-        let p = s.control_points();
-        let l = p[6].x;
-        let w = p[2].y;
-        let h = p[0].z;
-        let b = p[4].z - h;
-        if let Ok(candidate) = NurbsGraphSolid::new([l, w, h], b, tol) {
-            if same_surface(&face.surface, &candidate.brep().shell.faces[1].surface)? {
-                candidates.push(candidate);
-            }
-        }
-    }
-    if candidates.len() != 1 {
-        return Err(unsupported());
-    }
-    let mut candidate = candidates.pop().unwrap();
-    let expected = candidate.brep();
+fn reindex(mut actual: Solid, expected: &Solid) -> Result<Solid> {
     let mut vertex_map = Vec::new();
     let mut seen = BTreeSet::new();
     for vertex in &actual.vertices {
@@ -358,20 +353,61 @@ fn recognize(mut actual: Solid, tol: Tolerance) -> Result<NurbsGraphSolid> {
         if !seen.insert(index) {
             return Err(unsupported());
         }
-        for c in &mut face.wires[0].coedges {
-            c.edge = edge_map[c.edge];
+        if face.wires.len() != expected.shell.faces[index].wires.len() {
+            return Err(unsupported());
         }
-        // A cyclic loop start is not geometric data; retain traversal and reindex it.
-        let target = expected.shell.faces[index].wires[0].coedges[0].edge;
-        let start = face.wires[0]
-            .coedges
-            .iter()
-            .position(|c| c.edge == target)
-            .ok_or_else(unsupported)?;
-        face.wires[0].coedges.rotate_left(start);
+        for (wire, target_wire) in face
+            .wires
+            .iter_mut()
+            .zip(&expected.shell.faces[index].wires)
+        {
+            for c in &mut wire.coedges {
+                c.edge = edge_map[c.edge];
+            }
+            let target = target_wire.coedges[0].edge;
+            let start = wire
+                .coedges
+                .iter()
+                .position(|c| c.edge == target)
+                .ok_or_else(unsupported)?;
+            wire.coedges.rotate_left(start);
+        }
         faces[index] = face;
     }
     actual.shell.faces = faces;
+    Ok(actual)
+}
+fn recognize(actual: Solid, tol: Tolerance) -> Result<NurbsGraphSolid> {
+    if actual.vertices.len() != 8 || actual.edges.len() != 12 || actual.shell.faces.len() != 6 {
+        return Err(unsupported());
+    }
+    let mut candidates = Vec::new();
+    for face in &actual.shell.faces {
+        let Surface::Nurbs(s) = &face.surface else {
+            return Err(unsupported());
+        };
+        if s.degrees() != [2, 2]
+            || s.control_counts() != [3, 3]
+            || s.domain() != [[0., 1.], [0., 1.]]
+        {
+            continue;
+        }
+        let p = s.control_points();
+        let l = p[6].x;
+        let w = p[2].y;
+        let h = p[0].z;
+        let b = p[4].z - h;
+        if let Ok(candidate) = NurbsGraphSolid::new([l, w, h], b, tol) {
+            if same_surface(&face.surface, &candidate.brep().shell.faces[1].surface)? {
+                candidates.push(candidate);
+            }
+        }
+    }
+    if candidates.len() != 1 {
+        return Err(unsupported());
+    }
+    let mut candidate = candidates.pop().unwrap();
+    let actual = reindex(actual, candidate.brep())?;
     candidate.solid = actual;
     candidate.validate(tol).map_err(|_| unsupported())?;
     Ok(candidate)
@@ -379,7 +415,7 @@ fn recognize(mut actual: Solid, tol: Tolerance) -> Result<NurbsGraphSolid> {
 /// Import one exact full-domain, unplaced canonical polynomial graph from AP214.
 /// Metre or millimetre coordinates become mm; knots and UV parameters are unchanged.
 /// Placement, trimming, holes, rational weights and approximate recognition are unsupported.
-pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGraphSolid> {
+fn read_solid(input: &str, tol: Tolerance, holed: bool) -> Result<Solid> {
     Tolerance::new(tol.linear)?;
     let db = Parser::new(input)?.document_graph()?;
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
@@ -390,7 +426,7 @@ pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGr
     }
     let shell = db.simple(shell, "CLOSED_SHELL", 2)?;
     let faces = list(&shell[1])?;
-    if faces.len() != 6 {
+    if faces.len() != if holed { 10 } else { 6 } {
         return Err(unsupported());
     }
     let representation = db.unique("ADVANCED_BREP_SHAPE_REPRESENTATION")?;
@@ -411,6 +447,7 @@ pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGr
         edges: BTreeMap::new(),
         associations: BTreeMap::new(),
         surfaces: Vec::new(),
+        holed,
     };
     let mut seen = BTreeSet::new();
     for face in faces {
@@ -458,5 +495,168 @@ pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGr
             ));
         }
     }
-    recognize(builder.solid, tol)
+    Ok(builder.solid)
+}
+
+/// Strict plain-only import; holed bodies use the separate scoped importer.
+pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGraphSolid> {
+    recognize(read_solid(input, tol, false)?, tol)
+}
+
+fn coefficient_neighbors(seed: f64) -> Vec<f64> {
+    let mut result = vec![seed];
+    let mut lo = seed;
+    let mut hi = seed;
+    for _ in 0..64 {
+        lo = lo.next_down();
+        hi = hi.next_up();
+        if lo.is_finite() {
+            result.push(lo);
+        }
+        if hi.is_finite() {
+            result.push(hi);
+        }
+    }
+    result
+}
+fn recognize_holed(actual: Solid, tol: Tolerance) -> Result<NurbsGraphHoledSolid> {
+    if actual.vertices.len() != 16 || actual.edges.len() != 24 || actual.shell.faces.len() != 10 {
+        return Err(unsupported());
+    }
+    for face in &actual.shell.faces {
+        let Surface::Nurbs(roof) = &face.surface else {
+            return Err(unsupported());
+        };
+        if face.wires.len() != 2
+            || roof.degrees() != [2, 2]
+            || roof.control_counts() != [7, 7]
+            || roof.domain() != [[0., 1.], [0., 1.]]
+        {
+            continue;
+        }
+        let points = roof.control_points();
+        let dimensions = [points[42].x, points[6].y, points[0].z];
+        let h = dimensions[2];
+        if dimensions.iter().any(|v| !v.is_finite() || *v <= 0.) {
+            continue;
+        }
+        let mut hole = [[f64::INFINITY, f64::NEG_INFINITY]; 2];
+        for coedge in &face.wires[1].coedges {
+            for t in actual.edges[coedge.edge].curve.range() {
+                let uv = coedge.pcurve.evaluate(t);
+                if uv.iter().any(|value| !value.is_finite()) {
+                    return Err(unsupported());
+                }
+                for axis in 0..2 {
+                    hole[axis][0] = hole[axis][0].min(uv[axis]);
+                    hole[axis][1] = hole[axis][1].max(uv[axis]);
+                }
+            }
+        }
+        // Unit-weight refinement treats XYZ components independently. A flat
+        // canonical certificate therefore provides the identical XY coefficients
+        // and corner coordinates, regardless of roof height offset. Reject an
+        // incompatible placement/topology footprint before coefficient search.
+        let Ok(flat_source) = NurbsGraphSolid::new(dimensions, 0., tol) else {
+            continue;
+        };
+        let Ok(flat) = NurbsGraphHoledSolid::new(&flat_source, hole, tol) else {
+            continue;
+        };
+        let Surface::Nurbs(flat_roof) = &flat.brep().shell.faces[1].surface else {
+            unreachable!()
+        };
+        if roof.knots(0)? != flat_roof.knots(0)?
+            || roof.knots(1)? != flat_roof.knots(1)?
+            || roof
+                .control_points()
+                .iter()
+                .zip(flat_roof.control_points())
+                .any(|(a, b)| a.x != b.x || a.y != b.y)
+            || actual.vertices.iter().any(|v| {
+                !flat
+                    .brep()
+                    .vertices
+                    .iter()
+                    .any(|p| p.point.x == v.point.x && p.point.y == v.point.y)
+            })
+        {
+            continue;
+        }
+        let mut blossom: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+        for (axis, values) in blossom.iter_mut().enumerate() {
+            let knots = roof.knots(axis)?;
+            for i in 0..7 {
+                let s = knots[i + 1];
+                let t = knots[i + 2];
+                values.push(s + t - 2. * s * t);
+            }
+        }
+        let mut largest = 0.;
+        let mut location = 0;
+        for i in 0..7 {
+            for j in 0..7 {
+                let coefficient = blossom[0][i] * blossom[1][j];
+                if !coefficient.is_finite() {
+                    return Err(unsupported());
+                }
+                if coefficient > largest {
+                    largest = coefficient;
+                    location = i * 7 + j;
+                }
+            }
+        }
+        if largest <= 0. {
+            continue;
+        }
+        let seed = (points[location].z - h) / largest;
+        if !seed.is_finite() {
+            continue;
+        }
+        // B1²(s,t)=s+t−2st is the quadratic Bernstein blossom. It only supplies
+        // bounded candidate seeds: acceptance below requires every actual
+        // surface/curve coefficient, basis, PCurve and topology to match exactly.
+        let mut candidates = vec![0.];
+        if seed.abs() >= 0.5 * h {
+            candidates.extend(coefficient_neighbors(seed));
+        } else {
+            let center = h + seed;
+            if !center.is_finite() {
+                continue;
+            }
+            candidates.extend(coefficient_neighbors(center).into_iter().map(|c| c - h));
+        }
+        let mut tried = BTreeSet::new();
+        for b in candidates {
+            if !b.is_finite() || !tried.insert(b.to_bits()) {
+                continue;
+            }
+            let Ok(source) = NurbsGraphSolid::new(dimensions, b, tol) else {
+                continue;
+            };
+            let Ok(mut candidate) = NurbsGraphHoledSolid::new(&source, hole, tol) else {
+                continue;
+            };
+            if !same_surface(&face.surface, &candidate.brep().shell.faces[1].surface)? {
+                continue;
+            }
+            let Ok(parsed) = reindex(actual.clone(), candidate.brep()) else {
+                continue;
+            };
+            candidate.solid = parsed;
+            if candidate.validate(tol).is_ok() {
+                return Ok(candidate);
+            }
+        }
+    }
+    Err(Error::Unsupported("canonical holed graph coefficient recovery is unresolved within the bounded exact recognition search"))
+}
+/// Import one unplaced, full-source-domain canonical graph with one rectangular opening.
+/// Candidate coefficient recovery is bounded; only exact actual B-rep matches succeed.
+/// The recovered canonical representative need not reproduce an original input recipe.
+pub fn import_step_nurbs_graph_holed_mm(
+    input: &str,
+    tol: Tolerance,
+) -> Result<NurbsGraphHoledSolid> {
+    recognize_holed(read_solid(input, tol, true)?, tol)
 }

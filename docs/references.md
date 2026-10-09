@@ -698,3 +698,11 @@ geometry; only shared reference indices and cyclic wire starts are reordered.
 No coordinate fitting or tolerance-based snapping is performed. Public
 geometry/topology entity definitions are linked above; this original
 MIT OR Apache-2.0 implementation adds no dependency or OCCT source.
+
+The holed graph importer uses the public degree-two polynomial blossom identity
+for `2u(1-u)`: control coefficients `s + t - 2st` at successive inner knots,
+combined as a tensor product. This follows standard B-spline blossoming and
+knot-refinement mathematics described in the de Boor/Piegl–Tiller references
+above. A bounded binary64 candidate search is only representation recognition;
+all encoded geometry must match exactly. Original MIT OR Apache-2.0 code adds
+no dependency and copies or translates no OCCT source.

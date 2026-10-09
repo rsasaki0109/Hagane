@@ -53,7 +53,9 @@ duplicate entities and unknown units return errors.
 
 Restricted, translated, rotated and holed graph solids can be exported through
 the [graph STEP writer](nurbs-graph-step.md), but are not supported by this
-initial importer. Non-unit rational weights, arbitrary parameter bases, general
+initial six-face importer. The separate [holed importer](nurbs-graph-holed-step-import.md)
+supports one rectangular through opening in a full, unplaced graph.
+Non-unit rational weights, arbitrary parameter bases, general
 NURBS shells, assemblies and other application protocols remain unsupported.
 A rejected browser import preserves the accepted model.
 

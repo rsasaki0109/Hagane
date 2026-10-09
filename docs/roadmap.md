@@ -944,6 +944,20 @@ under exact canonical validation. Entity IDs, record/face ordering and cyclic
 wire starts are not geometric identity. SI mm/metre conversion, no-snapping
 rejection and bounded parser failure/recovery are independently verified.
 Native/WASM and browser file/text import share the same Rust implementation.
-Placed, restricted, holed and general rational imports remain unsupported.
+The later holed-import milestone below adds one rectangular opening; placed,
+restricted and general rational imports remain unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [strict graph STEP import](nurbs-graph-step-import.md).
+
+## Strict holed-graph NURBS STEP import
+
+A separate typed importer now retains the actual 16-vertex, 24-edge, 10-face
+B-rep of a full, unplaced graph with one rectangular through opening. Annular
+caps, inward walls, spline bases and both UV uses of each shared edge are
+checked exactly. Bounded coefficient recognition accepts only a complete exact
+geometry certificate; it never fits or snaps a nearby surface. Native/WASM
+round trips and browser file/text loads cover signed, flat and tiny roof offsets,
+unit conversion, reordered topology and malformed-input rejection. Placement,
+restriction, multiple openings and general rational shells remain unsupported.
+The estimate remains **15–25%**, toward **80%**.
+See [holed graph STEP import](nurbs-graph-holed-step-import.md).
