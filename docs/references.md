@@ -495,3 +495,14 @@ same-parameter maps. Canonical control/basis checks establish restricted
 boundary structure; no global regularity or injectivity theorem is claimed.
 Rigid placement acts directly on rational control coordinates. No OCCT code,
 external NURBS implementation or new dependency is used.
+
+
+Single-span rational surface display uses the tensor Bernstein product identity
+for `D = X - W*B`, where `B` is the bilinear corner interpolant. Convexity of
+coefficient combinations and positive denominator weights bounds `|S-B|`; the
+bilinear twist term `|C00-C10+C11-C01|/4` bounds `|B-T|` for two triangles.
+These mathematical identities are independently implemented, with local
+homogeneous de Casteljau subdivision. Corner mismatch and the engineering
+floating-point allowance are separate implementation guards, not a formal
+interval arithmetic proof. No reference code, OCCT source, or new dependency
+is used; see [bounded surface display](nurbs-surface-tessellation.md).

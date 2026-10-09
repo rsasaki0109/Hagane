@@ -264,6 +264,9 @@ fabricate the demo image.
 - [Rectangular open NURBS B-rep faces](docs/nurbs-face.md) retain exact rational
   surfaces/edges, shared corner vertices and same-parameter oriented coedges.
   Boundary validation is structural; generic NURBS solid operations remain unsupported.
+- [Bounded single-span rational surface display](docs/nurbs-surface-tessellation.md)
+  with per-cell Bernstein bounds and a conforming shared-vertex grid; multi-span
+  and arbitrary trimmed face meshing remain unsupported.
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
   horizontal-plane/bounded-Z-cylinder intersections.
 - Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
@@ -390,15 +393,16 @@ parameter, and `boundary_edges()` supplies four oriented curves and same-paramet
 UV maps. [NurbsFace](docs/nurbs-face.md) retains them using existing vertices,
 edges, coedges and faces; cross-face shared edges and sewing remain future work.
 
-Run `cargo run --locked --example nurbs_surface` for the native JSON fixture
+Run `cargo run --locked --example nurbs_surface_bounded` for bounded display JSON,
 or `cargo run --locked --example nurbs_face` for an exact quarter-cylinder open
-B-rep with four shared corners/edges and its display grid.
-The **Surfaces** link opens the interactive 3D WASM demo with height, weight,
-U/V and normal-marker controls, four boundary curves and selected U/V sections.
-Section curves have bounded adaptive display polylines; the 24-by-24 surface grid has no certified
-chord-error bound. The demo now samples a retained rectangular open B-rep face,
-**not a closed solid or a general trimmed NURBS face**. [Surface documentation](docs/nurbs-surface.md) describes the API,
-control ordering, mathematical formulas, numerical guards and remaining work.
+B-rep. The **Surfaces** page offers height, weight, U/V, normal-marker and surface
+error controls, with four boundary curves and selected sections. Its triangles
+now use per-cell Bernstein bounds on the retained single-span open face. The
+legacy uniform `sample_grid` and `nurbs_surface` fixture remain uncertified.
+These are **open rectangular faces, not closed solids or arbitrary trims**.
+[Surface documentation](docs/nurbs-surface.md) and
+[bounded surface display](docs/nurbs-surface-tessellation.md) explain the input
+contracts, mathematical bounds, numerical guards and limits.
 
 ## Explicit limits
 

@@ -366,7 +366,7 @@ checks. General curved Booleans and document history integration remain next wor
 
 ## Later: full CAD kernel work
 
-- Higher NURBS derivatives, periodic curves, surface patch splitting, bounded trimmed
+- Higher NURBS derivatives, periodic curves, surface patch splitting, bounded multi-span/trimmed
   surface tessellation, higher/mixed surface derivatives, surface trimming, intersections,
   and integration with B-rep edges/faces.
 - General Boolean operations on arbitrary manifold solids.
@@ -598,3 +598,27 @@ shared edges remain future work. This supersedes the earlier standalone-only
 NURBS boundary milestones without establishing general rational solid support.
 The engineering estimate remains **15–25%**, toward the **80%** target.
 See [rectangular NURBS face](nurbs-face.md).
+
+
+## Bounded single-span rational surface display
+
+`NurbsSurface::tessellate_bounded` and the retained `NurbsFace` wrapper now
+provide conforming shared-vertex grids with original UV cell ranges and a
+per-cell two-triangle error bound. Tensor Bernstein coefficients bound the
+rational surface's difference from its bilinear corner interpolant; a twist
+term bounds the latter's difference from the triangles. Original-evaluator
+corner mismatch and a conservative floating-point allowance are added separately.
+This mathematical geometric bound is not a formal interval arithmetic proof.
+
+Only single positive rational Bezier patches are supported. Uniform dyadic
+levels preserve conformity, while cell/depth/control-work and representable
+parameter limits fail explicitly. Analytic corner normals and triangle checks
+do not certify global regularity or injectivity. Multi-span/C0 surfaces,
+arbitrary trims, adjacent-face stitching and generic NURBS solid operations
+remain unsupported. Legacy sample_grid and surface fixture paths remain
+uncertified; the native/WASM browser now uses the bounded face API and reports
+requested/achieved error. Dense independent parameter and point-to-triangle
+distance tests cover rational/warped/degree16/tiny/nonunit cases and failures.
+
+The estimate remains **15–25%**, toward the **80%** target. See
+[bounded surface display](nurbs-surface-tessellation.md).

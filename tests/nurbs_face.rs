@@ -209,3 +209,29 @@ fn singular_surface_has_no_invented_display_mesh() {
     // Boundary structure alone says nothing about regularity or injectivity.
     assert!(face.sample_grid([8, 8], Tolerance::default()).is_err());
 }
+#[test]
+fn bounded_face_mesh_respects_orientation_and_rejects_dirty_boundaries() {
+    let a = NurbsFace::new(surface(), 1, Tolerance::default()).unwrap();
+    let b = NurbsFace::new(surface(), -1, Tolerance::default()).unwrap();
+    let ma = a
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    let mb = b
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    assert_eq!(ma.mesh.positions, mb.mesh.positions);
+    assert_eq!(ma.uv_ranges, mb.uv_ranges);
+    assert_eq!(ma.error_bounds, mb.error_bounds);
+    assert!(ma.error_bounds.iter().all(|bound| *bound <= 0.01));
+    for (a, b) in ma.mesh.triangles.iter().zip(&mb.mesh.triangles) {
+        assert_eq!(*b, [a[0], a[2], a[1]]);
+    }
+    for (a, b) in ma.mesh.normals.iter().zip(&mb.mesh.normals) {
+        assert!((*a + *b).norm() < 1e-15);
+    }
+    let mut dirty = a;
+    dirty.edges[0].vertices[0] = 100;
+    assert!(dirty
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .is_err());
+}

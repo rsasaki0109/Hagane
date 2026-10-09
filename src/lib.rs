@@ -95,3 +95,9 @@ pub use nurbs_surface_boundary::*;
 
 mod nurbs_face;
 pub use nurbs_face::*;
+
+mod nurbs_surface_tessellation;
+pub use nurbs_surface_tessellation::*;
+
+mod nurbs_surface_bounded_demo;
+pub use nurbs_surface_bounded_demo::*;

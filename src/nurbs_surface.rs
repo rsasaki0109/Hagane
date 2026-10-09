@@ -273,26 +273,7 @@ impl NurbsSurface {
 /// Open rational quadratic patch, with a variable center control height/weight.
 /// Output is a display grid plus exact selected point, partials and normal.
 pub fn nurbs_surface_demo_json(height: f64, weight: f64, u: f64, v: f64) -> Result<String> {
-    if !height.is_finite() || height.abs() > 100.0 {
-        return Err(Error::InvalidInput(
-            "surface demo height must be finite and within [-100,100]",
-        ));
-    }
-    let mut points = Vec::new();
-    let mut weights = Vec::new();
-    for i in 0..3 {
-        for j in 0..3 {
-            let center = i == 1 && j == 1;
-            points.push(Point3::new(
-                -40.0 + 40.0 * i as f64,
-                -30.0 + 30.0 * j as f64,
-                if center { height } else { 0.0 },
-            ));
-            weights.push(if center { weight } else { 1.0 });
-        }
-    }
-    let knots = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
-    let surface = NurbsSurface::new([2, 2], [knots.clone(), knots], [3, 3], points, weights)?;
+    let surface = nurbs_surface_demo_geometry(height, weight)?;
     let e = surface.partials(u, v)?;
     let normal = e.normal()?;
     let brep = crate::NurbsFace::new(surface.clone(), 1, crate::Tolerance::default())?;
@@ -360,4 +341,27 @@ pub fn nurbs_surface_demo_json(height: f64, weight: f64, u: f64, v: f64) -> Resu
     json["refined_control_counts"] = serde_json::json!(refined.control_counts());
     json["section_chord_error"] = serde_json::json!(0.05);
     Ok(json.to_string())
+}
+
+pub(crate) fn nurbs_surface_demo_geometry(height: f64, weight: f64) -> Result<NurbsSurface> {
+    if !height.is_finite() || height.abs() > 100.0 {
+        return Err(Error::InvalidInput(
+            "surface demo height must be finite and within [-100,100]",
+        ));
+    }
+    let mut points = Vec::new();
+    let mut weights = Vec::new();
+    for i in 0..3 {
+        for j in 0..3 {
+            let center = i == 1 && j == 1;
+            points.push(Point3::new(
+                -40.0 + 40.0 * i as f64,
+                -30.0 + 30.0 * j as f64,
+                if center { height } else { 0.0 },
+            ));
+            weights.push(if center { weight } else { 1.0 });
+        }
+    }
+    let knots = vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+    NurbsSurface::new([2, 2], [knots.clone(), knots], [3, 3], points, weights)
 }

@@ -4,7 +4,8 @@ Hagane's standalone `NurbsCurve` now supports interior knot insertion, rational
 Bezier span extraction and adaptive display polylines. These operate on the
 existing positive-weight, clamped, nonperiodic curve domain. They also supply
 the exact boundaries of [rectangular open NURBS faces](nurbs-face.md); generic
-NURBS solid operations and bounded surface tessellation remain unsupported.
+NURBS solid operations remain unsupported. [Single-span bounded surface display](nurbs-surface-tessellation.md)
+is implemented separately; multi-span and arbitrary trimmed surfaces remain unsupported.
 
 ![Actual Rust/WASM bounded NURBS curve demo](nurbs-bounded.png)
 

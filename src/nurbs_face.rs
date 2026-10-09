@@ -155,6 +155,29 @@ impl NurbsFace {
         }
         Ok(mesh)
     }
+    /// Approximate a single rational Bezier face with per-cell geometric bounds.
+    /// Faces with interior knots are explicitly unsupported by this first path.
+    pub fn tessellate_bounded(
+        &self,
+        chord_error: f64,
+        max_cells: usize,
+        tol: Tolerance,
+    ) -> Result<NurbsSurfaceMesh> {
+        self.validate_boundary(tol)?;
+        let Surface::Nurbs(surface) = &self.face.surface else {
+            unreachable!()
+        };
+        let mut output = surface.tessellate_bounded(chord_error, max_cells)?;
+        if self.face.orientation < 0 {
+            for triangle in &mut output.mesh.triangles {
+                triangle.swap(1, 2);
+            }
+            for normal in &mut output.mesh.normals {
+                *normal = *normal * -1.;
+            }
+        }
+        Ok(output)
+    }
     /// Place the exact surface and regenerate its canonical boundary topology.
     pub fn transformed(&self, transform: Transform, tol: Tolerance) -> Result<Self> {
         self.validate_boundary(tol)?;

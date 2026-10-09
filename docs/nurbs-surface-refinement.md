@@ -99,10 +99,12 @@ The JSON includes their original knots, weights, controls, parameters, affine
 UV maps, traversal direction and per-segment bounds. The selected point and
 normal remain analytic kernel evaluations.
 
-The surface's 24-by-24 `sample_grid` remains uniform display sampling with
+The compatibility 24-by-24 `sample_grid` remains uniform display sampling with
 **no certified surface chord-error bound**. Bounded section curves do not
-establish bounded approximation of the entire surface. Neither the grid nor
-the section lines substitute for an exact B-rep face or solid.
+establish bounded approximation of the entire surface. The browser now uses [bounded surface triangles](nurbs-surface-tessellation.md)
+on the original single-span retained face, independently of its refined section
+curves. The compatibility grid and section bounds alone do not certify surface
+triangles or a closed solid.
 
 Tests cover surface/partial invariance on both axes, degree 16, weight scaling
 by 1e200, dimensions of 1e-100, C0 limits, non-unit domains, independent rational
@@ -112,7 +114,7 @@ checks exercise the same section and boundary demo.
 
 ## Remaining work
 
-Cross-face shared NURBS B-rep edges, general surface trims, bounded surface
+Cross-face shared NURBS B-rep edges, general surface trims, bounded multi-span surface
 meshing, patch sewing, intersections and wider STEP interchange remain future
 work. Periodic axes and higher/mixed derivatives are also unsupported. Published
 mathematical provenance is recorded in [references](references.md); no OCCT

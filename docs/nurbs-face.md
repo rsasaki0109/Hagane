@@ -89,13 +89,19 @@ recommended route for rational geometry.
 
 ## Display and supported operations
 
+`NurbsFace::tessellate_bounded(error, max_cells, tolerance)` now provides
+[bounded single-span surface display](nurbs-surface-tessellation.md), preserving
+shared grid vertices and applying face orientation after boundary validation.
+Multi-span surfaces and arbitrary trims remain unsupported.
+
+
 `NurbsFace::sample_grid(cells, tolerance)` validates the retained boundary and
 samples the actual retained surface. Negative face orientation reverses mesh
 triangle winding and normals. The grid has the existing uniform surface sampling
 limits: 1..256 cells per axis, checked sampled normals/triangle orientation,
 and explicit rejection of unsupported C0 grid splitting.
 
-**The whole-surface grid has no certified chord-error or coverage guarantee.**
+**This compatibility grid has no certified chord-error or coverage guarantee.**
 The demo's boundary/section polylines separately use the bounded curve API;
 those bounds do not certify the surface triangles. The display is generated
 from the retained open B-rep, while its exact surface, curves, pcurves and shared
@@ -111,7 +117,7 @@ Adding a NURBS variant does not enable unsupported solid operations.
 
 ```sh
 cargo run --locked --example nurbs_face
-cargo run --locked --example nurbs_surface
+cargo run --locked --example nurbs_surface_bounded
 ./scripts/build-web.sh
 python3 -m http.server 8000 --directory web
 ```
@@ -121,7 +127,8 @@ open face with four vertices and four edges. Its 32-by-8 display grid emits
 512 triangles; the JSON explicitly reports `closed: false` and a null
 whole-surface error bound.
 
-The **Surfaces** browser page now generates its grid from the retained open face,
+The **Surfaces** browser page now generates bounded triangles from the retained
+single-span open face (see [bounded display](nurbs-surface-tessellation.md)),
 with exact boundaries and selected sections evaluated by Rust/WASM. Tests cover
 actual topology types, canonical validation, shared vertices and UV identity,
 orientation reversal, exact placement, singular display failure, geometry enum
@@ -130,7 +137,7 @@ dispatch and explicit rejection of generic solid operations.
 ## Next steps
 
 Shared edges across adjacent NURBS patches, general trims and trim validation,
-patch regularity diagnostics, bounded face meshing, sewing, intersections and
+patch regularity diagnostics, bounded multi-span/trimmed face meshing, sewing, intersections and
 STEP interchange remain future work. This milestone supplies the first retained
 rectangular rational face and makes those next steps concrete; it does not
 complete general NURBS B-rep integration.

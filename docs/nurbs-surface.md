@@ -76,6 +76,13 @@ This is a numerical angular guard, not a general surface-regularity certificate.
 
 ## Display sampling and demo
 
+The browser now uses [bounded single-span surface triangles](nurbs-surface-tessellation.md)
+through the retained `NurbsFace`. `tessellate_bounded(error,max_cells)` returns
+shared vertices, original UV cell ranges and per-cell Bernstein bounds. Multi-span
+surfaces remain explicitly unsupported by that method. The uniform API below
+is retained for compatibility.
+
+
 `sample_grid([cells_u,cells_v])` creates a display `Mesh` with 1..256 uniform
 parameter cells per axis. It is an open patch, not a closed CAD solid. All
 `face_ids` are 0, denoting the display patch rather than a topological face.
@@ -89,8 +96,8 @@ claim for this sampling method.** It does not implement trimmed face meshing.
 The existing analytic B-rep tessellator's circle sagitta bound remains separate.
 
 ```sh
-cargo run --locked --example nurbs_surface
-cargo run --locked --example nurbs_surface -- 35 2 0.3 0.7
+cargo run --locked --example nurbs_surface_bounded
+cargo run --locked --example nurbs_surface_bounded -- 35 2 0.3 0.7 0.05
 ./scripts/build-web.sh
 python3 -m http.server 8000 --directory web
 ```
@@ -100,22 +107,24 @@ with a 3-by-3 control net and variable center height/weight. A shape-preserving
 4-by-4 refinement supplies bounded display curves for four boundaries and two
 selected U/V sections, with same-parameter affine UV maps. U/V controls select
 a point and its analytic normal (cyan marker). Drag/keyboard orbit, wheel zoom,
-sampling mesh and rotation controls use the same display-only WebGL viewer as
+bounded surface-error and rotation controls use the same display-only WebGL viewer as
 the solid demo. The open patch is drawn from either side; back-side lighting
 flips the shading normal only, not the kernel's oriented normal.
 
-The fixture export `hagane_generate_surface(height,weight,u,v)` uses the shared
+The browser export
+`hagane_generate_surface_bounded(height,weight,u,v,chord_error)` uses the shared
 WASM JSON output buffer and returns status 0/1. The height fixture is limited
 to `[-100,100]`; core surfaces do not have that arbitrary demo limit. Any
 `hagane_generate*` call invalidates previously returned bytes. Native/WASM tests
-compare full sampled grids, selected points, partials and normals for six
-fixtures; browser tests verify parameter changes, geometry changes and controls.
+retain compatibility grid fixtures and additionally compare full bounded meshes,
+cell ranges/bounds, selected points and section curves; browser tests verify
+parameter changes, geometry changes, error controls and bound compliance.
 
-![Actual Rust/WASM open NURBS face](nurbs-face.png)
+![Actual Rust/WASM bounded NURBS face](nurbs-surface-bounded.png)
 
 ## Remaining work
 
-Periodic axes, higher/mixed derivatives, certified adaptive surface display
+Periodic axes, higher/mixed derivatives, bounded multi-span/trimmed surface display
 meshing, arbitrary trimming, intersections, cross-face sewing and closed
 NURBS solids remain unimplemented. Rectangular open-face topology is supported
 by [NurbsFace](nurbs-face.md). Surface evaluation alone does
