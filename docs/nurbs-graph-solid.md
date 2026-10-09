@@ -27,8 +27,11 @@ The scoped `NurbsGraphSolid` API certifies its canonical construction. Its
 retained `Solid` has eight vertices, twelve shared edges and six oriented
 faces, with affine surface pcurves and opposite effective edge uses. This
 does not enable arbitrary rational solids in generic `Solid` operations.
-General sewing, rigid placement, Booleans, fillets and STEP interchange for
+General sewing, Booleans, fillets and STEP interchange for
 these NURBS solids remain unsupported.
+
+[Rigid placement](nurbs-graph-placement.md) now translates and rotates this
+scoped shape while preserving its exact geometry and oriented connections.
 
 Display evaluates the retained surfaces on a common dyadic grid. Topological
 node identities connect neighboring faces while their normals stay separate

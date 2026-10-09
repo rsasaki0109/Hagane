@@ -47,6 +47,9 @@ curved roof, planar walls and base as six NURBS faces with shared exact edges.
 Their scoped API checks closure, exact volume and conforming bounded display;
 `web/graph-solid.html` edits the dimensions and roof control offset. General
 NURBS solid operations remain unsupported.
+[Rigid placement](docs/nurbs-graph-placement.md) also translates and rotates
+these solids, with invariant volume, checked world precision and conservative
+control-hull bounds after placement. The same browser demo edits placement.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

@@ -942,3 +942,15 @@ The editable native/WASM browser demo exercises actual closed geometry.
 Arbitrary NURBS solid validation, sewing, placement, Booleans and STEP support
 remain incomplete. The long-term estimate remains 15–25%, toward 80%.
 See [polynomial graph solids](docs/nurbs-graph-solid.md).
+
+## Rigid placement of polynomial NURBS solids
+
+The scoped graph solid now transforms its exact source curves, surfaces and
+shared vertices under a cumulative rigid placement, preserving topology,
+pcurves and analytic volume. Rebuilding from local canonical controls avoids
+accumulated control-net rounding. Checked world-coordinate allowances reject
+unresolved physical or display requests. Nonidentity bounds are explicitly
+conservative control-hull enclosures. Native/WASM and editable browser tests
+cover actual placed geometry; arbitrary NURBS solid operations remain
+incomplete. The estimate remains 15–25%, toward 80%.
+See [graph placement](docs/nurbs-graph-placement.md).

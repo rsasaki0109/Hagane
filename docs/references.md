@@ -626,3 +626,11 @@ volume correction `LWb/9`. A Hessian Taylor remainder bounds linear
 triangle interpolation. Shared B-rep edge identities, rather than coordinate
 proximity welding, close the display grid. This scoped implementation is
 original MIT OR Apache-2.0 code, with no additional dependencies or OCCT source.
+
+Graph-solid placement uses the existing right-handed orthonormal transform
+and homogeneous control-point affine invariance. Canonical local controls
+are transformed under a composed placement, with unchanged weights, knots
+and parameter curves. Absolute transform coefficient envelopes account for
+world-coordinate arithmetic, including cancellation. Nonidentity bounds use
+the positive-weight control-hull property and are explicitly conservative.
+This is independent original code; no new dependency or OCCT source is used.

@@ -852,3 +852,15 @@ browser demo edits dimensions and roof control offset. General rational
 solid validation, arbitrary sewing, placement, Booleans and STEP interchange
 remain unsupported. The estimate remains 15–25%, toward 80%.
 See [polynomial graph solids](nurbs-graph-solid.md).
+
+## Rigid placement of polynomial NURBS solids
+
+The graph-solid wrapper now regenerates its retained B-rep under a composed
+rigid placement, with unchanged exact volume and checked source/pcurve
+agreement. Display preserves shared-node closure and transformed normals;
+world-coordinate arithmetic allowances reject unresolved requests. Rotated
+bounds are conservative control-hull enclosures rather than claimed exact
+extrema. Native/WASM and the browser demo edit actual world placement. General
+NURBS sewing, solid operations and interchange remain incomplete; the
+estimate remains 15–25%, toward 80%.
+See [graph placement](nurbs-graph-placement.md).

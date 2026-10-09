@@ -8,6 +8,45 @@ pub fn nurbs_graph_solid_demo_json(
     error: f64,
 ) -> Result<String> {
     let graph = NurbsGraphSolid::new([width, depth, height], bulge, Tolerance::default())?;
+    serialize_graph(&graph, width, depth, height, bulge, error)
+}
+/// Rotate around the world Y axis, then translate the retained graph B-rep.
+#[allow(clippy::too_many_arguments)]
+pub fn nurbs_graph_placed_demo_json(
+    width: f64,
+    depth: f64,
+    height: f64,
+    bulge: f64,
+    error: f64,
+    angle: f64,
+    tx: f64,
+    ty: f64,
+    tz: f64,
+) -> Result<String> {
+    let transform = Transform::translation(Vec3::new(tx, ty, tz))?
+        .compose(Transform::rotation(Vec3::new(0., 1., 0.), angle)?)?;
+    let graph = NurbsGraphSolid::new([width, depth, height], bulge, Tolerance::default())?
+        .transformed(transform, Tolerance::default())?;
+    let text = serialize_graph(&graph, width, depth, height, bulge, error)?;
+    let mut data: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|_| Error::InvalidInput("graph demo JSON serialization failed"))?;
+    data["placement"] =
+        serde_json::json!({"angle":angle,"translation":[tx,ty,tz],"axis":[0.,1.,0.]});
+    data["bounds_kind"] = serde_json::json!(if graph.placement() == Transform::IDENTITY {
+        "exact local graph bounds"
+    } else {
+        "conservative transformed local bounds"
+    });
+    Ok(data.to_string())
+}
+fn serialize_graph(
+    graph: &NurbsGraphSolid,
+    width: f64,
+    depth: f64,
+    height: f64,
+    bulge: f64,
+    error: f64,
+) -> Result<String> {
     graph.validate(Tolerance::default())?;
     let display = graph.tessellate_bounded(error, 65536, Tolerance::default())?;
     let solid = graph.brep();

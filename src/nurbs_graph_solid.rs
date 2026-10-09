@@ -7,6 +7,7 @@ pub struct NurbsGraphSolid {
     dimensions: [f64; 3],
     bulge: f64,
     construction_tolerance: Tolerance,
+    placement: Transform,
 }
 #[derive(Clone, Debug)]
 pub struct NurbsGraphMesh {
@@ -83,6 +84,24 @@ fn build(d: [f64; 3], b: f64, tol: Tolerance) -> Result<Solid> {
     }
     Ok(solid)
 }
+fn placed(mut solid: Solid, transform: Transform) -> Result<Solid> {
+    if transform == Transform::IDENTITY {
+        return Ok(solid);
+    }
+    for vertex in &mut solid.vertices {
+        vertex.point = transform.point(vertex.point);
+        if !vertex.point.finite() {
+            return Err(Error::InvalidInput("graph placement overflows"));
+        }
+    }
+    for edge in &mut solid.edges {
+        edge.curve = edge.curve.transformed(transform)?;
+    }
+    for face in &mut solid.shell.faces {
+        face.surface = face.surface.transformed(transform)?;
+    }
+    Ok(solid)
+}
 impl NurbsGraphSolid {
     pub fn new(dimensions: [f64; 3], bulge: f64, tol: Tolerance) -> Result<Self> {
         Tolerance::new(tol.linear)?;
@@ -105,11 +124,59 @@ impl NurbsGraphSolid {
             dimensions,
             bulge,
             construction_tolerance: tol,
+            placement: Transform::IDENTITY,
         };
         result.volume()?;
         result.bounds()?;
         result.validate(tol)?;
         Ok(result)
+    }
+    pub fn placement(&self) -> Transform {
+        self.placement
+    }
+    /// Regenerate from the local canonical source with a composed rigid placement.
+    pub fn transformed(&self, transform: Transform, tol: Tolerance) -> Result<Self> {
+        self.validate(tol)?;
+        let placement = transform.compose(self.placement)?;
+        let result = Self {
+            solid: placed(build(self.dimensions, self.bulge, tol)?, placement)?,
+            dimensions: self.dimensions,
+            bulge: self.bulge,
+            construction_tolerance: tol,
+            placement,
+        };
+        result.validate(tol)?;
+        Ok(result)
+    }
+    fn arithmetic_budget(&self) -> Result<f64> {
+        let axes = self.placement.axes();
+        let origin = self.placement.origin();
+        let extents = [
+            self.dimensions[0],
+            self.dimensions[1],
+            self.dimensions[2].max((self.dimensions[2] + self.bulge).abs()),
+        ];
+        let mut scale: f64 = 0.;
+        for k in 0..3 {
+            let component = |p: Point3| [p.x, p.y, p.z][k];
+            let envelope = component(origin).abs()
+                + (0..3)
+                    .map(|i| component(axes[i]).abs() * extents[i])
+                    .sum::<f64>();
+            if !envelope.is_finite() {
+                return Err(Error::InvalidInput(
+                    "graph placement coefficient envelope overflows",
+                ));
+            }
+            scale = scale.max(envelope);
+        }
+        let budget = 4096. * f64::EPSILON * scale * 6.;
+        if !budget.is_finite() {
+            return Err(Error::InvalidInput(
+                "graph placement arithmetic budget overflows",
+            ));
+        }
+        Ok(budget)
     }
     pub fn brep(&self) -> &Solid {
         &self.solid
@@ -129,8 +196,27 @@ impl NurbsGraphSolid {
         }
         Ok(v)
     }
+    /// Exact local bounds for identity placement; conservative control-hull bounds otherwise.
     pub fn bounds(&self) -> Result<Bounds> {
         self.validate(self.construction_tolerance)?;
+        if self.placement != Transform::IDENTITY {
+            let mut min = Point3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
+            let mut max = Point3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+            for face in &self.solid.shell.faces {
+                let Surface::Nurbs(surface) = &face.surface else {
+                    unreachable!()
+                };
+                for p in surface.control_points() {
+                    min.x = min.x.min(p.x);
+                    min.y = min.y.min(p.y);
+                    min.z = min.z.min(p.z);
+                    max.x = max.x.max(p.x);
+                    max.y = max.y.max(p.y);
+                    max.z = max.z.max(p.z);
+                }
+            }
+            return Ok(Bounds { min, max });
+        }
         let [l, w, h] = self.dimensions;
         let z = h + self.bulge.max(0.) / 4.;
         if !z.is_finite() {
@@ -144,7 +230,12 @@ impl NurbsGraphSolid {
     /// Validate the retained, canonical six-face representation, not a generic NURBS solid.
     pub fn validate(&self, tol: Tolerance) -> Result<()> {
         Tolerance::new(tol.linear)?;
-        let expected = build(self.dimensions, self.bulge, tol)?;
+        if self.placement != Transform::IDENTITY && self.arithmetic_budget()? >= tol.linear / 4. {
+            return Err(Error::InvalidInput(
+                "graph placed geometry cannot resolve validation tolerance",
+            ));
+        }
+        let expected = placed(build(self.dimensions, self.bulge, tol)?, self.placement)?;
         let bad = || Error::InvalidTopology("graph solid differs from its canonical B-rep");
         if self.solid.vertices.len() != 8
             || self.solid.edges.len() != 12
@@ -251,11 +342,7 @@ impl NurbsGraphSolid {
                 "graph error and total cell budget are invalid",
             ));
         }
-        let scale = self
-            .dimensions
-            .into_iter()
-            .fold((self.dimensions[2] + self.bulge).abs(), f64::max);
-        let roundoff = 4096. * f64::EPSILON * scale * 6.;
+        let roundoff = self.arithmetic_budget()?;
         if !roundoff.is_finite() || roundoff >= error / 4. {
             return Err(Error::Tessellation(
                 "graph coordinate precision cannot resolve error",
