@@ -5,6 +5,15 @@ mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     static WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    static WORKFLOW_SESSION: Mutex<Option<crate::WorkflowSession>> = Mutex::new(None);
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_reset_session() {
+        *WORKFLOW_SESSION.lock().unwrap() = None;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_finish_incremental() -> i32 {
+        finish_workflow(true)
+    }
     #[no_mangle]
     pub extern "C" fn hagane_workflow_begin() {
         let mut input = WORKFLOW_INPUT.lock().unwrap();
@@ -23,6 +32,9 @@ mod exports {
     }
     #[no_mangle]
     pub extern "C" fn hagane_workflow_finish() -> i32 {
+        finish_workflow(false)
+    }
+    fn finish_workflow(incremental: bool) -> i32 {
         let (bytes, bad) = {
             let mut input = WORKFLOW_INPUT.lock().unwrap();
             (std::mem::take(&mut input.0), input.1)
@@ -33,6 +45,13 @@ mod exports {
             ));
         }
         match std::str::from_utf8(&bytes) {
+            Ok(text) if incremental => generate(
+                WORKFLOW_SESSION
+                    .lock()
+                    .unwrap()
+                    .get_or_insert_with(crate::WorkflowSession::new)
+                    .evaluate_json(text),
+            ),
             Ok(text) => generate(crate::evaluate_workflow_json(text)),
             Err(_) => generate(crate::workflow_input_failure(
                 "Operation document must be valid UTF-8.",

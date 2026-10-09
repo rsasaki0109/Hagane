@@ -192,3 +192,149 @@ fn mixed_box_bore_kernel_checks_domains_and_analytic_metrics() {
         assert!(subtract_box_bores(b, &vec![bores[0]; 257], t).is_err());
     }
 }
+
+fn mixed_document() -> WorkflowDocument {
+    serde_json::from_str(include_str!("../docs/workflow-multiple-example.json")).unwrap()
+}
+fn assert_fresh(result: &WorkflowRebuild, document: &WorkflowDocument) {
+    let fresh = document.rebuild().unwrap();
+    result
+        .solid
+        .validate(Tolerance::new(document.tolerance.linear).unwrap())
+        .unwrap();
+    assert_eq!(
+        result.solid.mesh_json(0.05, Tolerance::default()).unwrap(),
+        fresh.mesh_json(0.05, Tolerance::default()).unwrap()
+    );
+}
+#[test]
+fn incremental_prefix_reuse_edit_append_truncate_and_policy_invalidation() {
+    use std::sync::Arc;
+    let mut session = WorkflowSession::new();
+    let mut doc = mixed_document();
+    doc.operations.pop();
+    let first = session.rebuild(&doc).unwrap();
+    assert_eq!(first.stats.reused_operations, 0);
+    assert_eq!(first.stats.rebuilt_operation_ids, vec!["box-1", "bore-1"]);
+    let same = session.rebuild(&doc).unwrap();
+    assert_eq!(same.stats.rebuilt_operations, 0);
+    assert!(Arc::ptr_eq(&first.solid, &same.solid));
+    doc = mixed_document();
+    let appended = session.rebuild(&doc).unwrap();
+    assert_eq!(appended.stats.reused_operations, 2);
+    assert_eq!(appended.stats.rebuilt_operation_ids, vec!["bore-2"]);
+    assert_fresh(&appended, &doc);
+    doc.operations.pop();
+    let truncated = session.rebuild(&doc).unwrap();
+    assert_eq!(truncated.stats.rebuilt_operations, 0);
+    assert!(Arc::ptr_eq(&first.solid, &truncated.solid));
+    doc = mixed_document();
+    session.rebuild(&doc).unwrap();
+    if let WorkflowOperation::Bore { radius, .. } = &mut doc.operations[2] {
+        *radius = 5.;
+    }
+    let late = session.rebuild(&doc).unwrap();
+    assert_eq!(late.stats.reused_operations, 2);
+    assert_eq!(late.stats.rebuilt_operation_ids, vec!["bore-2"]);
+    assert_fresh(&late, &doc);
+    if let WorkflowOperation::Bore { depth, .. } = &mut doc.operations[1] {
+        *depth = Some(12.);
+    }
+    let early = session.rebuild(&doc).unwrap();
+    assert_eq!(early.stats.reused_operations, 1);
+    assert_eq!(early.stats.rebuilt_operation_ids, vec!["bore-1", "bore-2"]);
+    assert_fresh(&early, &doc);
+    if let WorkflowOperation::Box { size, .. } = &mut doc.operations[0] {
+        size[0] = 100.;
+    }
+    let stock = session.rebuild(&doc).unwrap();
+    assert_eq!(stock.stats.reused_operations, 0);
+    assert_eq!(stock.stats.rebuilt_operations, 3);
+    assert_fresh(&stock, &doc);
+    for component in ["angular", "relative", "linear"] {
+        match component {
+            "angular" => doc.tolerance.angular *= 2.,
+            "relative" => doc.tolerance.relative *= 2.,
+            _ => doc.tolerance.linear *= 2.,
+        };
+        let policy = session.rebuild(&doc).unwrap();
+        assert_eq!(policy.stats.reused_operations, 0);
+        assert_fresh(&policy, &doc);
+    }
+    session.reset();
+    assert_eq!(session.rebuild(&doc).unwrap().stats.rebuilt_operations, 3);
+}
+
+#[test]
+fn incremental_failures_preserve_accepted_geometry_and_cache_ownership() {
+    use std::sync::Arc;
+    let mut session = WorkflowSession::new();
+    let doc = mixed_document();
+    let initial = session.rebuild(&doc).unwrap();
+    let mut bad = doc.clone();
+    if let WorkflowOperation::Bore { center, .. } = &mut bad.operations[2] {
+        center[0] = 18.;
+    }
+    assert_eq!(session.rebuild(&bad).unwrap_err().code, "bore_clearance");
+    let unchanged = session.rebuild(&doc).unwrap();
+    assert_eq!(unchanged.stats.rebuilt_operations, 0);
+    assert!(Arc::ptr_eq(&initial.solid, &unchanged.solid));
+    bad = doc.clone();
+    bad.schema_version = 99;
+    assert!(session.rebuild(&bad).is_err());
+    bad = doc.clone();
+    bad.units = "m".into();
+    assert!(session.rebuild(&bad).is_err());
+    bad = doc.clone();
+    if let WorkflowOperation::Bore { input, .. } = &mut bad.operations[2] {
+        *input = "box-1".into();
+    }
+    assert_eq!(session.rebuild(&bad).unwrap_err().code, "invalid_reference");
+    let mut caller = session.rebuild(&doc).unwrap();
+    Arc::make_mut(&mut caller.solid).shell.faces.clear();
+    assert!(caller.solid.validate(Tolerance::default()).is_err());
+    let intact = session.rebuild(&doc).unwrap();
+    assert!(Arc::ptr_eq(&initial.solid, &intact.solid));
+    assert_fresh(&intact, &doc);
+}
+
+#[test]
+fn incremental_json_is_transactional_and_stateless_reports_remain_compatible() {
+    let mut session = WorkflowSession::new();
+    let doc = mixed_document();
+    let input = serde_json::to_string(&doc).unwrap();
+    let first: Value = serde_json::from_str(&session.evaluate_json(&input).unwrap()).unwrap();
+    assert_eq!(first["rebuild"]["rebuilt_operations"], 3);
+    for invalid in ["{", "{}", &" ".repeat(65537)] {
+        let report: Value = serde_json::from_str(&session.evaluate_json(invalid).unwrap()).unwrap();
+        assert_eq!(report["ok"], false);
+        assert!(report.get("rebuild").is_none());
+    }
+    // A valid exact solid can exceed the display sampling budget. Do not
+    // commit this edit to the session merely because geometry construction passed.
+    let mut oversized = doc.clone();
+    oversized.operations.pop();
+    oversized.tolerance.linear = 1e-3;
+    if let WorkflowOperation::Box { size, .. } = &mut oversized.operations[0] {
+        *size = [1e9, 1e9, 24.];
+    }
+    if let WorkflowOperation::Bore { radius, .. } = &mut oversized.operations[1] {
+        *radius = 1e8;
+    }
+    oversized.rebuild().unwrap();
+    let rejected: Value = serde_json::from_str(
+        &session
+            .evaluate_json(&serde_json::to_string(&oversized).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(rejected["diagnostic"]["code"], "display_rejected");
+    assert!(rejected.get("mesh").is_none());
+    assert!(rejected.get("rebuild").is_none());
+    let same: Value = serde_json::from_str(&session.evaluate_json(&input).unwrap()).unwrap();
+    assert_eq!(same["rebuild"]["reused_operations"], 3);
+    assert_eq!(same["rebuild"]["rebuilt_operations"], 0);
+    let stateless: Value = serde_json::from_str(&evaluate_workflow_json(&input).unwrap()).unwrap();
+    assert_eq!(same["mesh"], stateless["mesh"]);
+    assert!(stateless.get("rebuild").is_none());
+}

@@ -1,9 +1,11 @@
 //! Versioned, deliberately scoped editable modeling intent, not B-rep interchange.
+use crate::operations::{apply_checked_box_bore, checked_box_bore_tools};
 use crate::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::Arc;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct WorkflowDocument {
     pub schema_version: u32,
@@ -11,14 +13,14 @@ pub struct WorkflowDocument {
     pub tolerance: WorkflowTolerance,
     pub operations: Vec<WorkflowOperation>,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct WorkflowTolerance {
     pub linear: f64,
     pub angular: f64,
     pub relative: f64,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum WorkflowOperation {
     Box {
@@ -90,6 +92,24 @@ fn valid_id(id: &str) -> bool {
 impl WorkflowDocument {
     /// Rebuild exact supported operations. IDs identify operations, not persistent faces.
     pub fn rebuild(&self) -> std::result::Result<Solid, Box<WorkflowDiagnostic>> {
+        let plan = self.checked_plan()?;
+        let mut solid = make_box(plan.stock, plan.tolerance)
+            .map_err(|e| geometry_error(e, self.operation_id(0)))?;
+        for (i, (&bore, &tool)) in plan.bores.iter().zip(&plan.tools).enumerate() {
+            apply_checked_box_bore(&mut solid, plan.stock, bore, tool, plan.tolerance)
+                .map_err(|e| geometry_error(e, self.operation_id(i + 1)))?;
+        }
+        solid
+            .validate(plan.tolerance)
+            .map_err(|e| geometry_error(e, self.operation_id(self.operations.len() - 1)))?;
+        Ok(solid)
+    }
+    fn operation_id(&self, index: usize) -> &str {
+        match &self.operations[index] {
+            WorkflowOperation::Box { id, .. } | WorkflowOperation::Bore { id, .. } => id,
+        }
+    }
+    fn checked_plan(&self) -> std::result::Result<WorkflowPlan, Box<WorkflowDiagnostic>> {
         if self.schema_version != 1 {
             let mut d = diagnostic(
                 "unsupported_schema",
@@ -167,10 +187,6 @@ impl WorkflowDocument {
             min: size * (-0.5),
             size,
         };
-        let base = make_box(b, t).map_err(|e| geometry_error(e, box_id))?;
-        if self.operations.len() == 1 {
-            return Ok(base);
-        }
         let mut bores: Vec<BoxBore> = Vec::new();
         let mut ids = vec![box_id.as_str()];
         for operation in &self.operations[1..] {
@@ -315,7 +331,14 @@ impl WorkflowDocument {
             }
             ids.push(id.as_str());
         }
-        subtract_box_bores(b, &bores, t).map_err(|e| geometry_error(e, ids.last().unwrap()))
+        let tools = checked_box_bore_tools(b, &bores, t)
+            .map_err(|e| geometry_error(e, ids.last().unwrap()))?;
+        Ok(WorkflowPlan {
+            stock: b,
+            bores,
+            tools,
+            tolerance: t,
+        })
     }
     fn candidate_segments(&self, failed: Option<&str>) -> Vec<[[f64; 3]; 2]> {
         let Some(WorkflowOperation::Box { size, .. }) = self.operations.first() else {
@@ -384,23 +407,9 @@ pub fn evaluate_workflow_json(input: &str) -> Result<String> {
         Err(e) => return workflow_input_failure(&format!("Invalid operation document: {e}")),
     };
     let report = match document.rebuild() {
-        Ok(solid) => match solid
-            .mesh_json(0.05, Tolerance::new(document.tolerance.linear)?)
-            .and_then(|text| {
-                serde_json::from_str::<Value>(&text).map_err(|_| {
-                    Error::Unsupported(
-                        "display metrics or coordinates exceed finite JSON representation",
-                    )
-                })
-            }) {
+        Ok(solid) => match workflow_mesh(&solid, &document) {
             Ok(mesh) => json!({"ok":true,"document":document,"mesh":mesh}),
-            Err(error) => {
-                let mut d = geometry_error(error, "display");
-                d.operation_id = None;
-                d.field = Some("display");
-                d.code = "display_rejected";
-                json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(d.operation_id.as_deref()),"attempted_document":document})
-            }
+            Err(error) => display_failure(error, &document),
         },
         Err(d) => {
             json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(d.operation_id.as_deref()),"attempted_document":document})
@@ -412,4 +421,163 @@ pub fn evaluate_workflow_json(input: &str) -> Result<String> {
 pub fn workflow_input_failure(message: &str) -> Result<String> {
     let report = json!({"ok":false,"diagnostic":diagnostic("invalid_document",None,None,message),"candidate_segments":[]});
     serde_json::to_string(&report).map_err(|_| Error::InvalidInput("workflow serialization failed"))
+}
+
+struct WorkflowPlan {
+    stock: BoxSpec,
+    bores: Vec<BoxBore>,
+    tools: Vec<CylinderSpec>,
+    tolerance: Tolerance,
+}
+/// Actual B-rep operation evaluations, not timing or mesh-cache statistics.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct WorkflowRebuildStats {
+    pub reused_operations: usize,
+    pub rebuilt_operations: usize,
+    pub rebuilt_operation_ids: Vec<String>,
+}
+/// An immutable exact solid shared with the session's accepted prefix snapshots.
+#[derive(Clone, Debug)]
+pub struct WorkflowRebuild {
+    pub solid: Arc<Solid>,
+    pub stats: WorkflowRebuildStats,
+}
+/// In-memory incremental evaluator for a linear box-and-bore document.
+/// Failed edits never replace the last accepted snapshots. All input checks
+/// still run; only geometry construction for unchanged prefixes is skipped.
+#[derive(Default)]
+pub struct WorkflowSession {
+    accepted: Option<WorkflowDocument>,
+    snapshots: Vec<Arc<Solid>>,
+}
+impl WorkflowSession {
+    /// Start an empty evaluator with no accepted history.
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// Drop all geometry snapshots; the next valid edit starts from the box.
+    pub fn reset(&mut self) {
+        self.accepted = None;
+        self.snapshots.clear();
+    }
+    fn prepare(
+        &self,
+        document: &WorkflowDocument,
+    ) -> std::result::Result<(WorkflowRebuild, Vec<Arc<Solid>>), Box<WorkflowDiagnostic>> {
+        let plan = document.checked_plan()?;
+        let reused = self
+            .accepted
+            .as_ref()
+            .filter(|old| {
+                old.schema_version == document.schema_version
+                    && old.units == document.units
+                    && old.tolerance == document.tolerance
+            })
+            .map(|old| {
+                old.operations
+                    .iter()
+                    .zip(&document.operations)
+                    .take_while(|(a, b)| a == b)
+                    .count()
+            })
+            .unwrap_or(0);
+        let stats = WorkflowRebuildStats {
+            reused_operations: reused,
+            rebuilt_operations: document.operations.len() - reused,
+            rebuilt_operation_ids: (reused..document.operations.len())
+                .map(|i| document.operation_id(i).to_owned())
+                .collect(),
+        };
+        let mut snapshots = self.snapshots[..reused].to_vec();
+        if reused == document.operations.len() {
+            let result = WorkflowRebuild {
+                solid: Arc::clone(snapshots.last().unwrap()),
+                stats,
+            };
+            return Ok((result, snapshots));
+        }
+        let mut solid = if reused == 0 {
+            let solid = make_box(plan.stock, plan.tolerance)
+                .map_err(|e| geometry_error(e, document.operation_id(0)))?;
+            snapshots.push(Arc::new(solid.clone()));
+            solid
+        } else {
+            (*snapshots[reused - 1]).clone()
+        };
+        for index in reused.max(1)..document.operations.len() {
+            apply_checked_box_bore(
+                &mut solid,
+                plan.stock,
+                plan.bores[index - 1],
+                plan.tools[index - 1],
+                plan.tolerance,
+            )
+            .and_then(|()| solid.validate(plan.tolerance))
+            .map_err(|e| geometry_error(e, document.operation_id(index)))?;
+            snapshots.push(Arc::new(solid.clone()));
+        }
+        let result = WorkflowRebuild {
+            solid: Arc::clone(snapshots.last().unwrap()),
+            stats,
+        };
+        Ok((result, snapshots))
+    }
+    /// Rebuild only the changed suffix and commit a fully validated result.
+    pub fn rebuild(
+        &mut self,
+        document: &WorkflowDocument,
+    ) -> std::result::Result<WorkflowRebuild, Box<WorkflowDiagnostic>> {
+        let (result, snapshots) = self.prepare(document)?;
+        self.snapshots = snapshots;
+        self.accepted = Some(document.clone());
+        Ok(result)
+    }
+    /// Incremental JSON report, adding `rebuild` statistics on success.
+    /// Parsing, geometry and display failures all leave the accepted cache intact.
+    pub fn evaluate_json(&mut self, input: &str) -> Result<String> {
+        if input.len() > 65536 {
+            return workflow_input_failure("Operation document exceeds 64 KiB.");
+        }
+        let document: WorkflowDocument = match serde_json::from_str(input) {
+            Ok(document) => document,
+            Err(error) => {
+                return workflow_input_failure(&format!("Invalid operation document: {error}"))
+            }
+        };
+        let report = match self.prepare(&document) {
+            Ok((result, snapshots)) => match workflow_mesh(&result.solid, &document) {
+                Ok(mesh) => {
+                    let report =
+                        json!({"ok":true,"document":document,"mesh":mesh,"rebuild":result.stats});
+                    self.accepted = Some(document);
+                    self.snapshots = snapshots;
+                    report
+                }
+                Err(error) => display_failure(error, &document),
+            },
+            Err(d) => {
+                json!({"ok":false,"diagnostic":d,"candidate_segments":document.candidate_segments(d.operation_id.as_deref()),"attempted_document":document})
+            }
+        };
+        serde_json::to_string(&report)
+            .map_err(|_| Error::InvalidInput("workflow serialization failed"))
+    }
+}
+fn workflow_mesh(solid: &Solid, document: &WorkflowDocument) -> Result<Value> {
+    solid
+        .mesh_json(0.05, Tolerance::new(document.tolerance.linear)?)
+        .and_then(|text| {
+            serde_json::from_str(&text).map_err(|_| {
+                Error::Unsupported(
+                    "display metrics or coordinates exceed finite JSON representation",
+                )
+            })
+        })
+}
+fn display_failure(error: Error, document: &WorkflowDocument) -> Value {
+    let mut d = geometry_error(error, "display");
+    d.operation_id = None;
+    d.field = Some("display");
+    d.code = "display_rejected";
+    json!({"ok":false,"diagnostic":d,"candidate_segments":[],"attempted_document":document})
 }

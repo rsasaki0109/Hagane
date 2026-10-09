@@ -584,3 +584,27 @@ try {writeFileSync(mixedFile,JSON.stringify(mixedWorkflow));const nativeMixed=JS
 const mixedReport=workflow(mixedWorkflow);assert.equal(mixedReport.ok,true);assert.ok(Math.abs(mixedReport.mesh.volume-(115200-Math.PI*(196*16+16*24)))<1e-8);assert.equal(mixedReport.mesh.faces,9);assert.deepEqual(workflow(mixedReport.document),mixedReport);
 mixedWorkflow.operations[2].center=[18,0];const mixedFailure=workflow(mixedWorkflow);assert.equal(mixedFailure.diagnostic.code,'bore_clearance');assert.equal(mixedFailure.diagnostic.operation_id,'bore-2');assert.equal('mesh' in mixedFailure,false);
 console.log('Mixed operation history: both cuts retained, analytic volume, topology, round trips and second-operation contact diagnostics passed.');
+
+function incrementalWorkflow(document){const text=typeof document==='string'?document:JSON.stringify(document);k.hagane_workflow_begin();for(const byte of new TextEncoder().encode(text)){if(k.hagane_workflow_push_byte(byte))break;}assert.equal(k.hagane_workflow_finish_incremental(),0);return JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));}
+k.hagane_workflow_reset_session();
+const incrementalBase=JSON.parse(readFileSync(new URL('../docs/workflow-multiple-example.json',import.meta.url),'utf8'));
+const incrementalLate=structuredClone(incrementalBase);incrementalLate.operations[2].radius=5;
+const incrementalEarly=structuredClone(incrementalLate);incrementalEarly.operations[1].depth=12;
+const incrementalBad=structuredClone(incrementalEarly);incrementalBad.operations[2].center=[18,0];
+const incrementalStock=structuredClone(incrementalEarly);incrementalStock.operations[0].size[0]=100;
+const incrementalPolicy=structuredClone(incrementalStock);incrementalPolicy.tolerance.angular*=2;
+const incrementalShort=structuredClone(incrementalPolicy);incrementalShort.operations.pop();
+const incrementalEdits=[incrementalBase,incrementalBase,incrementalLate,incrementalEarly,incrementalBad,incrementalEarly,incrementalStock,incrementalPolicy,incrementalShort];
+const incrementalExpected=[[0,3],[3,0],[2,1],[1,2],null,[3,0],[0,3],[0,3],[2,0]];
+const incrementalReports=incrementalEdits.map((doc,i)=>{const report=incrementalWorkflow(doc);if(incrementalExpected[i]){assert.equal(report.ok,true);assert.deepEqual([report.rebuild.reused_operations,report.rebuild.rebuilt_operations],incrementalExpected[i]);const fresh=workflow(doc);assert.deepEqual(report.mesh,fresh.mesh);assert.deepEqual(report.document,fresh.document);}else{assert.equal(report.ok,false);assert.equal(report.diagnostic.code,'bore_clearance');assert.equal('rebuild' in report,false);}return report;});
+const incrementalFiles=incrementalEdits.map((_,i)=>new URL(`../target/workflow-incremental-${i}.json`,import.meta.url));
+try {
+ incrementalFiles.forEach((file,i)=>writeFileSync(file,JSON.stringify(incrementalEdits[i])));
+ const nativeReports=execFileSync('cargo',['run','--quiet','--locked','--example','workflow_session','--',...incrementalFiles.map(f=>f.pathname)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}).trim().split('\n').map(JSON.parse);
+ assert.equal(nativeReports.length,incrementalReports.length);nativeReports.forEach((report,i)=>compareIntersection(report,incrementalReports[i]));
+} finally {incrementalFiles.forEach(file=>{try{unlinkSync(file);}catch{}});}
+assert.equal(incrementalWorkflow('{').ok,false);assert.equal(incrementalWorkflow(' '.repeat(65537)).ok,false);
+k.hagane_workflow_begin();k.hagane_workflow_push_byte(255);assert.equal(k.hagane_workflow_finish_incremental(),0);assert.equal(JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len()))).ok,false);
+assert.equal(incrementalWorkflow(incrementalShort).rebuild.rebuilt_operations,0);
+k.hagane_workflow_reset_session();assert.equal(incrementalWorkflow(incrementalShort).rebuild.rebuilt_operations,2);
+console.log('Incremental history: actual prefix reuse, changed suffixes, policy invalidation, truncation, failure recovery, reset and native/WASM session parity passed.');

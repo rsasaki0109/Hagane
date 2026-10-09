@@ -712,77 +712,10 @@ pub struct BoxBore {
 }
 /// Exact box difference; at most 256 bores, all clearances exceed ten linear tolerances.
 pub fn subtract_box_bores(b: BoxSpec, bores: &[BoxBore], t: Tolerance) -> Result<Solid> {
-    check_box(b, t)?;
-    if bores.len() > 256 {
-        return Err(Error::Unsupported("at most 256 box bores are supported"));
-    }
-    let mut through = Vec::new();
-    let mut blind = Vec::new();
-    let mut tools = Vec::new();
-    for (i, bore) in bores.iter().enumerate() {
-        let depth = bore.depth.unwrap_or(b.size.z);
-        if !depth.is_finite() || depth <= 10. * t.linear {
-            return Err(Error::InvalidInput(
-                "bore depth must be finite and resolved",
-            ));
-        }
-        let c = CylinderSpec {
-            base: Point3::new(
-                bore.center[0],
-                bore.center[1],
-                if bore.depth.is_some() {
-                    b.min.z + b.size.z - depth
-                } else {
-                    b.min.z - b.size.z
-                },
-            ),
-            radius: bore.radius,
-            height: if bore.depth.is_some() {
-                depth + b.size.z
-            } else {
-                3. * b.size.z
-            },
-        };
-        check_cylinder(c, t)?;
-        let max = b.min + b.size;
-        let clearance = (c.base.x - b.min.x)
-            .min(max.x - c.base.x)
-            .min(c.base.y - b.min.y)
-            .min(max.y - c.base.y)
-            - c.radius;
-        if !clearance.is_finite() || clearance <= 10. * t.linear {
-            return Err(Error::Unsupported(
-                "box bore requires resolved side clearance",
-            ));
-        }
-        for previous in &bores[..i] {
-            let gap = (bore.center[0] - previous.center[0])
-                .hypot(bore.center[1] - previous.center[1])
-                - bore.radius
-                - previous.radius;
-            if !gap.is_finite() || gap <= 10. * t.linear {
-                return Err(Error::Unsupported(
-                    "box bores overlap, nest, touch or nearly touch",
-                ));
-            }
-        }
-        if bore.depth.is_some() {
-            blind.push(c);
-        } else {
-            through.push(c);
-        }
-        tools.push(c);
-    }
-    // Reuse the same checked domains as the single-mode public operations.
-    check_through_bores(b, &through, t)?;
-    check_blind_bores(b, &blind, t)?;
+    let tools = checked_box_bore_tools(b, bores, t)?;
     let mut solid = make_box(b, t)?;
     for (bore, c) in bores.iter().zip(tools) {
-        if bore.depth.is_some() {
-            append_blind_bore(&mut solid, b, c);
-        } else {
-            append_through_bore(&mut solid, b, c, t)?;
-        }
+        apply_checked_box_bore(&mut solid, b, *bore, c, t)?;
     }
     solid.validate(t)?;
     Ok(solid)
@@ -861,6 +794,94 @@ fn check_blind_bores(b: BoxSpec, cutters: &[CylinderSpec], t: Tolerance) -> Resu
                 ));
             }
         }
+    }
+    Ok(())
+}
+
+// Internal: validate all tools before touching a cached prefix. Public callers
+// cannot append an unchecked tool to an arbitrary or differently trimmed solid.
+pub(crate) fn checked_box_bore_tools(
+    b: BoxSpec,
+    bores: &[BoxBore],
+    t: Tolerance,
+) -> Result<Vec<CylinderSpec>> {
+    check_box(b, t)?;
+    if bores.len() > 256 {
+        return Err(Error::Unsupported("at most 256 box bores are supported"));
+    }
+    let mut through = Vec::new();
+    let mut blind = Vec::new();
+    let mut tools = Vec::new();
+    for (i, bore) in bores.iter().enumerate() {
+        let depth = bore.depth.unwrap_or(b.size.z);
+        if !depth.is_finite() || depth <= 10. * t.linear {
+            return Err(Error::InvalidInput(
+                "bore depth must be finite and resolved",
+            ));
+        }
+        let c = CylinderSpec {
+            base: Point3::new(
+                bore.center[0],
+                bore.center[1],
+                if bore.depth.is_some() {
+                    b.min.z + b.size.z - depth
+                } else {
+                    b.min.z - b.size.z
+                },
+            ),
+            radius: bore.radius,
+            height: if bore.depth.is_some() {
+                depth + b.size.z
+            } else {
+                3. * b.size.z
+            },
+        };
+        check_cylinder(c, t)?;
+        let max = b.min + b.size;
+        let clearance = (c.base.x - b.min.x)
+            .min(max.x - c.base.x)
+            .min(c.base.y - b.min.y)
+            .min(max.y - c.base.y)
+            - c.radius;
+        if !clearance.is_finite() || clearance <= 10. * t.linear {
+            return Err(Error::Unsupported(
+                "box bore requires resolved side clearance",
+            ));
+        }
+        for previous in &bores[..i] {
+            let gap = (bore.center[0] - previous.center[0])
+                .hypot(bore.center[1] - previous.center[1])
+                - bore.radius
+                - previous.radius;
+            if !gap.is_finite() || gap <= 10. * t.linear {
+                return Err(Error::Unsupported(
+                    "box bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+        if bore.depth.is_some() {
+            blind.push(c);
+        } else {
+            through.push(c);
+        }
+        tools.push(c);
+    }
+    // Reuse the same checked domains as the single-mode public operations.
+    check_through_bores(b, &through, t)?;
+    check_blind_bores(b, &blind, t)?;
+    Ok(tools)
+}
+pub(crate) fn apply_checked_box_bore(
+    solid: &mut Solid,
+    b: BoxSpec,
+    bore: BoxBore,
+    tool: CylinderSpec,
+    t: Tolerance,
+) -> Result<()> {
+    if bore.depth.is_some() {
+        append_blind_bore(solid, b, tool);
+    } else {
+        append_through_bore(solid, b, tool, t)?;
     }
     Ok(())
 }

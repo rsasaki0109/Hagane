@@ -479,7 +479,7 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: tilted through-bore cap, unequal-axis hole roots/volume, empty/tangent errors, recovery and orbit passed.');
  await page.goto(`http://127.0.0.1:${server.address().port}/workflow.html`);await page.waitForFunction(()=>window.haganeWorkflow?.ready);
- const workflowInitial=await page.evaluate(()=>window.haganeWorkflow.lastValid);
+ const workflowInitial=await page.evaluate(()=>window.haganeWorkflow.lastValid);assert.deepEqual(workflowInitial.rebuild.rebuilt_operation_ids,['box-1','bore-1']);
  assert.ok(Math.abs(workflowInitial.mesh.volume-(115200-Math.PI*196*16))<1e-8);
  await page.locator('#radius').fill('30');const workflowFailure=await page.evaluate(()=>window.haganeWorkflow.report);
  assert.equal(workflowFailure.ok,false);assert.equal(workflowFailure.diagnostic.code,'side_clearance');assert.equal(workflowFailure.diagnostic.operation_id,'bore-1');assert.match(await page.locator('#result-state').textContent(),/previous valid/);assert.equal(await page.locator('#save').isDisabled(),true);assert.deepEqual(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh),workflowInitial.mesh);assert.ok(workflowFailure.candidate_segments.length>0);
@@ -499,13 +499,22 @@ try {
  await page.locator('canvas').focus();const workflowCanvas=await page.locator('canvas').screenshot();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),workflowCanvas);
  await page.locator('#add-bore').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);assert.equal(await page.locator('#selected-bore').inputValue(),'2');
  assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*(196*12+16*24)))<1e-8);
- const multiSaved=await page.locator('#document').inputValue();
+ assert.deepEqual(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operation_ids),['bore-2']);const multiSaved=await page.locator('#document').inputValue();
  await page.locator('#cx').fill('18');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.code),'bore_clearance');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.operation_id),'bore-2');assert.match(await page.locator('#result-state').textContent(),/previous valid/);
  await page.locator('#cx').fill('24');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);
  await page.locator('#selected-bore').selectOption('1');assert.equal(await page.locator('#radius').inputValue(),'14');await page.locator('#depth').fill('16');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*(196*16+16*24)))<1e-8);
  await page.locator('#document').fill(multiSaved);await page.locator('#load').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.document.operations.length),3);
  if(process.argv.includes('--capture-workflow-multiple'))await page.screenshot({path:new URL('../docs/workflow-multiple.png',import.meta.url).pathname});
  await page.locator('#remove-bore').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.document.operations[1].input),'box-1');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*16*24))<1e-8);
+ await page.locator('#document').fill(multiSaved);await page.locator('#load').click();await page.locator('#selected-bore').selectOption('2');await page.locator('#radius').fill('5');
+ assert.deepEqual(await page.evaluate(()=>window.haganeWorkflow.report.rebuild),{reused_operations:2,rebuilt_operations:1,rebuilt_operation_ids:['bore-2']});assert.match(await page.locator('#rebuild-stats').textContent(),/2 operations reused · 1 rebuilt/);
+ if(process.argv.includes('--capture-workflow-incremental')){await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:new URL('../docs/workflow-incremental.png',import.meta.url).pathname});}
+ await page.locator('#selected-bore').selectOption('1');await page.locator('#depth').fill('16');assert.deepEqual(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operation_ids),['bore-1','bore-2']);
+ await page.locator('#selected-bore').selectOption('2');await page.locator('#cx').fill('18');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),false);assert.match(await page.locator('#rebuild-stats').textContent(),/cache retained/);await page.locator('#cx').fill('24');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operations),0);
+ await page.locator('#width').fill('100');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.reused_operations),0);
+ const changedPolicy=JSON.parse(await page.locator('#document').inputValue());changedPolicy.tolerance.angular*=2;await page.locator('#document').fill(JSON.stringify(changedPolicy));await page.locator('#load').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operations),3);await page.locator('#load').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operations),0);
+ await page.locator('#remove-bore').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.reused_operations),2);assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.rebuild.rebuilt_operations),0);
+ console.log('Browser: incremental prefix reuse, suffix edits, failure recovery, stock/policy invalidation and cached truncation passed.');
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: editable operation history, side/floor diagnostics, previous valid result, corrections, download/import round trips, modes and exact metrics passed.');
  console.log('Browser: 31 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');

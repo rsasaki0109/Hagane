@@ -110,8 +110,8 @@ The images above capture that renderer. CI executes these existing suites.
 This delivers the first scoped milestone in [product direction](product-direction.md).
 It does not establish superiority over existing CAD products. User task success,
 rebuild performance and comparative measurements remain future validation work.
-Each edit currently rebuilds the full solid; this is not an incremental evaluator.
-Incremental dependency rebuilding, other operation types and more precise
+The browser now uses an incremental `WorkflowSession` for the supported linear
+history. Other operation types, persistent topology names and more precise
 low-level numerical diagnostics remain planned.
 
 Serialization uses Serde/serde_json in pure Rust; geometric modeling remains
@@ -132,3 +132,63 @@ and enforces the same ten-tolerance side/pair/floor margins as the workflow.
 Existing single-mode APIs retain their original contracts. All result edges,
 cap hole wires, cylindrical walls and blind floors use shared exact geometry
 and pcurves; mesh Boolean operations are not used.
+
+
+## Incremental B-rep evaluation
+
+![Actual browser edit reusing two operations and rebuilding one](workflow-incremental.png)
+
+`WorkflowSession` retains a validated exact solid after each accepted operation.
+An edit compares the new history with the last accepted document and reuses the
+longest unchanged prefix. Only the changed node and following nodes append new
+exact B-rep geometry. Stock, units, schema or any tolerance-policy change prevents
+prefix reuse (unsupported units/schema still fail). IDs and input references
+participate in the comparison; renamed nodes are rebuilt conservatively.
+Identical reloads and removing a suffix reuse the existing solid directly.
+Removing an interior node relinks the chain and rebuilds the remaining suffix.
+
+All parameter, reference, containment and pair-separation checks still run on
+each request. Invalid inputs and failed geometry construction leave the accepted
+snapshots intact. `evaluate_json` also stages cache changes until display
+sampling/JSON succeeds, so a display-budget failure cannot replace the cache.
+Returned geometry uses `Arc<Solid>`; mutating a caller-owned copy cannot corrupt
+the session snapshots. `reset()` releases the session's snapshots.
+
+```rust
+use hagane::{WorkflowDocument, WorkflowSession};
+let document: WorkflowDocument = serde_json::from_str(
+    include_str!("../docs/workflow-multiple-example.json")
+).unwrap();
+let mut session = WorkflowSession::new();
+let first = session.rebuild(&document).unwrap();
+assert_eq!(first.stats.rebuilt_operations, 3);
+let same = session.rebuild(&document).unwrap();
+assert_eq!(same.stats.rebuilt_operations, 0);
+```
+
+Run `cargo run --example workflow_session` for three sequential reports (initial
+build, identical reload, second-hole edit). Alternatively pass several JSON file
+paths to evaluate them in order in one session. Successful incremental JSON
+reports add `rebuild` with `reused_operations`, `rebuilt_operations`, and
+`rebuilt_operation_ids`. These count actual stock/tool geometry evaluations;
+they are not timings, display-cache counts or performance-comparison results.
+Failed reports omit `rebuild` and replacement mesh. Browser statistics distinguish
+an accepted rebuild from a rejected edit retaining the previous cache.
+
+The stateless `WorkflowDocument::rebuild`, `evaluate_workflow_json` and WASM
+`hagane_workflow_finish` preserve their existing API/report behavior. Incremental
+WASM clients use the same bounded begin/push-byte input, then
+`hagane_workflow_finish_incremental`; `hagane_workflow_reset_session` drops cached
+history. One session belongs to each WASM instance. Documents contain no cached
+geometry and still rebuild independently in native code or another browser.
+
+This is geometry-construction reuse for a scoped linear history, not a general
+constraint or dependency-graph solver. Complete input validation, topology
+validation on newly built prefixes and final display tessellation are still
+performed; there is no incremental mesh cache or performance superiority claim.
+The session holds at most 257 prefix snapshots, with cumulative topology storage
+quadratic in the number of holes. It has no persistence across page reloads or
+undo-history cache. Native/WASM tests compare incremental results to fresh exact
+rebuilds, exercise failure recovery and reset, and verify the rebuilt IDs. Browser
+tests check the displayed counts, earlier/later edits, policy/stock invalidation
+and cached suffix removal.

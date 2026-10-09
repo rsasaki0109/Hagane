@@ -21,8 +21,10 @@ and the next acceptance milestone.
 The first scoped editable box-and-bore workflow now implements operation
 history, structured diagnostics and versioned document round trips. Multiple
 disjoint mixed through/blind machining nodes can be added, selected, edited and
-removed while preserving remaining cuts. Full rebuilds remain the current
-evaluation strategy; incremental rebuilding is still a next milestone.
+removed while preserving remaining cuts. Incremental sessions now reuse
+unchanged exact B-rep prefixes and rebuild only changed suffixes. Rejected
+geometry or display edits retain the accepted cache; tests verify real operation
+evaluation counts and equality to fresh rebuilds.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
@@ -441,5 +443,7 @@ clearly labeled previous valid results, correction and save/load round trips
 are verified natively, in WASM and in browser tests. Added nodes can be selected,
 edited and removed with reference relinking; earlier edits preserve later cuts.
 This remains a scoped linear box-and-bore history, not general parametric CAD
-or persistent topology naming. Other operation types, incremental rebuilds and
+or persistent topology naming. Incremental sessions reuse unchanged validated
+B-rep prefixes with explicit rebuilt-node counts, atomic failure recovery and
+native/WASM parity. Other operation types, display-cache optimization and
 comparative user-value measurements remain next work.
