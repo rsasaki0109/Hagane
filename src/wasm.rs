@@ -253,6 +253,26 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_graph_solid_trimmed(
+        width: f64,
+        depth: f64,
+        height: f64,
+        bulge: f64,
+        error: f64,
+        angle: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
+        u0: f64,
+        u1: f64,
+        v0: f64,
+        v1: f64,
+    ) -> i32 {
+        generate(crate::nurbs_graph_trimmed_demo_json(
+            width, depth, height, bulge, error, angle, tx, ty, tz, u0, u1, v0, v1,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_graph_solid_placed(
         width: f64,
         depth: f64,

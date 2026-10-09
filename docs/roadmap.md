@@ -864,3 +864,16 @@ extrema. Native/WASM and the browser demo edit actual world placement. General
 NURBS sewing, solid operations and interchange remain incomplete; the
 estimate remains 15–25%, toward 80%.
 See [graph placement](nurbs-graph-placement.md).
+
+## Closed NURBS graph solid restriction
+
+Exact source-UV restriction now constructs closed graph-solid subdomains
+with a restricted roof, copied base and four ruled walls sharing curved
+upper edges. Nested domains preserve original parameters and rigid placement;
+analytic volume and conservative hull bounds are checked. Independent
+triangle bounds cover roof and newly curved walls, with shared-node closure.
+Native/WASM and browser editing exercise actual retained solid geometry.
+This is a rectangular restriction, not general curved Booleans; broader
+trims, sewing and interchange remain incomplete. The estimate remains
+15–25%, toward 80%.
+See [graph solid restriction](nurbs-graph-trim.md).

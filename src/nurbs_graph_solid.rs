@@ -8,6 +8,7 @@ pub struct NurbsGraphSolid {
     bulge: f64,
     construction_tolerance: Tolerance,
     placement: Transform,
+    source_domain: [[f64; 2]; 2],
 }
 #[derive(Clone, Debug)]
 pub struct NurbsGraphMesh {
@@ -26,47 +27,89 @@ const CORNERS: [[usize; 4]; 6] = [
     [0, 1, 5, 4],
     [2, 3, 7, 6],
 ];
-fn build(d: [f64; 3], b: f64, tol: Tolerance) -> Result<Solid> {
+const FULL: [[f64; 2]; 2] = [[0., 1.], [0., 1.]];
+fn build(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<Solid> {
     let [l, w, h] = d;
-    let vertices = (0..8)
-        .map(|i| Vertex {
-            point: Point3::new(
-                if i & 1 == 0 { 0. } else { l },
-                if i & 2 == 0 { 0. } else { w },
-                if i & 4 == 0 { 0. } else { h },
-            ),
-        })
+    let mut points = Vec::new();
+    for i in 0..3 {
+        for j in 0..3 {
+            points.push(Point3::new(
+                l * i as f64 / 2.,
+                w * j as f64 / 2.,
+                h + if i == 1 && j == 1 { b } else { 0. },
+            ));
+        }
+    }
+    let knots = vec![0., 0., 0., 1., 1., 1.];
+    let original = NurbsSurface::new([2, 2], [knots.clone(), knots], [3, 3], points, vec![1.; 9])?;
+    let roof = if ranges == FULL {
+        original
+    } else {
+        original.restricted(ranges)?
+    };
+    let roof_edges = roof.boundary_edges()?;
+    let base_points = roof
+        .control_points()
+        .iter()
+        .map(|p| Point3::new(p.x, p.y, 0.))
         .collect();
+    let base = NurbsSurface::new(
+        [2, 2],
+        [roof.knots(0)?.to_vec(), roof.knots(1)?.to_vec()],
+        [3, 3],
+        base_points,
+        roof.weights().to_vec(),
+    )?;
+    let mut vertices = vec![
+        Vertex {
+            point: Point3::new(0., 0., 0.)
+        };
+        8
+    ];
+    for (k, [u, v]) in [
+        [ranges[0][0], ranges[1][0]],
+        [ranges[0][1], ranges[1][0]],
+        [ranges[0][0], ranges[1][1]],
+        [ranges[0][1], ranges[1][1]],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let top = roof.evaluate(u, v)?;
+        vertices[k] = Vertex {
+            point: Point3::new(top.x, top.y, 0.),
+        };
+        vertices[k + 4] = Vertex { point: top };
+    }
+    let mut surfaces = vec![base, roof];
+    for boundary in [3, 1, 0, 2] {
+        let curve = &roof_edges[boundary].curve;
+        let mut points = Vec::new();
+        for p in curve.control_points() {
+            for j in 0..3 {
+                points.push(Point3::new(p.x, p.y, p.z * (j as f64 / 2.)));
+            }
+        }
+        surfaces.push(NurbsSurface::new(
+            [2, 2],
+            [curve.knots().to_vec(), vec![0., 0., 0., 1., 1., 1.]],
+            [3, 3],
+            points,
+            vec![1.; 9],
+        )?);
+    }
     let mut solid = Solid {
         vertices,
         edges: Vec::new(),
         shell: Shell { faces: Vec::new() },
     };
     let mut edges = BTreeMap::new();
-    for (f, corners) in CORNERS.iter().enumerate() {
-        let mut points = Vec::new();
-        for i in 0..3 {
-            for j in 0..3 {
-                let u = i as f64 / 2.;
-                let v = j as f64 / 2.;
-                points.push(match f {
-                    0 => Point3::new(l * u, w * v, 0.),
-                    1 => Point3::new(l * u, w * v, h + if i == 1 && j == 1 { b } else { 0. }),
-                    2 => Point3::new(0., w * u, h * v),
-                    3 => Point3::new(l, w * u, h * v),
-                    4 => Point3::new(l * u, 0., h * v),
-                    _ => Point3::new(l * u, w, h * v),
-                });
-            }
-        }
-        let knots = vec![0., 0., 0., 1., 1., 1.];
-        let surface =
-            NurbsSurface::new([2, 2], [knots.clone(), knots], [3, 3], points, vec![1.; 9])?;
+    for (f, surface) in surfaces.into_iter().enumerate() {
         let local = NurbsFace::new(surface, [-1, 1, -1, 1, 1, -1][f], tol)?;
         let mut face = local.face;
         for coedge in &mut face.wires[0].coedges {
             let edge = &local.edges[coedge.edge];
-            let pair = edge.vertices.map(|i| corners[i]);
+            let pair = edge.vertices.map(|i| CORNERS[f][i]);
             let id = if let Some(&id) = edges.get(&pair) {
                 id
             } else {
@@ -120,15 +163,61 @@ impl NurbsGraphSolid {
             ));
         }
         let result = Self {
-            solid: build(dimensions, bulge, tol)?,
+            solid: build(dimensions, bulge, FULL, tol)?,
             dimensions,
             bulge,
             construction_tolerance: tol,
             placement: Transform::IDENTITY,
+            source_domain: FULL,
         };
         result.volume()?;
         result.bounds()?;
         result.validate(tol)?;
+        Ok(result)
+    }
+    pub fn source_domain(&self) -> [[f64; 2]; 2] {
+        self.source_domain
+    }
+    /// Restrict in original source UV coordinates, preserving rigid placement.
+    pub fn trimmed_uv(&self, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<Self> {
+        self.validate(tol)?;
+        for (axis, &[a, b]) in ranges.iter().enumerate() {
+            let current = self.source_domain[axis];
+            let guard = 128.
+                * f64::EPSILON
+                * current[0]
+                    .abs()
+                    .max(current[1].abs())
+                    .max(current[1] - current[0]);
+            if !a.is_finite()
+                || !b.is_finite()
+                || a < current[0]
+                || b > current[1]
+                || b - a <= guard
+            {
+                return Err(Error::InvalidInput(
+                    "graph trim is outside current domain or unresolved",
+                ));
+            }
+            if (b - a) * self.dimensions[axis] <= tol.linear * 2. {
+                return Err(Error::InvalidInput(
+                    "graph trim physical width is unresolved",
+                ));
+            }
+        }
+        let result = Self {
+            solid: placed(
+                build(self.dimensions, self.bulge, ranges, tol)?,
+                self.placement,
+            )?,
+            dimensions: self.dimensions,
+            bulge: self.bulge,
+            construction_tolerance: tol,
+            placement: self.placement,
+            source_domain: ranges,
+        };
+        result.validate(tol)?;
+        result.volume()?;
         Ok(result)
     }
     pub fn placement(&self) -> Transform {
@@ -139,11 +228,15 @@ impl NurbsGraphSolid {
         self.validate(tol)?;
         let placement = transform.compose(self.placement)?;
         let result = Self {
-            solid: placed(build(self.dimensions, self.bulge, tol)?, placement)?,
+            solid: placed(
+                build(self.dimensions, self.bulge, self.source_domain, tol)?,
+                placement,
+            )?,
             dimensions: self.dimensions,
             bulge: self.bulge,
             construction_tolerance: tol,
             placement,
+            source_domain: self.source_domain,
         };
         result.validate(tol)?;
         Ok(result)
@@ -190,16 +283,27 @@ impl NurbsGraphSolid {
     pub fn volume(&self) -> Result<f64> {
         self.validate(self.construction_tolerance)?;
         let [l, w, h] = self.dimensions;
-        let v = l * w * (h + self.bulge / 9.);
+        let v = if self.source_domain == FULL {
+            l * w * (h + self.bulge / 9.)
+        } else {
+            let integral = |[a, b]: [f64; 2]| {
+                let d = b - a;
+                let m = a + d / 2.;
+                d * (m * (1. - m) - d * d / 12.)
+            };
+            let [u, v] = self.source_domain;
+            l * w
+                * (h * (u[1] - u[0]) * (v[1] - v[0]) + 4. * self.bulge * integral(u) * integral(v))
+        };
         if !v.is_finite() || v <= 0. {
             return Err(Error::InvalidInput("graph volume overflows or underflows"));
         }
         Ok(v)
     }
-    /// Exact local bounds for identity placement; conservative control-hull bounds otherwise.
+    /// Exact bounds for the original identity solid; conservative control-hull bounds after trim or placement.
     pub fn bounds(&self) -> Result<Bounds> {
         self.validate(self.construction_tolerance)?;
-        if self.placement != Transform::IDENTITY {
+        if self.placement != Transform::IDENTITY || self.source_domain != FULL {
             let mut min = Point3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
             let mut max = Point3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
             for face in &self.solid.shell.faces {
@@ -235,7 +339,10 @@ impl NurbsGraphSolid {
                 "graph placed geometry cannot resolve validation tolerance",
             ));
         }
-        let expected = placed(build(self.dimensions, self.bulge, tol)?, self.placement)?;
+        let expected = placed(
+            build(self.dimensions, self.bulge, self.source_domain, tol)?,
+            self.placement,
+        )?;
         let bad = || Error::InvalidTopology("graph solid differs from its canonical B-rep");
         if self.solid.vertices.len() != 8
             || self.solid.edges.len() != 12
@@ -313,7 +420,7 @@ impl NurbsGraphSolid {
                 incidence[c.edge][1] += a.orientation as i32 * if c.forward { 1 } else { -1 };
                 let edge = &self.solid.edges[c.edge];
                 for k in 0..2 {
-                    let t = k as f64;
+                    let t = edge.curve.range()[k];
                     let point = edge.curve.try_evaluate(t)?;
                     let uv = c.pcurve.evaluate(t);
                     if (point - self.solid.vertices[edge.vertices[k]].point).norm() > tol.linear
@@ -353,14 +460,20 @@ impl NurbsGraphSolid {
         // |b|/(2*N²); the bilinear-to-triangle twist adds |b|/N².
         // Corresponding UV points give both directed geometric bounds.
         // The separate arithmetic allowance is an engineering guard.
+        let du = self.source_domain[0][1] - self.source_domain[0][0];
+        let dv = self.source_domain[1][1] - self.source_domain[1][0];
+        let curvature = self.bulge.abs()
+            * ((du * du + dv * dv) / 4. + du * dv)
+                .max((du * du + du) / 4.)
+                .max((dv * dv + dv) / 4.);
         let mut n = 1usize;
-        while 1.5 * self.bulge.abs() / (n * n) as f64 + roundoff > error {
+        while curvature / (n * n) as f64 + roundoff > error {
             n *= 2;
             if 6 * n * n > max_cells {
                 return Err(Error::Tessellation("graph total cell budget exceeded"));
             }
         }
-        let bound = 1.5 * self.bulge.abs() / (n * n) as f64 + roundoff;
+        let bound = curvature / (n * n) as f64 + roundoff;
         let mut out = NurbsGraphMesh {
             mesh: Mesh::default(),
             vertex_nodes: Vec::new(),
@@ -377,7 +490,16 @@ impl NurbsGraphSolid {
             let base = out.mesh.positions.len();
             for i in 0..=n {
                 for j in 0..=n {
-                    let uv = [i as f64 / n as f64, j as f64 / n as f64];
+                    let domain = surface.domain();
+                    let uv = std::array::from_fn(|axis| {
+                        let step = if axis == 0 { i } else { j };
+                        if step == n {
+                            domain[axis][1]
+                        } else {
+                            domain[axis][0]
+                                + (domain[axis][1] - domain[axis][0]) * step as f64 / n as f64
+                        }
+                    });
                     let key = match fi {
                         0 => [i, j, 0],
                         1 => [i, j, n],
@@ -423,8 +545,13 @@ impl NurbsGraphSolid {
                         }
                         out.mesh.triangles.push(t);
                         out.mesh.face_ids.push(fi);
-                        out.error_bounds
-                            .push(if fi == 1 { bound } else { roundoff });
+                        out.error_bounds.push(
+                            if fi == 0 || (fi != 1 && self.source_domain == FULL) {
+                                roundoff
+                            } else {
+                                bound
+                            },
+                        );
                     }
                 }
             }

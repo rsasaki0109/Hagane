@@ -954,3 +954,15 @@ conservative control-hull enclosures. Native/WASM and editable browser tests
 cover actual placed geometry; arbitrary NURBS solid operations remain
 incomplete. The estimate remains 15–25%, toward 80%.
 See [graph placement](docs/nurbs-graph-placement.md).
+
+## Closed NURBS graph solid restriction
+
+`trimmed_uv` exactly restricts the source roof and constructs a matching
+base and four ruled walls, including newly curved upper boundaries. Shared
+edges and pcurves close the result; exact polynomial integration measures its
+volume. Nested restrictions retain original source parameters and placement,
+and independent bounds cover all six displayed faces. The browser edits the
+retained UV rectangle through the same native/WASM kernel. This remains a
+scoped rectangular solid restriction; general trims, sewing and curved
+Booleans remain incomplete. The estimate remains 15–25%, toward 80%.
+See [graph solid restriction](docs/nurbs-graph-trim.md).

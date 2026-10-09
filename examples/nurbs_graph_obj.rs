@@ -2,6 +2,7 @@ use hagane::*;
 fn main() -> Result<()> {
     let tol = Tolerance::default();
     let graph = NurbsGraphSolid::new([80., 60., 24.], 36., tol)?;
+    let graph = graph.trimmed_uv([[0.2, 0.8], [0.1, 0.7]], tol)?;
     let rotation = Transform::rotation(Vec3::new(1., 2., 3.), 0.4)?;
     let placement = Transform::translation(Vec3::new(12., -7., 4.))?.compose(rotation)?;
     let graph = graph.transformed(placement, tol)?;

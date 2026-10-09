@@ -50,6 +50,10 @@ NURBS solid operations remain unsupported.
 [Rigid placement](docs/nurbs-graph-placement.md) also translates and rotates
 these solids, with invariant volume, checked world precision and conservative
 control-hull bounds after placement. The same browser demo edits placement.
+[Exact rectangular solid restriction](docs/nurbs-graph-trim.md) now retains
+roof subdomains with exact curved upper edges and matching ruled walls,
+closed shared topology and bounded display on every face. The browser edits
+source UV limits; this is a scoped graph-solid operation.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

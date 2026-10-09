@@ -32,6 +32,8 @@ these NURBS solids remain unsupported.
 
 [Rigid placement](nurbs-graph-placement.md) now translates and rotates this
 scoped shape while preserving its exact geometry and oriented connections.
+[Rectangular solid restriction](nurbs-graph-trim.md) also cuts the retained
+source rectangle and creates matching ruled walls with curved upper edges.
 
 Display evaluates the retained surfaces on a common dyadic grid. Topological
 node identities connect neighboring faces while their normals stay separate

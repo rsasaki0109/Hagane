@@ -6,7 +6,8 @@ try{
  function generate(){
   const [width,depth,height,bulge,error]=['width','depth','height','bulge','surface-error'].map(id=>Number($(id).value));
   const angle=Number($('angle').value)*Math.PI/180,[tx,ty,tz]=['tx','ty','tz'].map(id=>Number($(id).value));
-  const status=k.hagane_generate_graph_solid_placed(width,depth,height,bulge,error,angle,tx,ty,tz),data=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(data.error);
+  const domain=['u-min','u-max','v-min','v-max'].map(id=>Number($(id).value));
+  const status=k.hagane_generate_graph_solid_trimmed(width,depth,height,bulge,error,angle,tx,ty,tz,...domain),data=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(data.error);
   const center=[0,1,2].map(axis=>{let lo=Infinity,hi=-Infinity;for(let i=axis;i<data.positions.length;i+=3){lo=Math.min(lo,data.positions[i]);hi=Math.max(hi,data.positions[i]);}return (lo+hi)/2;});
   const segments=[];for(const samples of data.boundary_samples)for(let i=3;i<samples.length;i+=3)segments.push([samples.slice(i-3,i),samples.slice(i,i+3)]);
   viewer.setMesh({positions:data.positions.map((x,i)=>x-center[i%3]),normals:data.normals});viewer.setSegments(segments.map(segment=>segment.map(point=>point.map((x,i)=>x-center[i]))));window.haganeGraphSolid.data=data;

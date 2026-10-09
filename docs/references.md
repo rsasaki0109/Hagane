@@ -634,3 +634,11 @@ and parameter curves. Absolute transform coefficient envelopes account for
 world-coordinate arithmetic, including cancellation. Nonidentity bounds use
 the positive-weight control-hull property and are explicitly conservative.
 This is independent original code; no new dependency or OCCT source is used.
+
+Graph-solid restriction combines the existing exact knot-insertion surface
+restriction with ruled tensor-product walls sharing the retained roof's
+boundary controls. Polynomial antiderivatives give exact retained volume;
+midpoint integral forms avoid subtracting nearly equal cubic values.
+Scaled roof and ruled-wall Hessians bound corresponding-UV triangle errors.
+Original parameters and pcurves remain retained, independently of the display
+grid. No new dependency or OCCT source is used (MIT OR Apache-2.0).
