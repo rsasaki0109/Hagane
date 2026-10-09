@@ -32,6 +32,7 @@ pub struct TiltedBore {
     pub center: [f64; 2],
 }
 /// Restricted analytic plate construction with up to sixteen separated bores.
+/// Each independently chosen Y tilt must pass a full-height separation certificate.
 /// Uses exact cylinder walls/ellipse caps, not a general Boolean operation.
 pub fn tilted_bores_demo_solid(
     radius: f64,
@@ -53,13 +54,6 @@ pub fn tilted_bores_demo_solid(
             "tilted plate supports at most sixteen bores",
         ));
     }
-    if let Some(first) = bores.first() {
-        if bores.iter().any(|bore| bore.tilt != first.tilt) {
-            return Err(Error::Unsupported(
-                "multiple bores must have exactly parallel axes",
-            ));
-        }
-    }
     for bore in bores {
         if !bore.radius.is_finite()
             || bore.radius <= 10. * tol.linear()
@@ -79,6 +73,15 @@ pub fn tilted_bores_demo_solid(
             return Err(Error::Unsupported(
                 "tilted bore touches or leaves the circular plate",
             ));
+        }
+    }
+    for (i, bore) in bores.iter().enumerate() {
+        for other in &bores[..i] {
+            if !separated_through_height(bore, other, height, tol.linear()) {
+                return Err(Error::Unsupported(
+                    "bores have no separating plane throughout plate height",
+                ));
+            }
         }
     }
     let mut solid = Solid {
@@ -275,6 +278,70 @@ pub fn separated_tilted_bores_demo_json(offset: f64) -> Result<String> {
             TiltedBore {
                 radius: 3.,
                 tilt: 1.,
+                center: [0., 4.],
+            },
+        ],
+        GeometryTolerance::default(),
+    )?;
+    let face = solid.shell.faces.len() - 1;
+    crate::ellipse_planar::ellipse_planar_query_json(
+        &solid,
+        face,
+        Point3::new(-34., offset, 4.),
+        Vec3::new(2., 0., 0.),
+    )
+}
+
+// Fixed XY support direction proves separation of every horizontal slice. Center
+// projections vary affinely in Z; a same-sign gap at both endpoints proves
+// separation at every intermediate height, without sampling the solid interior.
+fn separated_through_height(a: &TiltedBore, b: &TiltedBore, height: f64, linear: f64) -> bool {
+    let dx = b.center[0] - a.center[0];
+    let dy = b.center[1] - a.center[1];
+    let drift = height / 2. * (b.tilt.tan() - a.tilt.tan());
+    let axes = [a.radius / a.tilt.cos(), b.radius / b.tilt.cos()];
+    let arithmetic = 4096.
+        * f64::EPSILON
+        * (a.center[0].hypot(a.center[1])
+            + b.center[0].hypot(b.center[1])
+            + drift.abs()
+            + axes[0]
+            + axes[1]
+            + height);
+    let initial = dy.atan2(dx);
+    (0..64).any(|i| {
+        let angle = initial + PI * i as f64 / 64.;
+        let (ny, nx) = angle.sin_cos();
+        let low = nx * (dx - drift) + ny * dy;
+        let high = nx * (dx + drift) + ny * dy;
+        let bound = (nx * axes[0]).hypot(ny * a.radius) + (nx * axes[1]).hypot(ny * b.radius);
+        let gap = if low > 0. && high > 0. {
+            low.min(high) - bound
+        } else if low < 0. && high < 0. {
+            (-low).min(-high) - bound
+        } else {
+            0.
+        };
+        gap.is_finite() && gap > 20. * linear + arithmetic
+    })
+}
+/// Oppositely tilted exact cylindrical bores separated through the full height.
+pub fn divergent_tilted_bores_demo_json(tilt: f64, offset: f64) -> Result<String> {
+    if !offset.is_finite() {
+        return Err(Error::InvalidInput("offset must be finite"));
+    }
+    let solid = tilted_bores_demo_solid(
+        24.,
+        8.,
+        &[
+            TiltedBore {
+                radius: 3.,
+                tilt,
+                center: [0., -4.],
+            },
+            TiltedBore {
+                radius: 3.,
+                tilt: -tilt,
                 center: [0., 4.],
             },
         ],

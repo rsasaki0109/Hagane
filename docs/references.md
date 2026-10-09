@@ -354,3 +354,12 @@ a sine/cosine linear combination. Strictly separated projection intervals
 certify separation of the convex filled ellipses. A finite direction search
 with physical and arithmetic guards is sufficient, not complete. See
 [ellipse separation](ellipse-separation.md). No new dependency or OCCT source.
+
+## Full-height nonparallel bore separation
+
+Independently derived horizontal cylinder sections have affine center drift
+and constant projection support radii. A same-sign positive gap at both height
+endpoints bounds the affine gap throughout the interval. The guarded finite
+direction search certifies a separating plane, not a sampled mesh
+intersection. See [independently tilted bores](divergent-tilted-bores.md).
+No new dependencies and no OCCT source were used.

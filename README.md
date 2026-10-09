@@ -424,3 +424,6 @@ See [design and invariants](docs/design.md), [roadmap](docs/roadmap.md), and
 a certified extension, with an interactive closed-solid preset and cap queries.
 [Supporting-line separation and parallel tilted bores](docs/ellipse-separation.md)
 accept additional disjoint ellipse layouts and provide a two-bore solid demo.
+
+[Independently tilted bores](docs/divergent-tilted-bores.md) use full-height
+analytic separation certificates and provide a nonparallel two-bore web preset.

@@ -233,12 +233,108 @@ fn parallel_tilted_bores_with_overlapping_envelopes_are_closed_and_separated() {
         assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
         invalid = bores;
         invalid[1].tilt = -1.;
-        assert!(matches!(
-            tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t),
-            Err(Error::Unsupported(_))
-        ));
+        // Opposite inclinations remain separated in Y throughout the plate.
+        tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).unwrap();
         invalid = bores;
         invalid[1].center[0] = f64::NAN;
         assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
+    }
+}
+
+#[test]
+fn nonparallel_bores_are_certified_through_height_and_interior_crossings_rejected() {
+    for (scale, epsilon) in [(1., 1e-8), (1e-6, 1e-14)] {
+        let t = GeometryTolerance::new(epsilon, 1e-10, 0.).unwrap();
+        let mixed = [
+            TiltedBore {
+                radius: scale,
+                tilt: 0.3,
+                center: [0., -5. * scale],
+            },
+            TiltedBore {
+                radius: 0.8 * scale,
+                tilt: -0.7,
+                center: [0., 5. * scale],
+            },
+        ];
+        let mixed_solid = tilted_bores_demo_solid(24. * scale, 8. * scale, &mixed, t).unwrap();
+        let expected = PI * (576. - 1. / 0.3f64.cos() - 0.64 / 0.7f64.cos()) * 8. * scale.powi(3);
+        assert!((mixed_solid.volume().unwrap() - expected).abs() < 1e-9 * scale.powi(3));
+        let transform = Transform::rotation(Vec3::new(1., 2., 3.), 0.37).unwrap();
+        let placed = mixed_solid.transformed(transform, t.absolute()).unwrap();
+        for bore in mixed {
+            let point = Point3::new(2. * scale * bore.tilt.tan(), bore.center[1], 2. * scale);
+            assert_eq!(
+                classify_point_in_solid(&placed, transform.point(point), t).unwrap(),
+                PointLocation::Outside
+            );
+        }
+        for tilt in [-1., -0.7, 0., 0.7, 1.] {
+            let bores = [
+                TiltedBore {
+                    radius: 3. * scale,
+                    tilt,
+                    center: [0., -4. * scale],
+                },
+                TiltedBore {
+                    radius: 3. * scale,
+                    tilt: -tilt,
+                    center: [0., 4. * scale],
+                },
+            ];
+            let solid = tilted_bores_demo_solid(24. * scale, 8. * scale, &bores, t).unwrap();
+            solid.validate(t.absolute()).unwrap();
+            assert_eq!((solid.shell.faces.len(), solid.edges.len()), (8, 18));
+            let volume = PI * (576. - 18. / tilt.cos()) * 8. * scale.powi(3);
+            assert!((solid.volume().unwrap() - volume).abs() < 1e-9 * scale.powi(3));
+            for z in [-4., -2., 0., 2., 4.] {
+                for bore in bores {
+                    let p = Point3::new(z * scale * bore.tilt.tan(), bore.center[1], z * scale);
+                    assert_eq!(
+                        classify_point_in_solid(&solid, p, t).unwrap(),
+                        PointLocation::Outside
+                    );
+                }
+                let p = Point3::new(0., 0., z * scale);
+                assert_eq!(
+                    classify_point_in_solid(&solid, p, t).unwrap(),
+                    if z.abs() == 4. {
+                        PointLocation::Boundary
+                    } else {
+                        PointLocation::Inside
+                    }
+                );
+            }
+            let mesh = solid.tessellate(0.02 * scale, t.absolute()).unwrap();
+            assert!((mesh.signed_volume() - volume).abs() < 12. * scale.powi(3));
+        }
+        // At both caps the small ellipse holes are disjoint, but axes meet
+        // inside at z=4/tan(1); checking caps alone would falsely succeed.
+        let crossing = [
+            TiltedBore {
+                radius: 0.5 * scale,
+                tilt: 1.,
+                center: [-4. * scale, 0.],
+            },
+            TiltedBore {
+                radius: 0.5 * scale,
+                tilt: -1.,
+                center: [4. * scale, 0.],
+            },
+        ];
+        for z in [-4., 4.] {
+            let distance = (8. - 2. * z * 1f64.tan()).abs();
+            assert!(distance > 1. / 1f64.cos());
+        }
+        assert!(matches!(
+            tilted_bores_demo_solid(24. * scale, 8. * scale, &crossing, t),
+            Err(Error::Unsupported(_))
+        ));
+        let mut contact = crossing;
+        contact[0].center = [0., -0.5 * scale];
+        contact[1].center = [0., 0.5 * scale];
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &contact, t).is_err());
+        contact[1].center[1] += epsilon;
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &contact, t).is_err());
     }
 }

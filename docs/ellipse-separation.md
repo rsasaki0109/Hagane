@@ -21,9 +21,10 @@ claim of intersection. Contact, near-contact, overlap and nested holes fail.
 
 `tilted_bores_demo_solid(radius, height, bores, tolerance)` creates a circular
 plate with zero to sixteen translated parallel cylindrical through bores.
-`TiltedBore` supplies radius, tilt about Y in radians, and XY center. All bore
-tilts must be exactly equal. Different inclinations are rejected because cap
-separation alone does not guarantee separation inside the solid. For parallel
+`TiltedBore` supplies radius, tilt about Y in radians, and XY center. The original parallel subdomain used exactly equal bore tilts.
+[Independent inclinations](divergent-tilted-bores.md) now require an additional
+analytic full-height separation certificate, since cap separation alone does
+not guarantee separation inside the solid. For parallel
 bores every horizontal section translates the same ellipse arrangement, so
 certified cap separation holds throughout the height. Each tool also has a
 conservative whole-height outer clearance check. This is a restricted analytic

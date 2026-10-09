@@ -381,5 +381,13 @@ Analytic supporting-line certificates now accept separated ellipse holes even
 when enclosing circles overlap. Translated parallel tilted cylindrical bores
 form closed solids with exact ellipse rims and harmonic pcurves; preset 26
 exposes radius controls. Native/WASM and browser tests cover volume, material,
-contacts and invalid inputs. Nonparallel bores and configurations without a
+contacts and invalid inputs. Configurations without a
 certificate remain unsupported. See [ellipse separation](docs/ellipse-separation.md).
+
+Different Y-axis bore inclinations now support analytic full-height separation
+certificates. A fixed projection direction with guarded same-sign endpoint gaps
+proves that the tools never meet inside the plate; internally crossing axes are
+rejected even when both caps are disjoint. Exact B-rep, analytic volume, small
+dimensions, native/WASM parity and browser preset 27 are verified. Intersecting
+tools, arbitrary tilt azimuths and uncertified cases remain unsupported. See
+[independently tilted bores](docs/divergent-tilted-bores.md).
