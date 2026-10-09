@@ -54,6 +54,9 @@ control-hull bounds after placement. The same browser demo edits placement.
 roof subdomains with exact curved upper edges and matching ruled walls,
 closed shared topology and bounded display on every face. The browser edits
 source UV limits; this is a scoped graph-solid operation.
+[Source-axis plane partition](docs/nurbs-graph-split.md) also returns both
+closed results and an exact curved-boundary section, with checked opposite
+cut faces and conserved volume. `web/graph-split.html` selects either side.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

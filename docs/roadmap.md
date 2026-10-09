@@ -877,3 +877,15 @@ This is a rectangular restriction, not general curved Booleans; broader
 trims, sewing and interchange remain incomplete. The estimate remains
 15–25%, toward 80%.
 See [graph solid restriction](nurbs-graph-trim.md).
+
+## Source-axis plane partition of NURBS graph solids
+
+The scoped graph family now partitions along interior original U/V planes,
+retaining two closed solids and an exact ruled section with a curved upper
+edge. Both children preserve source parameters and placement; matching
+cut-face controls, opposite orientations and conserved volume are checked.
+Native/WASM and the browser inspect either actual result and reject boundary
+contacts or unresolved cuts. Arbitrary planes, general curved Booleans,
+sewing and interchange remain incomplete. The estimate remains 15–25%,
+toward 80%.
+See [graph plane partition](nurbs-graph-split.md).

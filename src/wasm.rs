@@ -253,6 +253,44 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_graph_solid_split(
+        width: f64,
+        depth: f64,
+        height: f64,
+        bulge: f64,
+        error: f64,
+        angle: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
+        u0: f64,
+        u1: f64,
+        v0: f64,
+        v1: f64,
+        axis: u32,
+        parameter: f64,
+        side: u32,
+    ) -> i32 {
+        generate(crate::nurbs_graph_split_demo_json(
+            width,
+            depth,
+            height,
+            bulge,
+            error,
+            angle,
+            tx,
+            ty,
+            tz,
+            u0,
+            u1,
+            v0,
+            v1,
+            axis as usize,
+            parameter,
+            side,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_graph_solid_trimmed(
         width: f64,
         depth: f64,

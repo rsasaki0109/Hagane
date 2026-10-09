@@ -642,3 +642,11 @@ midpoint integral forms avoid subtracting nearly equal cubic values.
 Scaled roof and ruled-wall Hessians bound corresponding-UV triangle errors.
 Original parameters and pcurves remain retained, independently of the display
 grid. No new dependency or OCCT source is used (MIT OR Apache-2.0).
+
+Source-axis graph partition derives its world plane from the retained rigid
+frame and splits the original UV interval. Exact surface restriction and
+ruled sections preserve rational boundaries; corresponding Bernstein controls
+bound the two cut faces' geometric agreement because their bases and positive
+weights match. Analytic volume conservation has a separate floating-point
+guard. This is independent original code, not a general plane/solid solver,
+and adds no dependency or OCCT source.

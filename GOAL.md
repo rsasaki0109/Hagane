@@ -966,3 +966,15 @@ retained UV rectangle through the same native/WASM kernel. This remains a
 scoped rectangular solid restriction; general trims, sewing and curved
 Booleans remain incomplete. The estimate remains 15–25%, toward 80%.
 See [graph solid restriction](docs/nurbs-graph-trim.md).
+
+## Source-axis plane partition of NURBS graph solids
+
+`split_uv` now returns both closed material results, an exact ruled NURBS
+section and its placed cutting plane. Child canonical geometry, shared
+section source controls, opposite cut-face orientations and conserved
+analytic volume are checked. Native/WASM and browser side selection exercise
+trimmed, placed and signed-offset sources, with explicit contact rejection.
+This supports source-axis planes only; arbitrary curved-solid partition,
+general Booleans and sewing remain incomplete. The estimate remains
+15–25%, toward 80%.
+See [graph plane partition](docs/nurbs-graph-split.md).

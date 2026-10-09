@@ -143,3 +143,6 @@ pub use nurbs_graph_demo::*;
 
 mod nurbs_graph_solid;
 pub use nurbs_graph_solid::*;
+
+mod nurbs_graph_split;
+pub use nurbs_graph_split::*;
