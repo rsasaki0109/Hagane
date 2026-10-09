@@ -29,7 +29,7 @@ subdivides only retained cells; the same page demonstrates an exact opening
 excluding a singular point of the source surface.
 [Straight UV surface edges](docs/nurbs-surface-edge.md) now retain exact
 diagonal rational curves and same-parameter pcurves, with an editable
-`web/surface-edge.html` demo. General trimmed faces and closed NURBS solids
+`web/surface-edge.html` demo. General trimmed faces and arbitrary NURBS solids
 remain unsupported. [Convex UV surface wires](docs/nurbs-surface-wire.md)
 now connect lifted edges with shared closing vertices.
 [Convex UV polygon faces](docs/nurbs-polygon-face.md) retain those boundaries as
@@ -42,6 +42,11 @@ C1 and C0 modes in `web/surface-polygon.html`, with native/WASM parity and
 rejected-edit recovery.
 [Rectangular inner wires](docs/nurbs-polygon-holes.md) now retain openings inside
 convex rational boundaries, with shared topology and editable browser display.
+[Closed polynomial NURBS graph solids](docs/nurbs-graph-solid.md) now retain a
+curved roof, planar walls and base as six NURBS faces with shared exact edges.
+Their scoped API checks closure, exact volume and conforming bounded display;
+`web/graph-solid.html` edits the dimensions and roof control offset. General
+NURBS solid operations remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

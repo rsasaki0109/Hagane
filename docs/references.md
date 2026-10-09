@@ -618,3 +618,11 @@ Mathematical clipping reference: I. E. Sutherland and G. W. Hodgman,
 “Reentrant Polygon Clipping,” Communications of the ACM 17(1), 32–42 (1974),
 https://doi.org/10.1145/360767.360802. The half-plane procedure here is independently
 implemented; no code from that publication or another CAD kernel was copied.
+
+Closed polynomial graph solids use the quadratic Bernstein basis
+`B_1^2(t)=2t(1-t)`. Moving only the roof center control by `b` yields
+`4b u(1-u)v(1-v)`; integrating each factor on `[0,1]` gives the exact
+volume correction `LWb/9`. A Hessian Taylor remainder bounds linear
+triangle interpolation. Shared B-rep edge identities, rather than coordinate
+proximity welding, close the display grid. This scoped implementation is
+original MIT OR Apache-2.0 code, with no additional dependencies or OCCT source.

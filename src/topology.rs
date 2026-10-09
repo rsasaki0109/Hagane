@@ -295,7 +295,7 @@ impl Solid {
                 .any(|f| matches!(f.surface, Surface::Nurbs(_)))
         {
             return Err(Error::Unsupported(
-                "NURBS geometry is supported by open NurbsFace, not generic Solid validation",
+                "NURBS geometry requires a scoped NURBS topology API, not generic Solid validation",
             ));
         }
         Tolerance::new(tol.linear)?;

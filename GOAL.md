@@ -930,3 +930,15 @@ full native/WASM diagnostic parity and an editable browser opening are verified.
 Nonrectangular holes, general trims, sewing and closed rational solids remain
 incomplete. The long-term estimate remains 15–25%, toward 80%. See [convex
 face openings](docs/nurbs-polygon-holes.md).
+
+## First closed polynomial NURBS solid domain
+
+`NurbsGraphSolid` retains an exact biquadratic roof, planar walls and base
+as six NURBS faces with eight shared vertices and twelve shared edges.
+Its scoped certificate checks the canonical geometry, pcurves and opposing
+edge uses; exact volume comes from polynomial integration. A common bounded
+display grid preserves closure across faces while keeping separate normals.
+The editable native/WASM browser demo exercises actual closed geometry.
+Arbitrary NURBS solid validation, sewing, placement, Booleans and STEP support
+remain incomplete. The long-term estimate remains 15–25%, toward 80%.
+See [polynomial graph solids](docs/nurbs-graph-solid.md).

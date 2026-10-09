@@ -137,3 +137,9 @@ pub use nurbs_polygon_demo::*;
 
 mod nurbs_polygon_holed;
 pub use nurbs_polygon_holed::*;
+
+mod nurbs_graph_demo;
+pub use nurbs_graph_demo::*;
+
+mod nurbs_graph_solid;
+pub use nurbs_graph_solid::*;
