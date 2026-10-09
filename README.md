@@ -25,7 +25,8 @@ roof, with checked rational pcurves and bounded display. This creates a path
 on unchanged stock. The separate [circular graph bore](docs/nurbs-graph-circular-hole.md)
 constructs a closed B-rep with rational circular cap trims and four inward
 walls, plus checked mass/inertia and bounded chordal display. It supports one
-strictly contained source-XY through bore and dedicated exact AP214 STEP export;
+strictly contained source-XY through bore, checked Euclidean point classification
+and dedicated exact AP214 STEP export;
 circular-bore STEP import and general curved Booleans remain planned.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact

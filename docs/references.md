@@ -896,3 +896,14 @@ two-coordinate control points, weights and knots in context dimension two;
 three-dimensional geometry remains in millimetres. No fitting or mesh export
 is used. Independent tests decode the actual entities and compare the retained
 geometry and oriented shared topology. This adds no dependency or license change.
+
+### Circular-bore point classification
+
+The original positive rational Bezier hull distance search reuses the checked
+point-witness/Newton implementation described above. Convexity of a physical
+disk justifies discarding an axis-aligned parameter rectangle only when all
+four physical corners are strictly inside it. Every retained cap distance
+witness is independently filtered; actual ruled spline walls cover circular
+rims. Supporting-plane and radial deep-void separation are Euclidean lower
+bounds. These engineering arithmetic guards are not interval certification.
+No CAD source or new dependency is used; original code remains MIT OR Apache-2.0.

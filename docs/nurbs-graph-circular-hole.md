@@ -109,6 +109,38 @@ validation, volume, classification and STEP export do not accept this new trim
 type; use the dedicated checked APIs for the implemented operations. Circular
 bore STEP import and editable operation-document integration remain subsequent work.
 
+## Point classification
+
+The dedicated `body.classify_point(world_point, geometry_tolerance)` API returns
+`Inside`, `Outside` or `Boundary` for the actual retained solid. It uses a
+Euclidean boundary band, including finite wall endpoints and circular rims;
+a vertical gap from the roof alone is not a distance test.
+
+Positive rational Bezier control hulls bound distance from below. Evaluated
+points on actual retained faces bound it from above. Every cap witness is
+filtered against the physical source-XY disk, so the removed roof/base cannot
+create a false `Boundary`. A rectangular cap search cell is discarded only
+when all four physical corners are strictly inside the disk with arithmetic
+reserve. Mixed cells remain conservative. Actual ruled inner walls retain
+their rim endpoints. Newton steps and circle-quarter hints only find candidate
+points; they never replace the distance proof.
+
+The operation validates the canonical body first. World/source arithmetic,
+relative tolerance and finite search budgets are checked. Near the exact
+boundary-band threshold, or when arithmetic or subdivision limits prevent a
+decision, it returns an explicit error rather than guessing a location.
+Floating-point guards are engineering checks, not interval certificates.
+
+```sh
+cargo run --locked --example nurbs_graph_circular_hole_classification
+```
+
+Its optional JSON array has the 16 model values followed by world XYZ and a
+positive absolute distance tolerance in mm. Queries do not tessellate. The
+browser queries its accepted model, displays the source-space point and a world
+marker, and preserves the prior result/marker after a rejected query. A rejected
+model edit preserves the query; accepting a new model clears stale results.
+
 ## Exact STEP export
 
 The dedicated `body.export_step_mm(tolerance)` API writes the validated retained
@@ -147,7 +179,7 @@ recorded in [references](references.md).
 
 ## Verification
 
-All 757 native tests pass, together with `cargo fmt --all -- --check`,
+All 769 native tests pass, together with `cargo fmt --all -- --check`,
 `cargo clippy --all-targets --locked -- -D warnings`, the WebAssembly build,
 the full native/WASM parity suite and the full browser regression suite.
 The focused circular-bore browser checks also pass and produced the screenshot
@@ -155,3 +187,7 @@ above from the actual implementation.
 STEP-specific checks independently decode retained spline geometry and shared
 topology, preserve existing affine export bytes, compare native/WASM STEP text
 byte for byte, and verify actual browser downloads and rejected-edit recovery.
+Classification checks include independent finite-cap/wall/rim distances,
+steep-roof normal offsets, signed curvature, trim, rigid placement, scaling,
+canonical mutation rejection and an explicitly unresolved band-threshold case.
+Native/WASM classification results and browser marker/state preservation pass.

@@ -1206,3 +1206,15 @@ its accepted model; rejected edits preserve that state. Existing affine STEP
 output remains unchanged. Circular-bore STEP import, general curved Booleans
 and editable operation-document integration remain unsupported. The estimate
 remains **15–25%**, toward **80%**.
+
+## Circular-bore point classification
+
+Dedicated queries classify the actual closed circular-bore solid with a checked
+Euclidean boundary tolerance. Removed cap regions never provide boundary
+witnesses; finite inner walls and circular rims remain searchable. Canonical
+validation, arithmetic guards and finite subdivision budgets reject unresolved
+cases explicitly. Browser queries use the accepted model and preserve prior
+results and markers after rejection. General curved-solid classification and
+editable operation-document integration remain subsequent work. The estimate
+remains **15–25%**, toward **80%**.
+See [circular graph bores](nurbs-graph-circular-hole.md).

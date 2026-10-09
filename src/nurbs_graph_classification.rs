@@ -40,7 +40,7 @@ impl Ord for Cell {
             .then_with(|| other.serial.cmp(&self.serial))
     }
 }
-fn box_distance(surface: &NurbsSurface, query: Point3) -> Result<f64> {
+pub(crate) fn box_distance(surface: &NurbsSurface, query: Point3) -> Result<f64> {
     let mut min = [f64::INFINITY; 3];
     let mut max = [f64::NEG_INFINITY; 3];
     for p in surface.control_points() {
@@ -115,6 +115,15 @@ fn witnesses(
     initial: [f64; 2],
     query: Point3,
 ) -> Result<f64> {
+    witnesses_filtered(original, domain, initial, query, &|_| Ok(true))
+}
+pub(crate) fn witnesses_filtered(
+    original: &NurbsSurface,
+    domain: [[f64; 2]; 2],
+    initial: [f64; 2],
+    query: Point3,
+    accept: &impl Fn([f64; 2]) -> Result<bool>,
+) -> Result<f64> {
     let clamp = |uv: [f64; 2]| -> [f64; 2] {
         std::array::from_fn(|i| uv[i].clamp(domain[i][0], domain[i][1]))
     };
@@ -131,7 +140,9 @@ fn witnesses(
                 "graph classification witness distance overflows",
             ));
         }
-        upper = upper.min(distance);
+        if accept(uv)? {
+            upper = upper.min(distance);
+        }
         let scale = jet.du.norm().max(jet.dv.norm());
         if !scale.is_finite() || scale == 0. {
             break;
@@ -170,7 +181,9 @@ fn witnesses(
                 "graph classification witness distance overflows",
             ));
         }
-        upper = upper.min(distance);
+        if accept(uv)? {
+            upper = upper.min(distance);
+        }
     }
     Ok(upper)
 }
