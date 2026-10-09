@@ -298,6 +298,106 @@ pub fn subtract_through_cylinders(
     Ok(s)
 }
 
+/// Exact restricted difference: one Z-axis cylindrical blind bore entering +Z cap.
+/// Tool base is the retained flat floor; tool top must strictly overhang the box.
+pub fn subtract_blind_cylinder(b: BoxSpec, c: CylinderSpec, t: Tolerance) -> Result<Solid> {
+    subtract_blind_cylinders(b, &[c], t)
+}
+/// Multiple disjoint +Z blind bores, with independent radii and floor heights.
+/// Floors must be strictly inside the box; intersecting tools, side/bottom
+/// breakthroughs, zero depth and unresolved thin floors are unsupported.
+pub fn subtract_blind_cylinders(
+    b: BoxSpec,
+    cutters: &[CylinderSpec],
+    t: Tolerance,
+) -> Result<Solid> {
+    check_box(b, t)?;
+    if cutters.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 independent blind bores are supported",
+        ));
+    }
+    let max = b.min + b.size;
+    for (i, &c) in cutters.iter().enumerate() {
+        check_cylinder(c, t)?;
+        if c.base.z - b.min.z <= 10. * t.linear
+            || max.z - c.base.z <= 10. * t.linear
+            || c.base.z + c.height - max.z <= 10. * t.linear
+        {
+            return Err(Error::Unsupported(
+                "blind tool requires an interior resolved floor and strict top overhang",
+            ));
+        }
+        if c.base.x - c.radius - b.min.x <= 10. * t.linear
+            || c.base.y - c.radius - b.min.y <= 10. * t.linear
+            || max.x - c.base.x - c.radius <= 10. * t.linear
+            || max.y - c.base.y - c.radius <= 10. * t.linear
+        {
+            return Err(Error::Unsupported(
+                "blind bore must stay strictly inside box sides",
+            ));
+        }
+        for previous in &cutters[..i] {
+            if (c.base.x - previous.base.x).hypot(c.base.y - previous.base.y)
+                - c.radius
+                - previous.radius
+                <= 10. * t.linear
+            {
+                return Err(Error::Unsupported(
+                    "blind bores overlap, nest, touch or nearly touch",
+                ));
+            }
+        }
+    }
+    let mut solid = make_box(b, t)?;
+    for &c in cutters {
+        let bottom = ring(&mut solid, c.base, c.radius);
+        let top = ring(&mut solid, Point3::new(c.base.x, c.base.y, max.z), c.radius);
+        let wire = cap_ring(&solid, top, &solid.shell.faces[1].surface, false);
+        solid.shell.faces[1].wires.push(wire);
+        cylindrical_face(
+            &mut solid,
+            bottom,
+            top,
+            CylinderSpec {
+                base: c.base,
+                radius: c.radius,
+                height: max.z - c.base.z,
+            },
+            -1,
+        );
+        let surface = Surface::Plane {
+            origin: c.base,
+            u: Vec3::new(1., 0., 0.),
+            v: Vec3::new(0., 1., 0.),
+        };
+        let wire = cap_ring(&solid, bottom, &surface, true);
+        solid.shell.faces.push(Face {
+            surface,
+            orientation: 1,
+            wires: vec![wire],
+        });
+    }
+    solid.validate(t)?;
+    Ok(solid)
+}
+/// Demonstration: 80×60×24 mm box with a top-entry flat-bottomed circular bore.
+pub fn blind_bore_demo_json(radius: f64, depth: f64) -> Result<String> {
+    let solid = subtract_blind_cylinder(
+        BoxSpec {
+            min: Point3::new(-40., -30., -12.),
+            size: Vec3::new(80., 60., 24.),
+        },
+        CylinderSpec {
+            base: Point3::new(0., 0., 12. - depth),
+            radius,
+            height: depth + 4.,
+        },
+        Tolerance::default(),
+    )?;
+    solid.mesh_json(0.05, Tolerance::default())
+}
+
 /// Straight-line XY profile with simple, disjoint polygonal holes. Rings omit
 /// a repeated closing point. Input winding is normalized without changing points.
 #[derive(Clone, Debug)]

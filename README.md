@@ -430,3 +430,6 @@ analytic separation certificates and provide a nonparallel two-bore web preset.
 
 [Independent bore azimuths](docs/oriented-bores.md) now preserve rotated ellipse
 cap wires and exact cylindrical walls in a further interactive solid preset.
+
+[Flat-bottom blind bores](docs/blind-bore.md) now support restricted exact
+top-entry box differences, independent depths and real retained B-rep floors.

@@ -371,3 +371,11 @@ ellipse section and harmonic wall height coordinates. The full-height
 certificate projects both XY drift components and rotated ellipse basis
 vectors, using the same affine endpoint argument. See [oriented bores](oriented-bores.md).
 No new dependencies or OCCT source were used.
+
+## Cylindrical blind-bore difference
+
+Independent primitive construction uses a circular cap inner wire, inward
+cylinder, upward disk floor and shared seam/rim topology. Removed volume is
+`pi*r²*depth`; analytic surface integration and existing B-rep tessellation
+verify the result. See [blind bores](blind-bore.md). No new dependencies or
+OCCT source were used.

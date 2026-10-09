@@ -397,4 +397,11 @@ cap boundaries, oriented shared edges and cylindrical wall pcurves. Full-height
 separation includes both XY drift components and rotated support radii; native
 and WASM tests cover volume, roots, tiny geometry and invalid/crossing tools.
 Browser preset 28 exposes the working closed solid. Intersecting or uncertified
-tools and blind bores remain unsupported. See [oriented bores](docs/oriented-bores.md).
+tools remain unsupported. See [oriented bores](docs/oriented-bores.md).
+
+Top-entry Z-axis cylindrical blind cuts now retain exact circular floors,
+inward walls, cap hole wires and shared oriented edges in a closed B-rep.
+Independent depths/radii, analytic volume, material above/below floors, tiny
+and rotated solids, contact/breakthrough rejection and native/WASM parity are
+verified; browser preset 29 displays the operation. Tilted/intersecting blind
+cuts and non-top entry remain unsupported. See [blind bores](docs/blind-bore.md).

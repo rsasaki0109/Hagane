@@ -294,6 +294,15 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        29 => subtract_blind_cylinder(
+            b,
+            CylinderSpec {
+                base: Point3::new(0., 0., -4.),
+                radius,
+                height: 20.,
+            },
+            tol,
+        )?,
         28 => {
             if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
                 return Err(Error::Unsupported("oriented bore control must be in 8..24"));

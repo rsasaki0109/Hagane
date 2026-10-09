@@ -31,8 +31,10 @@ Conservative outer clearance and final cap/topology validation still apply.
 Inputs must have finite radii, centers and angles; dimensions exceed ten linear
 tolerances and inclinations are in [-pi/3,pi/3]. Azimuth can be any finite angle.
 No more than sixteen holes are accepted. General intersecting-cylinder Boolean
-operations, partially entering/blind bores and configurations without separation
-or outer containment certificates remain unsupported. Rigid placement of the
+operations, partially entering bores and configurations without separation
+or outer containment certificates remain unsupported in this oriented-through
+API. [Top-entry Z-axis blind bores](blind-bore.md) now have a separate supported
+operation; tilted blind cuts remain unsupported. Rigid placement of the
 completed solid remains available.
 
 The exact volume is `pi*(R²-sum(r_i²/cos(theta_i)))*H`, independent of azimuth.
