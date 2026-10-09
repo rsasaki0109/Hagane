@@ -86,9 +86,11 @@ coverage, and is not yet a node in the editable operation document.
 Multi-component planar plane partition now returns independently validated
 closed solids per side, with exact shared section boundaries and conserved
 combined volume. Native/WASM and browser side-selection demos verify a concave
-stock separating into multiple parts. Boolean difference/intersection APIs
-still return one shell; consuming components in general Booleans and editable
-document nodes remains subsequent work.
+stock separating into multiple parts. New planar-subject/convex-tool component Boolean APIs now preserve all closed
+results through multi-part clipping and retained-boundary sewing. Native/WASM
+and browser checks cover disconnected differences/common regions and conserved
+volume. Original single-result APIs retain their documented limits. General
+curved Booleans and editable Boolean document nodes remain subsequent work.
 
 ## Completion criteria
 

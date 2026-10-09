@@ -68,6 +68,16 @@ pub(crate) fn sew_generated_planar_faces(
     patches: &[PlanarFacePatch],
     tol: GeometryTolerance,
 ) -> Result<Solid> {
+    let mut components = sew_generated_planar_components(patches, tol)?;
+    if components.len() != 1 {
+        return Err(Error::InvalidTopology("disconnected shell"));
+    }
+    Ok(components.pop().unwrap())
+}
+pub(crate) fn sew_generated_planar_components(
+    patches: &[PlanarFacePatch],
+    tol: GeometryTolerance,
+) -> Result<Vec<Solid>> {
     let mut min = Point3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
     let mut max = Point3::new(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
     for &p in patches.iter().flat_map(|p| &p.rings).flatten() {
@@ -81,13 +91,24 @@ pub(crate) fn sew_generated_planar_faces(
         ));
     }
     let roundoff = (64.0 * f64::EPSILON * scale).min(tol.linear() / 1024.0);
-    sew_planar_faces_impl(patches, tol, roundoff)
+    sew_planar_components_impl(patches, tol, roundoff)
 }
 fn sew_planar_faces_impl(
     patches: &[PlanarFacePatch],
     tol: GeometryTolerance,
     roundoff: f64,
 ) -> Result<Solid> {
+    let mut components = sew_planar_components_impl(patches, tol, roundoff)?;
+    if components.len() != 1 {
+        return Err(Error::InvalidTopology("disconnected shell"));
+    }
+    Ok(components.pop().unwrap())
+}
+fn sew_planar_components_impl(
+    patches: &[PlanarFacePatch],
+    tol: GeometryTolerance,
+    roundoff: f64,
+) -> Result<Vec<Solid>> {
     if patches.is_empty()
         || patches.len() > 512
         || patches
@@ -247,6 +268,85 @@ fn sew_planar_faces_impl(
             wires,
         });
     }
-    s.validate(tol.absolute())?;
-    Ok(s)
+    closed_shell_components(&s, tol)
+}
+// Component membership comes from shared B-rep edges after checked sewing.
+// Every extracted shell must independently pass all topology/geometry checks.
+fn closed_shell_components(s: &Solid, tol: GeometryTolerance) -> Result<Vec<Solid>> {
+    let mut owners: Vec<Option<usize>> = vec![None; s.edges.len()];
+    let mut adjacency = vec![Vec::new(); s.shell.faces.len()];
+    for (face, f) in s.shell.faces.iter().enumerate() {
+        for coedge in f.wires.iter().flat_map(|w| &w.coedges) {
+            if let Some(other) = owners[coedge.edge] {
+                adjacency[face].push(other);
+                adjacency[other].push(face);
+            } else {
+                owners[coedge.edge] = Some(face);
+            }
+        }
+    }
+    let mut seen = vec![false; s.shell.faces.len()];
+    let mut result = Vec::new();
+    for start in 0..seen.len() {
+        if seen[start] {
+            continue;
+        }
+        let mut pending = vec![start];
+        let mut faces = std::collections::BTreeSet::new();
+        while let Some(face) = pending.pop() {
+            if seen[face] {
+                continue;
+            }
+            seen[face] = true;
+            faces.insert(face);
+            pending.extend(&adjacency[face]);
+        }
+        let edges: std::collections::BTreeSet<_> = faces
+            .iter()
+            .flat_map(|&i| {
+                s.shell.faces[i]
+                    .wires
+                    .iter()
+                    .flat_map(|w| w.coedges.iter().map(|c| c.edge))
+            })
+            .collect();
+        let vertices: std::collections::BTreeSet<_> =
+            edges.iter().flat_map(|&i| s.edges[i].vertices).collect();
+        let vertex_map: std::collections::BTreeMap<_, _> = vertices
+            .iter()
+            .enumerate()
+            .map(|(new, &old)| (old, new))
+            .collect();
+        let edge_map: std::collections::BTreeMap<_, _> = edges
+            .iter()
+            .enumerate()
+            .map(|(new, &old)| (old, new))
+            .collect();
+        let component = Solid {
+            vertices: vertices.iter().map(|&i| s.vertices[i].clone()).collect(),
+            edges: edges
+                .iter()
+                .map(|&i| {
+                    let mut edge = s.edges[i].clone();
+                    edge.vertices = edge.vertices.map(|v| vertex_map[&v]);
+                    edge
+                })
+                .collect(),
+            shell: Shell {
+                faces: faces
+                    .iter()
+                    .map(|&i| {
+                        let mut face = s.shell.faces[i].clone();
+                        for c in face.wires.iter_mut().flat_map(|w| &mut w.coedges) {
+                            c.edge = edge_map[&c.edge];
+                        }
+                        face
+                    })
+                    .collect(),
+            },
+        };
+        component.validate(tol.absolute())?;
+        result.push(component);
+    }
+    Ok(result)
 }

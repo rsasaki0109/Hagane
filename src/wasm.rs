@@ -269,6 +269,10 @@ mod exports {
     pub extern "C" fn hagane_split_components_demo(offset: f64) -> i32 {
         generate(crate::solid_split_components_demo_json(offset))
     }
+    #[no_mangle]
+    pub extern "C" fn hagane_component_boolean_demo(mode: u32, offset: f64) -> i32 {
+        generate(crate::component_boolean_demo_json(mode, offset))
+    }
 
     #[no_mangle]
     pub extern "C" fn hagane_convex_intersection_demo(offset: f64) -> i32 {

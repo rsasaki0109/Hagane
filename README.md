@@ -37,11 +37,18 @@ not a general parametric CAD system.
 support scoped difference/intersection with concave or polygon-holed subjects,
 including a second cut that preserves an existing through opening. A dedicated
 `web/planar-boolean.html` demo shows actual B-rep results and explicit contact
-failures. Curved inputs, cavities and disconnected results remain unsupported;
+failures. The original single-result APIs still reject disconnected outputs;
+curved inputs and independent cavity shells remain unsupported;
 this API is not yet an editable document node.
 [Multi-component plane partitions](docs/solid-split-components.md) now return
 independently closed solids when a planar cut separates the stock into pieces;
 choose the partition mode in the same browser demo.
+
+[Multi-component planar Booleans](docs/component-booleans.md) now return every
+closed result of scoped difference/intersection with a convex tool, including
+through-slot subtraction into two parts and common regions of concave stock.
+The same browser page displays part counts, exact volumes and rejected contacts.
+These APIs are not yet editable document nodes or general curved Booleans.
 
 Checked [rigid placement and coordinate frames](docs/frames.md) preserve exact
 B-rep geometry and support polygon extrusion in arbitrary planes. The browser

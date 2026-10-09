@@ -29,10 +29,10 @@ it is not persistent topology naming or stable assembly identity.
 
 The older `split_solid_by_plane` API still requires exactly one component on
 each side and retains its disconnected-shell failure when that condition fails.
-The current convex/planar Boolean APIs also retain their documented single-shell
-limits; they do not yet consume these component vectors. This milestone is a
-prerequisite for broader Boolean result sets, not a claim of general compound
-Booleans or assembly support. Independent enclosed cavity shells and arbitrary
+The original single-result convex/planar Boolean APIs retain their documented
+single-shell limits. New [component Boolean APIs](component-booleans.md) now use
+these partition vectors internally to return multiple closed difference/common
+results. This is not general curved Boolean or assembly support. Independent enclosed cavity shells and arbitrary
 patch sewing are not introduced by this API.
 
 ## Example and browser

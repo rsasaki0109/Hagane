@@ -341,9 +341,12 @@ Multi-component plane partition now preserves separate closed planar solids
 on either side, with exact component grouping, no near-vertex snapping, checked
 per-component topology and total volume. Native/WASM and browser checks cover
 concave stock with two separated arms. The original one-solid partition API
-retains its rejection of multiple pieces. Consuming component collections in
-Boolean clipping and document history remains next work. See
-[multi-component partition](solid-split-components.md).
+retains its rejection of multiple pieces. New component difference/intersection
+APIs now carry all pieces through convex-tool clipping and shared-edge sewing,
+with explicit empty/unchanged results, conserved volume and native/WASM/browser
+checks. General curved Booleans and document history integration remain next work. See
+[multi-component partition](solid-split-components.md) and
+[component Booleans](component-booleans.md).
 
 ## Next: broaden analytic B-rep operations
 

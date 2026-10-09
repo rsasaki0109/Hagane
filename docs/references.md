@@ -451,3 +451,11 @@ including existing triangulation dependencies, so these notices accompany web ar
   defines component membership. Volume conservation follows the existing plane
   partition / divergence-theorem construction. Independently implemented,
   without new libraries or copied reference code.
+
+- Multi-component planar Booleans carry all negative/positive connected solids
+  through supporting half-space clipping. Retained subject faces and reversed
+  cutter faces are sewn with shared straight-edge adjacency, then extracted into
+  independently validated shells. Total-volume identities check partition and
+  difference. Only existing bounded arithmetic-roundoff reconciliation is used
+  for internally generated patches. Implemented independently without new
+  dependencies, copied code or mesh Boolean operations.

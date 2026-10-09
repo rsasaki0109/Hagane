@@ -461,3 +461,230 @@ pub fn planar_convex_boolean_demo_json(mode: u32, offset: f64) -> Result<String>
         None => Ok("{\"kind\":\"empty\"}".into()),
     }
 }
+
+// Partition the subject against every cutter half-space, retaining all closed
+// connected components instead of imposing the single-shell API's limitation.
+fn planar_convex_component_partition(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<(Vec<Solid>, Vec<Solid>)> {
+    if planar_face_patches(first, tol.absolute())?.len() > 128 {
+        return Err(Error::Unsupported(
+            "planar subject supports at most 128 faces",
+        ));
+    }
+    let planes = convex_planes(second, tol)?;
+    let a = first.bounds();
+    let b = second.bounds();
+    let budget = tol.length_at_scale((a.max - a.min).norm().max((b.max - b.min).norm()))?;
+    if a.max.x < b.min.x - 10. * budget
+        || b.max.x < a.min.x - 10. * budget
+        || a.max.y < b.min.y - 10. * budget
+        || b.max.y < a.min.y - 10. * budget
+        || a.max.z < b.min.z - 10. * budget
+        || b.max.z < a.min.z - 10. * budget
+    {
+        return Ok((vec![], vec![first.clone()]));
+    }
+    let mut common = vec![first.clone()];
+    let mut outside = Vec::new();
+    for plane in &planes {
+        let Surface::Plane { origin, u, v } = *plane else {
+            unreachable!()
+        };
+        let normal = u.cross(v);
+        let mut next = Vec::new();
+        for piece in common {
+            let distances: Vec<_> = piece
+                .vertices
+                .iter()
+                .map(|p| (p.point - origin).dot(normal))
+                .collect();
+            if distances
+                .iter()
+                .any(|d| !d.is_finite() || d.abs() <= 10. * budget)
+            {
+                return Err(Error::Unsupported("component clipping requires cutter planes clear of current vertices; contacts and coplanar arrangements are unsupported"));
+            }
+            if distances.iter().all(|&d| d > 0.) {
+                outside.push(piece);
+            } else if distances.iter().all(|&d| d < 0.) {
+                next.push(piece);
+            } else {
+                let split = split_solid_by_plane_components(&piece, plane, tol)?;
+                outside.extend(split.positive);
+                next.extend(split.negative);
+            }
+            if outside.len() + next.len() > 256 {
+                return Err(Error::Unsupported(
+                    "component Boolean supports at most 256 intermediate pieces",
+                ));
+            }
+        }
+        common = next;
+        if common.is_empty() {
+            break;
+        }
+    }
+    let common_volume = component_volume(&common)?;
+    if common_volume > first.volume()?.min(second.volume()?) * (1. + 1e-10) {
+        return Err(Error::InvalidTopology(
+            "component common volume exceeds an operand",
+        ));
+    }
+    for piece in &common {
+        piece.validate(tol.absolute())?;
+        for plane in &planes {
+            let Surface::Plane { origin, u, v } = *plane else {
+                unreachable!()
+            };
+            if piece
+                .vertices
+                .iter()
+                .any(|p| (p.point - origin).dot(u.cross(v)) > budget)
+            {
+                return Err(Error::InvalidTopology(
+                    "common component escapes cutter half-spaces",
+                ));
+            }
+        }
+    }
+    if (common_volume + component_volume(&outside)? - first.volume()?).abs()
+        > first.volume()?.abs() * 1e-10
+    {
+        return Err(Error::InvalidTopology("component partition loses volume"));
+    }
+    Ok((common, outside))
+}
+fn component_volume(solids: &[Solid]) -> Result<f64> {
+    solids.iter().try_fold(0., |sum, s| Ok(sum + s.volume()?))
+}
+/// Intersect a checked planar subject with a convex planar tool, returning every
+/// independently closed result component. Empty vector means empty material.
+/// Curves, contacts/coplanarity and vertex passage remain unsupported.
+pub fn intersect_planar_solid_with_convex_components(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<Vec<Solid>> {
+    Ok(planar_convex_component_partition(first, second, tol)?.0)
+}
+/// Exact difference with independently closed planar result components.
+/// A validated single-shell planar subject and convex planar tool are required.
+/// Contacts/curves/independent cavity shells remain unsupported; no mesh CSG.
+pub fn subtract_convex_from_planar_solid_components(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<Vec<Solid>> {
+    let (common, outside) = planar_convex_component_partition(first, second, tol)?;
+    if common.is_empty() {
+        return Ok(vec![first.clone()]);
+    }
+    if outside.is_empty() {
+        return Ok(vec![]);
+    }
+    let mut retained = Vec::new();
+    for piece in outside {
+        retained.extend(
+            planar_face_patches(&piece, tol.absolute())?
+                .into_iter()
+                .filter(|p| original_plane(&p.surface, first)),
+        );
+    }
+    for piece in &common {
+        for mut patch in planar_face_patches(piece, tol.absolute())? {
+            if !original_plane(&patch.surface, first) {
+                patch.orientation *= -1;
+                retained.push(patch);
+            }
+        }
+    }
+    let result =
+        crate::sewing::sew_generated_planar_components(&retained, tol).map_err(|e| match e {
+            Error::InvalidTopology("nonpositive volume") => {
+                Error::Unsupported("independent internal cavity shells are unsupported")
+            }
+            other => other,
+        })?;
+    if (component_volume(&result)? + component_volume(&common)? - first.volume()?).abs()
+        > first.volume()?.abs() * 1e-10
+    {
+        return Err(Error::InvalidTopology(
+            "component difference does not conserve volume",
+        ));
+    }
+    Ok(result)
+}
+/// mode 0: a box separated by a through slot; mode 1: two clipped U-shaped arms.
+pub fn component_boolean_demo_json(mode: u32, offset: f64) -> Result<String> {
+    if mode > 1 || !offset.is_finite() {
+        return Err(Error::InvalidInput("invalid component Boolean mode/offset"));
+    }
+    let t = GeometryTolerance::default();
+    let subject = if mode == 0 {
+        make_box(
+            BoxSpec {
+                min: Point3::new(-30., -20., -12.),
+                size: Vec3::new(60., 40., 24.),
+            },
+            t.absolute(),
+        )?
+    } else {
+        extrude_polygon(
+            &PolygonProfile {
+                origin: Point3::new(0., 0., -12.),
+                outer: vec![
+                    [-30., -20.],
+                    [30., -20.],
+                    [30., 20.],
+                    [10., 20.],
+                    [10., -5.],
+                    [-10., -5.],
+                    [-10., 20.],
+                    [-30., 20.],
+                ],
+                holes: vec![],
+            },
+            Vec3::new(0., 0., 24.),
+            t.absolute(),
+        )?
+    };
+    let tool = if mode == 0 {
+        make_box(
+            BoxSpec {
+                min: Point3::new(-4. + offset, -30., -20.),
+                size: Vec3::new(8., 60., 40.),
+            },
+            t.absolute(),
+        )?
+    } else {
+        make_box(
+            BoxSpec {
+                min: Point3::new(-40., 2. + offset, -20.),
+                size: Vec3::new(80., 10., 40.),
+            },
+            t.absolute(),
+        )?
+    };
+    let parts = if mode == 0 {
+        subtract_convex_from_planar_solid_components(&subject, &tool, t)?
+    } else {
+        intersect_planar_solid_with_convex_components(&subject, &tool, t)?
+    };
+    let meshes = parts
+        .iter()
+        .map(|s| s.mesh_json(0.05, t.absolute()))
+        .collect::<Result<Vec<_>>>()?;
+    Ok(format!(
+        "{{\"components\":[{}],\"volume\":{},\"operation\":\"{}\"}}",
+        meshes.join(","),
+        component_volume(&parts)?,
+        if mode == 0 {
+            "difference"
+        } else {
+            "intersection"
+        }
+    ))
+}

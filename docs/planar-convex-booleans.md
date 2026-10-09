@@ -82,3 +82,11 @@ A U-shaped stock splits into one negative-side bridge and two positive-side
 arms. Choose a displayed side to inspect the separate closed parts and their
 combined exact volume. Plane offsets use world Y in this mode. See
 [multi-component partition](solid-split-components.md) for contracts and tests.
+
+## Boolean component result vectors
+
+New [component Boolean APIs](component-booleans.md) return multiple closed
+results from convex-tool difference/intersection. Use those APIs when a through
+slot separates stock or a common region has disconnected pieces. The original
+single-result APIs above retain their contract. The browser demo includes both
+**Difference into separate parts** and **Intersection into separate parts**.
