@@ -44,3 +44,7 @@ no dedicated browser export was added in this milestone.
 C0 polygon interiors, holes, concave/general trim loops, cross-face sewing,
 closed rational solids and NURBS STEP remain future work. No dependency or OCCT
 source was added. Original code: MIT OR Apache-2.0.
+
+The dedicated [crease-aware API](nurbs-polygon-crease.md) now supports C0 knots
+with explicit triangle splitting and normal-side identities. The general C1
+entry point retains its original C0 rejection contract.

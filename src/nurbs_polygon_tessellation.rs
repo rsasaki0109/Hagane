@@ -5,6 +5,9 @@ use std::collections::HashMap;
 pub struct NurbsPolygonMesh {
     pub mesh: Mesh,
     pub vertex_uv: Vec<[f64; 2]>,
+    /// Canonical UV node; normal duplicates at creases share this identity.
+    pub vertex_nodes: Vec<usize>,
+    pub normal_sides: Vec<[KnotSide; 2]>,
     /// One engineering bound per triangle at its original UV coordinates.
     pub error_bounds: Vec<f64>,
 }
@@ -30,6 +33,24 @@ impl NurbsPolygonFace {
         max_triangles: usize,
         tol: Tolerance,
     ) -> Result<NurbsPolygonMesh> {
+        self.tessellate_polygon(error, max_triangles, tol, false)
+    }
+    /// Split every structural C0 knot before display; duplicate only normals.
+    pub fn tessellate_crease_bounded(
+        &self,
+        error: f64,
+        max_triangles: usize,
+        tol: Tolerance,
+    ) -> Result<NurbsPolygonMesh> {
+        self.tessellate_polygon(error, max_triangles, tol, true)
+    }
+    fn tessellate_polygon(
+        &self,
+        error: f64,
+        max_triangles: usize,
+        tol: Tolerance,
+        split_creases: bool,
+    ) -> Result<NurbsPolygonMesh> {
         self.validate(tol)?;
         if !error.is_finite() || error <= 0. || !(1..=65536).contains(&max_triangles) {
             return Err(Error::InvalidInput(
@@ -39,7 +60,7 @@ impl NurbsPolygonFace {
         let s = &self.boundary.surface;
         let degrees = s.degrees();
         let p = s.control_points();
-        let derivatives = surface_derivative_bounds(s)?;
+        let derivatives = surface_derivative_bounds(s, split_creases)?;
         let ratio = s.weights().iter().copied().fold(0f64, f64::max)
             / s.weights().iter().copied().fold(f64::INFINITY, f64::min);
         let domains = [s.knots(0)?, s.knots(1)?];
@@ -67,6 +88,23 @@ impl NurbsPolygonFace {
         }
         let mut uv = self.boundary.uv_corners().to_vec();
         let mut triangles: Vec<[usize; 3]> = (1..uv.len() - 1).map(|i| [0, i, i + 1]).collect();
+        let creases = if split_creases {
+            source_creases(s)?
+        } else {
+            [Vec::new(), Vec::new()]
+        };
+        let mut clipping_work = 0usize;
+        for (axis, values) in creases.iter().enumerate() {
+            for &value in values {
+                clipping_work = clipping_work.saturating_add(triangles.len());
+                if clipping_work > 16_000_000 {
+                    return Err(Error::Unsupported(
+                        "polygon crease clipping exceeds work limit",
+                    ));
+                }
+                triangles = split_triangles(&mut uv, triangles, axis, value, max_triangles)?;
+            }
+        }
         for depth in 0..=10 {
             if triangles.len() > max_triangles {
                 return Err(Error::Tessellation(
@@ -95,41 +133,7 @@ impl NurbsPolygonFace {
                 })
                 .collect();
             if bounds.iter().all(|b| b.is_finite() && *b <= error) {
-                let mut positions = Vec::with_capacity(uv.len());
-                let mut normals = Vec::with_capacity(uv.len());
-                for point in &uv {
-                    let e = s.evaluate_with_partials(point[0], point[1], [KnotSide::Right; 2])?;
-                    positions.push(e.point);
-                    normals.push(e.du.cross(e.dv).normalized()? * self.face.orientation as f64);
-                }
-                for t in &mut triangles {
-                    if orient2d(uv[t[0]], uv[t[1]], uv[t[2]])? != Orientation::CounterClockwise {
-                        return Err(Error::Tessellation(
-                            "polygon UV triangle orientation is unresolved",
-                        ));
-                    }
-                    if self.face.orientation < 0 {
-                        t.swap(1, 2);
-                    }
-                    let cross = (positions[t[1]] - positions[t[0]])
-                        .cross(positions[t[2]] - positions[t[0]]);
-                    if !cross.finite() || cross.norm() == 0. {
-                        return Err(Error::Tessellation(
-                            "polygon display has degenerate triangle",
-                        ));
-                    }
-                }
-                let face_ids = vec![0; triangles.len()];
-                return Ok(NurbsPolygonMesh {
-                    mesh: Mesh {
-                        positions,
-                        normals,
-                        triangles,
-                        face_ids,
-                    },
-                    vertex_uv: uv,
-                    error_bounds: bounds,
-                });
+                return emit_polygon(s, uv, triangles, bounds, creases, self.face.orientation);
             }
             if depth == 10 || triangles.len() > max_triangles / 4 {
                 return Err(Error::Tessellation(
@@ -270,7 +274,7 @@ fn differentiate(
 // A C1 function has an absolutely continuous first derivative along each
 // triangle segment. Piecewise Hessian bounds therefore bound its Taylor
 // remainder across knot crossings, even where second derivatives jump.
-fn surface_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
+fn surface_derivative_bounds(s: &NurbsSurface, allow_creases: bool) -> Result<[f64; 5]> {
     let degrees = s.degrees();
     let domains = s.domain();
     let mut patch_count = 1usize;
@@ -280,7 +284,10 @@ fn surface_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
         while index < knots.len() {
             let value = knots[index];
             let next = knots.partition_point(|v| *v <= value);
-            if value > domains[axis][0] && value < domains[axis][1] && next - index >= degrees[axis]
+            if !allow_creases
+                && value > domains[axis][0]
+                && value < domains[axis][1]
+                && next - index >= degrees[axis]
             {
                 return Err(Error::Unsupported(
                     "polygon display requires C1 source knots; C0 creases need explicit splitting",
@@ -326,4 +333,190 @@ fn surface_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
         }
     }
     Ok(result)
+}
+
+fn source_creases(s: &NurbsSurface) -> Result<[Vec<f64>; 2]> {
+    let mut result = [Vec::new(), Vec::new()];
+    for (axis, values) in result.iter_mut().enumerate() {
+        let knots = s.knots(axis)?;
+        let domain = s.domain()[axis];
+        let mut i = 0;
+        while i < knots.len() {
+            let value = knots[i];
+            let next = knots.partition_point(|v| *v <= value);
+            if value > domain[0] && value < domain[1] && next - i == s.degrees()[axis] {
+                values.push(value);
+            }
+            i = next;
+        }
+    }
+    Ok(result)
+}
+fn split_triangles(
+    uv: &mut Vec<[f64; 2]>,
+    triangles: Vec<[usize; 3]>,
+    axis: usize,
+    value: f64,
+    max_triangles: usize,
+) -> Result<Vec<[usize; 3]>> {
+    let mut output = Vec::new();
+    let mut crossings = HashMap::new();
+    for triangle in triangles {
+        let lo = triangle
+            .iter()
+            .map(|id| uv[*id][axis])
+            .fold(f64::INFINITY, f64::min);
+        let hi = triangle
+            .iter()
+            .map(|id| uv[*id][axis])
+            .fold(f64::NEG_INFINITY, f64::max);
+        if lo >= value || hi <= value {
+            output.push(triangle);
+        } else {
+            for left in [true, false] {
+                let mut polygon = Vec::new();
+                for index in 0..3 {
+                    let a = triangle[index];
+                    let b = triangle[(index + 1) % 3];
+                    let inside = |x: f64| if left { x <= value } else { x >= value };
+                    let ia = inside(uv[a][axis]);
+                    let ib = inside(uv[b][axis]);
+                    if ia {
+                        polygon.push(a);
+                    }
+                    if ia != ib {
+                        let id = if uv[a][axis] == value {
+                            a
+                        } else if uv[b][axis] == value {
+                            b
+                        } else {
+                            let key = if a < b { [a, b] } else { [b, a] };
+                            if let Some(id) = crossings.get(&key) {
+                                *id
+                            } else {
+                                let t = (value - uv[a][axis]) / (uv[b][axis] - uv[a][axis]);
+                                if !t.is_finite() || t <= 0. || t >= 1. {
+                                    return Err(Error::Tessellation(
+                                        "polygon crease intersection is unresolved",
+                                    ));
+                                }
+                                let other = 1 - axis;
+                                let mut point = uv[a];
+                                point[axis] = value;
+                                point[other] = uv[a][other] + t * (uv[b][other] - uv[a][other]);
+                                if !point[other].is_finite() || point == uv[a] || point == uv[b] {
+                                    return Err(Error::Tessellation(
+                                        "polygon crease UV intersection collapses",
+                                    ));
+                                }
+                                let id = uv.len();
+                                uv.push(point);
+                                crossings.insert(key, id);
+                                id
+                            }
+                        };
+                        polygon.push(id);
+                    }
+                }
+                polygon.dedup();
+                if polygon.len() > 1 && polygon.first() == polygon.last() {
+                    polygon.pop();
+                }
+                for i in 1..polygon.len().saturating_sub(1) {
+                    output.push([polygon[0], polygon[i], polygon[i + 1]]);
+                }
+            }
+        }
+        if output.len() > max_triangles {
+            return Err(Error::Tessellation(
+                "polygon crease clipping exceeds triangle budget",
+            ));
+        }
+    }
+    Ok(output)
+}
+fn emit_polygon(
+    s: &NurbsSurface,
+    uv: Vec<[f64; 2]>,
+    triangles: Vec<[usize; 3]>,
+    bounds: Vec<f64>,
+    creases: [Vec<f64>; 2],
+    orientation: i8,
+) -> Result<NurbsPolygonMesh> {
+    let mut positions = Vec::new();
+    let mut normals = Vec::new();
+    let mut vertex_uv = Vec::new();
+    let mut vertex_nodes = Vec::new();
+    let mut normal_sides = Vec::new();
+    let mut emitted = Vec::with_capacity(triangles.len());
+    let mut display_nodes = HashMap::new();
+    let mut geometry = HashMap::new();
+    for triangle in triangles {
+        if orient2d(uv[triangle[0]], uv[triangle[1]], uv[triangle[2]])?
+            != Orientation::CounterClockwise
+        {
+            return Err(Error::Tessellation(
+                "polygon UV triangle orientation is unresolved",
+            ));
+        }
+        let mut ids = [0; 3];
+        for (index, node) in triangle.into_iter().enumerate() {
+            let mut sides = [KnotSide::Right; 2];
+            let mut flags = 0usize;
+            for axis in 0..2 {
+                if creases[axis].contains(&uv[node][axis])
+                    && triangle.iter().all(|id| uv[*id][axis] <= uv[node][axis])
+                {
+                    sides[axis] = KnotSide::Left;
+                    flags |= 1 << axis;
+                }
+            }
+            let key = (node, flags);
+            ids[index] = if let Some(id) = display_nodes.get(&key) {
+                *id
+            } else {
+                let point = if let Some(point) = geometry.get(&node) {
+                    *point
+                } else {
+                    let point = s.evaluate(uv[node][0], uv[node][1])?;
+                    geometry.insert(node, point);
+                    point
+                };
+                let e = s.evaluate_with_partials(uv[node][0], uv[node][1], sides)?;
+                let normal = e.du.cross(e.dv).normalized()? * orientation as f64;
+                let id = positions.len();
+                positions.push(point);
+                normals.push(normal);
+                vertex_uv.push(uv[node]);
+                vertex_nodes.push(node);
+                normal_sides.push(sides);
+                display_nodes.insert(key, id);
+                id
+            };
+        }
+        if orientation < 0 {
+            ids.swap(1, 2);
+        }
+        let cross =
+            (positions[ids[1]] - positions[ids[0]]).cross(positions[ids[2]] - positions[ids[0]]);
+        if !cross.finite() || cross.norm() == 0. {
+            return Err(Error::Tessellation(
+                "polygon display has degenerate triangle",
+            ));
+        }
+        emitted.push(ids);
+    }
+    let face_ids = vec![0; emitted.len()];
+    Ok(NurbsPolygonMesh {
+        mesh: Mesh {
+            positions,
+            normals,
+            triangles: emitted,
+            face_ids,
+        },
+        vertex_uv,
+        vertex_nodes,
+        normal_sides,
+        error_bounds: bounds,
+    })
 }

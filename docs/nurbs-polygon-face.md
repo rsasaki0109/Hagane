@@ -46,3 +46,7 @@ adds multiple spans.
 The subsequent [C1 multi-span display](nurbs-polygon-multispan.md) extension
 now accepts structurally C1 source knots through the general bounded API. C0
 polygon interiors remain unsupported.
+
+The dedicated [crease-aware API](nurbs-polygon-crease.md) now supports C0 knots
+with explicit triangle splitting and normal-side identities. The general C1
+entry point retains its original C0 rejection contract.

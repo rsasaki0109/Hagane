@@ -896,3 +896,14 @@ including geometrically smooth over-multiplied knots. Full-source extraction,
 derivative work and display budgets remain checked. C0 polygon interiors, holes,
 general trims, sewing and closed rational solids remain incomplete. The estimate
 remains 15–25%, toward 80%. See [C1 polygon display](docs/nurbs-polygon-multispan.md).
+
+## Crease-aware rational polygon display
+
+`tessellate_crease_bounded` splits convex UV triangle domains at structural C0
+knots, sharing intersection/midpoint identities and geometric positions while
+retaining explicit one-sided normals. Independent piecewise rational bounds,
+coverage/connectivity and analytic normals verify crossed creases and boundary
+ownership. An OBJ demo exports actual geometry with separate normal indices.
+Existing C1 APIs retain their rejection contract. Holes, general loops, sewing
+and closed rational solids remain incomplete. The estimate remains 15–25%,
+toward 80%. See [crease-aware polygon display](docs/nurbs-polygon-crease.md).

@@ -35,7 +35,8 @@ now connect lifted edges with shared closing vertices.
 [Convex UV polygon faces](docs/nurbs-polygon-face.md) retain those boundaries as
 open faces and provide [bounded high-degree rational interior display](docs/nurbs-polygon-bezier.md)
 including [C1 multi-span rational surfaces](docs/nurbs-polygon-multispan.md).
-C0 polygon interiors remain unsupported.
+[Crease-aware display](docs/nurbs-polygon-crease.md) additionally splits C0 knots
+and retains one-sided normals through a dedicated API.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

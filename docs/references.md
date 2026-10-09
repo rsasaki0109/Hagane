@@ -600,3 +600,9 @@ UV chain-rule rescaling of first/second derivative bounds, and the fundamental
 theorem of calculus for a continuous piecewise-smooth first derivative. The
 implementation does not claim interval certification and adds no dependencies
 or OCCT code (original code MIT OR Apache-2.0).
+
+Crease-aware polygon display uses independent convex half-plane clipping of
+UV triangles, shared-edge intersection identity, uniform midpoint subdivision
+and explicit one-sided source derivatives. No third-party clipping code or
+OCCT source was used; engineering f64 guards remain distinct from interval
+certification (MIT OR Apache-2.0 original code, no new dependencies).
