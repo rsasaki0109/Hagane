@@ -62,5 +62,9 @@ try{
  const tetraExpected={faces:4,volume:4,bounds:[[0,2],[0,3],[0,4]]};check(tetra,tetraExpected);
  const imported=JSON.parse(run('step_import',[]).toString());assert.equal(imported.units,'mm');assert.equal(imported.vertices,4);assert.deepEqual(imported.bounds,{min:[0,0,0],max:[2,3,4]});check(Buffer.from(imported.step),tetraExpected);
  const prismPath=new URL('../docs/step-prism-example.step',import.meta.url).pathname;const prism=JSON.parse(run('step_import',[prismPath]).toString());assert.equal(prism.vertices,24);check(readFileSync(prismPath),cases[0]);check(Buffer.from(prism.step),cases[0]);
+
+ const cylinderPath=new URL('../docs/step-cylinder-metres.step',import.meta.url).pathname;const cylinderExpected={faces:3,volume:12*Math.PI,bounds:[[-2,2],[-2,2],[0,3]],radialHeight:6};check(readFileSync(cylinderPath),cylinderExpected);check(Buffer.from(JSON.parse(run('step_import',[cylinderPath]).toString()).step),cylinderExpected);
+ const tubePath=new URL('../docs/step-tube-example.step',import.meta.url).pathname;const tubeExpected={faces:4,volume:Math.PI*48*24,bounds:placedBounds,radialHeight:12*24};check(readFileSync(tubePath),tubeExpected);check(Buffer.from(JSON.parse(run('step_import',[tubePath]).toString()).step),tubeExpected);
+ console.log('External reader: independent metre cylinder and rotated tube source/native re-export, seam topology, face counts, analytic bounds and bounded display volume passed.');
  console.log('External STEP import: planes, circles, cylinders, tubes, rigid placement, through/blind/opposing holes, face counts, bounds, bounded mesh volume, retained floors, mm/metre conversion and independent metre tetrahedron native import/re-export passed.');
 }finally{rmSync(temporary,{recursive:true,force:true});}

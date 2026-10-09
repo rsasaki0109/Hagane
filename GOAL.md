@@ -556,3 +556,18 @@ and nearly parallel nonprismatic rejection. Native/WASM report parity and the
 browser's actual skew plate import/re-export sample are verified. Curved and
 uncertified nonconvex imports remain unsupported; see the STEP import document.
 The long-term estimate remains 15–25%, toward the 80% target.
+
+## Complete circular STEP import
+
+The extended reader now imports complete cylinders and concentric tubes with
+aligned circle/plane/cylinder frames and explicit periodic seam pcurves. Both UV
+seams are checked in radians/converted length units. A separate geometric
+certificate verifies coaxial cap/wall correspondence and inward tube walls,
+preserving source geometry and shared topology. Strict planar-only APIs remain
+available. Independent hand-authored metre geometry, three-scale/rigid round
+trips, empty tube interior, chord errors and near-inconsistent seam/radius/height
+rejection are verified natively; WASM report/byte parity, browser rotated-tube
+import/re-export/recovery and independent external reading are tested. Partial
+arcs, differently parameterized cylinders, bored planar stock and other mixed
+curved imports remain unsupported. The long-term estimate remains 15–25%, toward
+the 80% target. See the STEP import document for the bounded domain.

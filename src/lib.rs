@@ -2,6 +2,7 @@
 mod booleans;
 mod box_booleans;
 mod circular_face_intersections;
+mod circular_prism_validation;
 mod circular_trims;
 mod classification;
 mod edge_simplify;
@@ -34,6 +35,7 @@ mod workflow;
 pub use booleans::*;
 pub use box_booleans::*;
 pub use circular_face_intersections::*;
+pub use circular_prism_validation::*;
 pub use classification::*;
 pub use edge_simplify::*;
 pub use ellipse_planar::*;

@@ -35,7 +35,7 @@ mod exports {
             )));
         }
         match std::str::from_utf8(&bytes) {
-            Ok(text) => generate(crate::import_step_planar_json(text)),
+            Ok(text) => generate(crate::import_step_json(text)),
             Err(_) => generate(Err(crate::Error::InvalidInput("STEP import must be UTF-8"))),
         }
     }

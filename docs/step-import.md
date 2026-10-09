@@ -1,16 +1,17 @@
-# Convex and polygon-prism STEP import
+# Planar and complete cylindrical STEP import
 
-Hagane now imports one closed **convex planar solid or certified straight polygon prism** from an
+Hagane now imports one closed **convex planar solid, certified polygon prism, or complete
+cylinder/concentric tube** from an
 explicit AP214 (`AUTOMOTIVE_DESIGN`) ISO 10303-21 file. This is an original pure
 Rust parser and B-rep reconstruction path, shared by native and WASM. It does not
 use an OCCT binding, mesh reconstruction, face sewing, snapping or automatic
-repair. Curved export has a broader supported domain than this first importer.
+repair. Export still supports a broader domain than this importer.
 
 ```rust
 let input = std::fs::read_to_string("part.step")?;
 let tolerance = hagane::Tolerance::new(1e-8)?; // mm, regardless of source units
-let solid = hagane::import_step_planar_mm(&input, tolerance)?;
-let output = hagane::export_step_planar_mm(&solid, tolerance)?;
+let solid = hagane::import_step_mm(&input, tolerance)?;
+let output = hagane::export_step_mm(&solid, tolerance)?;
 std::fs::write("checked-part.step", output)?;
 ```
 
@@ -27,9 +28,10 @@ history nodes; parameters or original construction intent are not recovered.
 ## Geometry, topology and units
 
 The single `ADVANCED_BREP_SHAPE_REPRESENTATION` must reference exactly one
-`MANIFOLD_SOLID_BREP` and one 3D unit context. Each face requires one
-`FACE_OUTER_BOUND` and optional `FACE_BOUND` holes, each with an `EDGE_LOOP` of `ORIENTED_EDGE`s, and a `PLANE` with
-`AXIS2_PLACEMENT_3D`. Each shared `EDGE_CURVE` uses a `LINE` defined by a point
+`MANIFOLD_SOLID_BREP` and one 3D unit context. Each planar face requires one
+`FACE_OUTER_BOUND` and optional `FACE_BOUND` holes, each with an `EDGE_LOOP` of
+`ORIENTED_EDGE`s, and a `PLANE` with
+`AXIS2_PLACEMENT_3D`. Each straight `EDGE_CURVE` uses a `LINE` defined by a point
 and a positive `VECTOR`/`DIRECTION`. Shared STEP entity IDs determine native
 vertex/edge identity; coincident but separately named vertices are not merged.
 
@@ -49,8 +51,8 @@ roundoff budget exceeds that tolerance are explicitly rejected.
 
 Native validation checks planar trims, edge endpoints, pcurve agreement, winding,
 shared opposite uses, vertex links, connected closure and positive finite volume.
-Success requires either the existing convex supporting-plane certificate or a
-translation-prism certificate. The latter accepts simple concave profiles and
+For planar inputs, success requires either the existing convex supporting-plane
+certificate or a translation-prism certificate. The latter accepts simple concave profiles and
 disjoint polygon holes, skew/reversed extrusion and rigid placement. It checks
 two opposite caps, bijective cap vertices/rings, one common translation and
 exactly one correctly oriented quadrilateral side per profile edge. With `n`
@@ -69,6 +71,56 @@ shells (including oblique roofs and blind pockets) are still unsupported.
 `certify_planar_prism` exposes the certificate to native callers;
 `import_step_convex_planar_mm` retains an explicitly strict convex-only API.
 Certificates describe a geometric property, not original modeling intent.
+
+## Complete cylinders and concentric tubes
+
+`import_step_mm` extends the planar subset to round cylinders and concentric
+round tubes with perpendicular disk/annular caps and complete periodic walls.
+`import_step_json`, the native example and the browser use this extended reader.
+`import_step_planar_mm` and `import_step_convex_planar_mm` retain strict planar
+contracts and continue to reject all circular/cylindrical geometry.
+
+The circular domain is deliberately bounded:
+
+- Exactly two planar caps and one outward cylinder wall, optionally one inward
+  concentric wall. A cylinder has 2 vertices/3 edges/3 faces; a tube has 4/6/4.
+- Complete one-vertex `CIRCLE` edges with positive `same_sense`. Their seam
+  vertices must lie at the placement's zero angle at arithmetic precision.
+- Circle, cylinder and cap-plane positive UV axes must agree. Arbitrary rigid
+  placements work, but independently rotated/opposite UV frames are unsupported.
+- Each cylinder placement starts at its lower rim with positive axial height;
+  translating a cylinder's UV origin into the interior is unsupported.
+- Each cylindrical face has a four-coedge rectangle: two circles and two
+  opposite uses of one shared line seam. Rotating the loop's starting coedge and
+  reordering the two pcurves are supported; reversed generator endpoint order
+  and arbitrary cylindrical trim graphs are unsupported.
+- The `SEAM_CURVE` uses `.CURVE_3D.` and two distinct `PCURVE`s referencing the
+  same surface. Each contains one 2D `LINE` in a 2D representation context, at
+  u=0 or u=2π, with v=0 and positive axial direction. The radians coordinate
+  remains unchanged during SI metre conversion; the v coordinate is converted
+  to mm. Both UV curves are validated rather than ignored or synthesized.
+- Height and tube wall thickness must exceed ten caller length tolerances.
+  Geometry, frames and explicit UV heights agree under the same bounded
+  arithmetic budget used by the polygon-prism certificate.
+
+`certify_circular_prism` independently verifies native cap/wall correspondence,
+coaxial circles, radii, opposing cap normals, inward/outward walls and periodic
+edge identity. A concentric annulus translated along its normal is embedded;
+this certificate establishes that geometry as well as closed manifold topology.
+No mesh reconstruction or regenerated primitive replaces the source B-rep.
+Imported source planes/circles/cylinder placements and entity sharing survive;
+finite cylinder height and non-seam pcurves are derived from the exact boundaries.
+Normalized frame reconstruction and
+f64 unit conversion can change the final bits across repeated imports; round
+trips check bounded geometric agreement, not source-byte identity. Native and
+WASM re-exported bytes agree for the same input. Vertices retain their converted
+coordinates; neither curves nor vertices are snapped to repair a discrepancy.
+
+Arcs, elliptical/oblique caps, other curved solids, bored polygon stock, blind
+cuts and general mixed planar/cylindrical solids remain unsupported inputs,
+even though several of them can already be exported. Valid but differently
+parameterized cylinder files outside the domain above are explicitly rejected.
+This is a supported analytic subset, not general STEP cylinder compatibility.
 
 ## Supported syntax and bounded resources
 
@@ -90,7 +142,7 @@ Bounds apply before reconstruction/validation:
 - Coedges: 256 per face (all wires combined), 4096 total.
 - Vertices and edges: at most 4096 each.
 
-Cylinders, circles, arcs, ellipses, NURBS, uncertified nonconvex solids, multiple
+Partial arcs, ellipses, NURBS, other curved solids, uncertified nonconvex solids, multiple
 solids, assemblies, transforms in representation graphs, conversion-based units,
 other SI prefixes, unknown metadata/entity extensions and other application
 protocols are unsupported. This does not claim general STEP schema conformance
@@ -108,6 +160,12 @@ The second sample, `docs/step-prism-example.step`, comes from the actual skew
 polygon extrusion workflow with a square opening. It imports as 24 vertices,
 36 shared edges and 14 faces, with dimensions 98×72×24 mm and exact volume
 105792 mm³. Its opening remains empty material; no mesh reconstruction is used.
+
+The rotated tube sample preserves two exact circular openings and two periodic
+walls. Native analytic volume is `π * (8² - 4²) * 24` mm³; four shared vertices,
+six edges and four faces survive import and re-export.
+
+![Actual cylindrical STEP import browser](step-tube-import.png)
 
 ![Actual polygon-prism STEP import browser](step-prism-import.png)
 
@@ -144,8 +202,25 @@ files, previous-view preservation and recovery.
 
 The optional [external validator](step-export.md#verification-and-provenance)
 checks the independently authored tetrahedron and the polygon-holed skew prism,
-including each native import/re-export.
+including each native import/re-export. It also checks the independent metre
+cylinder and rotated tube source/re-export.
 Its external-only tool licensing remains recorded there; no new kernel or
 browser dependency was added. Public ISO 10303-21 and EXPRESS entity references
 are also recorded there. Parser/reconstruction code and the test fixture are
 original work licensed MIT OR Apache-2.0; no OCCT implementation source was used.
+
+
+`docs/step-cylinder-metres.step` is another original independent hand-authored
+fixture, not generated by the exporter. Its radius 2 mm/height 3 mm give analytic
+volume 12π mm³. It exercises SI metre conversion (including mixed radians/length
+UV coordinates), non-unit/default directions, an arbitrary 3D LINE magnitude,
+reordered pcurve associations and a cylindrical loop starting at the upper rim.
+Circular native tests cover cylinder/tube round trips at three scales, rigid
+placement, exact bounds/volume, empty tube interior, inward wall orientation and
+wall chord error. They reject near-inconsistent radii/heights below modeling
+tolerance but above arithmetic precision, misplaced/duplicated seam curves,
+wrong contexts/senses, partial circles, contacts, thin dimensions and unsupported
+mixed curved solids; malformed/truncated inputs do not panic. WASM and browser
+checks cover full native reports/re-export bytes, rotated-tube downloads/uploads,
+corrupt seam rejection, previous-view preservation and recovery. No new runtime
+dependency was added; fixtures and implementations are MIT OR Apache-2.0.

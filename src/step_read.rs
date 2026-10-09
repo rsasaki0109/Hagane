@@ -1,4 +1,4 @@
-//! Bounded, original Part 21 parser and exact convex planar STEP reconstruction.
+//! Bounded, original Part 21 parser and exact planar and bounded circular STEP reconstruction.
 use crate::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -363,6 +363,11 @@ impl Database {
             "DIRECTION",
             "VECTOR",
             "LINE",
+            "CIRCLE",
+            "CYLINDRICAL_SURFACE",
+            "SEAM_CURVE",
+            "PCURVE",
+            "DEFINITIONAL_REPRESENTATION",
             "AXIS2_PLACEMENT_3D",
             "PLANE",
             "VERTEX_POINT",
@@ -393,7 +398,7 @@ impl Database {
             }
             if record.len() == 1 {
                 if !SIMPLE.contains(&record[0].0.as_str()) {
-                    return Err(Error::Unsupported("unsupported STEP entity (curves, assemblies and unknown extensions are rejected)"));
+                    return Err(Error::Unsupported("unsupported STEP entity (unknown curves, assemblies and extensions are rejected)"));
                 }
                 let signature = match record[0].0.as_str() {
                     "APPLICATION_CONTEXT" => Some("s"),
@@ -425,7 +430,11 @@ impl Database {
                 let is_unit = ["LENGTH_UNIT", "PLANE_ANGLE_UNIT", "SOLID_ANGLE_UNIT"]
                     .into_iter()
                     .any(|unit| names == [unit, "NAMED_UNIT", "SI_UNIT"].into_iter().collect());
-                if !is_context && !is_unit {
+                let is_uv_context = names
+                    == ["GEOMETRIC_REPRESENTATION_CONTEXT", "REPRESENTATION_CONTEXT"]
+                        .into_iter()
+                        .collect();
+                if !is_context && !is_unit && !is_uv_context {
                     return Err(Error::Unsupported("unsupported complex STEP entity"));
                 }
             }
@@ -479,7 +488,7 @@ impl Database {
         let record = self.record(id)?;
         if record.len() != 1 || record[0].0 != name {
             return Err(Error::Unsupported(
-                "STEP reference is outside the supported planar entity subset",
+                "STEP reference is outside the supported analytic entity subset",
             ));
         }
         let args = &record[0].1;
@@ -531,9 +540,8 @@ impl Database {
         )
         .normalized()
     }
-    fn plane(&self, id: u32, scale: f64) -> Result<Surface> {
-        let args = self.simple(id, "PLANE", 2)?;
-        let place = self.simple(reference(&args[1])?, "AXIS2_PLACEMENT_3D", 4)?;
+    fn placement(&self, id: u32, scale: f64) -> Result<Frame3> {
+        let place = self.simple(id, "AXIS2_PLACEMENT_3D", 4)?;
         let origin = self.point(reference(&place[1])?, scale)?;
         let normal = if place[2] == Value::Omitted {
             Vec3::new(0., 0., 1.)
@@ -547,7 +555,29 @@ impl Database {
         };
         let u = (reference - normal * reference.dot(normal)).normalized()?;
         let v = normal.cross(u);
-        Ok(Surface::Plane { origin, u, v })
+        Frame3::new(origin, [u, v, normal], Tolerance::default())
+    }
+    fn surface(&self, id: u32, scale: f64, analytic: bool) -> Result<Surface> {
+        let record = self.record(id)?;
+        if analytic && record.len() == 1 && record[0].0 == "CYLINDRICAL_SURFACE" {
+            let args = self.simple(id, "CYLINDRICAL_SURFACE", 3)?;
+            let radius = number(&args[2])? * scale;
+            if !radius.is_finite() || radius <= 0. {
+                return Err(Error::InvalidInput("invalid STEP cylinder radius"));
+            }
+            return Ok(Surface::FramedCylinder {
+                frame: self.placement(reference(&args[1])?, scale)?,
+                radius,
+                height: 0.,
+            });
+        }
+        let args = self.simple(id, "PLANE", 2)?;
+        let frame = self.placement(reference(&args[1])?, scale)?;
+        Ok(Surface::Plane {
+            origin: frame.origin(),
+            u: frame.axes()[0],
+            v: frame.axes()[1],
+        })
     }
     fn units(&self, context: u32) -> Result<f64> {
         if self
@@ -555,7 +585,7 @@ impl Database {
             .values()
             .filter(|r| {
                 r.iter()
-                    .any(|(name, _)| name == "GEOMETRIC_REPRESENTATION_CONTEXT")
+                    .any(|(name, _)| name == "GLOBAL_UNIT_ASSIGNED_CONTEXT")
             })
             .count()
             != 1
@@ -657,6 +687,8 @@ struct Builder<'a> {
     vertices: BTreeMap<u32, usize>,
     edges: BTreeMap<u32, usize>,
     coedge_count: usize,
+    analytic: bool,
+    seams: BTreeMap<usize, (u32, [PCurve; 2])>,
 }
 impl Builder<'_> {
     fn vertex(&mut self, id: u32) -> Result<usize> {
@@ -687,7 +719,66 @@ impl Builder<'_> {
         let args = self.db.simple(id, "EDGE_CURVE", 5)?;
         let a = self.vertex(reference(&args[1])?)?;
         let b = self.vertex(reference(&args[2])?)?;
-        let line = self.db.simple(reference(&args[3])?, "LINE", 3)?;
+        let geometry_id = reference(&args[3])?;
+        let record = self.db.record(geometry_id)?;
+        if self.analytic && record.len() == 1 && record[0].0 == "CIRCLE" {
+            if a != b {
+                return Err(Error::Unsupported(
+                    "STEP circular import requires a complete one-vertex circle",
+                ));
+            }
+            if !boolean(&args[4])? {
+                return Err(Error::Unsupported(
+                    "STEP complete circles currently require positive same_sense",
+                ));
+            }
+            let circle = self.db.simple(geometry_id, "CIRCLE", 3)?;
+            let frame = self.db.placement(reference(&circle[1])?, self.scale)?;
+            let radius = number(&circle[2])? * self.scale;
+            if !radius.is_finite() || radius <= self.tol.linear {
+                return Err(Error::InvalidInput(
+                    "invalid or unresolved STEP circle radius",
+                ));
+            }
+            let curve = Curve::FramedCircle { frame, radius };
+            let budget = (64. * f64::EPSILON * radius).min(self.tol.linear / 1024.);
+            if (curve.evaluate(0.) - self.solid.vertices[a].point).norm() > budget {
+                return Err(Error::Unsupported(
+                    "STEP circle vertex must resolve the placement's zero-angle seam",
+                ));
+            }
+            let index = self.solid.edges.len();
+            self.solid.edges.push(Edge {
+                vertices: [a, b],
+                curve,
+            });
+            self.edges.insert(id, index);
+            return Ok(index);
+        }
+        let mut line_id = geometry_id;
+        let mut seam = None;
+        if self.analytic && record.len() == 1 && record[0].0 == "SEAM_CURVE" {
+            let args = self.db.simple(geometry_id, "SEAM_CURVE", 4)?;
+            if args[3] != Value::Enum("CURVE_3D".into()) {
+                return Err(Error::Unsupported("STEP seam requires the 3D master curve"));
+            }
+            line_id = reference(&args[1])?;
+            let associated = list(&args[2])?;
+            if associated.len() != 2 || associated[0] == associated[1] {
+                return Err(Error::InvalidTopology(
+                    "STEP periodic seam requires two distinct pcurves",
+                ));
+            }
+            let first = self.seam_pcurve(reference(&associated[0])?)?;
+            let second = self.seam_pcurve(reference(&associated[1])?)?;
+            if first.0 != second.0 {
+                return Err(Error::InvalidTopology(
+                    "STEP seam pcurves refer to different surfaces",
+                ));
+            }
+            seam = Some((first.0, [first.1, second.1]));
+        }
+        let line = self.db.simple(line_id, "LINE", 3)?;
         let origin = self.db.point(reference(&line[1])?, self.scale)?;
         let vector = self.db.simple(reference(&line[2])?, "VECTOR", 3)?;
         let dir = self.db.direction(reference(&vector[1])?)?;
@@ -729,11 +820,168 @@ impl Builder<'_> {
             curve: Curve::Line { a: start, b: end },
         });
         self.edges.insert(id, index);
+        if let Some(seam) = seam {
+            self.seams.insert(index, seam);
+        }
         Ok(index)
+    }
+    fn seam_pcurve(&self, id: u32) -> Result<(u32, PCurve)> {
+        let args = self.db.simple(id, "PCURVE", 3)?;
+        let surface = reference(&args[1])?;
+        self.db.simple(surface, "CYLINDRICAL_SURFACE", 3)?;
+        let rep = self
+            .db
+            .simple(reference(&args[2])?, "DEFINITIONAL_REPRESENTATION", 3)?;
+        let curves = list(&rep[1])?;
+        if curves.len() != 1 {
+            return Err(Error::Unsupported("STEP seam pcurve requires one 2D line"));
+        }
+        let context = reference(&rep[2])?;
+        let record = self.db.record(context)?;
+        if record.len() != 2
+            || self
+                .db
+                .component(context, "GEOMETRIC_REPRESENTATION_CONTEXT")?
+                != [Value::Number(2.)]
+            || self.db.component(context, "REPRESENTATION_CONTEXT")?.len() != 2
+            || !self
+                .db
+                .component(context, "REPRESENTATION_CONTEXT")?
+                .iter()
+                .all(|v| matches!(v, Value::String(_)))
+        {
+            return Err(Error::InvalidInput("invalid STEP seam UV context"));
+        }
+        let line = self.db.simple(reference(&curves[0])?, "LINE", 3)?;
+        let point = self.db.simple(reference(&line[1])?, "CARTESIAN_POINT", 2)?;
+        let point = list(&point[1])?;
+        let vector = self.db.simple(reference(&line[2])?, "VECTOR", 3)?;
+        let direction = self.db.simple(reference(&vector[1])?, "DIRECTION", 2)?;
+        let direction = list(&direction[1])?;
+        if point.len() != 2 || direction.len() != 2 {
+            return Err(Error::InvalidInput("STEP seam UV coordinates must be 2D"));
+        }
+        let dx = number(&direction[0])?;
+        let dy = number(&direction[1])?;
+        let normalized = Vec3::new(dx, dy, 0.).normalized()?;
+        let magnitude = number(&vector[2])?;
+        let origin = [number(&point[0])?, number(&point[1])? * self.scale];
+        let direction = [
+            normalized.x * magnitude,
+            normalized.y * magnitude * self.scale,
+        ];
+        if !magnitude.is_finite()
+            || magnitude <= 0.
+            || origin
+                .iter()
+                .chain(direction.iter())
+                .any(|v| !v.is_finite())
+        {
+            return Err(Error::InvalidInput(
+                "STEP seam UV conversion is invalid or overflows",
+            ));
+        }
+        if ![0., std::f64::consts::TAU].contains(&origin[0])
+            || origin[1] != 0.
+            || direction[0] != 0.
+            || direction[1] <= 10. * self.tol.linear
+        {
+            return Err(Error::Unsupported(
+                "STEP seam pcurves require u=0/2pi and positive axial generators from v=0",
+            ));
+        }
+        Ok((surface, PCurve::Affine { origin, direction }))
+    }
+    fn edge_pcurve(
+        &self,
+        edge: usize,
+        forward: bool,
+        surface: &Surface,
+        surface_id: u32,
+    ) -> Result<PCurve> {
+        match (&self.solid.edges[edge].curve, surface) {
+            (Curve::Line { a, b }, Surface::Plane { .. }) => {
+                if self.seams.contains_key(&edge) {
+                    return Err(Error::Unsupported(
+                        "STEP periodic seam cannot bound a plane",
+                    ));
+                }
+                let origin = surface.parameters(*a);
+                let end = surface.parameters(*b);
+                Ok(PCurve::Affine {
+                    origin,
+                    direction: [end[0] - origin[0], end[1] - origin[1]],
+                })
+            }
+            (Curve::FramedCircle { frame, radius }, Surface::Plane { origin, u, v }) => {
+                let offset = frame.origin() - *origin;
+                let budget =
+                    (64. * f64::EPSILON * radius.max(offset.norm())).min(self.tol.linear / 1024.);
+                if (frame.axes()[0] - *u).norm() > 64. * f64::EPSILON
+                    || (frame.axes()[1] - *v).norm() > 64. * f64::EPSILON
+                    || !offset.norm().is_finite()
+                    || offset.dot(u.cross(*v)).abs() > budget
+                {
+                    return Err(Error::Unsupported("STEP circular cap requires an aligned positive circle/plane parameter frame"));
+                }
+                Ok(PCurve::Circle {
+                    center: surface.parameters(frame.origin()),
+                    radius: *radius,
+                })
+            }
+            (
+                Curve::FramedCircle {
+                    frame: circle,
+                    radius: rim_radius,
+                },
+                Surface::FramedCylinder { frame, radius, .. },
+            ) => {
+                let local = frame.local_point(circle.origin());
+                let budget =
+                    (64. * f64::EPSILON * radius.max(local.norm())).min(self.tol.linear / 1024.);
+                if !local.finite()
+                    || (rim_radius - radius).abs() > budget
+                    || local.x.hypot(local.y) > budget
+                    || circle
+                        .axes()
+                        .iter()
+                        .zip(frame.axes())
+                        .any(|(a, b)| (*a - b).norm() > 64. * f64::EPSILON)
+                {
+                    return Err(Error::Unsupported("STEP cylindrical rims require equal radius and aligned coaxial circle frames"));
+                }
+                Ok(PCurve::Affine {
+                    origin: [0., local.z],
+                    direction: [1., 0.],
+                })
+            }
+            (Curve::Line { .. }, Surface::FramedCylinder { .. }) => {
+                let (owner, pcurves) = self.seams.get(&edge).ok_or(Error::Unsupported(
+                    "STEP cylinder generator requires an explicit SEAM_CURVE",
+                ))?;
+                if *owner != surface_id {
+                    return Err(Error::InvalidTopology(
+                        "STEP seam belongs to a different surface",
+                    ));
+                }
+                let u = if forward { std::f64::consts::TAU } else { 0. };
+                let matched: Vec<_> = pcurves.iter().filter(|p| p.evaluate(0.)[0] == u).collect();
+                if matched.len() != 1 {
+                    return Err(Error::InvalidTopology(
+                        "STEP seam needs one pcurve at each periodic boundary",
+                    ));
+                }
+                Ok(matched[0].clone())
+            }
+            _ => Err(Error::Unsupported(
+                "unsupported STEP edge/surface parameter combination",
+            )),
+        }
     }
     fn face(&mut self, id: u32) -> Result<()> {
         let args = self.db.simple(id, "ADVANCED_FACE", 4)?;
-        let surface = self.db.plane(reference(&args[2])?, self.scale)?;
+        let surface_id = reference(&args[2])?;
+        let mut surface = self.db.surface(surface_id, self.scale, self.analytic)?;
         let orientation = if boolean(&args[3])? { 1 } else { -1 };
         let bounds = list(&args[1])?;
         if bounds.is_empty() || bounds.len() > 65 {
@@ -782,18 +1030,11 @@ impl Builder<'_> {
                 }
                 let edge = self.edge(reference(&oriented[3])?)?;
                 let forward = boolean(&oriented[4])? == bound_forward;
-                let Curve::Line { a, b } = self.solid.edges[edge].curve else {
-                    unreachable!()
-                };
-                let origin = surface.parameters(a);
-                let end = surface.parameters(b);
+                let pcurve = self.edge_pcurve(edge, forward, &surface, surface_id)?;
                 coedges.push(Coedge {
                     edge,
                     forward,
-                    pcurve: PCurve::Affine {
-                        origin,
-                        direction: [end[0] - origin[0], end[1] - origin[1]],
-                    },
+                    pcurve,
                 });
             }
             if !bound_forward {
@@ -804,6 +1045,42 @@ impl Builder<'_> {
         let outer = outer.ok_or(Error::InvalidTopology("missing STEP outer bound"))?;
         let outer_wire = wires.remove(outer);
         wires.insert(0, outer_wire);
+        if let Surface::FramedCylinder { frame, radius, .. } = surface {
+            if wires.len() != 1 || wires[0].coedges.len() != 4 {
+                return Err(Error::Unsupported(
+                    "STEP cylinder import requires one full four-coedge rectangle",
+                ));
+            }
+            let coedges = &mut wires[0].coedges;
+            let bottom = coedges
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| {
+                    matches!(self.solid.edges[c.edge].curve, Curve::FramedCircle { .. })
+                })
+                .min_by(|(_, a), (_, b)| {
+                    a.pcurve.evaluate(0.)[1].total_cmp(&b.pcurve.evaluate(0.)[1])
+                })
+                .map(|(i, _)| i)
+                .ok_or(Error::InvalidTopology(
+                    "STEP cylindrical face lacks circular rims",
+                ))?;
+            coedges.rotate_left(bottom);
+            let lower = coedges[0].pcurve.evaluate(0.);
+            let upper = coedges[2].pcurve.evaluate(0.);
+            if lower != [0., 0.]
+                || upper[0] != 0.
+                || !upper[1].is_finite()
+                || upper[1] <= 10. * self.tol.linear
+            {
+                return Err(Error::Unsupported("STEP cylinder placement must start at the lower rim with resolved positive height"));
+            }
+            surface = Surface::FramedCylinder {
+                frame,
+                radius,
+                height: upper[1],
+            };
+        }
         self.solid.shell.faces.push(Face {
             surface,
             orientation,
@@ -817,13 +1094,24 @@ impl Builder<'_> {
 /// STEP identities preserve shared topology; no snapping, sewing or repair occurs.
 /// Curved geometry, uncertified nonconvex solids, assemblies and unknown entities fail.
 pub fn import_step_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
-    import_planar(input, tolerance, false)
+    import_supported(input, tolerance, false, false)
 }
 /// Import only convex planar solids; polygon holes and concavity are rejected.
 pub fn import_step_convex_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
-    import_planar(input, tolerance, true)
+    import_supported(input, tolerance, true, false)
 }
-fn import_planar(input: &str, tolerance: Tolerance, convex_only: bool) -> Result<Solid> {
+/// Import the planar subset or one certified full circular cylinder/tube.
+/// Circular imports require aligned zero-angle circle/plane/cylinder frames and
+/// two explicit seam pcurves. Partial circles and general bored solids fail.
+pub fn import_step_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
+    import_supported(input, tolerance, false, true)
+}
+fn import_supported(
+    input: &str,
+    tolerance: Tolerance,
+    convex_only: bool,
+    analytic: bool,
+) -> Result<Solid> {
     Tolerance::new(tolerance.linear)?;
     let db = Parser::new(input)?.document()?;
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
@@ -857,6 +1145,8 @@ fn import_planar(input: &str, tolerance: Tolerance, convex_only: bool) -> Result
         vertices: BTreeMap::new(),
         edges: BTreeMap::new(),
         coedge_count: 0,
+        analytic,
+        seams: BTreeMap::new(),
     };
     let mut seen = BTreeSet::new();
     for face in faces {
@@ -876,18 +1166,41 @@ fn import_planar(input: &str, tolerance: Tolerance, convex_only: bool) -> Result
             "STEP solid metrics exceed finite arithmetic",
         ));
     }
-    match crate::booleans::convex_planes(&builder.solid, GeometryTolerance::try_from(tolerance)?) {
-        Ok(_) => {}
-        Err(Error::Unsupported(_)) if !convex_only => {
-            crate::prism_validation::certify_validated_planar_prism(&builder.solid, tolerance)?;
+    if analytic
+        && builder
+            .solid
+            .shell
+            .faces
+            .iter()
+            .any(|f| !matches!(f.surface, Surface::Plane { .. }))
+    {
+        crate::circular_prism_validation::certify_validated_circular_prism(
+            &builder.solid,
+            tolerance,
+        )?;
+    } else {
+        match crate::booleans::convex_planes(
+            &builder.solid,
+            GeometryTolerance::try_from(tolerance)?,
+        ) {
+            Ok(_) => {}
+            Err(Error::Unsupported(_)) if !convex_only => {
+                crate::prism_validation::certify_validated_planar_prism(&builder.solid, tolerance)?;
+            }
+            Err(error) => return Err(error),
         }
-        Err(error) => return Err(error),
     }
     const GEOMETRY: &[&str] = &[
         "CARTESIAN_POINT",
         "DIRECTION",
         "VECTOR",
         "LINE",
+        "CIRCLE",
+        "CYLINDRICAL_SURFACE",
+        "SEAM_CURVE",
+        "PCURVE",
+        "DEFINITIONAL_REPRESENTATION",
+        "GEOMETRIC_REPRESENTATION_CONTEXT",
         "AXIS2_PLACEMENT_3D",
         "PLANE",
         "VERTEX_POINT",
@@ -917,10 +1230,17 @@ fn import_planar(input: &str, tolerance: Tolerance, convex_only: bool) -> Result
 /// Validate imported B-rep and derive its display mesh; never performs mesh CSG.
 pub fn import_step_planar_json(input: &str) -> Result<String> {
     let t = Tolerance::default();
-    let solid = import_step_planar_mm(input, t)?;
+    step_report(import_step_planar_mm(input, t)?, t)
+}
+/// Import and derive a display mesh for the bounded planar/cylinder subset.
+pub fn import_step_json(input: &str) -> Result<String> {
+    let t = Tolerance::default();
+    step_report(import_step_mm(input, t)?, t)
+}
+fn step_report(solid: Solid, t: Tolerance) -> Result<String> {
     let mesh: serde_json::Value = serde_json::from_str(&solid.mesh_json(0.05, t)?)
         .map_err(|_| Error::InvalidInput("STEP display serialization failed"))?;
-    let step = export_step_planar_mm(&solid, t)?;
+    let step = export_step_mm(&solid, t)?;
     let bounds = solid.bounds();
     serde_json::to_string(
         &serde_json::json!({"units":"mm","schema":"AP214","mesh":mesh,"step":step,"vertices":solid.vertices.len(),"bounds":{"min":[bounds.min.x,bounds.min.y,bounds.min.z],"max":[bounds.max.x,bounds.max.y,bounds.max.z]}}),
