@@ -668,7 +668,10 @@ assert.notEqual(componentBoolean(0,26).status,0);assert.notEqual(componentBoolea
 function stepExport(document){k.hagane_workflow_begin();for(const byte of new TextEncoder().encode(typeof document==='string'?document:JSON.stringify(document)))if(k.hagane_workflow_push_byte(byte))break;const status=k.hagane_workflow_finish_step_export();return {status,result:JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())))};}
 k.hagane_workflow_reset_session();incrementalWorkflow(skewDocument);
 const exportedStep=stepExport(skewDocument);assert.equal(exportedStep.status,0);assert.equal(exportedStep.result.units,'mm');assert.equal(exportedStep.result.step,execFileSync('cargo',['run','--quiet','--locked','--example','step_export'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
-assert.notEqual(stepExport(opposingDocument).status,0);assert.notEqual(stepExport('{').status,0);assert.notEqual(stepExport(' '.repeat(65537)).status,0);
+for(const fixture of ['workflow-skew-bores-example.json','workflow-bottom-blind-example.json','workflow-opposing-blind-example.json']) {
+ const document=JSON.parse(readFileSync(new URL('../docs/'+fixture,import.meta.url),'utf8'));const result=stepExport(document);assert.equal(result.status,0);assert.equal(result.result.step,execFileSync('cargo',['run','--quiet','--locked','--example','step_export','--','docs/'+fixture],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));assert.ok(result.result.step.includes('SEAM_CURVE'));assert.ok(result.result.step.includes('PCURVE'));
+}
+const rejectedStep=structuredClone(opposingDocument);rejectedStep.operations[2].depth=16;assert.notEqual(stepExport(rejectedStep).status,0);assert.notEqual(stepExport('{').status,0);assert.notEqual(stepExport(' '.repeat(65537)).status,0);
 k.hagane_workflow_begin();k.hagane_workflow_push_byte(255);assert.notEqual(k.hagane_workflow_finish_step_export(),0);
 assert.equal(incrementalWorkflow(skewDocument).rebuild.rebuilt_operations,0);
-console.log('STEP: native/WASM byte parity, mm units, curved/input rejection and accepted-session preservation passed.');
+console.log('STEP: native/WASM byte parity, mm units, through/blind cylindrical seams, invalid/input rejection and accepted-session preservation passed.');

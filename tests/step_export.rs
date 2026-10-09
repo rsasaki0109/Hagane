@@ -117,7 +117,7 @@ fn decimal(v: f64) -> String {
     }
 }
 #[test]
-fn curved_invalid_and_rejected_workflows_never_export_approximation() {
+fn planar_only_api_and_invalid_workflows_never_export_approximation() {
     let t = Tolerance::default();
     let curved = make_cylinder(
         CylinderSpec {
@@ -155,8 +155,144 @@ fn curved_invalid_and_rejected_workflows_never_export_approximation() {
         .contains("MANIFOLD_SOLID_BREP"));
     assert!(
         export_workflow_step_mm_json(include_str!("../docs/workflow-skew-bores-example.json"))
-            .is_err()
+            .is_ok()
     );
     assert!(export_workflow_step_mm_json("{").is_err());
     assert!(export_workflow_step_mm_json(&" ".repeat(65537)).is_err());
+}
+
+#[test]
+fn cylindrical_step_preserves_periodic_seams_and_rigid_placement() {
+    for scale in [1e-6, 1., 1000.] {
+        let t = Tolerance::new(1e-8 * scale).unwrap();
+        let cylinder = make_cylinder(
+            CylinderSpec {
+                base: Point3::new(0., 0., -12. * scale),
+                radius: 4. * scale,
+                height: 24. * scale,
+            },
+            t,
+        )
+        .unwrap();
+        let tube = make_tube(
+            TubeSpec {
+                base: Point3::new(0., 0., -12. * scale),
+                outer_radius: 8. * scale,
+                inner_radius: 4. * scale,
+                height: 24. * scale,
+            },
+            t,
+        )
+        .unwrap();
+        let placed = tube
+            .transformed(
+                Transform::translation(Vec3::new(20. * scale, -7. * scale, 12. * scale))
+                    .unwrap()
+                    .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.7).unwrap())
+                    .unwrap(),
+                t,
+            )
+            .unwrap();
+        for solid in [cylinder, tube, placed] {
+            let step = export_step_mm(&solid, t).unwrap();
+            topology(&step, &solid);
+            let cylinders = solid
+                .shell
+                .faces
+                .iter()
+                .filter(|f| {
+                    matches!(
+                        f.surface,
+                        Surface::Cylinder { .. } | Surface::FramedCylinder { .. }
+                    )
+                })
+                .count();
+            assert_eq!(
+                step.lines()
+                    .filter(|s| s.contains("=CYLINDRICAL_SURFACE("))
+                    .count(),
+                cylinders
+            );
+            assert_eq!(
+                step.lines().filter(|s| s.contains("=SEAM_CURVE(")).count(),
+                cylinders
+            );
+            assert_eq!(
+                step.lines().filter(|s| s.contains("=PCURVE(")).count(),
+                2 * cylinders
+            );
+            assert_eq!(
+                step.lines().filter(|s| s.contains("=CIRCLE(")).count(),
+                2 * cylinders
+            );
+            assert_eq!(step, export_step_mm(&solid, t).unwrap());
+            assert!(export_step_planar_mm(&solid, t).is_err());
+            // Each seam refers to the shared 3D line and two separate UV curves.
+            for record in step.lines().filter(|s| s.contains("=SEAM_CURVE(")) {
+                let ids: Vec<usize> = record
+                    .split_once('=')
+                    .unwrap()
+                    .1
+                    .split('#')
+                    .skip(1)
+                    .map(|s| {
+                        s.chars()
+                            .take_while(char::is_ascii_digit)
+                            .collect::<String>()
+                            .parse()
+                            .unwrap()
+                    })
+                    .collect();
+                assert_eq!(ids.len(), 3);
+                assert_ne!(ids[1], ids[2]);
+                for id in &ids[1..] {
+                    assert!(step
+                        .lines()
+                        .any(|s| s.starts_with(&format!("#{id}=PCURVE("))));
+                }
+            }
+        }
+    }
+    let t = Tolerance::default();
+    for face in [
+        BoxFace::MaxX,
+        BoxFace::MinX,
+        BoxFace::MaxY,
+        BoxFace::MinY,
+        BoxFace::MaxZ,
+        BoxFace::MinZ,
+    ] {
+        let solid = box_face_blind_bore_demo_solid(face, 4., 8.).unwrap();
+        topology(&export_step_mm(&solid, t).unwrap(), &solid);
+    }
+}
+
+#[test]
+fn unsupported_analytic_trims_and_failed_documents_do_not_export() {
+    let t = Tolerance::default();
+    for solid in [
+        framed_arc_extrusion_demo(4.).unwrap(),
+        skew_arc_extrusion_demo(4., 8., 24.).unwrap(),
+        ellipse_planar_demo_solid(4., 24., 0.3, GeometryTolerance::default()).unwrap(),
+    ] {
+        assert!(matches!(
+            export_step_mm(&solid, t),
+            Err(Error::Unsupported(_))
+        ));
+    }
+    let mut doc: serde_json::Value =
+        serde_json::from_str(include_str!("../docs/workflow-opposing-blind-example.json")).unwrap();
+    let solid_report: serde_json::Value =
+        serde_json::from_str(&export_workflow_step_mm_json(&doc.to_string()).unwrap()).unwrap();
+    assert_eq!(solid_report["faces"], 18);
+    assert_eq!(
+        solid_report["step"]
+            .as_str()
+            .unwrap()
+            .matches("=SEAM_CURVE(")
+            .count(),
+        2
+    );
+    doc["operations"][2]["depth"] = 16.into();
+    assert!(export_workflow_step_mm_json(&doc.to_string()).is_err());
 }

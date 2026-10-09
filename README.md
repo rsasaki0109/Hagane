@@ -19,9 +19,11 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
-[Planar STEP export](docs/step-export.md) now writes exact closed B-rep geometry
-with shared topology and mm units, from native Rust or the editable browser.
-Curved export and STEP import remain unsupported.
+[Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
+B-rep geometry with shared topology, periodic seam pcurves and mm units, from
+native Rust or the editable browser. Cylinders, tubes and through/blind bore
+workflows are supported; arcs, ellipses, general curved export and STEP import
+remain unsupported.
 
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
 box/bore dimensions or extrude an editable polygon profile with inner openings
@@ -473,12 +475,12 @@ top-entry box differences, independent depths and real retained B-rep floors.
 either end of every box axis, with a side-entry browser preset and explicit
 world-coordinate mouth centers.
 
-## Initial planar STEP export
+## Planar and cylindrical STEP export
 
-[Exact planar STEP export](docs/step-export.md) now preserves analytic lines and
-planes, shared oriented topology, polygon openings and explicit mm units in one
-validated AP214 solid. Native/WASM byte parity and browser downloads are tested;
-an optional independent reader verifies bounds, face count and signed volume.
-Curved export (including cylindrical bores), import and assemblies remain
-unsupported. This advances interchange without completing the long-term STEP
-goal; the overall engineering estimate remains 15–25%, toward the 80% target.
+[Exact STEP export](docs/step-export.md) preserves lines, full circles, planes,
+rectangular full cylindrical faces, shared oriented topology and explicit mm
+units in one validated AP214 solid. Native/WASM byte parity and browser downloads
+cover through/blind cuts; periodic seam edges carry both parameter curves.
+An optional independent reader verifies cylinders/tubes, rigid placement,
+retained floors, bounds and analytically bounded mesh volumes. General curved
+export, import and assemblies remain unsupported.

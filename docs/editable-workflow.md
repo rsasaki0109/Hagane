@@ -67,7 +67,9 @@ the supported axis-aligned primitives currently use its linear component.
   Malformed/nonfinite JSON numbers and invalid tolerance policies are rejected.
 - Documents are at most 64 KiB. WASM input is bounded and checked UTF-8.
 - Operation IDs identify history nodes, not persistent face/edge names. Side-entry/history transforms, general Boolean nodes, constraints,
-  STEP import/export and collaborative editing are not part of version 1.
+  STEP import and collaborative editing are not part of version 1.
+  Supported current solids can now [export exact STEP](step-export.md), including
+  through/blind circular cuts, with mm units and explicit periodic seam pcurves.
 - Display uses a 0.05 mm chord tolerance and the existing browser camera. A
   model that rebuilds but cannot produce a finite valid display transport has
   a rejected display report, not an invented successful mesh.

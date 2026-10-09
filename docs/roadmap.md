@@ -372,7 +372,8 @@ checks. General curved Booleans and document history integration remain next wor
 - General Boolean operations on arbitrary manifold solids.
 - Fillets/chamfers and continuity constraints.
 - Shape healing, tolerant sewing, and imported-shape diagnostics.
-- STEP input/output with units, assemblies, and faithful geometry mapping.
+- STEP import, broader curved/NURBS export and assembly/unit mapping beyond
+  the working single-solid planar/full-cylinder export subset.
 
 These are plans, not stubbed operations or claims of current support. Every
 added operation must define its input domain, error contracts, invariant checks,
@@ -431,6 +432,17 @@ unsupported. See [six-face blind bores](box-face-blind-bore.md).
 planes, shared oriented topology, polygon openings and explicit mm units in one
 validated AP214 solid. Native/WASM byte parity and browser downloads are tested;
 an optional independent reader verifies bounds, face count and signed volume.
-Curved export (including cylindrical bores), import and assemblies remain
-unsupported. This advances interchange without completing the long-term STEP
-goal; the overall engineering estimate remains 15–25%, toward the 80% target.
+The cylindrical extension follows below; general curved export, import and
+assemblies remain unsupported. This advances interchange without completing
+the long-term STEP goal; the overall engineering estimate remains 15–25%, toward the 80% target.
+
+## Cylindrical STEP export
+
+[Exact STEP export](step-export.md) now extends the planar subset to complete circles
+and rectangular full cylindrical faces. Shared periodic seams explicitly carry
+both UV parameter curves; native cylinder/tube primitives, rigid placements and
+through/blind bore workflows export exact geometry with mm units. Native/WASM
+byte parity, browser downloads and independent external import checks verify
+face counts, bounds, retained floors/webs and bounded mesh volume. Arcs, ellipses,
+height-graph trims, skew circular surfaces, STEP import and assemblies remain
+unsupported. The long-term estimate remains 15–25%, toward the 80% target.
