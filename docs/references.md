@@ -534,3 +534,11 @@ above (de Boor; Piegl and Tiller), independently implemented without copied
 source or an additional dependency. Rational geometry is preserved mathematically;
 the implementation uses checked `f64` arithmetic rather than symbolic or interval
 arithmetic. Boundary topology is regenerated from exact retained isocurves.
+
+Rectangular UV openings use the same independently implemented homogeneous
+refinement/isocurve identities to retain exact clockwise inner wires. Inserting
+all boundary coordinates as tensor knot lines produces a conforming parameter
+grid whose cells can be classified against rectangular trim interiors without
+approximate curve clipping. The retained rational surface and trim topology
+precede mesh generation. UV separation uses a separate parameter arithmetic
+guard, not a physical-length tolerance. No OCCT code or dependency is added.

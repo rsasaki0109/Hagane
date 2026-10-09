@@ -101,6 +101,10 @@ handles the source spans.
 rational geometry by knot insertion/control selection. It regenerates canonical
 boundaries on the new clamped surface; it does not store arbitrary trim loops.
 
+`NurbsHoledFace` separately supports [rectangular inner wires](nurbs-surface-hole.md)
+on a retained rational surface, with clockwise hole traversal and conforming
+bounded display. The four-edge `NurbsFace` remains its simpler single-wire type.
+
 
 `NurbsFace::sample_grid(cells, tolerance)` validates the retained boundary and
 samples the actual retained surface. Negative face orientation reverses mesh

@@ -776,3 +776,21 @@ This supplies rectangular restrictions, not arbitrary trim curves or holes.
 Cross-face sewing, global regularity, closed NURBS solids, intersections,
 general curved Booleans and NURBS STEP remain incomplete. The estimate remains
 **15–25%**, toward **80%**. See [rectangular restriction](docs/nurbs-surface-trim.md).
+
+## Rectangular inner wires on rational faces
+
+`NurbsHoledFace` retains a rational surface, rectangular outer wire and separated
+rectangular UV inner wires. Exact isocurves, affine pcurves, shared corners and
+clockwise hole traversal define the B-rep independently of display. Hole
+coordinates refine the rational source into a conforming tensor grid; display
+retains whole cells outside the openings with original UVs, split C0 normals
+and existing per-cell geometric bounds. It does not use mesh Booleans as CAD
+geometry. UV separation has its own parameter arithmetic guard, independent
+of physical-length tolerance. Contact, overlap and resource failures are explicit.
+
+Native topology/coverage/bound tests and the native/WASM/browser fixture verify
+the retained holes, bounded triangles, editing and failure recovery. This remains
+an open face without global regularity certification. Curved/nonrectangular
+trims, cross-face sewing, closed NURBS solids, intersections, general curved
+Booleans and NURBS STEP remain future work. The long-term estimate remains
+**15–25%**, toward **80%**. See [UV openings](docs/nurbs-surface-hole.md).

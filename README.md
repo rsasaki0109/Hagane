@@ -22,7 +22,9 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.
-Arbitrary trim curves, holes and closed NURBS solids remain unsupported.
+[Rectangular UV openings](docs/nurbs-surface-hole.md) additionally retain exact
+inner wires and boundary-conforming display in `web/surface-hole.html`.
+Arbitrary trim curves and closed NURBS solids remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

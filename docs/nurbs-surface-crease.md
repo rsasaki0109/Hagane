@@ -7,6 +7,9 @@ separately from the duplicated display vertices needed for crease shading.
 This extends the existing rectangular open NURBS face and multi-span display,
 without adding arbitrary trims, cross-face sewing or closed NURBS solids.
 
+[Rectangular inner wires](nurbs-surface-hole.md) can now remove UV openings
+while retaining the same crease-aware geometric nodes and one-sided normals.
+
 ![Actual Rust/WASM rational ridge with split normals](nurbs-surface-crease.png)
 
 ## Geometric nodes and display vertices

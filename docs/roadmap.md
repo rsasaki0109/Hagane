@@ -690,3 +690,22 @@ This is rectangular surface restriction, not arbitrary trim-loop support.
 General trims/holes, cross-face sewing, closed NURBS solids, intersections and
 NURBS STEP remain future work. The estimate remains **15–25%**, toward **80%**.
 See [rectangular restriction](nurbs-surface-trim.md).
+
+## Rectangular inner wires on rational faces
+
+Exact rational isocurves and affine same-parameter maps now bound separated
+rectangular UV openings in a retained open B-rep face. The outer wire traverses
+counterclockwise and hole wires clockwise, retaining shared corner references.
+Boundary coordinates become source knot lines, so bounded global tensor cells
+conform to every opening. Cells inside the exact trim are omitted from display
+while retained cells keep geometric error bounds and C0 normal-side metadata.
+
+Native boundary/coverage/orientation tests, independent logical edge incidence
+and rational error checks, native/WASM parity and actual browser editing/recovery
+accompany the demo. Parameter clearance is separate from linear tolerance.
+Contact, overlap, unresolved separation and resource demand fail explicitly.
+
+This supports axis-aligned rectangular UV inner wires, not arbitrary trim curves
+or closed NURBS solids. Cross-face sewing, global regularity diagnostics,
+intersections, curved Booleans and NURBS STEP remain incomplete. The estimate
+remains **15–25%**, toward **80%**. See [UV openings](nurbs-surface-hole.md).

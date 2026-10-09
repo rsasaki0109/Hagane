@@ -111,3 +111,8 @@ pub use nurbs_surface_crease_demo::*;
 mod nurbs_surface_trim;
 mod nurbs_surface_trim_demo;
 pub use nurbs_surface_trim_demo::*;
+
+mod nurbs_holed_face;
+pub use nurbs_holed_face::*;
+mod nurbs_surface_hole_demo;
+pub use nurbs_surface_hole_demo::*;

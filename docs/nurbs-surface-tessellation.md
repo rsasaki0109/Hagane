@@ -17,6 +17,11 @@ generic NURBS solid tessellation remain unsupported.
 their retained rational surface, preserving original UV values and inward C0
 endpoint limits. Nonrectangular trim loops remain unsupported.
 
+[Rectangular UV openings](nurbs-surface-hole.md) refine all inner-boundary
+coordinates into source knot lines and retain only cells outside the openings.
+Exact B-rep inner wires precede display; logical boundary edge incidence and
+UV coverage are checked independently. This does not enable arbitrary trims.
+
 For an existing validated surface or rectangular open face:
 
 ```rust

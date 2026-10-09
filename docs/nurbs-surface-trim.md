@@ -16,8 +16,9 @@ is valid; repeated restriction is relative to the current retained domain.
 Degrees, positive rational weights and existing interior knot lines are retained.
 
 This is an exact rectangular restriction represented by a new clamped surface,
-not arbitrary trim-loop storage on the original surface. Curved/nonrectangular
-trims, inner holes, periodic identification, cross-face sewing, closed NURBS
+not arbitrary trim-loop storage on the original surface. A separate
+[`NurbsHoledFace`](nurbs-surface-hole.md) supports rectangular inner wires.
+Curved/nonrectangular trims, periodic identification, cross-face sewing, closed NURBS
 solids, intersections and NURBS STEP interchange remain unsupported.
 
 ## Construction and display
