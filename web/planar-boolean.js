@@ -1,0 +1,8 @@
+import {createMeshViewer} from './viewer.js';
+const $=id=>document.getElementById(id);
+try {
+ const viewer=createMeshViewer($('view'));const response=await fetch('hagane.wasm');if(!response.ok)throw Error('Build the WASM module first.');const {instance}=await WebAssembly.instantiate(await response.arrayBuffer(),{});const k=instance.exports;
+ let accepted=null;window.haganePlanarBoolean={ready:false,result:null,accepted:null};
+ function rebuild(){const offset=$('offset').valueAsNumber;$('offset-label').textContent=offset+' mm';const status=k.hagane_planar_convex_boolean_demo(Number($('mode').value),offset);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));window.haganePlanarBoolean.result=result;if(status){$('status').textContent='Rejected operation · '+result.error+(accepted?' · showing previous valid result':'');return;}accepted=result;window.haganePlanarBoolean.accepted=result;viewer.setMesh(result.kind==='empty'?{positions:[],normals:[]}:result.mesh);$('volume').textContent=(result.mesh?.volume??0).toLocaleString('en-US',{maximumFractionDigits:2})+' mm³';$('status').textContent=result.kind==='empty'?'Current result · empty intersection':'Current result · exact B-rep validated';}
+ $('mode').addEventListener('change',rebuild);$('offset').addEventListener('input',rebuild);$('wire').addEventListener('change',()=>viewer.wireframe=$('wire').checked);$('reset').addEventListener('click',()=>viewer.reset());rebuild();window.haganePlanarBoolean.ready=true;
+}catch(error){$('status').textContent=error.message;}

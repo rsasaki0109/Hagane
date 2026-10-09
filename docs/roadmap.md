@@ -329,6 +329,14 @@ the sixteen-hole limit. Native/WASM parity and a two-hole browser demo are verif
 Holes in arc/chord loops, arbitrary mixed loops and general
 capped partitions remain unsupported. See [multiple ellipse holes](ellipse-multi-hole-planar.md).
 
+Planar-subject / convex-tool difference and intersection now accept concave or
+polygon-holed subjects, including repeated straight-sided cuts. A deterministic
+schedule defers only plane partitions that disconnect an intermediate shell;
+closed retained faces, pcurves, volume conservation and native/WASM/browser
+results are checked. Curved tools, cavities, disconnected outputs and editable
+Boolean document nodes remain unsupported. See
+[planar/convex Booleans](planar-convex-booleans.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.

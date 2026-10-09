@@ -436,3 +436,11 @@ Preserve these notices when redistributing relevant source/artifacts.
 
 The browser distribution also includes [full kernel/dependency notices](../web/third-party-notices.txt),
 including existing triangulation dependencies, so these notices accompany web artifacts.
+
+- Planar-subject / convex-tool clipping reuses supporting half-space intersection,
+  plane partitions, original-plane retained-face provenance and exact planar
+  sewing. Convex solids are intersections of their outward supporting half-spaces;
+  see [convex polyhedra](https://en.wikipedia.org/wiki/Convex_polytope).
+  Deterministic plane scheduling defers disconnected intermediate shells rather
+  than altering geometry. Implemented independently, using no OCCT/reference
+  source code and no additional dependency. See [planar/convex Boolean scope](planar-convex-booleans.md).

@@ -1,4 +1,4 @@
-//! Scoped convex operand intersection/difference/union using checked half-space clipping.
+//! Checked convex Booleans and planar-subject/convex-tool clipping.
 use crate::*;
 #[derive(Clone, Debug)]
 pub enum SolidIntersection {
@@ -74,7 +74,36 @@ fn convex_partition(
     tol: GeometryTolerance,
 ) -> Result<(Option<Solid>, Vec<Solid>)> {
     convex_planes(first, tol)?;
-    let planes = convex_planes(second, tol)?;
+    planar_convex_partition(first, second, tol, false)
+}
+fn planar_convex_partition(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+    reorder: bool,
+) -> Result<(Option<Solid>, Vec<Solid>)> {
+    let patches = planar_face_patches(first, tol.absolute())?;
+    if patches.len() > 128 {
+        return Err(Error::Unsupported(
+            "planar subject supports at most 128 faces",
+        ));
+    }
+    let mut planes = convex_planes(second, tol)?;
+    // Clip smaller vertex subsets first to avoid unnecessarily disconnecting
+    // concave/holed subjects before the remaining half-spaces restrict them.
+    // This is a deterministic scheduling heuristic, not a completeness claim.
+    if reorder {
+        planes.sort_by_key(|plane| {
+            let Surface::Plane { origin, u, v } = *plane else {
+                unreachable!()
+            };
+            first
+                .vertices
+                .iter()
+                .filter(|p| (p.point - origin).dot(u.cross(v)) > 0.)
+                .count()
+        });
+    }
     let a = first.bounds();
     let b = second.bounds();
     let scale = (a.max - a.min).norm().max((b.max - b.min).norm());
@@ -90,8 +119,10 @@ fn convex_partition(
     }
     let mut result = first.clone();
     let mut outside = Vec::new();
-    for plane in &planes {
-        let Surface::Plane { origin, u, v } = *plane else {
+    let mut pending = std::collections::VecDeque::from(planes.clone());
+    let mut deferred = 0;
+    while let Some(plane) = pending.pop_front() {
+        let Surface::Plane { origin, u, v } = plane else {
             unreachable!()
         };
         let normal = u.cross(v);
@@ -111,7 +142,20 @@ fn convex_partition(
             return Ok((None, outside));
         }
         if distances.iter().any(|&d| d > 0.) {
-            let split = split_solid_by_plane(&result, plane, tol)?;
+            let split = match split_solid_by_plane(&result, &plane, tol) {
+                Err(Error::InvalidTopology("disconnected shell")) if reorder => {
+                    pending.push_back(plane);
+                    deferred += 1;
+                    if deferred >= pending.len() {
+                        return Err(Error::Unsupported(
+                            "all remaining cutter planes disconnect an intermediate shell",
+                        ));
+                    }
+                    continue;
+                }
+                other => other?,
+            };
+            deferred = 0;
             outside.push(split.positive);
             result = split.negative;
         }
@@ -208,7 +252,20 @@ pub fn subtract_convex_solids(
     second: &Solid,
     tol: GeometryTolerance,
 ) -> Result<SolidDifference> {
-    let (common, outside) = convex_partition(first, second, tol)?;
+    convex_planes(first, tol)?;
+    subtract_convex_from_planar_solid(first, second, tol)
+}
+/// Subtract a convex planar straight-edge tool from a checked planar subject.
+/// Subject may be concave or contain polygon openings. All intermediate plane
+/// partitions and the output must have one connected closed shell. Cuts must
+/// clear vertices; contact, coplanarity, curved faces, cavities and disconnected
+/// intermediate/results are explicitly unsupported. Inputs are never mutated.
+pub fn subtract_convex_from_planar_solid(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<SolidDifference> {
+    let (common, outside) = planar_convex_partition(first, second, tol, true)?;
     let Some(common) = common else {
         return Ok(SolidDifference::Solid(first.clone()));
     };
@@ -229,7 +286,12 @@ pub fn subtract_convex_solids(
             retained.push(patch);
         }
     }
-    let solid = crate::sewing::sew_generated_planar_faces(&retained, tol)?;
+    let solid = crate::sewing::sew_generated_planar_faces(&retained, tol).map_err(|error| {
+        match error {
+            Error::InvalidTopology("disconnected shell") => Error::Unsupported("difference requires one connected shell; disconnected material and internal cavities are unsupported"),
+            other => other,
+        }
+    })?;
     if (solid.volume()? + common.volume()? - first.volume()?).abs() > first.volume()?.abs() * 1e-10
     {
         return Err(Error::InvalidTopology(
@@ -332,4 +394,70 @@ pub(crate) fn convex_union_demo(offset: f64) -> Result<Solid> {
 }
 pub fn convex_union_demo_json(offset: f64) -> Result<String> {
     convex_union_demo(offset)?.mesh_json(0.05, Tolerance::default())
+}
+
+/// Intersect a planar straight-edge (possibly concave/holed) subject with a
+/// convex tool. One connected result and connected intermediate splits required.
+/// Same contact and vertex-clearance contract as the planar difference API.
+pub fn intersect_planar_solid_with_convex(
+    first: &Solid,
+    second: &Solid,
+    tol: GeometryTolerance,
+) -> Result<SolidIntersection> {
+    let (common, _) = planar_convex_partition(first, second, tol, true)?;
+    Ok(match common {
+        Some(s) => SolidIntersection::Solid(s),
+        None => SolidIntersection::Empty,
+    })
+}
+/// A repeated exact difference or its clipped common region, for native/WASM demos.
+pub fn planar_convex_boolean_demo_json(mode: u32, offset: f64) -> Result<String> {
+    if mode > 1 || !offset.is_finite() {
+        return Err(Error::InvalidInput(
+            "invalid planar Boolean demo mode/offset",
+        ));
+    }
+    let t = GeometryTolerance::default();
+    let stock = make_box(
+        BoxSpec {
+            min: Point3::new(-40., -30., -12.),
+            size: Vec3::new(80., 60., 24.),
+        },
+        t.absolute(),
+    )?;
+    let first_tool = make_box(
+        BoxSpec {
+            min: Point3::new(-10., -8., -20.),
+            size: Vec3::new(20., 16., 40.),
+        },
+        t.absolute(),
+    )?;
+    let SolidDifference::Solid(subject) = subtract_convex_solids(&stock, &first_tool, t)? else {
+        return Err(Error::InvalidTopology("demo stock unexpectedly empty"));
+    };
+    let tool = make_box(
+        BoxSpec {
+            min: Point3::new(20. + offset, -5., -20.),
+            size: Vec3::new(10., 10., 40.),
+        },
+        t.absolute(),
+    )?;
+    let result = if mode == 0 {
+        match subtract_convex_from_planar_solid(&subject, &tool, t)? {
+            SolidDifference::Solid(s) => Some(s),
+            SolidDifference::Empty => None,
+        }
+    } else {
+        match intersect_planar_solid_with_convex(&subject, &tool, t)? {
+            SolidIntersection::Solid(s) => Some(s),
+            SolidIntersection::Empty => None,
+        }
+    };
+    match result {
+        Some(s) => Ok(format!(
+            "{{\"kind\":\"solid\",\"mesh\":{}}}",
+            s.mesh_json(0.05, t.absolute())?
+        )),
+        None => Ok("{\"kind\":\"empty\"}".into()),
+    }
 }

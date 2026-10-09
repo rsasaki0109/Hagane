@@ -76,6 +76,13 @@ workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
 completion criteria below remain in force.
 
+Planar-subject/convex-tool Boolean APIs now extend difference/intersection to
+concave and polygon-holed subjects. Deterministic connected-partition scheduling
+allows repeated cuts while preserving exact B-rep boundaries, checked volume
+and a single connected shell. Native/WASM and browser demonstrations are
+verified. This remains a scoped planar operation, not general curved Boolean
+coverage, and is not yet a node in the editable operation document.
+
 ## Completion criteria
 
 - Exact curves and surfaces, including NURBS, integrate with shared, oriented
