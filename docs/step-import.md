@@ -1,7 +1,7 @@
 # Planar and complete cylindrical STEP import
 
 Hagane imports one closed **convex planar solid, certified polygon prism
-(including polygon openings and disjoint normal through bores), or complete
+(including polygon openings and separated normal through/blind bores), or complete
 cylinder/concentric tube** from an
 explicit AP214 (`AUTOMOTIVE_DESIGN`) ISO 10303-21 file. This is an original pure
 Rust parser and B-rep reconstruction path, shared by native and WASM. It does not
@@ -23,7 +23,7 @@ cargo run --quiet --example step_import -- part.step
 
 The example emits a JSON report containing validated B-rep metrics/bounds, a
 B-rep-derived display mesh and re-exported STEP. Native callers also receive a
-`Solid` suitable for existing scoped planar operations. Imports are not operation
+`Solid` suitable for existing APIs within their documented operation domains. Imports are not operation
 history nodes; parameters or original construction intent are not recovered.
 
 ## Geometry, topology and units
@@ -68,7 +68,7 @@ A translation of a validated simple polygon region is geometrically embedded;
 the matching-cap/side certificate establishes that structure rather than
 assuming topological closure alone proves a valid solid. Accepted imported
 vertices, planes and shared identities remain unchanged. General nonconvex
-shells (including oblique roofs and blind pockets) are still unsupported.
+shells (including oblique roofs and noncylindrical blind pockets) are still unsupported.
 `certify_planar_prism` exposes the certificate to native callers;
 `import_step_convex_planar_mm` retains an explicitly strict convex-only API.
 Certificates describe a geometric property, not original modeling intent.
@@ -117,30 +117,37 @@ trips check bounded geometric agreement, not source-byte identity. Native and
 WASM re-exported bytes agree for the same input. Vertices retain their converted
 coordinates; neither curves nor vertices are snapped to repair a discrepancy.
 
-The polygon-stock through-bore extension below also accepts a bounded mixed
-planar/cylindrical domain. Arcs, elliptical/oblique caps, blind cuts and other
+The polygon-stock bore extension below also accepts a bounded mixed
+planar/cylindrical domain. Arcs, elliptical/oblique caps and other
 mixed planar/cylindrical solids remain unsupported inputs,
 even though several of them can already be exported. Valid but differently
 parameterized cylinder files outside the domain above are explicitly rejected.
 This is a supported analytic subset, not general STEP cylinder compatibility.
 
-## Polygon stock with normal through bores
+## Polygon stock with normal through and blind bores
 
 The extended reader additionally accepts a certified straight polygon prism
-with 1–64 disjoint circular through bores normal to its caps. Stock may have
+with 1–64 separated circular through or flat-bottom blind bores normal to its caps. Stock may have
 concave boundaries, polygon profile openings, skew translation and arbitrary
 rigid placement. Circular frames and explicit seam requirements remain those
-above. Both rim owners must be **inner wires of the same two stock caps**;
-blind floors, outward cylindrical stock and unrelated cap pairs are rejected.
+above. Each tool has either two stock-cap inner rims (through) or one stock-cap
+inner rim and one independent circular disk floor (blind). A floor has exactly
+one outer circular coedge and no additional trims. At least one rim must belong
+to a stock cap; internal cavities, outward curved stock and unrelated cap pairs
+are rejected. Entry may be at either cap. Opposing tools may overlap in XY only
+when their actual axial intervals have a resolved separating web.
 The total 128-face/65-bounds-per-face budgets still apply.
 
 `certify_bored_prism` exposes this geometric certificate natively. For proof,
 it copies the exact surviving planar stock boundary and each tool boundary,
-changes tool boundary orientation to close its analytic disk caps, and checks
+changes tool boundary orientation (including retained blind floors) to close
+its analytic disk caps, and checks
 those bounded subsets using the polygon/circular certificates. This neither
 regenerates a primitive nor changes the imported solid. Every original vertex,
 edge, face, wire and pcurve remains in the returned B-rep; shared edge IDs must
-partition exactly into stock and tool boundaries. Proven cap owners determine
+partition exactly into stock and tool boundaries. Floor faces are removed only
+from the proof stock; they remain unchanged in the imported solid. Proven entry
+cap owners determine
 the stock axis, so source shell-face ordering cannot select a different valid
 box extrusion axis by accident.
 
@@ -149,22 +156,42 @@ plane parameter origins do not magnify the clearance arithmetic.
 The complete moving-profile tool center segment is tested against every stock
 boundary, including existing polygon openings. Segment-to-boundary distances,
 endpoint material membership and a skew slope factor provide a conservative
-physical clearance bound over the entire depth; checking only both caps is
-insufficient. Parallel tool pairs have a full-depth radial separation check.
+physical clearance bound over each tool's actual depth interval; checking only
+entry and floor is insufficient. A shallow blind hole need not be inside the
+lower cap footprint if its cut interval remains inside the moving stock.
+Each blind floor must be strictly interior, with a resolved stock web. Parallel
+tool pairs use radial and axial separation: the lower bound is
+`hypot(max(radial_gap, 0), max(axial_gap, 0))`. This preserves overlapping XY
+footprints for opposing cuts when solid material separates their axial intervals;
+intersecting, nested or touching volumes fail.
 A `256 * f64::EPSILON * local_bounds_diagonal` allowance is subtracted before
 claiming any separation, including ultratight caller tolerances below arithmetic
-noise. All remaining side/opening/pair clearances exceed ten caller linear tolerances; contact,
+noise. All remaining side/opening/floor/pair clearances exceed ten caller linear tolerances; contact,
 near contact, crossing or unresolved conditioning fails explicitly. This reuses
 the original analytic swept-clearance implementation from the
 [skew editable workflow](editable-workflow.md), with no mesh sampling.
 
 The public certificate returns original stock-cap indices, stock translation,
-verified circular tool geometry and the minimum conservative clearance. It
+verified circular tool geometry, physical axial cut intervals measured from the
+lower stock cap, and the minimum conservative clearance (including floors). It
 describes geometric properties, not recovered modeling history. Ordinary box
-through holes and the existing skew-polygon through-bore workflow can now be
+through/blind holes and the existing skew-polygon machining workflows can now be
 imported, inspected and exported through native/WASM APIs and the browser.
-Blind/opposing cuts, intersecting or oblique bores, subdivided stock faces and
+Intersecting or oblique bores, noncircular/nonplanar floors, subdivided stock faces and
 general curved Boolean results remain unsupported inputs.
+
+`docs/step-blind-prism-example.step` is exported from the actual opposing-blind
+workflow. Its skew polygon stock retains the polygon opening and two circular
+floors at z=-4 and z=2 mm; overlapping hole footprints are separated by a 6 mm
+web. Its exact volume is `105792 - pi*(16*8 + 36*10)` mm³, with 28 vertices,
+42 edges and 18 faces. Load it using the opposing-blind sample button on
+`web/step.html`, inspect the retained floor, then download/re-import it.
+
+```sh
+cargo run --quiet --locked --example step_import -- docs/step-blind-prism-example.step
+```
+
+![Actual opposing blind STEP import browser](step-blind-import.png)
 
 ## Supported syntax and bounded resources
 
@@ -285,10 +312,26 @@ shared topology and bounded mesh volume. A deliberately shifted tool produces
 valid separated cap trims and locally closed topology but crosses a moving
 polygon opening at mid-depth; both the public certificate and STEP reader reject
 it. Near tool/side contacts, sub-roundoff gaps with ultratight tolerances, exact
-contact and blind floors are rejected. WASM
+contact and unresolved tool separation are rejected. WASM
 checks compare complete native reports/re-export bytes; browser tests exercise
 the real skew part, downloads/uploads, unsupported surfaces, preserved previous
 models and recovery. The optional external reader independently verifies its
 source/re-export face count, bounds, through-axis opening and bounded mesh volume.
 All implementations/fixtures remain original MIT OR Apache-2.0 work; no new
 runtime dependency or OCCT implementation source was added.
+
+
+Blind native tests cover top/bottom entry, mixed through/blind tools, concave
+stock, openings, skew extrusion, three scales, rigid placement and reordered
+faces. They check analytic volume/bounds, material in the intervening web, exact
+floor boundary classification, source vertex positions and bounded mesh volume.
+Near stock floors, near opposing webs and sub-roundoff floors are rejected even
+with locally closed topology. A blind tool crossing a moving opening only between
+its entry and floor, and tools intersecting only inside the stock, are explicitly
+rejected. WASM tests compare the entire native report/mesh and re-exported bytes,
+exercise top/bottom entry and reversed-floor failure/recovery, and preserve the
+accepted editable session. Browser tests exercise the actual opposing-blind
+sample, download/upload, reversed-floor rejection and accepted-view recovery.
+The optional external reader checks both source and native re-export, including
+vertical mesh crossings at both retained floors. No dependency or provenance
+change was needed; implementation and fixtures are original MIT OR Apache-2.0.

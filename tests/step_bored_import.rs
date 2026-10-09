@@ -220,7 +220,7 @@ fn middle_crossing_is_rejected_even_when_both_caps_and_local_closure_are_valid()
     ));
 }
 #[test]
-fn near_contacts_side_crossings_and_blind_floors_never_succeed() {
+fn near_contacts_and_side_crossings_never_succeed() {
     let t = Tolerance::default();
     let construction = Tolerance::new(t.linear / 100.).unwrap();
     let near = subtract_polygon_prism_bores(
@@ -244,21 +244,6 @@ fn near_contacts_side_crossings_and_blind_floors_never_succeed() {
     near.validate(t).unwrap();
     assert!(matches!(
         import_step_mm(&export_step_mm(&near, construction).unwrap(), t),
-        Err(Error::Unsupported(_))
-    ));
-    let blind = subtract_polygon_prism_bores(
-        &[[-10., -10.], [10., -10.], [10., 10.], [-10., 10.]],
-        4.,
-        &[BoxBore {
-            center: [0., 0.],
-            radius: 1.,
-            depth: Some(2.),
-        }],
-        t,
-    )
-    .unwrap();
-    assert!(matches!(
-        import_step_mm(&export_step_mm(&blind, t).unwrap(), t),
         Err(Error::Unsupported(_))
     ));
     let mut contact = subtract_polygon_prism_bores(

@@ -579,10 +579,28 @@ through bores, including concavity, polygon openings, skew extrusion and rigid
 placement. A new public certificate verifies exact stock/tool boundary subsets,
 shared cap ownership and complete swept-footprint clearance, retaining the
 original imported B-rep. Native tests cover multiple tools, three scales,
-reordered/reversed shells, analytic metrics/material, near contacts and blind
-floor rejection. A closed local B-rep whose tool crosses a moving opening only
+reordered/reversed shells, analytic metrics/material and near contacts. A closed local B-rep whose tool crosses a moving opening only
 at mid-depth is explicitly rejected. Native/WASM parity, real browser import/
-re-export/recovery and independent external reading are verified. Blind/opposing
-and oblique cuts, other mixed curved inputs and general Boolean results remain
-unsupported imports. The long-term estimate remains 15–25%, toward the 80% target;
+re-export/recovery and independent external reading are verified. Oblique cuts, other mixed curved inputs and general Boolean results
+remain unsupported imports; blind/opposing cuts are supported by the next
+milestone. The long-term estimate remains 15–25%, toward the 80% target;
 see the STEP import document for the precise supported domain.
+
+## Normal blind and opposing STEP import
+
+Polygon-prism import now preserves complete circular blind floors and accepts
+normal entry from either cap, mixed through/blind tools, and opposing cuts with
+a resolved axial web. Proof-only stock/tool subsets retain the source geometry;
+entry owners select the stock axis, floor orientation is checked, and physical
+cut intervals limit the swept stock/opening clearance test. Parallel tools are
+separated by their radial/axial distance bound, allowing overlapping XY only
+when their cut volumes remain separated. Floor/pair arithmetic guards reject
+sub-roundoff webs and contacts rather than repairing the shape.
+Native tests verify three scales, rigid/reordered geometry, exact volume/material
+in the retained web and shallow cuts outside the lower profile, plus mid-depth
+opening/tool intersections and unresolved floors/webs. Native/WASM report/byte
+parity, browser import/download/upload/recovery and independent external retained
+floor checks accompany the actual opposing-blind STEP fixture and screenshot.
+Oblique/intersecting bores, arbitrary floors, internal cavities, subdivided stock
+and general curved Boolean results remain unsupported imports. The long-term
+estimate remains 15–25%, toward the 80% target; see the STEP import document.

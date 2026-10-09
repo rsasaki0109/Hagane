@@ -1,4 +1,4 @@
-//! Geometric certificate for polygon prisms with disjoint normal through bores.
+//! Geometric certificate for polygon prisms with separated normal through/blind bores.
 use crate::*;
 use std::collections::{BTreeMap, BTreeSet};
 /// Verified geometric structure; it does not recover original modeling history.
@@ -8,11 +8,15 @@ pub struct BoredPrismCertificate {
     pub stock_caps: [usize; 2],
     pub stock_translation: Vec3,
     pub bores: Vec<CircularPrismCertificate>,
+    /// Axial cut intervals measured from the lower stock cap, in length units.
+    /// Geometry is retained; these intervals are not recovered operation history.
+    pub bore_intervals: Vec<[f64; 2]>,
     /// Conservative physical lower bound over side/opening/pair separation.
     pub minimum_clearance: f64,
 }
-const DOMAIN: Error =
-    Error::Unsupported("solid is not a certified polygon prism with disjoint normal through bores");
+const DOMAIN: Error = Error::Unsupported(
+    "solid is not a certified polygon prism with separated normal through/blind bores",
+);
 // Copy an exact subset for proof only, retaining geometry and oriented pcurves.
 // No primitive reconstruction, coordinate welding, or mesh operation occurs.
 fn subset(source: &Solid, mut faces: Vec<Face>) -> Solid {
@@ -62,8 +66,9 @@ fn subset(source: &Solid, mut faces: Vec<Face>) -> Solid {
     }
 }
 /// Validate polygon-prism stock, complete periodic inward walls, exact cap/rim
-/// ownership, and full-depth analytic swept-footprint clearance. Blind floors,
-/// outward curved stock, oblique bores and intersecting tools are unsupported.
+/// ownership, resolved blind floors, and depth-bounded swept-footprint clearance.
+/// Outward curved stock, internal cavities, oblique bores and intersecting tools
+/// are unsupported.
 pub fn certify_bored_prism(s: &Solid, t: Tolerance) -> Result<BoredPrismCertificate> {
     s.validate(t)?;
     certify_validated_bored_prism(s, t)
@@ -93,6 +98,8 @@ pub(crate) fn certify_validated_bored_prism(
     let mut removed_rims = BTreeSet::new();
     let mut removed_edges = BTreeSet::new();
     let mut bore_caps = Vec::new();
+    let mut floors = BTreeSet::new();
+    let mut entries = BTreeSet::new();
     let mut bores = Vec::new();
     for (_, wall) in &walls {
         if wall.orientation != -1
@@ -121,24 +128,34 @@ pub(crate) fn certify_validated_bored_prism(
                 }
                 for (wi, wire) in face.wires.iter().enumerate() {
                     if wire.coedges.iter().any(|c| c.edge == rim) {
-                        if wi == 0 || wire.coedges.len() != 1 || owner.is_some() {
+                        if wire.coedges.len() != 1
+                            || owner.is_some()
+                            || (wi == 0 && face.wires.len() != 1)
+                        {
                             return Err(DOMAIN);
                         }
-                        owner = Some((fi, wire));
+                        owner = Some((fi, wi == 0, wire));
                     }
                 }
             }
-            let (fi, wire) = owner.ok_or(DOMAIN)?;
+            let (fi, floor, wire) = owner.ok_or(DOMAIN)?;
+            if floor {
+                if !floors.insert(fi) {
+                    return Err(DOMAIN);
+                }
+            } else {
+                entries.insert(fi);
+            }
             let mut wire = wire.clone();
             wire.coedges[0].forward = true;
             caps.push(Face {
                 surface: s.shell.faces[fi].surface.clone(),
                 wires: vec![wire],
-                orientation: s.shell.faces[fi].orientation,
+                orientation: s.shell.faces[fi].orientation * if floor { -1 } else { 1 },
             });
             indices.push(fi);
         }
-        if indices[0] == indices[1] {
+        if indices[0] == indices[1] || indices.iter().all(|i| floors.contains(i)) {
             return Err(DOMAIN);
         }
         for edge in [c[0].edge, c[1].edge, c[2].edge] {
@@ -153,20 +170,19 @@ pub(crate) fn certify_validated_bored_prism(
         bores.push(certify_circular_prism(&cylinder, t)?);
         bore_caps.push([indices[0], indices[1]]);
     }
-    let wanted = bore_caps[0];
-    if bore_caps.iter().any(|caps| *caps != wanted) {
+    if !(1..=2).contains(&entries.len()) {
         return Err(DOMAIN);
     }
-    // Put proven rim owners first: a box admits several extrusion axes, and
-    // the certificate must use these caps irrespective of source shell order.
-    let order = wanted
-        .into_iter()
-        .chain((0..s.shell.faces.len()).filter(|i| !wanted.contains(i)));
+    // Entry owners determine the stock axis even for a box with reordered faces.
+    let order = entries
+        .iter()
+        .copied()
+        .chain((0..s.shell.faces.len()).filter(|i| !entries.contains(i)));
     let mut stock_faces = Vec::new();
     let mut stock_to_original = Vec::new();
     for fi in order {
         let face = &s.shell.faces[fi];
-        if !matches!(face.surface, Surface::Plane { .. }) {
+        if !matches!(face.surface, Surface::Plane { .. }) || floors.contains(&fi) {
             continue;
         }
         let mut face = face.clone();
@@ -246,12 +262,10 @@ pub(crate) fn certify_validated_bored_prism(
     let separation_roundoff = 256. * f64::EPSILON * diagonal;
     let mut minimum_clearance = f64::INFINITY;
     let mut centers = Vec::new();
+    let mut bore_intervals = Vec::new();
     for (bore, caps) in bores.iter().zip(&bore_caps) {
         let local = frame.local_point(bore.axis.origin());
-        if *caps != stock_caps
-            || !local.finite()
-            || local.z.abs() > budget
-            || (bore.height - height).abs() > budget
+        if !local.finite()
             || bore
                 .axis
                 .axes()
@@ -261,6 +275,38 @@ pub(crate) fn certify_validated_bored_prism(
         {
             return Err(DOMAIN);
         }
+        let endpoints = [local.z, local.z + bore.height];
+        if endpoints.iter().any(|z| !z.is_finite()) {
+            return Err(DOMAIN);
+        }
+        let mut interval = endpoints;
+        for k in 0..2 {
+            if floors.contains(&caps[k]) {
+                let web = if k == 0 {
+                    endpoints[k]
+                } else {
+                    height - endpoints[k]
+                };
+                if endpoints[k] <= 0.
+                    || endpoints[k] >= height
+                    || web - separation_roundoff <= 10. * t.linear
+                {
+                    return Err(Error::Unsupported(
+                        "blind bore lacks a resolved stock floor",
+                    ));
+                }
+                minimum_clearance = minimum_clearance.min(web - separation_roundoff);
+            } else {
+                let z = if k == 0 { 0. } else { height };
+                if caps[k] != stock_caps[k] || (endpoints[k] - z).abs() > budget {
+                    return Err(DOMAIN);
+                }
+                // Only the proof interval uses the certified stock-cap value.
+                // Original vertices, surfaces and curves remain unchanged.
+                interval[k] = z;
+            }
+        }
+        bore_intervals.push(interval);
         let center = [local.x, local.y];
         let clearance = crate::operations::swept_polygon_region_bore_clearance(
             &rings[0],
@@ -269,12 +315,12 @@ pub(crate) fn certify_validated_bored_prism(
             bore.outer_radius,
             offset,
             height,
-            [0., 1.],
+            [interval[0] / height, interval[1] / height],
         )?
         .0 - separation_roundoff;
         if !clearance.is_finite() || clearance <= 10. * t.linear {
             return Err(Error::Unsupported(
-                "through bore crosses or nearly touches a swept stock boundary",
+                "bore crosses or nearly touches a swept stock boundary",
             ));
         }
         minimum_clearance = minimum_clearance.min(clearance);
@@ -282,13 +328,15 @@ pub(crate) fn certify_validated_bored_prism(
     }
     for i in 0..bores.len() {
         for j in i + 1..bores.len() {
-            let clearance = (centers[i][0] - centers[j][0]).hypot(centers[i][1] - centers[j][1])
+            let radial = (centers[i][0] - centers[j][0]).hypot(centers[i][1] - centers[j][1])
                 - bores[i].outer_radius
-                - bores[j].outer_radius
-                - separation_roundoff;
+                - bores[j].outer_radius;
+            let axial = (bore_intervals[i][0] - bore_intervals[j][1])
+                .max(bore_intervals[j][0] - bore_intervals[i][1]);
+            let clearance = radial.max(0.).hypot(axial.max(0.)) - separation_roundoff;
             if !clearance.is_finite() || clearance <= 10. * t.linear {
                 return Err(Error::Unsupported(
-                    "through bores intersect, touch or lack resolved separation",
+                    "bores intersect, touch or lack resolved separation",
                 ));
             }
             minimum_clearance = minimum_clearance.min(clearance);
@@ -298,6 +346,7 @@ pub(crate) fn certify_validated_bored_prism(
         stock_caps,
         stock_translation: translation,
         bores,
+        bore_intervals,
         minimum_clearance,
     })
 }

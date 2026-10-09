@@ -225,10 +225,12 @@ fn malformed_or_out_of_domain_circular_geometry_is_explicitly_rejected() {
         t,
     )
     .unwrap();
-    assert!(matches!(
-        import_step_mm(&export_step_mm(&bored, t).unwrap(), t),
-        Err(Error::Unsupported(_))
-    ));
+    let imported = import_step_mm(&export_step_mm(&bored, t).unwrap(), t).unwrap();
+    assert_eq!(
+        certify_bored_prism(&imported, t).unwrap().bore_intervals,
+        vec![[1., 3.]]
+    );
+    assert!(certify_circular_prism(&imported, t).is_err());
 }
 
 #[test]

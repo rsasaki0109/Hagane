@@ -1100,9 +1100,9 @@ pub fn import_step_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid>
 pub fn import_step_convex_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
     import_supported(input, tolerance, true, false)
 }
-/// Import the planar subset, a full cylinder/tube, or polygon stock with normal through bores.
+/// Import the planar subset, a full cylinder/tube, or polygon stock with normal through/blind bores.
 /// Circular imports require aligned zero-angle circle/plane/cylinder frames and
-/// two explicit seam pcurves. Blind, partial-circle and general curved inputs fail.
+/// two explicit seam pcurves. Partial-circle, oblique and general curved inputs fail.
 pub fn import_step_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
     import_supported(input, tolerance, false, true)
 }
