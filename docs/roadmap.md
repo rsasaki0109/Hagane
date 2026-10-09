@@ -889,3 +889,15 @@ contacts or unresolved cuts. Arbitrary planes, general curved Booleans,
 sewing and interchange remain incomplete. The estimate remains 15–25%,
 toward 80%.
 See [graph plane partition](nurbs-graph-split.md).
+
+## Closed NURBS graph solids with through openings
+
+One strictly interior UV rectangle now creates a genuine through opening
+with exact inner roof/base wires, curved rims and four inward cavity walls.
+Canonical shared topology closes the genus-one shell. Stable positive-strip
+volume accumulation handles thin remaining walls; a shared material-only
+grid bounds roof and all walls while preserving rim closure. Native/WASM
+and editable browser demonstrations cover retained rectangles and placement.
+General tools, multiple openings, curved Booleans and NURBS interchange remain
+incomplete. The estimate remains 15–25%, toward 80%.
+See [graph through openings](nurbs-graph-hole.md).

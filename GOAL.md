@@ -978,3 +978,16 @@ This supports source-axis planes only; arbitrary curved-solid partition,
 general Booleans and sewing remain incomplete. The estimate remains
 15–25%, toward 80%.
 See [graph plane partition](docs/nurbs-graph-split.md).
+
+## Closed NURBS graph solids with through openings
+
+`NurbsGraphHoledSolid` now retains one exact rectangular through opening as
+inner cap wires and four additional ruled cavity walls, with sixteen shared
+vertices, twenty-four edges and ten faces. Stable positive-strip integration
+measures the remaining volume without source-minus-tool cancellation.
+Boundary-conforming material-only display shares rim nodes, retains inward
+normals and bounds every face. Native/WASM and the browser edit actual
+genus-one solids, including trimmed and placed sources. Arbitrary tools,
+multiple/intersecting openings, general curved Booleans and NURBS interchange
+remain incomplete. The estimate remains 15–25%, toward 80%.
+See [graph through openings](docs/nurbs-graph-hole.md).

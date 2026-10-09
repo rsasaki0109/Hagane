@@ -127,7 +127,7 @@ fn build(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<S
     }
     Ok(solid)
 }
-fn placed(mut solid: Solid, transform: Transform) -> Result<Solid> {
+pub(crate) fn placed(mut solid: Solid, transform: Transform) -> Result<Solid> {
     if transform == Transform::IDENTITY {
         return Ok(solid);
     }
@@ -241,7 +241,7 @@ impl NurbsGraphSolid {
         result.validate(tol)?;
         Ok(result)
     }
-    fn arithmetic_budget(&self) -> Result<f64> {
+    pub(crate) fn arithmetic_budget(&self) -> Result<f64> {
         let axes = self.placement.axes();
         let origin = self.placement.origin();
         let extents = [

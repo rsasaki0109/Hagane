@@ -650,3 +650,13 @@ bound the two cut faces' geometric agreement because their bases and positive
 weights match. Analytic volume conservation has a separate floating-point
 guard. This is independent original code, not a general plane/solid solver,
 and adds no dependency or OCCT source.
+
+Genus-one graph openings reuse exact rectangular cap inner wires and ruled
+walls whose upper curves match the retained NURBS basis. Common knot-aligned
+tensor cells preserve material boundaries and topological rim identities.
+Analytic integration over four disjoint positive strips with compensated
+summation avoids subtracting nearly equal source/tool volumes. The Euler
+count includes each cap's inner wire. Explicit knot-side derivatives handle
+structural refinement knots on the geometrically smooth polynomial graph.
+This is independent original MIT OR Apache-2.0 code, with no added dependency
+or OCCT source.

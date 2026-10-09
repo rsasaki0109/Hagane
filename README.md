@@ -57,6 +57,10 @@ source UV limits; this is a scoped graph-solid operation.
 [Source-axis plane partition](docs/nurbs-graph-split.md) also returns both
 closed results and an exact curved-boundary section, with checked opposite
 cut faces and conserved volume. `web/graph-split.html` selects either side.
+[Rectangular through openings](docs/nurbs-graph-hole.md) now connect inner
+roof/base wires to four cavity walls in a closed genus-one NURBS solid.
+`web/graph-hole.html` edits an actual opening with stable analytic volume
+and boundary-conforming display; general curved Booleans remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

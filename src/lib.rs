@@ -146,3 +146,9 @@ pub use nurbs_graph_solid::*;
 
 mod nurbs_graph_split;
 pub use nurbs_graph_split::*;
+
+mod nurbs_graph_hole_demo;
+pub use nurbs_graph_hole_demo::*;
+
+mod nurbs_graph_holed;
+pub use nurbs_graph_holed::*;
