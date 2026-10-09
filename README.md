@@ -161,6 +161,10 @@ convex through openings. The browser demos show world-point queries and markers.
 Guarded footprint separation resolves deep opening and far outer queries before
 subdivision, while retaining the actual boundary-distance checks near walls.
 
+[Polygon graph centroidal inertia](docs/nurbs-graph-polygon-inertia.md) computes
+the full world tensor from positive material integrals, including convex
+openings. The browser displays uniform-density results in mm⁵.
+
 [Convex polygon through openings](docs/nurbs-graph-polygon-hole.md) now retain
 closed NURBS B-reps with annular caps, positive volume integration and an editable
 Web demo. This remains a scoped operation; general curved Booleans are incomplete.

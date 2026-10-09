@@ -1087,3 +1087,15 @@ guards remain mandatory. The placed removed-roof example now resolves at
 1e-8 mm without relaxing its requested band. Very small unresolved bands and
 arbitrary NURBS bodies still return explicit errors. The estimate remains
 **15–25%**, toward **80%**. See [point classification](nurbs-graph-polygon-classification.md).
+
+## Polygon graph centroidal inertia
+
+Convex polygon and single-opening polynomial graph parts now compute full
+uniform-density centroidal world inertia. Positive Duffy/Gauss7 material
+integration avoids subtracting nearly equal stock and cavity tensors; local
+centering avoids world-origin cancellation. Native/WASM reports and Web demos
+show the checked tensor. Typed parts with suitable explicit tolerances verify
+actual moment overflow; fixed-tolerance public demos reject oversized geometry
+before evaluation. Optional report errors remain separate from shape data. Generic rational-shell inertia, variable density and principal axes
+remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [polygon inertia](nurbs-graph-polygon-inertia.md).

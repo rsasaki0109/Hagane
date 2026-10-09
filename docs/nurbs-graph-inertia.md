@@ -8,6 +8,9 @@
 axes. `ImportedNurbsGraph` provides the same method. It operates on checked
 retained polynomial geometry, without display-mesh integration.
 
+Convex polygon and single-opening graph parts now expose the same checked
+property type through [polygon centroidal inertia](nurbs-graph-polygon-inertia.md).
+
 ```rust
 use hagane::*;
 let tolerance = Tolerance::default();

@@ -791,3 +791,13 @@ feature: <https://docs.rs/crate/serde_json/latest/features#float_roundtrip>.
 Independent Rust `f64::from_str` and hard-coded IEEE-754 bit patterns verify
 reproducible finite numeric input. No dependency version or license changes;
 `serde_json` retains its recorded MIT OR Apache-2.0 terms.
+
+### Polygon graph centroidal inertia
+
+The central-column identity and world rotation convention reuse the graph
+inertia references above. The triangle Duffy map and positive material
+decomposition reuse the polygon moment references. Seven-point Gauss–Legendre
+quadrature (public NIST DLMF https://dlmf.nist.gov/3.5#v) integrates through
+degree thirteen in each mapped coordinate, including the degree-twelve h³
+term and the Duffy Jacobian. Original Pure Rust code; no new dependency,
+external CAD implementation source or license change.

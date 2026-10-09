@@ -96,13 +96,35 @@ pub(crate) fn serialize_polygon_graph(
         .collect::<Result<Vec<_>>>()?;
     let bounds = graph.bounds()?;
     let mass = graph.mass_properties(Tolerance::default())?;
+    let (inertia_properties, inertia_error) =
+        serialize_polygon_inertia(graph.inertia_properties(Tolerance::default()));
     Ok(serde_json::json!({
         "polygon":graph.polygon(),"bounds_kind":"conservative control hull bounds","scope":"strictly convex CCW source-UV polygon graph solid; polygon STEP import and generic Booleans remain unsupported","width":width,"depth":depth,"height":height,"bulge":bulge,"error":error,"source_domain":graph.source().source_domain(),"volume":mass.volume,"mass_properties":{"volume":mass.volume,"centroid":xyz(mass.centroid),"units":"mm","volume_units":"mm3","centroid_units":"mm","density":"uniform","method":"polynomial fan integration"},"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},
         "positions":positions,"normals":normals,"boundary_samples":boundary_samples,
+        "inertia_properties":inertia_properties,"inertia_error":inertia_error,
         "mesh":{"positions":display.mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":display.mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":display.mesh.triangles,"face_ids":display.mesh.face_ids},
         "vertex_nodes":display.vertex_nodes,"vertex_uv":display.vertex_uv,"vertex_faces":display.vertex_faces,"error_bounds":display.error_bounds,"subdivisions":display.subdivisions,
         "brep":serialize_polygon_brep(graph)?
     }).to_string())
+}
+
+/// Optional moments must not discard an otherwise representable retained model.
+pub(crate) fn serialize_polygon_inertia(
+    result: Result<NurbsGraphInertiaProperties>,
+) -> (Option<serde_json::Value>, Option<String>) {
+    match result {
+        Ok(properties) => (
+            Some(serde_json::json!({
+                "volume":properties.volume,
+                "centroid":[properties.centroid.x,properties.centroid.y,properties.centroid.z],
+                "inertia":properties.inertia,
+                "volume_units":"mm3","centroid_units":"mm","inertia_units":"mm5",
+                "density":"uniform","reference":"centroid","axes":"world"
+            })),
+            None,
+        ),
+        Err(error) => (None, Some(error.to_string())),
+    }
 }
 
 pub(crate) fn serialize_polygon_brep(graph: &NurbsGraphPolygonSolid) -> Result<serde_json::Value> {
@@ -229,4 +251,50 @@ pub(crate) fn serialize_graph_brep(solid: &Solid) -> Result<serde_json::Value> {
     Ok(
         serde_json::json!({"wire_edges":wire_edges,"wire_forwards":wire_forwards,"wire_pcurves":wire_pcurves,"face_orientations":solid.shell.faces.iter().map(|f|f.orientation).collect::<Vec<_>>(),"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"faces":solid.shell.faces.len(),"edges":solid.edges.len(),"closed":true,"face_edges":face_edges,"face_forwards":face_forwards,"curves":curves,"pcurves":pcurves,"surfaces":surfaces}),
     )
+}
+
+#[cfg(test)]
+mod inertia_demo_tests {
+    use super::*;
+
+    #[test]
+    fn actual_unrepresentable_inertia_remains_an_optional_report() {
+        // At this scale a fixed 1e-8 mm UV identity tolerance cannot resolve
+        // the polygon. The typed API accepts an explicit physical tolerance;
+        // use it to exercise real overflow without weakening public demo guards.
+        let scale = 2f64.powi(206);
+        let tol = Tolerance::new(2f64.powi(180)).unwrap();
+        let source = NurbsGraphSolid::new([8. * scale, 6. * scale, 2. * scale], 0., tol).unwrap();
+        let polygon =
+            NurbsGraphPolygonSolid::new(&source, vec![[0., 0.], [1., 0.], [1., 1.], [0., 1.]], tol)
+                .unwrap();
+        let hole = NurbsGraphPolygonHoledSolid::new(
+            &polygon,
+            vec![[0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]],
+            tol,
+        )
+        .unwrap();
+        let polygon_mass = polygon.mass_properties(tol).unwrap();
+        let hole_mass = hole.mass_properties(tol).unwrap();
+        let polygon_mesh = polygon.tessellate_bounded(scale, 65536, tol).unwrap();
+        let hole_mesh = hole.tessellate_bounded(scale, 65536, tol).unwrap();
+        for (mass, mesh, inertia) in [
+            (polygon_mass, polygon_mesh, polygon.inertia_properties(tol)),
+            (hole_mass, hole_mesh, hole.inertia_properties(tol)),
+        ] {
+            assert!(mass.volume.is_finite() && mass.volume > 0.);
+            assert!(mass.centroid.finite());
+            assert!(!mesh.mesh.triangles.is_empty());
+            assert!(mesh.mesh.positions.iter().all(|p| p.finite()));
+            assert!(matches!(
+                &inertia,
+                Err(Error::InvalidInput(
+                    "graph inertia overflows, underflows, or loses relative precision"
+                ))
+            ));
+            let (properties, error) = serialize_polygon_inertia(inertia);
+            assert!(properties.is_none());
+            assert!(!error.unwrap().is_empty());
+        }
+    }
 }

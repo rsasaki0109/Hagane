@@ -92,7 +92,9 @@ the accepted actual solid; rejected edits preserve it. Native and WASM use
 the same Rust JSON entry point and safe bounded numeric transport.
 
 This stage does not add concave polygons, arbitrary curved
-Boolean tools, polygon graph STEP import, inertia.
+Boolean tools or polygon graph STEP import.
+Checked [centroidal inertia](nurbs-graph-polygon-inertia.md) now uses the
+positive polynomial material integral and returns the full world tensor.
 The separate [source-vertical oblique partition API](nurbs-graph-polygon-split.md)
 now uses these boundaries to return two closed parts and a finite cut face.
 General NURBS Boolean operations remain incomplete.

@@ -220,3 +220,5 @@ pub use nurbs_graph_polygon_demo::*;
 
 mod nurbs_graph_roof_section_demo;
 pub use nurbs_graph_roof_section_demo::*;
+
+mod nurbs_graph_polygon_inertia;
