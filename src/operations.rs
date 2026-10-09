@@ -715,7 +715,7 @@ pub fn subtract_box_bores(b: BoxSpec, bores: &[BoxBore], t: Tolerance) -> Result
     let tools = checked_box_bore_tools(b, bores, t)?;
     let mut solid = make_box(b, t)?;
     for (bore, c) in bores.iter().zip(tools) {
-        apply_checked_box_bore(&mut solid, b, *bore, c, t)?;
+        apply_checked_prism_bore(&mut solid, b, *bore, c, t)?;
     }
     solid.validate(t)?;
     Ok(solid)
@@ -871,7 +871,9 @@ pub(crate) fn checked_box_bore_tools(
     check_blind_bores(b, &blind, t)?;
     Ok(tools)
 }
-pub(crate) fn apply_checked_box_bore(
+// Internal: stock is only the prism envelope/Z span. The owning cap planes
+// and polygon trims come from the already-validated stock B-rep.
+pub(crate) fn apply_checked_prism_bore(
     solid: &mut Solid,
     b: BoxSpec,
     bore: BoxBore,
@@ -884,4 +886,108 @@ pub(crate) fn apply_checked_box_bore(
         append_through_bore(solid, b, tool, t)?;
     }
     Ok(())
+}
+
+/// Exact +Z prism of a simple world-XY polygon, centered about Z=0,
+/// with disjoint circular through/blind bores. No profile holes or skew axes.
+/// Up to 256 corners and 256 tools; all clearances exceed ten linear tolerances.
+pub fn subtract_polygon_prism_bores(
+    outer: &[[f64; 2]],
+    height: f64,
+    bores: &[BoxBore],
+    t: Tolerance,
+) -> Result<Solid> {
+    if bores.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 polygon prism bores are supported",
+        ));
+    }
+    let stock = checked_polygon_prism_stock(outer, height, t)?;
+    for bore in bores {
+        if polygon_bore_clearance(outer, bore.center, bore.radius)? <= 10. * t.linear {
+            return Err(Error::Unsupported(
+                "bore footprint touches or crosses the polygon boundary",
+            ));
+        }
+    }
+    let tools = checked_box_bore_tools(stock, bores, t)?;
+    let mut solid = extrude_polygon(
+        &PolygonProfile {
+            origin: Point3::new(0., 0., -height / 2.),
+            outer: outer.to_vec(),
+            holes: vec![],
+        },
+        Vec3::new(0., 0., height),
+        t,
+    )?;
+    for (&bore, tool) in bores.iter().zip(tools) {
+        apply_checked_prism_bore(&mut solid, stock, bore, tool, t)?;
+    }
+    solid.validate(t)?;
+    Ok(solid)
+}
+pub(crate) fn checked_polygon_prism_stock(
+    outer: &[[f64; 2]],
+    height: f64,
+    t: Tolerance,
+) -> Result<BoxSpec> {
+    Tolerance::new(t.linear)?;
+    if outer.len() > 256 {
+        return Err(Error::Unsupported(
+            "polygon prism bores support at most 256 corners",
+        ));
+    }
+    if !height.is_finite() || height <= 10. * t.linear {
+        return Err(Error::InvalidInput(
+            "polygon prism requires a finite positive resolved height",
+        ));
+    }
+    crate::planar::validate_polygon(outer, t)?;
+    let mut min = [f64::INFINITY; 2];
+    let mut max = [f64::NEG_INFINITY; 2];
+    for point in outer {
+        for axis in 0..2 {
+            min[axis] = min[axis].min(point[axis]);
+            max[axis] = max[axis].max(point[axis]);
+        }
+    }
+    let stock = BoxSpec {
+        min: Point3::new(min[0], min[1], -height / 2.),
+        size: Vec3::new(max[0] - min[0], max[1] - min[1], height),
+    };
+    check_box(stock, t)?;
+    Ok(stock)
+}
+// The connected circular footprint cannot cross a validated simple boundary
+// when its center is inside and every boundary segment is farther than radius.
+pub(crate) fn polygon_bore_clearance(
+    outer: &[[f64; 2]],
+    center: [f64; 2],
+    radius: f64,
+) -> Result<f64> {
+    if !radius.is_finite() || radius <= 0. {
+        return Err(Error::InvalidInput(
+            "polygon bore radius must be finite and positive",
+        ));
+    }
+    let location = locate_point_in_polygon(center, outer)?;
+    let mut distance = f64::INFINITY;
+    for i in 0..outer.len() {
+        distance = distance.min(crate::planar::segment_distance(
+            center,
+            outer[i],
+            outer[(i + 1) % outer.len()],
+        )?);
+    }
+    let gap = if location == PointLocation::Inside {
+        distance - radius
+    } else {
+        -distance - radius
+    };
+    if !gap.is_finite() {
+        return Err(Error::Unsupported(
+            "polygon bore clearance cannot be resolved with finite arithmetic",
+        ));
+    }
+    Ok(gap)
 }

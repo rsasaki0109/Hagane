@@ -76,6 +76,12 @@ claim compatibility with its data structures or APIs.
   horizontal ray/circle roots with half-open crossings. Cap conformity restores
   boundary vertices removed by display triangulation, using exact collinearity.
   Implemented directly in Rust, without importing predicate source code.
+  Polygon-prism circular bore containment combines exact center classification
+  with Euclidean distance to every boundary segment: a connected disk cannot
+  leave a simple polygon without crossing its boundary (see the
+  [Jordan curve theorem](https://en.wikipedia.org/wiki/Jordan_curve_theorem)).
+  Exact removed volumes use circular area times depth; display volume bounds
+  use the inscribed circle chord/sagitta bound. No reference code or prose was copied.
 - Rational B-spline formulas and homogeneous evaluation: Les Piegl and Wayne
   Tiller, *The NURBS Book*, second edition (1997); Carl de Boor, *A Practical
   Guide to Splines*. Mathematical background also appears in

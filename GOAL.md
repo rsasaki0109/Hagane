@@ -29,6 +29,10 @@ accepted document edits, IDs and bore selection through the same validated
 WASM session; rejected edits do not overwrite accepted history. Local autosave
 restores validated current documents after reload; invalid saved data, quota
 failures and competing tabs are handled without replacing valid geometry.
+Editable polygon extrusion now creates exact stock from simple world-XY
+profiles, including concave boundaries, followed by disjoint mixed blind/through
+bores. Profile/height edits, incremental suffix rebuilding, Undo/Redo and saved
+document restoration share the same Rust kernel.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel

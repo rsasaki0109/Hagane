@@ -1,4 +1,4 @@
-# Explainable editable box-and-bore workflow
+# Explainable editable stock-and-bore workflow
 
 ![Actual editable operation-history demo](workflow.png)
 
@@ -8,7 +8,7 @@ depth. The same pure Rust kernel rebuilds and validates the exact B-rep. Switch
 between through and top-entry flat-bottom blind bores. **Add bore** appends a
 new machining operation; **Edit bore** selects a history node. Editing an earlier
 hole preserves the later cuts. **Remove selected bore** removes that node and
-relinks the remaining chain. The Box only option removes the selected bore.
+relinks the remaining chain. The Stock only option removes the selected bore.
 
 ![Actual mixed blind/through operation history](workflow-multiple.png)
 
@@ -48,9 +48,10 @@ the supported axis-aligned primitives currently use its linear component.
 
 - Explicit `schema_version: 1` and `units: "mm"` are required. Other versions
   or units are rejected; values are not silently converted.
-- History has one centered axis-aligned `box` operation followed by at most
+- History has one centered axis-aligned `box` or world-XY `extrusion` operation
+  followed by at most
   256 `bore` nodes. Each input references the immediately preceding operation
-  ID (the box for the first bore); IDs are unique and
+  ID (the stock operation for the first bore); IDs are unique and
   contain 1–64 ASCII letters, digits, hyphens or underscores.
 - Box size is `[width, length, height]`. Bore center is world XY in mm.
   `mode: "through"` has no depth (null is treated as absent), while `"blind"`
@@ -269,3 +270,64 @@ is not cloud synchronization, a backup guarantee or persistent Undo/Redo.
 Browser checks cover reload/selection recovery, rejected-edit preservation,
 malformed/invalid saved data, explicit recovery, competing tabs, quota failures
 and storage denial without breaking modeling.
+
+
+## Editable polygon extrusion and subsequent holes
+
+![Actual extruded polygon part with editable mixed bores](workflow-extrusion.png)
+
+Select **Polygon extrusion** under Stock operation to replace the root box with
+an eight-corner polygon using its current width/length. Select Box to explicitly
+replace the polygon with a centered box of its displayed bounding width/length.
+Switching stock type changes the part geometry; it is an accepted undoable edit.
+The root operation ID is preserved and bores still reference the preceding node.
+
+For an extrusion, **XY polygon vertices (JSON)** and **Apply profile** edit the
+actual boundary. Height remains editable; width/length display the profile's
+bounds and are disabled. Apply profile and full-document Load pass input to the
+Rust parser and kernel validation. There is no triangulated mesh used as stock.
+The [extrusion example](workflow-extrusion-example.json) is ready to load in the
+browser or with `cargo run --example workflow -- <file>`.
+
+Version 1 now accepts this additional root operation:
+
+```json
+{"kind":"extrusion","id":"extrusion-1",
+ "outer":[[-40,-20],[-30,-30],[30,-30],[40,-20],
+          [40,20],[30,30],[-30,30],[-40,20]],
+ "height":24}
+```
+
+`outer` has 3–256 finite world-XY vertices with an implicit closing edge, in
+either winding. The profile may be concave but must be simple, resolved and have
+no redundant corners or self-intersections. Initial profile holes, curved
+profiles and arbitrary/skew extrusion directions are outside this document
+scope. Height must be positive and exceed ten linear tolerances; stock spans
+Z = −height/2 to +height/2. Negative/zero heights and unknown fields are rejected.
+Existing box documents keep their prior behavior and schema version.
+
+Up to 256 disjoint top-entry blind/through bores can follow the extrusion. Each
+circular footprint must lie entirely inside the polygon, with clearance greater
+than ten linear tolerances from every straight boundary segment. Center-inside
+classification plus nearest-segment distance checks actual concave boundaries,
+not only a bounding box. Outside centers have a negative signed margin; boundary
+contact, overlap, nesting and unresolved floors are rejected. `side_clearance`
+identifies the failed bore and reports the measured/required margin.
+`profile_rejected` identifies an invalid or unsupported typed stock profile.
+Malformed JSON/coordinate types produce the existing document-parser diagnostic.
+
+Native `subtract_polygon_prism_bores(outer, height, &[BoxBore], tolerance)` exposes
+the same scoped exact operation; `BoxBore` is the shared existing center/radius/
+optional-depth tool specification. The stock is created with `extrude_polygon`.
+Plane cap wires share exact circle edges with inward cylindrical walls and
+blind floors. Display tessellation follows B-rep validation. No OCCT source or
+additional dependency is used.
+
+Changing height or the profile invalidates the stock node and all following
+cuts. A later bore edit still reuses unchanged earlier B-rep snapshots. Browser
+Undo/Redo, JSON downloads/imports and local autosave include the extrusion root.
+Tests cover analytic area×height minus bore volumes, both windings, tiny/large
+and translated XY profiles, material under blind floors, profile/bore contact
+and self-intersection rejection, incremental results equal to fresh builds,
+native/WASM parity and the real browser workflow. Mesh-volume comparison uses
+the circular chord-error bound; the display mesh is not treated as exact volume.

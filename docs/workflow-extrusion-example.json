@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-08,
+    "angular": 1e-10,
+    "relative": 1e-12
+  },
+  "operations": [
+    {
+      "kind": "extrusion",
+      "id": "extrusion-1",
+      "outer": [
+        [
+          -40,
+          -20
+        ],
+        [
+          -30,
+          -30
+        ],
+        [
+          30,
+          -30
+        ],
+        [
+          40,
+          -20
+        ],
+        [
+          40,
+          20
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          -30,
+          30
+        ],
+        [
+          -40,
+          20
+        ]
+      ],
+      "height": 24
+    },
+    {
+      "kind": "bore",
+      "id": "bore-1",
+      "input": "extrusion-1",
+      "mode": "blind",
+      "center": [
+        0,
+        0
+      ],
+      "radius": 14,
+      "depth": 16
+    },
+    {
+      "kind": "bore",
+      "id": "bore-2",
+      "input": "bore-1",
+      "mode": "through",
+      "center": [
+        24,
+        0
+      ],
+      "radius": 4
+    }
+  ]
+}

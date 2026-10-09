@@ -608,3 +608,13 @@ k.hagane_workflow_begin();k.hagane_workflow_push_byte(255);assert.equal(k.hagane
 assert.equal(incrementalWorkflow(incrementalShort).rebuild.rebuilt_operations,0);
 k.hagane_workflow_reset_session();assert.equal(incrementalWorkflow(incrementalShort).rebuild.rebuilt_operations,2);
 console.log('Incremental history: actual prefix reuse, changed suffixes, policy invalidation, truncation, failure recovery, reset and native/WASM session parity passed.');
+
+const extrusionDocument=JSON.parse(readFileSync(new URL('../docs/workflow-extrusion-example.json',import.meta.url),'utf8'));
+const extrusionReport=workflow(extrusionDocument);assert.equal(extrusionReport.ok,true);assert.ok(Math.abs(extrusionReport.mesh.volume-(4600*24-Math.PI*(196*16+16*24)))<1e-8);assert.equal(extrusionReport.mesh.faces,13);
+const extrusionFile=new URL('../target/workflow-extrusion-parity.json',import.meta.url);
+try {writeFileSync(extrusionFile,JSON.stringify(extrusionDocument));compareIntersection(extrusionReport,JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','workflow','--',extrusionFile.pathname],{encoding:'utf8',cwd:new URL('../',import.meta.url)})));}finally{try{unlinkSync(extrusionFile);}catch{}}
+k.hagane_workflow_reset_session();assert.equal(incrementalWorkflow(extrusionDocument).rebuild.rebuilt_operations,3);assert.equal(incrementalWorkflow(extrusionDocument).rebuild.rebuilt_operations,0);
+const heightEdit=structuredClone(extrusionDocument);heightEdit.operations[0].height=32;assert.equal(incrementalWorkflow(heightEdit).rebuild.reused_operations,0);assert.ok(Math.abs(workflow(heightEdit).mesh.volume-(4600*32-Math.PI*(196*16+16*32)))<1e-8);
+const exteriorTool=structuredClone(heightEdit);exteriorTool.operations[1].center=[38,28];const exteriorReport=incrementalWorkflow(exteriorTool);assert.equal(exteriorReport.diagnostic.code,'side_clearance');assert.equal('mesh' in exteriorReport,false);assert.equal(incrementalWorkflow(heightEdit).rebuild.rebuilt_operations,0);
+const brokenProfile=structuredClone(heightEdit);brokenProfile.operations[0].outer[1]=brokenProfile.operations[0].outer[0];assert.equal(workflow(brokenProfile).diagnostic.code,'profile_rejected');
+console.log('Polygon extrusion history: exact mixed cuts, independent volume, native/WASM parity, incremental height edits, outside-profile rejection and cache recovery passed.');

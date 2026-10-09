@@ -21,7 +21,11 @@ restores up to 64 accepted edits, including imports, dimensions and bore
 add/remove operations; rejected edits preserve accepted history and redo.
 Local autosave now restores current documents through Rust validation, preserves
 rejected/corrupt data and detects conflicting tab writes; storage failures leave
-modeling and JSON download usable. Other operation types,
+modeling and JSON download usable. Polygon extrusion roots now integrate
+profile/height edits and subsequent exact circular bores into the same history,
+including concave boundary containment, incremental invalidation, Undo/Redo and
+JSON/local restoration. Curved/holed profiles and arbitrary extrusion directions
+remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.
