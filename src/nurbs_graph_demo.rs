@@ -165,7 +165,7 @@ pub fn nurbs_graph_split_demo_json(
     data["split"] = serde_json::json!({"axis":axis,"parameter":parameter,"side":side,"source_domain":source.source_domain(),"source_volume":source.volume()?,"negative_volume":split.negative.volume()?,"positive_volume":split.positive.volume()?,"plane":{"origin":xyz(*origin),"normal":[normal.x,normal.y,normal.z]},"section":{"vertices":split.section.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":split.section.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"closed":false,"boundary_samples":samples,"curves":section_curves,"surface":section_surface,"pcurves":section_pcurves,"orientation":split.section.face.orientation,"edge_forwards":split.section.face.wires[0].coedges.iter().map(|c|c.forward).collect::<Vec<_>>()}});
     Ok(data.to_string())
 }
-fn serialize_graph(
+pub(crate) fn serialize_graph(
     graph: &NurbsGraphSolid,
     width: f64,
     depth: f64,

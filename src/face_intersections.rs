@@ -61,6 +61,11 @@ pub(crate) fn rings(face: &Face) -> Result<Vec<Vec<PlanarSegment>>> {
             let mut ring = Vec::new();
             for c in &wire.coedges {
                 let s = match c.pcurve {
+                    PCurve::Nurbs(_) => {
+                        return Err(Error::Unsupported(
+                            "rational pcurve analysis is not implemented",
+                        ))
+                    }
                     PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
                         return Err(Error::Unsupported(
                             "planar trim routines do not support harmonic height graphs",
@@ -224,6 +229,11 @@ fn clip_validated(
             }
             let mut roots = Vec::new();
             match c.pcurve {
+                PCurve::Nurbs(_) => {
+                    return Err(Error::Unsupported(
+                        "rational pcurve analysis is not implemented",
+                    ))
+                }
                 PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
                     return Err(Error::Unsupported(
                         "planar clipping does not support harmonic height graphs",

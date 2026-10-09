@@ -747,9 +747,15 @@ pub fn subdivide_planar_face(
             }
             loops.push(Wire { coedges });
         }
-        let (outer, holes): (Vec<_>, Vec<_>) = loops
-            .into_iter()
-            .partition(|w| crate::topology::wire_area(w) > 0.0);
+        let mut outer = Vec::new();
+        let mut holes = Vec::new();
+        for wire in loops {
+            if crate::topology::try_wire_area(&wire)? > 0.0 {
+                outer.push(wire);
+            } else {
+                holes.push(wire);
+            }
+        }
         let mut faces: Vec<_> = outer
             .into_iter()
             .map(|w| Face {

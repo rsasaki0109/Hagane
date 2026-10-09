@@ -850,3 +850,17 @@ Matching candidates still undergo the existing full geometry/topology
 reconstruction and validation. Bounded candidate enumeration and admission
 conditions are unchanged. The benchmark uses Rust `Instant` and public kernel
 APIs; no dependency, external CAD source or license change is introduced.
+
+### Rational surface/UV-curve composition
+
+The new composition uses homogeneous rational coordinates, tensor-product
+Bernstein bases and Bernstein polynomial multiplication from the public
+mathematical formulation of Bezier and NURBS geometry (Piegl and Tiller,
+*The NURBS Book*, second edition, 1997, as recorded above).
+The original Rust implementation substitutes the UV numerator and denominator
+polynomials into each surface basis term; it does not copy an external CAD
+implementation. Actual positive weights and the original curve parameter
+interval are retained. Conditioning guards are engineering checks, not formal
+interval bounds. `PCurve::Nurbs` and the roof-circle path demo add no dependency
+or license change. Original code is MIT OR Apache-2.0. See
+[rational roof-circle paths](nurbs-graph-rational-roof-circle.md).

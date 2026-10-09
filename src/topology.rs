@@ -12,6 +12,8 @@ pub struct Edge {
 /// Evaluated at the SAME parameter as the owning 3D edge, including reversed uses.
 #[derive(Clone, Debug)]
 pub enum PCurve {
+    /// Rational UV geometry at the owning edge parameter; all control Z values are zero.
+    Nurbs(Box<NurbsCurve>),
     /// Exact affine image of a circle in planar UV, sharing the 3D ellipse angle.
     EllipseArc {
         center: [f64; 2],
@@ -42,8 +44,40 @@ pub enum PCurve {
     },
 }
 impl PCurve {
+    pub fn nurbs(curve: NurbsCurve) -> Result<Self> {
+        if curve.control_points().iter().any(|p| p.z != 0.0) {
+            return Err(Error::InvalidInput(
+                "NURBS pcurve controls must have zero Z",
+            ));
+        }
+        Ok(Self::Nurbs(Box::new(curve)))
+    }
+    /// Checked UV evaluation at the owning edge parameter.
+    pub fn try_evaluate(&self, t: f64) -> Result<[f64; 2]> {
+        if !t.is_finite() {
+            return Err(Error::InvalidInput("pcurve parameter must be finite"));
+        }
+        if let Self::Nurbs(curve) = self {
+            if curve.control_points().iter().any(|p| p.z != 0.0) {
+                return Err(Error::InvalidInput(
+                    "NURBS pcurve controls must have zero Z",
+                ));
+            }
+            let point = curve.evaluate(t)?;
+            return Ok([point.x, point.y]);
+        }
+        let uv = self.evaluate(t);
+        if !uv.iter().all(|v| v.is_finite()) {
+            return Err(Error::InvalidInput(
+                "pcurve evaluation exceeds finite range",
+            ));
+        }
+        Ok(uv)
+    }
+    /// Compatibility evaluation; rational evaluation errors produce NaN UV values.
     pub fn evaluate(&self, t: f64) -> [f64; 2] {
         match *self {
+            Self::Nurbs(_) => self.try_evaluate(t).unwrap_or([f64::NAN; 2]),
             Self::EllipseArc {
                 center,
                 cosine,
@@ -138,6 +172,16 @@ impl Face {
     }
     // Precisely delimit the trim domains covered by this first kernel milestone.
     fn validate_supported_trim(&self, tol: Tolerance) -> Result<()> {
+        if self
+            .wires
+            .iter()
+            .flat_map(|w| &w.coedges)
+            .any(|c| matches!(c.pcurve, PCurve::Nurbs(_)))
+        {
+            return Err(Error::Unsupported(
+                "rational pcurve trim analysis is not implemented",
+            ));
+        }
         match self.surface {
             Surface::Nurbs(_) => {
                 return Err(Error::Unsupported(
@@ -160,7 +204,9 @@ impl Face {
                         let mut segments = Vec::new();
                         for c in &wire.coedges {
                             let segment = match c.pcurve {
-                                PCurve::HeightGraph { .. } | PCurve::EllipseArc { .. } => {
+                                PCurve::Nurbs(_)
+                                | PCurve::HeightGraph { .. }
+                                | PCurve::EllipseArc { .. } => {
                                     return Err(Error::Unsupported(
                                         "height graphs are supported only on circular walls",
                                     ))
@@ -556,7 +602,7 @@ impl Solid {
                     let range = e.curve.range();
                     for k in 0..=8 {
                         let t = range[0] + (range[1] - range[0]) * k as f64 / 8.0;
-                        let uv = c.pcurve.evaluate(t);
+                        let uv = c.pcurve.try_evaluate(t)?;
                         if !uv.iter().all(|v| v.is_finite())
                             || !tol
                                 .coincident(e.curve.evaluate(t), f.surface.evaluate(uv[0], uv[1]))
@@ -564,9 +610,9 @@ impl Solid {
                             return Err(Error::InvalidTopology("pcurve disagrees with 3D edge"));
                         }
                     }
-                    let uv = c.pcurve.evaluate(range[usize::from(c.forward)]);
+                    let uv = c.pcurve.try_evaluate(range[usize::from(c.forward)])?;
                     let nr = ne.curve.range();
-                    let nv = next.pcurve.evaluate(nr[usize::from(!next.forward)]);
+                    let nv = next.pcurve.try_evaluate(nr[usize::from(!next.forward)])?;
                     if (uv[0] - nv[0]).hypot(uv[1] - nv[1]) > tol.linear {
                         return Err(Error::InvalidTopology(
                             "wire is not closed in surface parameters",
@@ -586,7 +632,7 @@ impl Solid {
             }
             if matches!(f.surface, Surface::Plane { .. }) {
                 for (i, w) in f.wires.iter().enumerate() {
-                    let a = wire_area(w);
+                    let a = try_wire_area(w)?;
                     if !a.is_finite()
                         || a.abs() <= tol.linear * tol.linear
                         || (i == 0 && a < 0.0)
@@ -709,7 +755,12 @@ impl Solid {
                     }
                     Surface::Plane { origin, u, v } => {
                         (origin - reference).dot(u.cross(v))
-                            * f.wires.iter().map(wire_area).sum::<f64>()
+                            * f.wires
+                                .iter()
+                                .map(try_wire_area)
+                                .collect::<Result<Vec<_>>>()?
+                                .into_iter()
+                                .sum::<f64>()
                             / 3.0
                     }
                     Surface::ExtrudedCircle {
@@ -859,16 +910,30 @@ impl Solid {
         Bounds { min: lo, max: hi }
     }
 }
-pub(crate) fn wire_area(w: &Wire) -> f64 {
+pub(crate) fn try_wire_area(w: &Wire) -> Result<f64> {
+    if w.coedges
+        .iter()
+        .any(|c| matches!(c.pcurve, PCurve::Nurbs(_)))
+    {
+        return Err(Error::Unsupported(
+            "rational pcurve area is not implemented",
+        ));
+    }
     let reference = w
         .coedges
         .first()
         .map(|c| c.pcurve.evaluate(0.0))
         .unwrap_or([0.0, 0.0]);
-    w.coedges
+    let area = w
+        .coedges
         .iter()
         .map(|c| {
             let a = match c.pcurve {
+                PCurve::Nurbs(_) => {
+                    return Err(Error::Unsupported(
+                        "rational pcurve area is not implemented",
+                    ))
+                }
                 PCurve::EllipseArc {
                     center,
                     cosine,
@@ -911,13 +976,10 @@ pub(crate) fn wire_area(w: &Wire) -> f64 {
                 }
                 PCurve::Circle { radius, .. } => std::f64::consts::PI * radius * radius,
             };
-            if c.forward {
-                a
-            } else {
-                -a
-            }
+            Ok(if c.forward { a } else { -a })
         })
-        .sum()
+        .sum::<Result<f64>>()?;
+    Ok(area)
 }
 
 #[cfg(test)]
@@ -973,6 +1035,6 @@ mod height_graph_tests {
         };
         let expected =
             top * sweep - (offset * sweep + cosine * sweep.sin() + sine * (1. - sweep.cos()));
-        assert!((wire_area(&wire) - expected).abs() < 1e-12);
+        assert!((try_wire_area(&wire).unwrap() - expected).abs() < 1e-12);
     }
 }

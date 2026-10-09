@@ -310,8 +310,8 @@ fn boundary_distance(a: PlanarSegment, b: PlanarSegment) -> Result<f64> {
         .map(|(p, q)| distance(p, q))
         .fold(f64::INFINITY, f64::min))
 }
-fn loop_area(segments: &[PlanarSegment]) -> f64 {
-    crate::topology::wire_area(&Wire {
+fn loop_area(segments: &[PlanarSegment]) -> Result<f64> {
+    crate::topology::try_wire_area(&Wire {
         coedges: segments
             .iter()
             .enumerate()
@@ -437,7 +437,7 @@ fn validate_mixed_impl(
             }
         }
     }
-    let area = loop_area(segments);
+    let area = loop_area(segments)?;
     if !area.is_finite() || area.abs() <= tol.linear * tol.linear {
         return Err(Error::InvalidInput(
             "mixed profile has no finite nonzero area",
@@ -644,11 +644,11 @@ fn validate_mixed_region_impl(
     }
     Ok(())
 }
-fn normalized_ring(ring: &[PlanarSegment], positive: bool) -> Vec<PlanarSegment> {
-    if (loop_area(ring) > 0.0) == positive {
-        ring.to_vec()
+fn normalized_ring(ring: &[PlanarSegment], positive: bool) -> Result<Vec<PlanarSegment>> {
+    if (loop_area(ring)? > 0.0) == positive {
+        Ok(ring.to_vec())
     } else {
-        ring.iter().rev().map(|s| s.reversed()).collect()
+        Ok(ring.iter().rev().map(|s| s.reversed()).collect())
     }
 }
 /// Exact positive-Z extrusion of a simple, possibly concave line/arc ring.
@@ -803,7 +803,7 @@ fn extrude_mixed_positive(
         .iter()
         .enumerate()
         .map(|(i, ring)| normalized_ring(ring, i == 0))
-        .collect();
+        .collect::<Result<_>>()?;
     let segments: Vec<_> = rings.iter().flatten().copied().collect();
     let mut next = Vec::new();
     let mut offset = 0;

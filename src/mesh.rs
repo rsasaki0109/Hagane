@@ -125,6 +125,11 @@ fn coordinate_roundoff_budget(solid: &Solid) -> Result<f64> {
                 let range = solid.edges[c.edge].curve.range();
                 let parameter = range[0].abs().max(range[1].abs());
                 let uv = match c.pcurve {
+                    PCurve::Nurbs(_) => {
+                        return Err(Error::Unsupported(
+                            "rational pcurve analysis is not implemented",
+                        ))
+                    }
                     PCurve::Affine { origin, direction } => {
                         std::array::from_fn(|i| origin[i].abs() + direction[i].abs() * parameter)
                     }

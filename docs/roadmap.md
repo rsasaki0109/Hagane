@@ -1171,3 +1171,15 @@ checked imported body and preserve accepted state after rejection. Generic and
 existing automatic graph import APIs retain their scopes; polygon holes, pose,
 trim and general rational shells remain unsupported. The estimate remains
 **15–25%**, toward **80%**. See [strict polygon STEP import](nurbs-graph-polygon-step-import.md).
+
+## Rational curved-boundary foundation
+
+Single-Bezier rational UV curves now compose with single-Bezier rational
+surface patches through original homogeneous Bernstein algebra, retaining
+actual weights and the curve parameter interval. Checked rational pcurves
+provide matching UV evaluation; unsupported analytic trim/area operations
+reject this boundary type. A degree-eight roof-circle path demo retains
+actual geometry and leaves the stock solid unchanged. Circular-bore topology,
+curved cap trims and their bounded display remain next prerequisites, not
+completed Boolean operations. The estimate remains **15–25%**, toward **80%**.
+See [rational roof-circle paths](nurbs-graph-rational-roof-circle.md).

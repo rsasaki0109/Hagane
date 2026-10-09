@@ -19,6 +19,11 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Rational roof-circle paths](docs/nurbs-graph-rational-roof-circle.md) now compose
+degree-two rational UV quarters into degree-eight curves on an actual NURBS
+roof, with checked rational pcurves and bounded display. This creates a path
+on unchanged stock; circular-hole Booleans remain subsequent work.
+
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.
