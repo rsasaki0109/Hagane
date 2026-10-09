@@ -76,6 +76,9 @@ mm/metre conversion and no snapping. A separate [holed graph importer](docs/nurb
 retains one rectangular through opening with sixteen vertices, twenty-four edges
 and ten faces. Restricted and placed imports remain unsupported; rejected browser
 loads preserve the accepted model.
+A [common typed graph import API](docs/nurbs-graph-step-auto-import.md) selects
+plain or single-opening recognition once and provides shared inspection,
+section, display and export methods.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

@@ -1051,3 +1051,15 @@ unit conversion, reordered topology and malformed-input rejection. Placement,
 restriction, multiple openings and general rational shells remain unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [holed graph STEP import](docs/nurbs-graph-holed-step-import.md).
+
+## Common checked graph STEP entry point
+
+One bounded parse now selects plain or single-opening recognition from actual
+shell topology and returns a typed `ImportedNurbsGraph` certificate. Shared
+validation, volume, bounds, display, point classification, vertical section
+and STEP export dispatch preserve the original exact geometry and rejection
+policy. Native and safe WASM entry points accept both supported kinds without
+caller-side STEP inspection. This improves integration, not geometric coverage:
+placed/restricted imports and general shells remain unsupported.
+The estimate remains **15–25%**, toward **80%**.
+See [common graph import](docs/nurbs-graph-step-auto-import.md).

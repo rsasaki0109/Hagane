@@ -412,10 +412,9 @@ fn recognize(actual: Solid, tol: Tolerance) -> Result<NurbsGraphSolid> {
     candidate.validate(tol).map_err(|_| unsupported())?;
     Ok(candidate)
 }
-/// Import one exact full-domain, unplaced canonical polynomial graph from AP214.
-/// Metre or millimetre coordinates become mm; knots and UV parameters are unchanged.
-/// Placement, trimming, holes, rational weights and approximate recognition are unsupported.
-fn read_solid(input: &str, tol: Tolerance, holed: bool) -> Result<Solid> {
+// Decode one bounded graph-family body before strict geometric recognition.
+// An optional kind constraint keeps both original typed entry points strict.
+fn read_solid(input: &str, tol: Tolerance, expected_holed: Option<bool>) -> Result<Solid> {
     Tolerance::new(tol.linear)?;
     let db = Parser::new(input)?.document_graph()?;
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
@@ -426,7 +425,12 @@ fn read_solid(input: &str, tol: Tolerance, holed: bool) -> Result<Solid> {
     }
     let shell = db.simple(shell, "CLOSED_SHELL", 2)?;
     let faces = list(&shell[1])?;
-    if faces.len() != if holed { 10 } else { 6 } {
+    let holed = match faces.len() {
+        6 => false,
+        10 => true,
+        _ => return Err(unsupported()),
+    };
+    if expected_holed.is_some_and(|expected| expected != holed) {
         return Err(unsupported());
     }
     let representation = db.unique("ADVANCED_BREP_SHAPE_REPRESENTATION")?;
@@ -500,7 +504,7 @@ fn read_solid(input: &str, tol: Tolerance, holed: bool) -> Result<Solid> {
 
 /// Strict plain-only import; holed bodies use the separate scoped importer.
 pub fn import_step_nurbs_graph_mm(input: &str, tol: Tolerance) -> Result<NurbsGraphSolid> {
-    recognize(read_solid(input, tol, false)?, tol)
+    recognize(read_solid(input, tol, Some(false))?, tol)
 }
 
 fn coefficient_neighbors(seed: f64) -> Vec<f64> {
@@ -658,5 +662,87 @@ pub fn import_step_nurbs_graph_holed_mm(
     input: &str,
     tol: Tolerance,
 ) -> Result<NurbsGraphHoledSolid> {
-    recognize_holed(read_solid(input, tol, true)?, tol)
+    recognize_holed(read_solid(input, tol, Some(true))?, tol)
+}
+
+/// A checked graph-family STEP body. Variants preserve their exact typed certificates.
+/// This is not a generic NURBS shell or an analytic STEP import result.
+#[derive(Debug, Clone)]
+pub enum ImportedNurbsGraph {
+    Plain(Box<NurbsGraphSolid>),
+    Holed(Box<NurbsGraphHoledSolid>),
+}
+
+impl ImportedNurbsGraph {
+    /// Actual retained shared topology and spline geometry, without reconstruction.
+    pub fn brep(&self) -> &Solid {
+        match self {
+            Self::Plain(body) => body.brep(),
+            Self::Holed(body) => body.brep(),
+        }
+    }
+    pub fn validate(&self, tol: Tolerance) -> Result<()> {
+        match self {
+            Self::Plain(body) => body.validate(tol),
+            Self::Holed(body) => body.validate(tol),
+        }
+    }
+    pub fn volume(&self) -> Result<f64> {
+        match self {
+            Self::Plain(body) => body.volume(),
+            Self::Holed(body) => body.volume(),
+        }
+    }
+    pub fn bounds(&self) -> Result<Bounds> {
+        match self {
+            Self::Plain(body) => body.bounds(),
+            Self::Holed(body) => body.bounds(),
+        }
+    }
+    pub fn tessellate_bounded(
+        &self,
+        error: f64,
+        max_cells: usize,
+        tol: Tolerance,
+    ) -> Result<NurbsGraphMesh> {
+        match self {
+            Self::Plain(body) => body.tessellate_bounded(error, max_cells, tol),
+            Self::Holed(body) => body.tessellate_bounded(error, max_cells, tol),
+        }
+    }
+    pub fn classify_point(&self, point: Point3, tol: GeometryTolerance) -> Result<PointLocation> {
+        match self {
+            Self::Plain(body) => body.classify_point(point, tol),
+            Self::Holed(body) => body.classify_point(point, tol),
+        }
+    }
+    pub fn vertical_section(
+        &self,
+        uv: [f64; 2],
+        tol: GeometryTolerance,
+    ) -> Result<NurbsGraphVerticalSection> {
+        match self {
+            Self::Plain(body) => body.vertical_section(uv, tol),
+            Self::Holed(body) => body.vertical_section(uv, tol),
+        }
+    }
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        match self {
+            Self::Plain(body) => body.export_step_mm(tol),
+            Self::Holed(body) => body.export_step_mm(tol),
+        }
+    }
+}
+
+/// Parse once and recognize either supported graph-family body from actual topology.
+/// Six faces select plain recognition; ten select single-opening recognition.
+/// Face counts only select validation: every retained invariant must still match.
+/// A failed recognizer is returned directly, never retried as another shape kind.
+pub fn import_step_nurbs_graph_auto_mm(input: &str, tol: Tolerance) -> Result<ImportedNurbsGraph> {
+    let actual = read_solid(input, tol, None)?;
+    match actual.shell.faces.len() {
+        6 => recognize(actual, tol).map(|body| ImportedNurbsGraph::Plain(Box::new(body))),
+        10 => recognize_holed(actual, tol).map(|body| ImportedNurbsGraph::Holed(Box::new(body))),
+        _ => Err(unsupported()),
+    }
 }
