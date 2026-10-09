@@ -26,7 +26,10 @@ profile/height edits and subsequent exact circular bores into the same history,
 including concave boundary containment, incremental invalidation, Undo/Redo and
 JSON/local restoration. Polygon profile openings now support up to 64 disjoint
 loops and 256 total corners, exact subsequent bores, opening-clearance diagnostics
-and complete editing/save/restore integration. Curved profiles and arbitrary extrusion directions
+and complete editing/save/restore integration. Finite XY offsets now add skew
+polygon stock to document history with exact caps/walls, profile openings,
+editing and restoration; following bore nodes remain explicitly unsupported
+on nonzero-offset stock. Curved profiles and arbitrary-plane extrusion frames
 remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over

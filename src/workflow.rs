@@ -32,6 +32,8 @@ pub enum WorkflowOperation {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         holes: Vec<Vec<[f64; 2]>>,
         height: f64,
+        #[serde(default, skip_serializing_if = "zero_offset")]
+        offset: [f64; 2],
     },
     Box {
         id: String,
@@ -91,6 +93,9 @@ fn geometry_error(error: Error, id: &str) -> Box<WorkflowDiagnostic> {
     // The low-level API does not yet distinguish all numerical failure causes;
     // do not infer numerical certainty or a repair from its free-text message.
     d
+}
+fn zero_offset(offset: &[f64; 2]) -> bool {
+    *offset == [0., 0.]
 }
 fn valid_id(id: &str) -> bool {
     !id.is_empty()
@@ -207,7 +212,16 @@ impl WorkflowDocument {
                 outer,
                 holes,
                 height,
+                offset,
             } => {
+                if offset.iter().any(|v| !v.is_finite()) {
+                    return Err(diagnostic(
+                        "invalid_offset",
+                        Some(id),
+                        Some("offset"),
+                        "Extrusion offset must contain finite XY displacements.",
+                    ));
+                }
                 let b =
                     checked_polygon_region_prism_stock(outer, holes, *height, t).map_err(|e| {
                         let mut d = geometry_error(e, id);
@@ -239,6 +253,10 @@ impl WorkflowDocument {
             }
         };
         let size = b.size;
+        let direction = match &self.operations[0] {
+            WorkflowOperation::Extrusion { offset, .. } => Vec3::new(offset[0], offset[1], size.z),
+            _ => Vec3::new(0., 0., size.z),
+        };
         let mut bores: Vec<BoxBore> = Vec::new();
         let mut ids = vec![box_id.as_str()];
         for operation in &self.operations[1..] {
@@ -258,6 +276,18 @@ impl WorkflowDocument {
                     "Only bores may follow the initial stock operation.",
                 ));
             };
+            if direction.x != 0. || direction.y != 0. {
+                let mut d = diagnostic(
+                    "unsupported_skew_bore",
+                    Some(id),
+                    Some("offset"),
+                    "Bore operations on a skew extrusion are not yet supported.",
+                );
+                d.category = "unsupported";
+                d.suggestion =
+                    Some("Remove the bore nodes or set both extrusion offsets to zero.".into());
+                return Err(d);
+            }
             if ids.contains(&id.as_str()) || input != ids.last().unwrap() {
                 return Err(diagnostic(
                 "invalid_reference",
@@ -401,6 +431,7 @@ impl WorkflowDocument {
             .map_err(|e| geometry_error(e, ids.last().unwrap()))?;
         Ok(WorkflowPlan {
             stock: b,
+            direction,
             profile,
             bores,
             tools,
@@ -495,6 +526,7 @@ pub fn workflow_input_failure(message: &str) -> Result<String> {
 
 struct WorkflowPlan {
     stock: BoxSpec,
+    direction: Vec3,
     profile: Option<PolygonProfile>,
     bores: Vec<BoxBore>,
     tools: Vec<CylinderSpec>,
@@ -503,11 +535,7 @@ struct WorkflowPlan {
 impl WorkflowPlan {
     fn make_stock(&self) -> Result<Solid> {
         if let Some(profile) = &self.profile {
-            extrude_polygon(
-                profile,
-                Vec3::new(0., 0., self.stock.size.z),
-                self.tolerance,
-            )
+            extrude_polygon(profile, self.direction, self.tolerance)
         } else {
             make_box(self.stock, self.tolerance)
         }

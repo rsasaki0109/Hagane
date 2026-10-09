@@ -302,7 +302,8 @@ Version 1 now accepts this additional root operation:
 `outer` has 3–256 finite world-XY vertices with an implicit closing edge, in
 either winding. The profile may be concave but must be simple, resolved and have
 no redundant corners or self-intersections. Polygon profile openings are supported as described below; curved profiles
-and arbitrary/skew extrusion directions are outside this document scope. Height must be positive and exceed ten linear tolerances; stock spans
+and arbitrary-plane extrusion frames are outside this document scope. Skew
+directions for polygon stock are supported as described below. Height must be positive and exceed ten linear tolerances; stock spans
 Z = −height/2 to +height/2. Negative/zero heights and unknown fields are rejected.
 Existing box documents keep their prior behavior and schema version.
 
@@ -379,7 +380,46 @@ Tests verify independent area-minus-openings volumes minus mixed bore volumes,
 closure/orientation, material and void probes, both windings, small/large scales,
 mesh-volume chord bounds, profile/opening/tool rejection, incremental cache
 recovery, native/WASM equality and the browser edit/download/reload workflow.
-Rounded/curved opening loops, general intersecting cuts and skew/arbitrary-plane
-extrusion nodes remain later work. Mathematical provenance remains the planar
+Rounded/curved opening loops, general intersecting cuts and arbitrary-plane
+extrusion nodes remain later work. Skew polygon stock is supported below. Mathematical provenance remains the planar
 containment/boundary-distance references recorded in [references](references.md);
 no new dependency or OCCT source was introduced.
+
+
+## Skew extrusion direction in history
+
+![Actual editable skew extrusion with a polygon opening](workflow-skew-extrusion.png)
+
+Polygon roots now accept optional `offset: [dx, dy]` in mm. The lower cap uses
+the original world-XY profile at Z = −height/2; the upper cap is translated by
+`[dx, dy, height]`. This specifies a skew translation, not a rotation of the
+profile plane. Height remains the positive Z span, not the slanted path length.
+All profile openings sweep along the same vector. Finite offsets are required;
+malformed arrays/nonfinite JSON are rejected. Omitted or zero offset retains the
+old vertical operation; zero offsets are omitted from canonical exports.
+
+The native workflow reuses the existing pure Rust `extrude_polygon` direction
+API, preserving exact planar caps, side walls, shared line edges and surface
+pcurves. Native results also support classification, bounds and B-rep-derived
+mesh generation. Volume is profile material area × height regardless of the
+XY offset. The [skew example](workflow-skew-extrusion-example.json) is ready for
+native evaluation and browser import.
+
+Edit **Top offset X/Y** in the polygon controls. Direction changes invalidate
+the stock node; Undo/Redo, downloads, local autosave and reload preserve direction
+and profile openings. Applying profile edits also preserves offsets. Switching
+to Box explicitly replaces skew stock with a centered box and clears offsets.
+
+**Bore nodes on skew stock are unsupported.** Any nonzero offset, including one
+smaller than linear tolerance, returns `unsupported_skew_bore` at the bore ID;
+it is not snapped to zero and an existing bore is not silently dropped. Remove
+bore nodes to create skew stock, or set both offsets to zero to use the supported
+vertical-stock bores. Failed combinations preserve the previous validated model,
+accepted cache and local save. This does not claim vertical cylinder clipping
+against moving/skew side walls or a general Boolean operation.
+
+Tests cover exact volume, bounds, opening/material/boundary probes, closed
+oriented topology, display volume, tiny/large geometry, native/WASM equality,
+direction invalidation and failure cache recovery. Browser checks cover direction
+editing, profile application, Undo/Redo, JSON download/reload and rejecting a
+bore before returning to supported zero-offset cuts.

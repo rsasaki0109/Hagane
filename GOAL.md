@@ -33,7 +33,9 @@ Editable polygon extrusion now creates exact stock from simple world-XY
 profiles, including concave boundaries and disjoint polygon profile openings,
 followed by disjoint mixed blind/through
 bores. Profile/height edits, incremental suffix rebuilding, Undo/Redo and saved
-document restoration share the same Rust kernel.
+document restoration share the same Rust kernel. Optional XY offsets now
+create skew polygon stock with openings in the same editable history; following
+bore nodes on skew stock are explicitly rejected rather than approximated.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
