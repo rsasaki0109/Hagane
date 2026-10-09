@@ -293,6 +293,21 @@ try {
  await page.locator('#parameter').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});curve=await page.evaluate(()=>window.haganeNurbs.data);assert.deepEqual(curve.point,[1,0,0]);assert.deepEqual(curve.tangent,[0,4,0]);
  await page.locator('#parameter').evaluate(e=>{e.value=0.5;e.dispatchEvent(new Event('input'));});await page.locator('#circle').click();
  curve=await page.evaluate(()=>window.haganeNurbs.data);assert.ok(Math.abs(curve.weight-Math.SQRT1_2)<1e-15);assert.ok(Math.abs(curve.point[0]-Math.SQRT1_2)<1e-14);
+ function checkBoundedCurve(data){
+  assert.equal(data.control_count,6);assert.equal(data.span_ranges.length,3);assert.equal(data.samples.length,(data.segments+1)*3);assert.equal(data.parameters.length,data.segments+1);assert.equal(data.error_bounds.length,data.segments);assert.equal(data.parameters[0],0);assert.equal(data.parameters.at(-1),1);
+  assert.ok(data.parameters.includes(0.35)&&data.parameters.includes(0.7));
+  for(let i=0;i<data.segments;i++){
+   assert.ok(data.parameters[i+1]>data.parameters[i]);const bound=data.error_bounds[i];assert.ok(Number.isFinite(bound)&&bound>0&&bound<=data.requested_error);
+   // Exact circle sagitta at the angular midpoint is independent of the subdivision algorithm.
+   const ax=data.samples[3*i],ay=data.samples[3*i+1],bx=data.samples[3*i+3],by=data.samples[3*i+4],angle=Math.atan2(by,bx)-Math.atan2(ay,ax);
+   assert.ok(Math.abs(Math.hypot(ax,ay)-1)<1e-13);assert.ok(1-Math.cos(angle/2)<=bound+1e-14);
+  }
+ }
+ checkBoundedCurve(curve);
+ await page.locator('#chord-error').evaluate(e=>{e.value=-1;e.dispatchEvent(new Event('input'));});const coarse=await page.evaluate(()=>window.haganeNurbs.data);checkBoundedCurve(coarse);assert.equal(coarse.requested_error,0.1);
+ await page.locator('#chord-error').evaluate(e=>{e.value=-5;e.dispatchEvent(new Event('input'));});const fine=await page.evaluate(()=>window.haganeNurbs.data);checkBoundedCurve(fine);assert.equal(fine.requested_error,1e-5);assert.ok(fine.segments>coarse.segments);assert.equal(await page.locator('#segments').textContent(),String(fine.segments));assert.equal(await page.locator('#bound').textContent(),Math.max(...fine.error_bounds).toExponential(3));
+ await page.locator('#chord-error').evaluate(e=>{e.value=-3;e.dispatchEvent(new Event('input'));});checkBoundedCurve(await page.evaluate(()=>window.haganeNurbs.data));
+ if(process.argv.includes('--capture-nurbs-bounded'))await page.screenshot({path:new URL('../docs/nurbs-bounded.png',import.meta.url).pathname});
  if(process.argv.includes('--capture')){await page.screenshot({path:new URL('../docs/nurbs.png',import.meta.url).pathname});}
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.ok(await page.locator('canvas').isVisible());assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  await page.setViewportSize({width:1440,height:900});
@@ -332,7 +347,7 @@ try {
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  console.log('Browser: planar and full-cylinder solid point classification, eight models including harmonic circular wall bands, material/hole/notch/boundary probes, sliders, orbit and responsive layout passed.');
  console.log('Browser: NURBS surface height/weight/UV, analytic point/normal, open-patch shading, wireframe, orbit and responsive layout passed.');
- console.log('Browser: NURBS weight/parameter controls, exact-circle reset, native-derived coordinates, canvas changes and responsive layout passed.');
+ console.log('Browser: NURBS weight/parameter/error controls, exact-circle reset, knot refinement, independent chord bounds, adaptive segment counts, canvas changes and responsive layout passed.');
  await page.setViewportSize({width:1440,height:900});await page.goto(`http://127.0.0.1:${server.address().port}/intersections.html`);await page.waitForFunction(()=>window.haganeIntersections?.ready);
  for(const [probe,kind,hits] of [['crossing','crossing','2'],['tangent','tangent','1'],['empty','empty','0'],['generator','generator overlap','0'],['reverse','generator overlap','0']]){
   await page.locator('#probe').selectOption(probe);assert.equal(await page.locator('#kind').textContent(),kind);assert.equal(await page.locator('#hits').textContent(),hits);assert.ok(await page.evaluate(()=>window.haganeIntersections.data));

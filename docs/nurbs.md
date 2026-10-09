@@ -2,8 +2,9 @@
 
 `NurbsCurve` is an immutable, validated, positive-weight, clamped, nonperiodic
 rational B-spline curve. It is a standalone geometry API: it is **not yet** a
-B-rep edge type, a NURBS surface, a curve intersection solver, or a certified
-curve tessellator. Existing B-rep solids still use lines and analytic circles.
+B-rep edge type, a NURBS surface or a curve intersection solver. Existing B-rep
+solids still use lines and analytic circles. [Refinement and bounded display](nurbs-refinement.md)
+adds shape-preserving knot insertion, Bezier spans and adaptive curve sampling.
 
 ## Input contract
 
@@ -63,6 +64,7 @@ At endpoints, either side selects the inward limit. Knot comparisons are exact
 ```sh
 cargo run --locked --example nurbs
 cargo run --locked --example nurbs -- 2.0 0.25
+cargo run --locked --example nurbs_refinement -- 0.7071067811865476 0.5 0.001
 ./scripts/build-web.sh
 python3 -m http.server 8000 --directory web
 ```
@@ -71,20 +73,24 @@ Open the NURBS curves link from the solid demo. Adjust the middle weight and
 parameter, or reset to the exact quarter-circle weight. All sample points,
 the selected point, and its derivative are produced by the Rust WASM kernel.
 The JavaScript canvas renderer only draws those results and a control polygon.
-The line is 129 uniform parameter samples; **no certified chord-error bound**
-is claimed. Native/WASM parity and browser-control tests run in CI.
+The browser now uses adaptive sampling with displayed per-segment chord bounds
+and explicit error controls; see [refinement](nurbs-refinement.md). The old
+`nurbs` CLI fixture still emits 129 uniform parameter samples and claims no
+chord-error bound. Native/WASM parity and browser-control tests run in CI.
 
-The WASM demo export is `hagane_generate_nurbs(weight, parameter) -> status`.
+The bounded browser export is
+`hagane_generate_nurbs_bounded(weight, parameter, chord_error) -> status`.
+The older `hagane_generate_nurbs(weight, parameter) -> status` remains available.
 It shares the existing JSON output buffer: any `hagane_generate*` call replaces
 previous bytes, and callers must reacquire/copy the memory view. The fixture is
 not a general NURBS serialization or editor API.
 
-![Actual NURBS WASM demo](nurbs.png)
+![Actual bounded NURBS WASM demo](nurbs-bounded.png)
 
 ## Remaining work
 
-Knot insertion/refinement, derivatives of higher order, periodic curves, curve
-frames/trims, certified adaptive subdivision, intersections,
+Derivatives of higher order, periodic curves, curve
+frames/trims, intersections,
 and integration with B-rep coedges/pcurves remain unimplemented. Standalone
 NURBS surface evaluation and first partials are implemented separately; see
 [nurbs-surface.md](nurbs-surface.md). They must not

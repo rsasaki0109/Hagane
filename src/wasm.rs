@@ -241,6 +241,18 @@ mod exports {
         generate(crate::nurbs_demo_json(weight, parameter))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_nurbs_bounded(
+        weight: f64,
+        parameter: f64,
+        chord_error: f64,
+    ) -> i32 {
+        generate(crate::nurbs_tessellation_demo_json(
+            weight,
+            parameter,
+            chord_error,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_surface(height: f64, weight: f64, u: f64, v: f64) -> i32 {
         generate(crate::nurbs_surface_demo_json(height, weight, u, v))
     }

@@ -43,6 +43,28 @@ for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1
 for(const [weight,parameter] of [[0,0.5],[-1,0.5],[NaN,0.5],[1,NaN],[1,1.001],[1,-0.001]]){assert.equal(nurbs(weight,parameter).status,1);}
 assert.equal(nurbs(Math.SQRT1_2,0.5).status,0);
 console.log('NURBS: 16 native/WASM parity cases, exact quarter-circle samples/tangents, invalid input and recovery passed.');
+function boundedNurbs(weight,parameter,error){const status=k.hagane_generate_nurbs_bounded(weight,parameter,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+// Independent rational Bernstein evaluation of the original, unrefined curve.
+function rationalPoint(weight,u){const a=(1-u)**2,b=2*u*(1-u)*weight,c=u*u,d=a+b+c;return [(a+b)/d,(b+c)/d,0];}
+function pointChordDistance(p,a,b){const d=b.map((v,i)=>v-a[i]),length2=d.reduce((s,v)=>s+v*v,0),t=length2?Math.max(0,Math.min(1,d.reduce((s,v,i)=>s+v*(p[i]-a[i]),0)/length2)):0;return Math.hypot(...p.map((v,i)=>v-a[i]-t*d[i]));}
+let boundedCases=0;
+for(const weight of [0.1,Math.SQRT1_2,1,2])for(const error of [0.01,0.001,0.0001]){
+ const {status,result}=boundedNurbs(weight,0.5,error);assert.equal(status,0,JSON.stringify(result));
+ const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_refinement','--',String(weight),'0.5',String(error)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);
+ assert.equal(result.control_count,6);assert.deepEqual(result.inserted_knots,[0.35,0.7,0.7]);assert.deepEqual(result.span_ranges,[[0,0.35],[0.35,0.7],[0.7,1]]);assert.equal(result.refined_controls.length,18);assert.equal(result.refined_weights.length,6);
+ assert.equal(result.samples.length,(result.segments+1)*3);assert.equal(result.parameters.length,result.segments+1);assert.equal(result.error_bounds.length,result.segments);assert.equal(result.requested_error,error);assert.equal(result.parameters[0],0);assert.equal(result.parameters.at(-1),1);
+ for(const knot of [0.35,0.7])assert.ok(result.parameters.includes(knot));
+ for(let i=0;i<result.parameters.length;i++){const point=result.samples.slice(3*i,3*i+3),expected=rationalPoint(weight,result.parameters[i]);expected.forEach((v,j)=>assert.ok(Math.abs(point[j]-v)<1e-13));}
+ for(let i=0;i<result.segments;i++){
+  const [start,end]=[result.parameters[i],result.parameters[i+1]],bound=result.error_bounds[i],a=result.samples.slice(3*i,3*i+3),b=result.samples.slice(3*i+3,3*i+6);
+  assert.ok(end>start);assert.ok(Number.isFinite(bound)&&bound>0&&bound<=error);
+  for(let j=0;j<=16;j++)assert.ok(pointChordDistance(rationalPoint(weight,start+(end-start)*j/16),a,b)<=bound+1e-14,`weight=${weight}, error=${error}, interval=${i}`);
+ }
+ boundedCases++;
+}
+for(const args of [[0,0.5,0.001],[-1,0.5,0.001],[NaN,0.5,0.001],[Infinity,0.5,0.001],[1,-0.01,0.001],[1,1.01,0.001],[1,NaN,0.001],[1,Infinity,0.001],[1,0.5,0],[1,0.5,-1],[1,0.5,NaN],[1,0.5,Infinity],[1,0.5,1e-14]]){const {status,result}=boundedNurbs(...args);assert.equal(status,1);assert.equal(typeof result.error,'string');}
+assert.equal(boundedNurbs(Math.SQRT1_2,0.5,0.001).status,0);
+console.log(`Bounded NURBS: ${boundedCases} refined-curve native/WASM cases, independent interval chord errors, knot preservation, invalid input and recovery passed.`);
 function surface(height,weight,u,v){const status=k.hagane_generate_surface(height,weight,u,v);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const [height,weight,u,v] of [[0,1,0.5,0.5],[35,1,0.5,0.5],[35,2,0.3,0.7],[-35,0.5,0.2,0.4],[60,4,0,1],[-60,0.2,1,0]]){
  const {status,result}=surface(height,weight,u,v);assert.equal(status,0);assert.equal(result.positions.length,24*24*2*9);assert.equal(result.positions.length,result.normals.length);

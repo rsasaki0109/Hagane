@@ -99,6 +99,14 @@ claim compatibility with its data structures or APIs.
   [B-spline derivative expressions](https://en.wikipedia.org/wiki/B-spline#Derivative_expressions).
   Hagane implements these formulas independently; no book/page source code or
   prose was incorporated, and no additional NURBS library is linked.
+- Rational curve refinement uses homogeneous knot insertion and
+  [de Casteljau subdivision](https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm),
+  independently implemented from the published mathematical formulas. Positive
+  rational Bernstein weights give a convex combination of Euclidean controls;
+  convexity of distance to a chord segment supplies the adaptive display bound.
+  The numerical allowance and resource policy are Hagane implementation choices,
+  not claims supplied by those references. No reference code or prose was copied
+  and no new dependency is required.
 - Browser integration specifications: [WebAssembly core specification](https://webassembly.github.io/spec/core/),
   [WebGL 1.0 specification](https://registry.khronos.org/webgl/specs/latest/1.0/).
 - Planar polygon triangulation: [Mapbox Earcut](https://github.com/mapbox/earcut),

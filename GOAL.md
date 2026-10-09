@@ -623,3 +623,23 @@ This strengthens the existing analytic domain without adding general curved
 Booleans, NURBS B-rep integration or arbitrary numerical conditioning support.
 The long-term estimate remains 15–25%, toward the 80% target. See
 [coordinate precision](docs/coordinate-precision.md).
+
+
+## NURBS curve refinement and bounded display milestone
+
+Standalone positive-weight clamped NURBS curves now support shape-preserving
+interior knot insertion, rational Bezier span extraction and adaptive display
+polylines with original parameters and per-segment chord-error bounds. The
+positive rational Bernstein convex hull supplies the mathematical geometric
+bound; a conservative `f64` arithmetic allowance and explicit conditioning
+errors handle the implementation's numerical limits. This is not formal
+interval arithmetic certification. Refinement work, final controls, subdivision
+depth and segment counts are bounded, with explicit failure rather than partial
+success. Tests include degree 16, C0 limits, non-unit and large-origin parameter
+domains, subnormal dimensions and independent quarter-circle chord distances.
+The Rust/WASM browser demo now uses adaptive sampling, with an actual capture.
+
+NURBS B-rep edges/pcurves, trimmed surfaces, intersections, general Booleans and
+broader STEP interchange remain incomplete. This prerequisite does not establish
+those capabilities. The overall estimate remains **15–25%**, toward the **80%**
+target. See [NURBS refinement](docs/nurbs-refinement.md).

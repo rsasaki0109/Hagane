@@ -254,7 +254,9 @@ fabricate the demo image.
 - [Trimmed circular face intersections](docs/circular-face-intersections.md), including partial-wall selection, oriented normals and original shared-edge provenance.
 - Checked rigid B-rep placement, inverse/composed frames and exact placed bounds.
 - Standalone clamped positive-weight NURBS curves: checked knots/degrees/weights,
-  homogeneous de Boor evaluation, analytic first derivatives and knot-side limits.
+  homogeneous de Boor evaluation, analytic first derivatives and knot-side limits;
+  shape-preserving knot insertion, rational Bezier spans and [bounded adaptive
+  curve display](docs/nurbs-refinement.md).
 - Standalone tensor-product NURBS surfaces: checked rectangular control nets,
   analytic U/V partials, oriented regular-point normals and uniform display grids.
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
@@ -357,11 +359,15 @@ let curve = NurbsCurve::new(2,
     vec![1.0, std::f64::consts::FRAC_1_SQRT_2, 1.0])?;
 let point = curve.evaluate(0.5)?;
 let tangent = curve.derivative(0.5)?;
+let refined = curve.insert_knot(0.5, 2)?;
+let polyline = refined.tessellate_bounded(0.001, 16_384)?;
 ```
 
 `cargo run --locked --example nurbs` emits evaluated points and derivatives.
-The solid demo links to a separate **NURBS curves** page with weight and
-parameter controls. [Curve documentation](docs/nurbs.md) explains knot-side
+`cargo run --locked --example nurbs_refinement` emits an adaptive polyline with
+original parameters and per-segment chord-error bounds.
+The solid demo links to a separate **NURBS curves** page with weight, parameter
+and display-error controls. [Curve documentation](docs/nurbs.md) explains knot-side
 semantics, numerical limits and the actual WASM demo. These curves are not yet
 integrated with B-rep edges; intersections and trimming remain future work.
 
