@@ -141,7 +141,17 @@ impl Writer {
                 "graph STEP export requires retained affine pcurves",
             ));
         };
-        let length = direction[0].hypot(direction[1]);
+        // Use the same elementary operations on native and WASM: platform
+        // hypot implementations can round differently and change STEP bytes.
+        // Scaling avoids squaring large coordinates or underflowing tiny ones.
+        let scale = direction[0].abs().max(direction[1].abs());
+        let length = if scale > 0. && scale.is_finite() {
+            let x = direction[0] / scale;
+            let y = direction[1] / scale;
+            scale * (x * x + y * y).sqrt()
+        } else {
+            scale
+        };
         if origin.iter().chain(direction).any(|x| !x.is_finite())
             || !length.is_finite()
             || length == 0.

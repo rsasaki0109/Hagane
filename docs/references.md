@@ -783,3 +783,11 @@ Rust serialization retains actual near-unit binary64 weights without fitting
 or normalization. The existing optional `occt-import-js` reader is only an
 external interoperability oracle under its recorded LGPL/OCCT exception terms;
 it is not a kernel dependency and no OCCT source is copied or translated.
+
+### JSON binary64 round-trip parsing
+
+The existing `serde_json` dependency now enables its documented `float_roundtrip`
+feature: <https://docs.rs/crate/serde_json/latest/features#float_roundtrip>.
+Independent Rust `f64::from_str` and hard-coded IEEE-754 bit patterns verify
+reproducible finite numeric input. No dependency version or license changes;
+`serde_json` retains its recorded MIT OR Apache-2.0 terms.

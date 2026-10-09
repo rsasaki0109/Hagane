@@ -1156,3 +1156,13 @@ Native/WASM and browser downloads use accepted modeling inputs. Polygon STEP
 import, multiple openings and general curved Booleans remain unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [polygon graph STEP export](docs/nurbs-graph-polygon-step.md).
+
+## JSON binary64 model reproducibility
+
+Native and WASM now enable precise JSON float round trips. Concrete one-ULP
+parser changes are fixed; finite serialized coordinate bits, reconstructed
+16-corner solids and STEP bytes are preserved. Tests retain original
+trigonometric inputs rather than replacing them with dyadic fixtures. Browser
+workflow import/download/autosave checks cover actual model coordinates.
+Geometry limitations remain unchanged; the estimate stays **15–25%**, toward
+**80%**. See [JSON binary64 preservation](docs/json-float-roundtrip.md).

@@ -95,9 +95,9 @@ script; they are not hidden by rounding weights or enlarging the request.
 Final native validation passed 646 tests, formatting and strict Clippy.
 The WASM build and complete native/WASM regression passed, including STEP byte
 parity for matching numeric input fixtures and invalid transport recovery.
-Native JSON parsing of arbitrary long decimal input is not claimed to preserve
-every original binary64 value; such parser round-trip precision remains a
-separate follow-up. STEP output retains the actual values given to the writer.
+[Precise JSON parsing](json-float-roundtrip.md) now preserves finite serialized
+binary64 model values, including the original trigonometric native/WASM STEP
+fixtures. STEP output retains the actual values given to the writer.
 
 The full browser regression and actual download checks passed. The captured
 trimmed, placed pentagon-plus-diamond part has 11 faces and 27 shared edges;
