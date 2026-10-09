@@ -5,7 +5,7 @@
 Open `web/workflow.html` after building the WASM module, or choose **Edit model**
 from the main demo. Change width, length, height, tool center, radius and blind
 depth. The same pure Rust kernel rebuilds and validates the exact B-rep. Switch
-between through and top-entry flat-bottom blind bores. **Add bore** appends a
+between through and top/bottom-entry flat-bottom blind bores. **Add bore** appends a
 new machining operation; **Edit bore** selects a history node. Editing an earlier
 hole preserves the later cuts. **Remove selected bore** removes that node and
 relinks the remaining chain. The Stock only option removes the selected bore.
@@ -307,7 +307,8 @@ directions for polygon stock are supported as described below. Height must be po
 Z = −height/2 to +height/2. Negative/zero heights and unknown fields are rejected.
 Existing box documents keep their prior behavior and schema version.
 
-Up to 256 disjoint top-entry blind/through bores can follow the extrusion. Each
+Up to 256 independently separated top/bottom-entry blind/through bores can
+follow the extrusion (see opposing-cut separation below). Each
 circular footprint must lie entirely inside the polygon, with clearance greater
 than ten linear tolerances from every straight boundary segment. Center-inside
 classification plus nearest-segment distance checks actual concave boundaries,
@@ -480,8 +481,8 @@ outside the original lower footprint while remaining wholly inside the upper
 stock. Tool validation therefore uses the envelope of both translated caps,
 while the swept profile certificate determines actual containment. A deeper
 edit may hit a side or opening and is rejected. Through cuts still test the
-full-height path. Mixed blind/through nodes require disjoint XY footprints,
-even when a more general Boolean could resolve interacting tools.
+full-height path. Mixed blind/through nodes use the pair-separation rules described below; a
+more general Boolean would be needed to resolve interacting tools.
 
 Both depth and remaining floor thickness must exceed ten linear tolerances.
 Invalid depths return `invalid_depth`; breakthrough and unresolved floors return
@@ -519,8 +520,8 @@ Depth remains a positive world-Z distance, with depth and remaining stock
 thickness exceeding ten linear tolerances. The moving-profile center path is
 `center` to `center - offset * depth/height`; the same swept-boundary certificate
 checks only the actual cut interval. Diagnostics and rejected-tool outlines
-use the selected entry face. Top/bottom/through nodes may coexist only with
-pairwise disjoint XY footprints; intersecting or coaxial cuts are unsupported.
+use the selected entry face. Top/bottom/through nodes may coexist with the pair-separation certificates
+described below; intersecting cuts remain unsupported.
 
 Use **Blind entry face** in the browser controls. Entry changes rebuild only the
 selected node and its dependent suffix; Undo/Redo, JSON download and validated
@@ -533,3 +534,35 @@ depth/opening interference, malformed/through-entry rejection and cache recovery
 Native/WASM reports and meshes agree; browser tests exercise entry/depth edits,
 Undo/Redo, breakthrough rejection, download and reload. General side-entry
 polygon machining and interacting tools remain outside this document domain.
+
+## Opposing blind cuts with a retained web
+
+The [opposing-cut example](workflow-opposing-blind-example.json) creates two
+coaxial blind holes from opposite caps, with radii 4 and 6 mm and depths 8 and
+10 mm in 24 mm stock. The 6 mm axial web remains material. The exact removed
+volume is the sum of the independent cylinders: `pi * (16 * 8 + 36 * 10)`.
+Every opening, cylindrical wall and circular floor retains its own shared
+B-rep edges and pcurves. No mesh union or Boolean approximation is used.
+
+A pair is accepted when either the radial footprint gap or, for opposite-entry
+blind tools, the axial interval gap exceeds ten linear tolerances. The latter
+is `height - bottom_depth - top_depth`. The maximum of these signed gaps is
+a conservative separation certificate. This accepts overlapping/coaxial XY
+footprints with sufficient web thickness. Radially separated tools remain
+accepted even if their depth intervals overlap. Same-entry cuts and through
+cuts still require resolved radial separation. Touching, near-touching and
+intersecting tools remain unsupported, including cuts that could form one
+connected hole in a general Boolean engine.
+
+`bore_web_thickness` identifies a rejected opposing pair, names the earlier
+operation and reports the best separation certificate plus the required margin.
+Reducing depth or separating footprints corrects the edit. Rejection preserves
+accepted geometry, incremental cache, Undo/Redo and local save. No schema
+change is needed. This extension applies to WorkflowDocument/WorkflowSession;
+the standalone BoxBore array APIs retain their documented radial-only pair rule.
+
+Native tests cover independent volume, both floor orientations, web membership,
+closed shared topology/meshes, tiny/large dimensions, cut ordering, contact,
+near contact, overlap and unchanged-prefix recovery. Native/WASM full reports
+and meshes agree; browser checks edit opposing depths, reject loss of the web,
+recover, undo/redo and restore downloaded/local documents.

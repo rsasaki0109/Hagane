@@ -9,6 +9,35 @@ regression tests, examples, and documentation, not only designs or evaluators.
 Broad OCCT-equivalent functionality remains the long-term direction; milestone
 completion must never be presented as full OCCT compatibility.
 
+## Active delivery target: approximately 80% of the long-term goal
+
+The user has set the next standing target to approximately **80% completion**
+of the long-term kernel goal. Continue autonomously toward this target when
+asked to develop. This is an engineering estimate, not a count of presets,
+commits or completed small features. Do not claim 80% from the current scoped
+box/polygon-and-bore workflow. The latest estimate remains 15–25%.
+
+Reaching the target requires working, documented and tested useful domains for
+all of these major capability areas:
+
+- NURBS curves/surfaces integrated with exact B-rep boundaries and validated
+  display tessellation, beyond standalone evaluators.
+- Boolean union, difference and intersection on a useful range of trimmed
+  planar and curved solids, with explicit contact/conditioning failures.
+- Practical fillet/chamfer operations and shape diagnostics/repair within
+  documented domains.
+- Useful STEP geometry/topology import and export, preserving units, with
+  supported-subset round-trip regression tests.
+- An editable native/WASM browser workflow connecting modeling and interchange,
+  with reproducible documents and meaningful robustness/performance evidence.
+
+The completion criteria below remain authoritative. Update the estimated
+range and its remaining major gaps in final progress reports; do not assign
+artificial percentage increments to individual milestones. Full OCCT parity,
+all degenerate cases and assembly coverage remain longer-term work even after
+this target. Implementations, tests, examples and verified limitations must
+support any reassessment.
+
 ## User-value direction
 
 Build measurable value for developers embedding exact modeling in web apps and
@@ -39,7 +68,9 @@ in the same editable history. Swept-footprint clearance checks over each tool
 depth reject side/opening crossings. Shallow blind holes outside the lower
 profile retain exact walls/floors; unresolved floors and breakthrough are
 explicitly rejected. Blind nodes now select top or bottom entry, preserving
-exact floors, tool-depth clearance and saved editing intent.
+exact floors, tool-depth clearance and saved editing intent. Opposing blind
+bores may now overlap in XY when a resolved axial web separates their actual
+cut intervals; touching/intersecting tools are explicitly rejected.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel

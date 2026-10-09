@@ -4,6 +4,11 @@ This roadmap implements the standing [development goal](../GOAL.md): a usable
 end-to-end pure Rust CAD workflow. Feature-specific supported domains and
 verified completion criteria take precedence over broad feature labels.
 
+The active delivery target is approximately 80% of the long-term goal, with
+major capability acceptance areas recorded in [GOAL.md](../GOAL.md). The current
+estimate remains 15–25%; narrow workflow milestones do not establish broad
+CAD coverage.
+
 ## Immediate product milestone
 
 Following the [product direction](product-direction.md), the next priority is
@@ -33,7 +38,9 @@ cap circles/cylinder walls and blind floors on skew polygon stock. Swept-footpri
 certificates use the actual tool depth, rejecting side/opening crossings and
 near contacts; blind floor thickness is independently checked. Blind nodes now
 select top/bottom entry with exact floor normals and depth-interval checks,
-incremental editing and validated browser restoration. Curved profiles and arbitrary-plane extrusion frames
+incremental editing and validated browser restoration. Opposing blind cuts
+now accept overlapping XY footprints when their depth intervals retain a
+resolved web, with measured axial/pair diagnostics and atomic rejection. Curved profiles and arbitrary-plane extrusion frames
 remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over

@@ -402,15 +402,35 @@ impl WorkflowDocument {
                 }
                 return Err(d);
             }
-            for (previous, previous_id) in bores.iter().zip(&ids[1..]) {
-                let gap = (center[0] - previous.center[0]).hypot(center[1] - previous.center[1])
+            for ((previous, previous_id), previous_entry) in
+                bores.iter().zip(&ids[1..]).zip(&entries)
+            {
+                let radial_gap = (center[0] - previous.center[0])
+                    .hypot(center[1] - previous.center[1])
                     - radius
                     - previous.radius;
-                if !gap.is_finite() || gap <= required {
+                let opposite = *mode == WorkflowBoreMode::Blind
+                    && previous.depth.is_some()
+                    && entry != previous_entry;
+                let axial_gap = if opposite {
+                    size.z - depth.unwrap() - previous.depth.unwrap()
+                } else {
+                    f64::NEG_INFINITY
+                };
+                let gap = radial_gap.max(axial_gap);
+                if !radial_gap.is_finite() || gap <= required {
                     let mut d = diagnostic(
-                        "bore_clearance",
+                        if opposite {
+                            "bore_web_thickness"
+                        } else {
+                            "bore_clearance"
+                        },
                         Some(id),
-                        Some("center_or_radius"),
+                        Some(if opposite {
+                            "depth_or_center_or_radius"
+                        } else {
+                            "center_or_radius"
+                        }),
                         format!(
                             "Tool overlaps, touches or nearly touches operation {previous_id}."
                         ),
@@ -423,8 +443,8 @@ impl WorkflowDocument {
                     d.measured_clearance = gap.is_finite().then_some(gap);
                     d.required_clearance = Some(required);
                     d.suggestion = Some(
-                        "Move the center or reduce radii so the XY footprints are separated."
-                            .into(),
+                        if opposite { "Reduce opposing depths to retain a resolved web, or separate the XY footprints." }
+                        else { "Move the center or reduce radii so the XY footprints are separated." }.into(),
                     );
                     return Err(d);
                 }
@@ -456,8 +476,18 @@ impl WorkflowDocument {
             entries.push(*entry);
             ids.push(id.as_str());
         }
-        let tools = checked_skew_prism_bore_tools(b, [direction.x, direction.y], &bores, t)
-            .map_err(|e| geometry_error(e, ids.last().unwrap()))?;
+        // Pair separation was certified using the actual entry/depth intervals.
+        // Reuse single-tool checks without imposing the old XY-only pair rule.
+        let tools = bores
+            .iter()
+            .zip(&ids[1..])
+            .map(|bore_and_id| {
+                let (bore, id) = bore_and_id;
+                checked_skew_prism_bore_tools(b, [direction.x, direction.y], &[*bore], t)
+                    .map(|tools| tools[0])
+                    .map_err(|e| geometry_error(e, id))
+            })
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(WorkflowPlan {
             stock: b,
             direction,

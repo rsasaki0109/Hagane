@@ -86,7 +86,9 @@ claim compatibility with its data structures or APIs.
   tool depth and selected entry cap (the full height for through cuts). Endpoint
   classification plus segment/boundary separation certifies the complete swept
   disk. Dividing the gap by the wall-slope norm gives a conservative physical
-  clearance bound by Cauchy–Schwarz. Implemented independently from these
+  clearance bound by Cauchy–Schwarz. Opposing blind-tool separation uses
+  disjoint axial intervals or disjoint XY disks: either positive gap certifies
+  separation of the Cartesian-product cylinders. Implemented independently from these
   mathematical facts, with no copied code and no additional dependencies.
   Exact removed volumes use circular area times depth; display volume bounds
   use the inscribed circle chord/sagitta bound. No reference code or prose was copied.
