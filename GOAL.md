@@ -404,4 +404,12 @@ inward walls, cap hole wires and shared oriented edges in a closed B-rep.
 Independent depths/radii, analytic volume, material above/below floors, tiny
 and rotated solids, contact/breakthrough rejection and native/WASM parity are
 verified; browser preset 29 displays the operation. Tilted/intersecting blind
-cuts and non-top entry remain unsupported. See [blind bores](docs/blind-bore.md).
+cuts remain unsupported. See [blind bores](docs/blind-bore.md).
+
+Blind cylindrical box cuts now enter any of the six selected faces, preserving
+exact inward walls, outward floor normals, cap wires and shared topology through
+right-handed rigid axis permutations. All-face tests verify volume, bounds,
+classification, tolerance bands, microscopic/rotated solids, mesh closure and
+wrong-face/breakthrough rejection. Native/WASM parity and side-entry browser
+preset 30 are verified. Mixed-face, intersecting and oblique blind tools remain
+unsupported. See [six-face blind bores](docs/box-face-blind-bore.md).

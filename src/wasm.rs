@@ -5,6 +5,10 @@ mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     #[no_mangle]
+    pub extern "C" fn hagane_box_face_blind_bore_demo(face: u32, radius: f64, depth: f64) -> i32 {
+        generate(crate::box_face_blind_bore_demo_json(face, radius, depth))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_blind_bore_demo(radius: f64, depth: f64) -> i32 {
         generate(crate::blind_bore_demo_json(radius, depth))
     }

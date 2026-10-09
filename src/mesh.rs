@@ -294,6 +294,7 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        30 => box_face_blind_bore_demo_solid(BoxFace::MinY, radius * 0.5, 20.)?,
         29 => subtract_blind_cylinder(
             b,
             CylinderSpec {

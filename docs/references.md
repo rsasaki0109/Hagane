@@ -379,3 +379,11 @@ cylinder, upward disk floor and shared seam/rim topology. Removed volume is
 `pi*r²*depth`; analytic surface integration and existing B-rep tessellation
 verify the result. See [blind bores](blind-bore.md). No new dependencies or
 OCCT source were used.
+
+## Six-face blind-bore placement
+
+Right-handed signed coordinate permutations map each chosen box-face outward
+normal to canonical +Z. Exact primitive blind construction followed by checked
+rigid B-rep placement preserves normals, curves, pcurves and volume. See
+[six-face blind bores](box-face-blind-bore.md). No dependencies or OCCT source
+were added.

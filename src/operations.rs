@@ -398,6 +398,141 @@ pub fn blind_bore_demo_json(radius: f64, depth: f64) -> Result<String> {
     solid.mesh_json(0.05, Tolerance::default())
 }
 
+/// Entry face of an axis-aligned box; bore axes point inward normal to this face.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum BoxFace {
+    MaxZ = 0,
+    MinZ = 1,
+    MaxX = 2,
+    MinX = 3,
+    MaxY = 4,
+    MinY = 5,
+}
+impl TryFrom<u32> for BoxFace {
+    type Error = Error;
+    fn try_from(value: u32) -> Result<Self> {
+        match value {
+            0 => Ok(Self::MaxZ),
+            1 => Ok(Self::MinZ),
+            2 => Ok(Self::MaxX),
+            3 => Ok(Self::MinX),
+            4 => Ok(Self::MaxY),
+            5 => Ok(Self::MinY),
+            _ => Err(Error::InvalidInput("box entry face must be in 0..5")),
+        }
+    }
+}
+/// Mouth center in world coordinates on the selected box face; depth is inward.
+#[derive(Clone, Copy, Debug)]
+pub struct FaceBlindBore {
+    pub center: Point3,
+    pub radius: f64,
+    pub depth: f64,
+}
+/// Exact restricted primitive difference for disjoint flat-bottom bores entering
+/// one selected box face. Different-face/intersecting tools are unsupported.
+/// Centers within one linear tolerance of the entry plane are projected to it.
+pub fn subtract_blind_bores_from_face(
+    b: BoxSpec,
+    face: BoxFace,
+    bores: &[FaceBlindBore],
+    t: Tolerance,
+) -> Result<Solid> {
+    check_box(b, t)?;
+    if bores.len() > 256 {
+        return Err(Error::Unsupported(
+            "at most 256 independent blind bores are supported",
+        ));
+    }
+    if bores.is_empty() {
+        return make_box(b, t);
+    }
+    let max = b.min + b.size;
+    let x = Vec3::new(1., 0., 0.);
+    let y = Vec3::new(0., 1., 0.);
+    let z = Vec3::new(0., 0., 1.);
+    let (origin, axes, size) = match face {
+        BoxFace::MaxZ => (b.min, [x, y, z], b.size),
+        BoxFace::MinZ => (
+            Point3::new(b.min.x, max.y, max.z),
+            [x, y * -1., z * -1.],
+            b.size,
+        ),
+        BoxFace::MaxX => (b.min, [y, z, x], Vec3::new(b.size.y, b.size.z, b.size.x)),
+        BoxFace::MinX => (
+            Point3::new(max.x, b.min.y, max.z),
+            [y, z * -1., x * -1.],
+            Vec3::new(b.size.y, b.size.z, b.size.x),
+        ),
+        BoxFace::MaxY => (b.min, [z, x, y], Vec3::new(b.size.z, b.size.x, b.size.y)),
+        BoxFace::MinY => (
+            Point3::new(max.x, max.y, b.min.z),
+            [z, x * -1., y * -1.],
+            Vec3::new(b.size.z, b.size.x, b.size.y),
+        ),
+    };
+    let frame = Frame3::new(origin, axes, t)?;
+    let mut tools = Vec::with_capacity(bores.len());
+    for bore in bores {
+        if !bore.center.finite() || !positive(bore.depth, t) {
+            return Err(Error::InvalidInput(
+                "face blind bore requires finite center and resolved positive depth",
+            ));
+        }
+        let local = frame.local_point(bore.center);
+        if !local.finite() || (local.z - size.z).abs() > t.linear {
+            return Err(Error::InvalidInput(
+                "blind bore mouth must lie on selected entry face",
+            ));
+        }
+        tools.push(CylinderSpec {
+            base: Point3::new(local.x, local.y, size.z - bore.depth),
+            radius: bore.radius,
+            height: bore.depth + size.z,
+        });
+    }
+    subtract_blind_cylinders(
+        BoxSpec {
+            min: Point3::new(0., 0., 0.),
+            size,
+        },
+        &tools,
+        t,
+    )?
+    .transformed(frame, t)
+}
+/// Demo box with a centered blind hole on one of its six faces.
+pub fn box_face_blind_bore_demo_solid(face: BoxFace, radius: f64, depth: f64) -> Result<Solid> {
+    let b = BoxSpec {
+        min: Point3::new(-40., -30., -20.),
+        size: Vec3::new(80., 60., 40.),
+    };
+    let center = match face {
+        BoxFace::MaxZ => Point3::new(0., 0., 20.),
+        BoxFace::MinZ => Point3::new(0., 0., -20.),
+        BoxFace::MaxX => Point3::new(40., 0., 0.),
+        BoxFace::MinX => Point3::new(-40., 0., 0.),
+        BoxFace::MaxY => Point3::new(0., 30., 0.),
+        BoxFace::MinY => Point3::new(0., -30., 0.),
+    };
+    subtract_blind_bores_from_face(
+        b,
+        face,
+        &[FaceBlindBore {
+            center,
+            radius,
+            depth,
+        }],
+        Tolerance::default(),
+    )
+}
+/// Native/WASM six-face blind-bore fixture with explicit face identifiers 0..5.
+pub fn box_face_blind_bore_demo_json(face: u32, radius: f64, depth: f64) -> Result<String> {
+    box_face_blind_bore_demo_solid(BoxFace::try_from(face)?, radius, depth)?
+        .mesh_json(0.05, Tolerance::default())
+}
+
 /// Straight-line XY profile with simple, disjoint polygonal holes. Rings omit
 /// a repeated closing point. Input winding is normalized without changing points.
 #[derive(Clone, Debug)]

@@ -254,6 +254,20 @@ try {
  await page.locator('#reset').click();
  if(process.argv.includes('--capture-blind-bore'))await page.screenshot({path:new URL('../docs/blind-bore.png',import.meta.url).pathname});
 
+ await page.locator('#preset').selectOption('30');
+ assert.match(await page.locator('#part-title').textContent(),/Side-entry/);
+ assert.deepEqual(await page.locator('.range-label span').allTextContents(),['4 mm','12 mm']);
+ for(const control of [8,14,24]){
+  await page.locator('#radius').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input'));},control);
+  const part=await page.evaluate(()=>window.haganeDemo.mesh);
+  assert.equal(part.faces,8);assert.equal(part.edges,15);
+  assert.ok(Math.abs(part.volume-(192000-Math.PI*(control/2)**2*20))<1e-8);
+ }
+ await page.locator('#reset').click();
+ if(process.argv.includes('--capture-face-blind-bore')){await page.locator('canvas').focus();for(let i=0;i<4;i++)await page.keyboard.press('ArrowDown');await page.locator('canvas').evaluate(e=>e.blur());await page.screenshot({path:new URL('../docs/box-face-blind-bore.png',import.meta.url).pathname});}
+ await page.locator('canvas').focus();const sideImage=await page.locator('canvas').screenshot();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),sideImage);
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+
 
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
@@ -464,5 +478,5 @@ try {
  const tiltedView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),tiltedView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: tilted through-bore cap, unequal-axis hole roots/volume, empty/tangent errors, recovery and orbit passed.');
- console.log('Browser: 30 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 31 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

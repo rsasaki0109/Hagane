@@ -31,8 +31,10 @@ nesting, overlap, side/bottom breakthroughs and nonfinite input return errors.
 At most 256 independent tools are accepted. Empty tools produce an unchanged
 validated box. A completed solid supports arbitrary rigid placement.
 
-Tilted blind bores, bottom/side-entry operations, rounded/drill-point bottoms,
+Tilted blind bores, rounded/drill-point bottoms,
 intersecting bores and general solid Boolean operations remain unsupported.
+[All six entry faces](box-face-blind-bore.md) are now supported by a separate
+explicit-face API; this original tool-base API retains its top-entry contract.
 [Oriented through bores](oriented-bores.md) retain their separately documented
 supported domain. Different APIs distinguish blind and through cuts explicitly;
 a through cut is not silently substituted for an invalid blind operation.

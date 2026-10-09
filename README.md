@@ -433,3 +433,7 @@ cap wires and exact cylindrical walls in a further interactive solid preset.
 
 [Flat-bottom blind bores](docs/blind-bore.md) now support restricted exact
 top-entry box differences, independent depths and real retained B-rep floors.
+
+[Six-face blind bores](docs/box-face-blind-bore.md) extend exact blind cuts to
+either end of every box axis, with a side-entry browser preset and explicit
+world-coordinate mouth centers.
