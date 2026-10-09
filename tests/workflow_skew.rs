@@ -70,6 +70,7 @@ fn skew_breakthrough_and_invalid_offsets_are_rejected_without_committing_or_igno
     doc.operations.push(WorkflowOperation::Bore {
         id: "bore-1".into(),
         input: "extrusion-1".into(),
+        entry: WorkflowBoreEntry::Top,
         mode: WorkflowBoreMode::Blind,
         center: [0., 0.],
         radius: 4.,

@@ -38,7 +38,8 @@ create skew polygon stock with openings and disjoint Z-axis through/blind bores
 in the same editable history. Swept-footprint clearance checks over each tool
 depth reject side/opening crossings. Shallow blind holes outside the lower
 profile retain exact walls/floors; unresolved floors and breakthrough are
-explicitly rejected.
+explicitly rejected. Blind nodes now select top or bottom entry, preserving
+exact floors, tool-depth clearance and saved editing intent.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel

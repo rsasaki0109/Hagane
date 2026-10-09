@@ -500,3 +500,36 @@ scales. Native checks cover reversed profiles, shallow cuts beyond the lower
 footprint, deep-cut interference with openings/sides, breakthrough and cache
 recovery. Native/WASM reports and meshes agree; browser tests edit depth, reject
 breakthrough, recover and restore the saved blind model.
+
+## Bottom-entry blind nodes
+
+![Actual browser history with a bottom-entry blind cut](workflow-bottom-blind.png)
+
+Blind bore nodes accept optional `entry: "top" | "bottom"`. Omitted `entry`
+defaults to top, and explicit top is omitted on canonical export, preserving
+existing documents. Bottom entry applies to both centered box and skew polygon
+stocks. Unknown entry values are rejected. Through nodes must omit entry or
+use top; explicit bottom through nodes return `unexpected_entry` rather than
+silently ignoring machining intent.
+
+For bottom entry the opening lies at `Z = -height/2`, and the floor at
+`Z = -height/2 + depth`. Shared exact circle edges join the lower cap opening,
+inward cylinder wall and floor. The floor outward normal is −Z, into the cut.
+Depth remains a positive world-Z distance, with depth and remaining stock
+thickness exceeding ten linear tolerances. The moving-profile center path is
+`center` to `center - offset * depth/height`; the same swept-boundary certificate
+checks only the actual cut interval. Diagnostics and rejected-tool outlines
+use the selected entry face. Top/bottom/through nodes may coexist only with
+pairwise disjoint XY footprints; intersecting or coaxial cuts are unsupported.
+
+Use **Blind entry face** in the browser controls. Entry changes rebuild only the
+selected node and its dependent suffix; Undo/Redo, JSON download and validated
+local reload preserve entry. The
+[bottom-entry example](workflow-bottom-blind-example.json) can be imported or
+run with `cargo run --example workflow -- docs/workflow-bottom-blind-example.json`.
+Native tests check exact volume, lower opening/floor/material classification,
+−Z floor orientation, closed B-rep and opposite display-edge uses across scales,
+depth/opening interference, malformed/through-entry rejection and cache recovery.
+Native/WASM reports and meshes agree; browser tests exercise entry/depth edits,
+Undo/Redo, breakthrough rejection, download and reload. General side-entry
+polygon machining and interacting tools remain outside this document domain.

@@ -22,7 +22,7 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
 box/bore dimensions or extrude an editable polygon profile with inner openings
 and an optional skew direction with disjoint Z-axis through/blind bores,
-add/select/remove multiple mixed through/blind cuts,
+add/select/remove multiple mixed through/blind cuts (top or bottom entry),
 inspect measured side/floor/hole-pair diagnostics, correct rejected
 edits and save/load a versioned operation document in the browser. Incremental
 B-rep sessions reuse unchanged history prefixes and display which operations

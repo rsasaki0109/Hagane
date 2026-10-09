@@ -1072,7 +1072,7 @@ pub fn subtract_skew_polygon_region_prism_bores(
             bore.radius,
             offset,
             height,
-            bore.depth,
+            [1. - bore.depth.unwrap_or(height) / height, 1.],
         )?
         .0 <= 10. * t.linear
         {
@@ -1109,10 +1109,13 @@ pub(crate) fn swept_polygon_region_bore_clearance(
     radius: f64,
     offset: [f64; 2],
     height: f64,
-    depth: Option<f64>,
+    interval: [f64; 2],
 ) -> Result<(f64, Option<usize>)> {
-    let depth = depth.unwrap_or(height);
-    if !depth.is_finite() || depth <= 0. || depth > height {
+    if interval.iter().any(|v| !v.is_finite())
+        || interval[0] < 0.
+        || interval[1] > 1.
+        || interval[0] >= interval[1]
+    {
         return Err(Error::InvalidInput(
             "invalid tool depth for swept clearance",
         ));
@@ -1120,12 +1123,15 @@ pub(crate) fn swept_polygon_region_bore_clearance(
     if offset == [0., 0.] {
         return polygon_region_bore_clearance(outer, holes, center, radius);
     }
-    let start_fraction = 1. - depth / height;
+    let start_fraction = interval[0];
     let start = [
         center[0] - offset[0] * start_fraction,
         center[1] - offset[1] * start_fraction,
     ];
-    let end = [center[0] - offset[0], center[1] - offset[1]];
+    let end = [
+        center[0] - offset[0] * interval[1],
+        center[1] - offset[1] * interval[1],
+    ];
     let factor = 1_f64.hypot(offset[0].hypot(offset[1]) / height);
     if start.iter().chain(&end).any(|v| !v.is_finite()) || !factor.is_finite() || height <= 0. {
         return Err(Error::Unsupported("unresolved swept tool coordinates"));
@@ -1176,4 +1182,37 @@ pub(crate) fn checked_skew_prism_bore_tools(
         ),
     };
     checked_box_bore_tools(envelope, bores, t)
+}
+
+// Checked workflow calls only: world-Z blind cut entering the lower cap.
+pub(crate) fn append_bottom_blind_bore(solid: &mut Solid, stock: BoxSpec, bore: BoxBore) {
+    let depth = bore.depth.expect("validated blind depth");
+    let base = Point3::new(bore.center[0], bore.center[1], stock.min.z);
+    let bottom = ring(solid, base, bore.radius);
+    let floor_center = base + Vec3::new(0., 0., depth);
+    let top = ring(solid, floor_center, bore.radius);
+    let wire = cap_ring(solid, bottom, &solid.shell.faces[0].surface, false);
+    solid.shell.faces[0].wires.push(wire);
+    cylindrical_face(
+        solid,
+        bottom,
+        top,
+        CylinderSpec {
+            base,
+            radius: bore.radius,
+            height: depth,
+        },
+        -1,
+    );
+    let surface = Surface::Plane {
+        origin: floor_center,
+        u: Vec3::new(1., 0., 0.),
+        v: Vec3::new(0., 1., 0.),
+    };
+    let wire = cap_ring(solid, top, &surface, true);
+    solid.shell.faces.push(Face {
+        surface,
+        orientation: -1,
+        wires: vec![wire],
+    });
 }

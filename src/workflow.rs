@@ -40,6 +40,8 @@ pub enum WorkflowOperation {
         size: [f64; 3],
     },
     Bore {
+        #[serde(default, skip_serializing_if = "WorkflowBoreEntry::is_top")]
+        entry: WorkflowBoreEntry,
         id: String,
         input: String,
         mode: WorkflowBoreMode,
@@ -54,6 +56,18 @@ pub enum WorkflowOperation {
 pub enum WorkflowBoreMode {
     Through,
     Blind,
+}
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkflowBoreEntry {
+    #[default]
+    Top,
+    Bottom,
+}
+impl WorkflowBoreEntry {
+    fn is_top(&self) -> bool {
+        *self == Self::Top
+    }
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct WorkflowDiagnostic {
@@ -112,7 +126,7 @@ impl WorkflowDocument {
             .make_stock()
             .map_err(|e| geometry_error(e, self.operation_id(0)))?;
         for (i, (&bore, &tool)) in plan.bores.iter().zip(&plan.tools).enumerate() {
-            apply_checked_prism_bore(&mut solid, plan.stock, bore, tool, plan.tolerance)
+            plan.apply_bore(&mut solid, i, bore, tool)
                 .map_err(|e| geometry_error(e, self.operation_id(i + 1)))?;
         }
         solid
@@ -258,11 +272,13 @@ impl WorkflowDocument {
             _ => Vec3::new(0., 0., size.z),
         };
         let mut bores: Vec<BoxBore> = Vec::new();
+        let mut entries = Vec::new();
         let mut ids = vec![box_id.as_str()];
         for operation in &self.operations[1..] {
             let WorkflowOperation::Bore {
                 id,
                 input,
+                entry,
                 mode,
                 center,
                 radius,
@@ -298,6 +314,14 @@ impl WorkflowDocument {
                     Some("Enter a positive, resolved radius and finite XY center.".into());
                 return Err(d);
             }
+            if *mode == WorkflowBoreMode::Through && *entry != WorkflowBoreEntry::Top {
+                return Err(diagnostic(
+                    "unexpected_entry",
+                    Some(id),
+                    Some("entry"),
+                    "Through bores must omit entry or use top; entry only selects blind cuts.",
+                ));
+            }
             if *mode == WorkflowBoreMode::Blind {
                 let valid_depth =
                     depth
@@ -330,9 +354,14 @@ impl WorkflowDocument {
                     [direction.x, direction.y],
                     size.z,
                     if *mode == WorkflowBoreMode::Blind {
-                        *depth
+                        let fraction = depth.unwrap() / size.z;
+                        if *entry == WorkflowBoreEntry::Bottom {
+                            [0., fraction]
+                        } else {
+                            [1. - fraction, 1.]
+                        }
                     } else {
-                        None
+                        [0., 1.]
                     },
                 )
                 .map_err(|e| geometry_error(e, id))?
@@ -424,6 +453,7 @@ impl WorkflowDocument {
                     });
                 }
             }
+            entries.push(*entry);
             ids.push(id.as_str());
         }
         let tools = checked_skew_prism_bore_tools(b, [direction.x, direction.y], &bores, t)
@@ -432,6 +462,7 @@ impl WorkflowDocument {
             stock: b,
             direction,
             profile,
+            entries,
             bores,
             tools,
             tolerance: t,
@@ -449,6 +480,7 @@ impl WorkflowDocument {
             radius,
             depth,
             mode,
+            entry,
             ..
         }) = self
             .operations
@@ -467,13 +499,17 @@ impl WorkflowDocument {
         {
             return vec![];
         }
-        let top = size[2] / 2.;
-        let bottom = if *mode == WorkflowBoreMode::Blind {
-            top - depth.unwrap_or(size[2])
+        let upper = size[2] / 2.;
+        let (bottom, top) = if *mode == WorkflowBoreMode::Blind {
+            if *entry == WorkflowBoreEntry::Bottom {
+                (-upper, -upper + depth.unwrap_or(size[2]))
+            } else {
+                (upper - depth.unwrap_or(size[2]), upper)
+            }
         } else {
-            -top
+            (-upper, upper)
         };
-        if !bottom.is_finite() || bottom.abs() > 1e6 {
+        if !bottom.is_finite() || !top.is_finite() || bottom.abs() > 1e6 || top.abs() > 1e6 {
             return vec![];
         }
         let point = |z: f64, i: usize| {
@@ -527,11 +563,26 @@ struct WorkflowPlan {
     stock: BoxSpec,
     direction: Vec3,
     profile: Option<PolygonProfile>,
+    entries: Vec<WorkflowBoreEntry>,
     bores: Vec<BoxBore>,
     tools: Vec<CylinderSpec>,
     tolerance: Tolerance,
 }
 impl WorkflowPlan {
+    fn apply_bore(
+        &self,
+        solid: &mut Solid,
+        index: usize,
+        bore: BoxBore,
+        tool: CylinderSpec,
+    ) -> Result<()> {
+        if self.entries[index] == WorkflowBoreEntry::Bottom {
+            crate::operations::append_bottom_blind_bore(solid, self.stock, bore);
+            Ok(())
+        } else {
+            apply_checked_prism_bore(solid, self.stock, bore, tool, self.tolerance)
+        }
+    }
     fn make_stock(&self) -> Result<Solid> {
         if let Some(profile) = &self.profile {
             extrude_polygon(profile, self.direction, self.tolerance)
@@ -617,12 +668,11 @@ impl WorkflowSession {
             (*snapshots[reused - 1]).clone()
         };
         for index in reused.max(1)..document.operations.len() {
-            apply_checked_prism_bore(
+            plan.apply_bore(
                 &mut solid,
-                plan.stock,
+                index - 1,
                 plan.bores[index - 1],
                 plan.tools[index - 1],
-                plan.tolerance,
             )
             .and_then(|()| solid.validate(plan.tolerance))
             .map_err(|e| geometry_error(e, document.operation_id(index)))?;

@@ -31,6 +31,7 @@ fn skew_through_bores_preserve_exact_solid_and_incremental_history() {
                 input: input.into(),
                 center: [center[0] * scale, center[1] * scale],
                 radius: radius * scale,
+                entry: WorkflowBoreEntry::Top,
                 mode: WorkflowBoreMode::Through,
                 depth: None,
             });

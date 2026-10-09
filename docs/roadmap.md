@@ -31,7 +31,9 @@ polygon stock to document history with exact caps/walls, profile openings,
 editing and restoration. Disjoint world-Z through/blind bores now retain exact
 cap circles/cylinder walls and blind floors on skew polygon stock. Swept-footprint
 certificates use the actual tool depth, rejecting side/opening crossings and
-near contacts; blind floor thickness is independently checked. Curved profiles and arbitrary-plane extrusion frames
+near contacts; blind floor thickness is independently checked. Blind nodes now
+select top/bottom entry with exact floor normals and depth-interval checks,
+incremental editing and validated browser restoration. Curved profiles and arbitrary-plane extrusion frames
 remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
