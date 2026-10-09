@@ -699,6 +699,12 @@ impl ImportedNurbsGraph {
             Self::Holed(body) => body.bounds(),
         }
     }
+    pub fn mass_properties(&self, tol: Tolerance) -> Result<NurbsGraphMassProperties> {
+        match self {
+            Self::Plain(body) => body.mass_properties(tol),
+            Self::Holed(body) => body.mass_properties(tol),
+        }
+    }
     pub fn tessellate_bounded(
         &self,
         error: f64,

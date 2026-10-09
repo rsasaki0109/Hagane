@@ -79,6 +79,9 @@ loads preserve the accepted model.
 A [common typed graph import API](docs/nurbs-graph-step-auto-import.md) selects
 plain or single-opening recognition once and provides shared inspection,
 section, display and export methods.
+[Uniform-density graph mass properties](docs/nurbs-graph-mass-properties.md)
+compute volume and world centroid from retained polynomial geometry, including
+source trims, rigid placement and rectangular openings, without mesh integration.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

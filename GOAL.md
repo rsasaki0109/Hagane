@@ -1063,3 +1063,14 @@ caller-side STEP inspection. This improves integration, not geometric coverage:
 placed/restricted imports and general shells remain unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [common graph import](docs/nurbs-graph-step-auto-import.md).
+
+## Scoped graph uniform-density mass properties
+
+Certified graph solids and single-opening graph solids now expose volume and
+world centroid from polynomial column moments. Retained UV rectangles and
+four positive material strips support trimmed and off-centre holed parts without
+mesh integration or near-equal volume subtraction. Rigid placement preserves
+volume and transforms the centroid. Browser and native/WASM JSON show accepted
+properties; generic rational-shell mass, mixed density, inertia and surface
+area remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [graph mass properties](docs/nurbs-graph-mass-properties.md).

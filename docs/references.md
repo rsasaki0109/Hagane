@@ -706,3 +706,14 @@ knot-refinement mathematics described in the de Boor/Piegl–Tiller references
 above. A bounded binary64 candidate search is only representation recognition;
 all encoded geometry must match exactly. Original MIT OR Apache-2.0 code adds
 no dependency and copies or translates no OCCT source.
+
+Scoped graph uniform-density moments use elementary column integrals:
+volume density `h`, horizontal moment densities `x*h`, `y*h`, and vertical
+moment density `h²/2`. Tensor three-point Gauss–Legendre integration is exact
+for each coordinate polynomial of degree at most five; these densities reach
+at most degree four. Public mathematical reference:
+https://dlmf.nist.gov/3.5#v (Gauss quadrature). Scaled positive material-strip
+sums and local-to-world centroid placement avoid subtractive hole moments and
+large translated world moments. Floating-point guards are engineering checks,
+not interval arithmetic. Original MIT OR Apache-2.0 implementation introduces
+no dependency and copies or translates no OCCT source.

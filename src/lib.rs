@@ -174,3 +174,6 @@ pub use nurbs_graph_step_import_demo::*;
 
 mod nurbs_graph_step_import;
 pub use nurbs_graph_step_import::*;
+
+mod nurbs_graph_mass_properties;
+pub use nurbs_graph_mass_properties::*;
