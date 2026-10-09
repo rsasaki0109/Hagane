@@ -73,9 +73,11 @@ roundoff remains a separate absolute precision prerequisite. A large relative
 budget does not bypass validation of a far-translated source at the requested
 absolute tolerance.
 
-This is a finite source-UV roof query. Arbitrary rational shells, unbounded
-world-plane intersections, closed cap/wall section profiles and oblique solid
-splitting remain unsupported.
+This is a finite source-UV roof query and returns curves only. The separate
+[source-vertical oblique partition API](nurbs-graph-polygon-split.md) now returns
+closed parts and a finite cut face for rectangular/convex graph stock.
+Arbitrary rational shells, general world-plane intersections and holed-stock
+oblique splitting remain unsupported.
 
 ## Native, WASM and browser
 

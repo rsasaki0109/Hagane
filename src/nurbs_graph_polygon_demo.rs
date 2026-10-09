@@ -49,7 +49,7 @@ pub fn nurbs_graph_polygon_numeric_demo_json(values: &[f64]) -> Result<String> {
         values[8], values[9], values[10], values[11], values[12], polygon,
     )
 }
-fn serialize_polygon_graph(
+pub(crate) fn serialize_polygon_graph(
     graph: &NurbsGraphPolygonSolid,
     width: f64,
     depth: f64,
@@ -94,12 +94,26 @@ fn serialize_polygon_graph(
             )),
         })
         .collect::<Result<Vec<_>>>()?;
+    let bounds = graph.bounds()?;
+    let mass = graph.mass_properties(Tolerance::default())?;
+    Ok(serde_json::json!({
+        "polygon":graph.polygon(),"bounds_kind":"conservative control hull bounds","scope":"strictly convex CCW source-UV polygon graph solid; generic STEP, classification and Booleans remain unsupported","width":width,"depth":depth,"height":height,"bulge":bulge,"error":error,"source_domain":graph.source().source_domain(),"volume":mass.volume,"mass_properties":{"volume":mass.volume,"centroid":xyz(mass.centroid),"units":"mm","volume_units":"mm3","centroid_units":"mm","density":"uniform","method":"polynomial fan integration"},"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},
+        "positions":positions,"normals":normals,"boundary_samples":boundary_samples,
+        "mesh":{"positions":display.mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":display.mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":display.mesh.triangles,"face_ids":display.mesh.face_ids},
+        "vertex_nodes":display.vertex_nodes,"vertex_uv":display.vertex_uv,"vertex_faces":display.vertex_faces,"error_bounds":display.error_bounds,"subdivisions":display.subdivisions,
+        "brep":serialize_polygon_brep(graph)?
+    }).to_string())
+}
+
+pub(crate) fn serialize_polygon_brep(graph: &NurbsGraphPolygonSolid) -> Result<serde_json::Value> {
+    graph.validate(Tolerance::default())?;
+    let solid = graph.brep();
+    let xyz = |p: Point3| [p.x, p.y, p.z];
     let curves=solid.edges.iter().map(|edge|match &edge.curve{
         Curve::Nurbs(curve)=>Ok(serde_json::json!({"degree":curve.degree(),"knots":curve.knots(),"weights":curve.weights(),"control_points":curve.control_points().iter().map(|p|xyz(*p)).collect::<Vec<_>>()})),
         Curve::Line{a,b}=>Ok(serde_json::json!({"degree":1,"knots":[0.,0.,1.,1.],"weights":[1.,1.],"control_points":[xyz(*a),xyz(*b)]})),
         _=>Err(Error::Unsupported("graph demo boundary curve is unsupported")),
     }).collect::<Result<Vec<_>>>()?;
-    let bounds = graph.bounds()?;
     let face_edges = solid
         .shell
         .faces
@@ -154,12 +168,7 @@ fn serialize_polygon_graph(
                 .collect::<Result<Vec<_>>>()
         })
         .collect::<Result<Vec<_>>>()?;
-    let mass = graph.mass_properties(Tolerance::default())?;
-    Ok(serde_json::json!({
-        "polygon":graph.polygon(),"bounds_kind":"conservative control hull bounds","scope":"strictly convex CCW source-UV polygon graph solid; generic STEP, classification and Booleans remain unsupported","width":width,"depth":depth,"height":height,"bulge":bulge,"error":error,"source_domain":graph.source().source_domain(),"volume":mass.volume,"mass_properties":{"volume":mass.volume,"centroid":xyz(mass.centroid),"units":"mm","volume_units":"mm3","centroid_units":"mm","density":"uniform","method":"polynomial fan integration"},"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},
-        "positions":positions,"normals":normals,"boundary_samples":boundary_samples,
-        "mesh":{"positions":display.mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":display.mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":display.mesh.triangles,"face_ids":display.mesh.face_ids},
-        "vertex_nodes":display.vertex_nodes,"vertex_uv":display.vertex_uv,"vertex_faces":display.vertex_faces,"error_bounds":display.error_bounds,"subdivisions":display.subdivisions,
-        "brep":{"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"faces":solid.shell.faces.len(),"edges":solid.edges.len(),"closed":true,"face_edges":face_edges,"face_forwards":face_forwards,"curves":curves,"pcurves":pcurves,"surfaces":surfaces}
-    }).to_string())
+    Ok(
+        serde_json::json!({"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"faces":solid.shell.faces.len(),"edges":solid.edges.len(),"closed":true,"face_edges":face_edges,"face_forwards":face_forwards,"curves":curves,"pcurves":pcurves,"surfaces":surfaces}),
+    )
 }

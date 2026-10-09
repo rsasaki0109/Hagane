@@ -191,6 +191,12 @@ mod nurbs_graph_polygon_display;
 
 mod nurbs_graph_polygon_mass;
 
+mod nurbs_graph_polygon_split;
+pub use nurbs_graph_polygon_split::*;
+
+mod nurbs_graph_polygon_split_demo;
+pub use nurbs_graph_polygon_split_demo::*;
+
 mod nurbs_graph_polygon_demo;
 pub use nurbs_graph_polygon_demo::*;
 

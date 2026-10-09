@@ -93,5 +93,6 @@ the same Rust JSON entry point and safe bounded numeric transport.
 
 This stage does not add concave polygons, polygon openings, arbitrary curved
 Boolean tools, polygon graph STEP interchange, classification or inertia.
-It supplies closed oblique boundary geometry needed by later plane splits.
+The separate [source-vertical oblique partition API](nurbs-graph-polygon-split.md)
+now uses these boundaries to return two closed parts and a finite cut face.
 General NURBS Boolean operations remain incomplete.

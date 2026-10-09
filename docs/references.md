@@ -744,3 +744,13 @@ and its degree-one Jacobian exactly in real arithmetic. Convex combinations
 and polynomial Hessian bounds control display error, with explicit binary64
 engineering allowances. Original MIT OR Apache-2.0 code adds no dependency
 and copies or translates no OCCT source.
+
+Source-vertical graph partitions use elementary convex polygon half-plane
+clipping: for opposite signed distances, the edge crossing fraction is
+`d0/(d0-d1)`. Shared crossings and canonical curve direction retain identical
+cut bases under Bernstein/NURBS parameter reversal. Plane normals follow the
+physical scaled UV tangent and its source-XY perpendicular. Polynomial column
+moments and positive triangle quadrature reuse the public references above.
+Closed convex interpolation in display preserves mathematical endpoint ranges
+without changing B-rep geometry. Independent MIT OR Apache-2.0 implementation
+adds no dependency and copies or translates no OCCT source.

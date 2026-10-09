@@ -53,6 +53,28 @@ fn build(source: &NurbsGraphSolid, polygon: &[[f64; 2]], tol: Tolerance) -> Resu
             tol,
         )?);
     }
+    // Lift each edge in a direction independent of polygon traversal. Reversal
+    // changes only exact array ordering, so adjacent partition bodies share CVs.
+    for cap in &mut caps {
+        for i in 0..polygon.len() {
+            let a = polygon[i];
+            let b = polygon[(i + 1) % polygon.len()];
+            let reverse = a[0] > b[0] || (a[0] == b[0] && a[1] > b[1]);
+            let mut curve = cap
+                .boundary
+                .surface
+                .parameter_curve(if reverse { b } else { a }, if reverse { a } else { b })?;
+            if reverse {
+                curve = NurbsCurve::new(
+                    curve.degree(),
+                    curve.knots().iter().rev().map(|t| 1. - t).collect(),
+                    curve.control_points().iter().rev().copied().collect(),
+                    curve.weights().iter().rev().copied().collect(),
+                )?;
+            }
+            cap.boundary.edges[i].curve = Curve::Nurbs(Box::new(curve));
+        }
+    }
     let n = polygon.len();
     let mut vertices = caps[0].boundary.vertices.clone();
     vertices.extend(caps[1].boundary.vertices.clone());

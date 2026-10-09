@@ -1004,9 +1004,10 @@ affine source-UV paths, including restrictions, placement and rectangular-hole
 material gaps. Five algebraic Bernstein controls, unit weights and global path
 knots retain the roof pcurve after clipping; private certificates reject public
 mutation. Contact/conditioning cases remain explicit errors. Native/WASM reports
-and browser overlays use exact curves plus bounded display tessellation. Closed
-section profiles, arbitrary shell/plane intersections and oblique solid splitting
-remain unsupported. The estimate remains **15–25%**, toward **80%**.
+and browser overlays use exact curves plus bounded display tessellation. These
+roof queries return curves only. The later source-vertical oblique
+partition milestone adds closed parts and finite sections for plain/convex
+graph stock; arbitrary shell/plane intersections remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [roof sections](nurbs-graph-roof-section.md).
 
 ## Closed convex polygon graph solids
@@ -1020,3 +1021,15 @@ demo verify accepted solids and explicit invalid-input rejection. Concave
 boundaries, polygon openings, general curved Booleans and polygon graph STEP
 interchange remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [closed polygon graph solids](nurbs-graph-polygon.md).
+
+## Source-vertical oblique graph partitions
+
+A directed affine source-UV line now partitions rectangular or convex polygon
+graph stock into two closed NURBS solids. Crossings are computed once; opposite
+cut walls share exact reversed control nets and weights. A retained finite
+NURBS section, placed world plane, strict source/result certificates and
+positive volume integration verify the operation. Native/WASM and browser
+side selection preserve accepted models on contact/conditioning failures.
+Non-source-vertical planes, concave/holed stock and general curved Boolean
+operations remain unsupported. The estimate stays **15–25%**, toward **80%**.
+See [oblique graph partitions](nurbs-graph-polygon-split.md).

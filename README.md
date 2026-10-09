@@ -92,6 +92,10 @@ retain oblique 3–16-corner boundaries as actual closed B-reps with ruled NURBS
 walls, volume/centroid and conforming bounded display. `web/graph-polygon.html`
 edits the CCW polygon on restricted or placed sources; openings and general
 curved Booleans remain unsupported.
+[Source-vertical oblique graph partitions](docs/nurbs-graph-polygon-split.md)
+now split rectangular or convex graph stock into two closed solids, with
+exact shared cut geometry and conserved volume. `web/graph-plane-split.html`
+edits the directed UV line and selects either retained side.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

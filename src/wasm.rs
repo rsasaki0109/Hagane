@@ -4,6 +4,7 @@
 mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+    static GRAPH_POLYGON_SPLIT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static GRAPH_POLYGON_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static WORKFLOW_SESSION: Mutex<Option<crate::WorkflowSession>> = Mutex::new(None);
@@ -996,6 +997,36 @@ mod exports {
     #[no_mangle]
     pub extern "C" fn hagane_box_contact_demo(offset: f64) -> i32 {
         generate(crate::box_contact_demo_json(offset))
+    }
+    #[unsafe(no_mangle)]
+    pub extern "C" fn hagane_graph_polygon_split_begin() {
+        let mut input = GRAPH_POLYGON_SPLIT_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[unsafe(no_mangle)]
+    pub extern "C" fn hagane_graph_polygon_split_push(value: f64) -> i32 {
+        let mut input = GRAPH_POLYGON_SPLIT_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 50 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[unsafe(no_mangle)]
+    pub extern "C" fn hagane_graph_polygon_split_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = GRAPH_POLYGON_SPLIT_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            generate(Err(crate::Error::InvalidInput(
+                "line split transport rejected input",
+            )))
+        } else {
+            generate(crate::nurbs_graph_polygon_split_demo_json(&values))
+        }
     }
     #[unsafe(no_mangle)]
     pub extern "C" fn hagane_convex_union_demo(offset: f64) -> i32 {

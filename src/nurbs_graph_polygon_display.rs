@@ -88,8 +88,11 @@ impl NurbsGraphPolygonSolid {
         let center = std::array::from_fn::<_, 2, _>(|axis| {
             polygon
                 .iter()
-                .map(|p| p[axis] / corners as f64)
-                .sum::<f64>()
+                .enumerate()
+                .skip(1)
+                .fold(polygon[0][axis], |mean, (i, p)| {
+                    closed_lerp(mean, p[axis], 1., (i + 1) as f64)
+                })
         });
         for cap in 0..2 {
             for edge in 0..corners {
@@ -106,14 +109,21 @@ impl NurbsGraphPolygonSolid {
                     } else {
                         [2, edge, a, b, cap]
                     };
+                    // Evaluate endpoints exactly and the fan as nested convex
+                    // combinations. Multiplying a difference by the integer
+                    // numerator before division can overshoot a domain endpoint.
                     let uv = std::array::from_fn(|axis| {
-                        if a + b == n {
-                            polygon[edge][axis]
-                                + (polygon[next][axis] - polygon[edge][axis]) * b as f64 / n as f64
-                        } else {
+                        let radial = a + b;
+                        if radial == 0 {
                             center[axis]
-                                + (polygon[edge][axis] - center[axis]) * a as f64 / n as f64
-                                + (polygon[next][axis] - center[axis]) * b as f64 / n as f64
+                        } else {
+                            let rim = closed_lerp(
+                                polygon[edge][axis],
+                                polygon[next][axis],
+                                b as f64,
+                                radial as f64,
+                            );
+                            closed_lerp(center[axis], rim, radial as f64, n as f64)
                         }
                     });
                     (key, uv)
@@ -182,6 +192,18 @@ impl NurbsGraphPolygonSolid {
             }
         }
         Ok(out)
+    }
+}
+// The exact interpolation belongs to [min(a,b),max(a,b)]. Enforcing
+// that closed interval only corrects floating-point overshoot; endpoints keep
+// their original bits, including across fan and polygon edge seams.
+fn closed_lerp(a: f64, b: f64, numerator: f64, denominator: f64) -> f64 {
+    if numerator == 0. {
+        a
+    } else if numerator == denominator {
+        b
+    } else {
+        (a + (b - a) * (numerator / denominator)).clamp(a.min(b), a.max(b))
     }
 }
 fn boundary_key(edge: usize, k: usize, height: usize, n: usize, corners: usize) -> Key {
@@ -358,6 +380,32 @@ mod tests {
             (fine.mesh.signed_volume() - exact).abs() < (coarse.mesh.signed_volume() - exact).abs()
         );
         assert!((fine.mesh.signed_volume() - exact).abs() < 0.002);
+        Ok(())
+    }
+    #[test]
+    fn oblique_split_domain_endpoints_remain_closed() -> Result<()> {
+        let tol = Tolerance::default();
+        let source = NurbsGraphSolid::new([20., 12., 3.], 20., tol)?;
+        let split = source.split_uv_line([0., 0.8], [0.8, 0.], tol)?;
+        for body in [&split.negative, &split.positive] {
+            let display = body.tessellate_bounded(0.5, 65536, tol)?;
+            assert!(display.mesh.signed_volume() > 0.);
+            for (i, uv) in display.vertex_uv.iter().enumerate() {
+                let Surface::Nurbs(surface) =
+                    &body.brep().shell.faces[display.vertex_faces[i]].surface
+                else {
+                    unreachable!()
+                };
+                let domain = surface.domain();
+                for axis in 0..2 {
+                    assert!(domain[axis][0] <= uv[axis] && uv[axis] <= domain[axis][1]);
+                }
+                assert!(
+                    (surface.evaluate(uv[0], uv[1])? - display.mesh.positions[i]).norm()
+                        <= source.arithmetic_budget()?
+                );
+            }
+        }
         Ok(())
     }
     #[test]
