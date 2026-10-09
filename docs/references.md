@@ -542,3 +542,11 @@ grid whose cells can be classified against rectangular trim interiors without
 approximate curve clipping. The retained rational surface and trim topology
 precede mesh generation. UV separation uses a separate parameter arithmetic
 guard, not a physical-length tolerance. No OCCT code or dependency is added.
+
+Material-only rectangular trimming classifies the tensor span grid against
+exact retained UV rectangles before subdivision and normal evaluation. All
+retained spans share one dyadic refinement depth, preserving prior conformity
+and Bernstein bounds while avoiding evaluations in removed interiors. The
+singular-source demonstration uses independently derived polynomial-to-Bernstein
+coefficients for the displayed formulas, with unit rational weights. These
+changes use no copied source, external CAD implementation or new dependency.

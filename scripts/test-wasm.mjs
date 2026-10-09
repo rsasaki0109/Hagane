@@ -165,8 +165,10 @@ for(const [index,value] of [[5,-0.1],[6,1.1],[5,0.8],[5,0.9],[7,NaN],[2,0.9],[4,
 assert.equal(trimmedSurface(...trimArgs).status,0);
 console.log('Rectangular UV restriction: 5 native/WASM retained B-rep cases, original-coordinate geometry and bounded triangles, exact boundaries, smooth/C0 endpoint normals and errors/recovery passed.');
 function holedSurface(...args){const status=k.hagane_generate_surface_hole(...args);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+function singularPoint(height,_weight,u,v){const a=u-0.5,b=v-0.5;return [80*u-40,120*(b**3+a*a*b),16*height*u*(1-u)*v*(1-v)];}
+function singularNormal(height,u,v){const a=u-0.5,b=v-0.5,yu=240*a*b,yv=120*(3*b*b+a*a),zu=16*height*(1-2*u)*v*(1-v),zv=16*height*u*(1-u)*(1-2*v),n=[yu*zv-zu*yv,-80*zv,80*yv],length=Math.hypot(...n);assert.ok(length>0);return n.map(x=>x/length);}
 function checkHoledSurface(data){
- const oracle=data.crease?roofPoint:surfacePoint,topology=data.brep,outer=data.outer,hole=data.holes[0];assert.deepEqual(outer,[[0.1,0.9],[0.1,0.9]]);assert.equal(topology.faces,1);assert.equal(topology.closed,false);assert.equal(topology.orientation,1);assert.equal(topology.vertices.length,8);assert.equal(topology.edge_vertices.length,8);assert.equal(topology.wire_edges.length,2);assert.equal(data.sections.length,8);
+ const oracle=data.singular_source?singularPoint:data.crease?roofPoint:surfacePoint,topology=data.brep,outer=data.outer,hole=data.holes[0];assert.deepEqual(outer,[[0.1,0.9],[0.1,0.9]]);assert.equal(topology.faces,1);assert.equal(topology.closed,false);assert.equal(topology.orientation,1);assert.equal(topology.vertices.length,8);assert.equal(topology.edge_vertices.length,8);assert.equal(topology.wire_edges.length,2);assert.equal(data.sections.length,8);
  topology.wire_edges.forEach((ids,w)=>{assert.equal(ids.length,4);const uv=topology.wire_uvs[w],signed=uv.reduce((sum,p,i)=>{const q=uv[(i+1)%4];return sum+p[0]*q[1]-p[1]*q[0];},0)/2;assert.ok(Math.abs(signed-(w===0?0.64:-(data.hole_width**2)))<1e-12);const directed=ids.map((edge,i)=>topology.wire_forward[w][i]?topology.edge_vertices[edge]:topology.edge_vertices[edge].toReversed());directed.forEach((edge,i)=>{assert.equal(edge[1],directed[(i+1)%4][0]);compareIntersection(topology.vertices[edge[0]],oracle(data.height,data.weight,...uv[i]));});});
  assert.equal(new Set(topology.wire_edges.flat()).size,8);assert.equal(data.positions.length,data.cells*18);assert.equal(data.triangles,data.cells*2);assert.equal(data.triangle_nodes.length,data.triangles);assert.equal(data.triangle_uvs.length,data.triangles);
  const nodes=new Map(),uvNodes=new Map(),edges=new Map();let area=0;
@@ -185,6 +187,14 @@ for(const args of [[35,1,0.1,0.3,0],[-35,2,0.5,0.4,0],[35,1,0.1,0.3,1],[-35,2,0.
 for(const args of [[35,1,0.1,0,0],[35,1,0.1,-0.1,0],[35,1,0.1,NaN,0],[35,1,0.1,0.8,0],[35,1,0.1,0.9,0],[35,0,0.1,0.3,0],[NaN,1,0.1,0.3,0],[35,1,0,0.3,0],[35,1,NaN,0.3,0],[35,1,1e-14,0.3,0],[35,1,0.1,0.3,2]]){const {status,result}=holedSurface(...args);assert.equal(status,1);assert.equal(typeof result.error,'string');}
 assert.equal(holedSurface(35,1,0.1,0.3,0).status,0);
 console.log('Rectangular UV holes: 4 native/WASM cases, exact inner-wire winding/geometry, excluded UV area, independent triangle bounds, welded edge incidence and errors/recovery passed.');
+function singularHole(...args){const status=k.hagane_generate_surface_singular_hole(...args);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+for(const args of [[35,0.1,0.3],[-35,0.2,0.5],[0,0.1,0.4]]){
+ const {status,result}=singularHole(...args);assert.equal(status,0,JSON.stringify(result));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface_singular_hole','--',...args.map(String)],{encoding:'utf8',maxBuffer:32*1024*1024,cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);checkHoledSurface(result);assert.equal(result.singular_source,true);assert.equal(result.source_center_normal_available,false);assert.deepEqual(result.source_degrees,[2,3]);assert.ok(result.cells<=16384);
+ result.triangle_uvs.forEach((triangle,t)=>triangle.forEach(([u,v],j)=>{assert.ok(u!==0.5||v!==0.5);compareIntersection(result.normals.slice(t*9+j*3,t*9+j*3+3),singularNormal(result.height,u,v));}));
+}
+for(const args of [[NaN,0.1,0.3],[35,0,0.3],[35,NaN,0.3],[35,1e-14,0.3],[35,0.1,0],[35,0.1,0.8],[35,0.1,NaN]]){const {status,result}=singularHole(...args);assert.equal(status,1);assert.equal(typeof result.error,'string');}
+assert.equal(singularHole(35,0.1,0.3).status,0);
+console.log('Material-only singular-source display: 3 native/WASM cases, unavailable excluded-center normal, independent polynomial positions/retained normals, bounded triangles, welded hole topology and errors/recovery passed.');
 
 // Independent BigInt oracle: decode exact IEEE-754 coordinates to integers
 // in units of 2^-1074. No floating arithmetic in the reference determinant.

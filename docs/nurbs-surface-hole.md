@@ -54,20 +54,22 @@ Hole widths and outer clearance must exceed it. A pair must have separation
 exceeding the allowance on at least one axis. This is an engineering numerical
 policy, not a conversion from physical length tolerance or an interval proof.
 
-Hole count, refined controls, insertion work and full display grid are bounded.
+Hole count, refined controls, insertion work and retained display grid are bounded.
 Resource exhaustion returns an error, never a partial successful mesh. A small
-remaining visible region does not bypass refinement or full-grid limits.
+remaining visible region does not bypass source refinement or extraction limits.
 At most 16 holes, 65,536 refined controls and 16,000,000 cumulative estimated
 hole-knot insertion work units are supported, in addition to the existing outer
 restriction and bounded mesher limits. The mesher's `max_cells` budget counts
-the full grid before removing opening cells.
+retained cells; source refinement and Bezier extraction still have their full
+control/work limits.
 An empty hole list is also valid and retains a single rectangular outer wire.
 
 ## Boundary-conforming display
 
 The bounded tensor mesher uses the refined source so every hole coordinate is
 a knot line. Its conforming grid therefore places each cell wholly inside or
-outside the removed rectangles. Whole cells in hole interiors are excluded;
+outside the removed rectangles. Whole cells in hole interiors are excluded
+before computing approximation bounds, subdividing or evaluating normals;
 no triangle crosses an inner boundary. This is display generation from exact
 retained trim wires, not a mesh Boolean used as the modeling representation.
 
@@ -81,9 +83,11 @@ one. Different UV locations are not welded solely by coincident XYZ.
 Bounds apply to the retained rational surface over the retained cells, with
 the existing engineering floating-point guard rather than interval arithmetic
 certification. Excluded regions are not claimed to be approximated. Full-source
-normal sampling can conservatively reject a singularity inside an opening;
-the mesher does not bypass singularity/resource checks just because cells are
-later excluded. Local normal checks still do not establish global injectivity.
+precision/refinement checks still concern the retained source net, including
+control points that influence removed regions. A singular tangent plane strictly
+inside an opening does not fail display merely because the underlying untrimmed
+surface is singular there. A singularity on a retained sampled point or boundary
+still returns an error. Local normal checks do not establish global injectivity.
 
 ## Native and browser demo
 
@@ -97,6 +101,11 @@ Open `surface-hole.html` to edit the width of a central square UV opening,
 height, positive rational weight and display error. Smooth and C0 roof fixtures
 use outer UV bounds 0.1..0.9 on both axes. The actual retained boundary is shown
 alongside the bounded triangles. Rejected edits preserve the accepted display.
+
+The **Singular center · excluded by hole** fixture now exercises
+[material-only evaluation](nurbs-surface-material.md): its underlying surface has
+an unusable tangent plane at UV=(0.5,0.5), strictly inside the removed opening.
+Only the retained region is sampled for display; the source remains unchanged.
 
 CLI/WASM arguments are height, weight, display error, UV hole width and fixture
 (0=smooth, 1=roof). The export is

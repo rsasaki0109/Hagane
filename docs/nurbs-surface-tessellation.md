@@ -21,6 +21,10 @@ endpoint limits. Nonrectangular trim loops remain unsupported.
 coordinates into source knot lines and retain only cells outside the openings.
 Exact B-rep inner wires precede display; logical boundary edge incidence and
 UV coverage are checked independently. This does not enable arbitrary trims.
+Excluded span cells are now pruned before bounds, subdivision and normal
+evaluation. Holed-face display budgets count retained cells; full source
+refinement/extraction and coordinate/weight guards remain. See
+[material-only display](nurbs-surface-material.md).
 
 For an existing validated surface or rectangular open face:
 

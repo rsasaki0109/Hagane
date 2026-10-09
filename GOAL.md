@@ -794,3 +794,20 @@ an open face without global regularity certification. Curved/nonrectangular
 trims, cross-face sewing, closed NURBS solids, intersections, general curved
 Booleans and NURBS STEP remain future work. The long-term estimate remains
 **15–25%**, toward **80%**. See [UV openings](docs/nurbs-surface-hole.md).
+
+## Evaluate retained rational face cells before removed regions
+
+Holed-face tessellation now removes exact excluded span cells before bounds,
+subdivision and normal evaluation. This eliminates false display failures from
+sampled singularities inside removed holes and counts only retained cells toward
+the display budget. Exact surfaces, inner wires, original UV values, split C0
+normals and per-cell Bernstein bounds remain. Whole-source refinement/extraction
+limits and engineering coordinate/weight guards still apply.
+
+Native tests cover excluded versus retained singularities, resource limits and
+topology. The native/WASM/browser polynomial fixture retains an exact opening
+around a singular source point and verifies analytic geometry, normals, bounds,
+editing and recovery. This is display of the retained face, not shape repair or
+a global regularity certificate. Arbitrary trims, cross-face sewing, closed
+rational solids and general curved Booleans remain incomplete. The estimate
+remains **15–25%**, toward **80%**. See [retained-domain display](docs/nurbs-surface-material.md).

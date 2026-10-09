@@ -236,78 +236,16 @@ impl NurbsHoledFace {
         let Surface::Nurbs(surface) = &self.face.surface else {
             unreachable!()
         };
-        let full = surface.tessellate_bounded(error, max_cells)?;
-        let mut mesh = Mesh::default();
-        let mut uv_ranges = Vec::new();
-        let mut error_bounds = Vec::new();
-        let mut vertex_uv = Vec::new();
-        let mut vertex_nodes = Vec::new();
-        let mut normal_sides = Vec::new();
-        let mut display = std::collections::BTreeMap::new();
-        let mut nodes = std::collections::BTreeMap::new();
-        for (cell, range) in full.uv_ranges.iter().enumerate() {
-            let mut removed = false;
-            for hole in &self.holes {
-                let overlaps = (0..2).all(|axis| {
-                    range[axis][0].max(hole[axis][0]) < range[axis][1].min(hole[axis][1])
-                });
-                if overlaps {
-                    if !(0..2).all(|axis| {
-                        range[axis][0] >= hole[axis][0] && range[axis][1] <= hole[axis][1]
-                    }) {
-                        return Err(Error::InvalidTopology(
-                            "bounded mesh cell straddles retained hole boundary",
-                        ));
-                    }
-                    removed = true;
-                    break;
-                }
+        let mut output = surface.tessellate_bounded_excluding(error, max_cells, &self.holes)?;
+        if self.face.orientation < 0 {
+            for triangle in &mut output.mesh.triangles {
+                triangle.swap(1, 2);
             }
-            if removed {
-                continue;
+            for normal in &mut output.mesh.normals {
+                *normal = *normal * -1.;
             }
-            for triangle in &full.mesh.triangles[cell * 2..cell * 2 + 2] {
-                let mut ids = [0usize; 3];
-                for (j, old) in triangle.iter().copied().enumerate() {
-                    ids[j] = if let Some(id) = display.get(&old) {
-                        *id
-                    } else {
-                        let id = mesh.positions.len();
-                        mesh.positions.push(full.mesh.positions[old]);
-                        mesh.normals
-                            .push(full.mesh.normals[old] * self.face.orientation as f64);
-                        vertex_uv.push(full.vertex_uv[old]);
-                        normal_sides.push(full.normal_sides[old]);
-                        let node = full.vertex_nodes[old];
-                        let next_node = nodes.len();
-                        let new_node = *nodes.entry(node).or_insert(next_node);
-                        vertex_nodes.push(new_node);
-                        display.insert(old, id);
-                        id
-                    };
-                }
-                if self.face.orientation < 0 {
-                    ids.swap(1, 2);
-                }
-                mesh.triangles.push(ids);
-                mesh.face_ids.push(0);
-            }
-            uv_ranges.push(*range);
-            error_bounds.push(full.error_bounds[cell]);
         }
-        if mesh.triangles.is_empty() {
-            return Err(Error::InvalidTopology(
-                "NURBS holes removed the entire face",
-            ));
-        }
-        Ok(NurbsSurfaceMesh {
-            mesh,
-            uv_ranges,
-            error_bounds,
-            vertex_uv,
-            vertex_nodes,
-            normal_sides,
-        })
+        Ok(output)
     }
 }
 fn validate_regions(outer: [[f64; 2]; 2], holes: &[[[f64; 2]; 2]]) -> Result<()> {

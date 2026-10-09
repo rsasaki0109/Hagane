@@ -29,6 +29,16 @@ impl NurbsSurface {
         chord_error: f64,
         max_cells: usize,
     ) -> Result<NurbsSurfaceMesh> {
+        self.tessellate_bounded_excluding(chord_error, max_cells, &[])
+    }
+    /// Material-domain path: masks must be validated, disjoint rectangles with
+    /// boundaries retained as source knot lines. Excluded cells are never sampled.
+    pub(crate) fn tessellate_bounded_excluding(
+        &self,
+        chord_error: f64,
+        max_cells: usize,
+        holes: &[[[f64; 2]; 2]],
+    ) -> Result<NurbsSurfaceMesh> {
         if !chord_error.is_finite() || chord_error <= 0. || !(1..=65536).contains(&max_cells) {
             return Err(Error::InvalidInput(
                 "surface tessellation needs finite positive error and 1..65536 cells",
@@ -36,14 +46,36 @@ impl NurbsSurface {
         }
         let [p, q] = self.degrees();
         let [nu, nv] = [p + 1, q + 1];
-        let mut spans = [0usize; 2];
-        for (axis, span_count) in spans.iter_mut().enumerate() {
-            let knots = self.knots(axis)?;
-            *span_count = knots.windows(2).filter(|pair| pair[0] < pair[1]).count();
+        let spans: [Vec<[f64; 2]>; 2] = [
+            self.knots(0)?
+                .windows(2)
+                .filter(|pair| pair[0] < pair[1])
+                .map(|pair| [pair[0], pair[1]])
+                .collect(),
+            self.knots(1)?
+                .windows(2)
+                .filter(|pair| pair[0] < pair[1])
+                .map(|pair| [pair[0], pair[1]])
+                .collect(),
+        ];
+        let mut retained = 0usize;
+        for u in &spans[0] {
+            for v in &spans[1] {
+                if !excluded([*u, *v], holes)? {
+                    retained += 1;
+                }
+            }
         }
-        if spans[0].saturating_mul(spans[1]) > max_cells {
-            return Err(Error::Tessellation(
-                "surface knot span count exceeds cell limit",
+        if retained > max_cells {
+            return Err(Error::Tessellation(if holes.is_empty() {
+                "surface knot span count exceeds cell limit"
+            } else {
+                "retained NURBS cell count exceeds cell limit"
+            }));
+        }
+        if retained == 0 {
+            return Err(Error::InvalidTopology(
+                "NURBS holes removed the entire face",
             ));
         }
         let scale = self
@@ -62,8 +94,11 @@ impl NurbsSurface {
         }
         let origin = self.control_points()[0];
         let patches = self.bezier_patches()?;
-        let mut cells = Vec::with_capacity(patches.len());
+        let mut cells = Vec::with_capacity(retained);
         for patch in patches {
+            if excluded(patch.parameter_ranges, holes)? {
+                continue;
+            }
             let points = patch
                 .surface
                 .control_points()
@@ -338,4 +373,22 @@ fn canonical_parameter(parameter: f64) -> f64 {
     } else {
         parameter
     }
+}
+
+fn excluded(range: [[f64; 2]; 2], holes: &[[[f64; 2]; 2]]) -> Result<bool> {
+    for hole in holes {
+        let overlaps = (0..2)
+            .all(|axis| range[axis][0].max(hole[axis][0]) < range[axis][1].min(hole[axis][1]));
+        if overlaps {
+            if !(0..2)
+                .all(|axis| range[axis][0] >= hole[axis][0] && range[axis][1] <= hole[axis][1])
+            {
+                return Err(Error::InvalidTopology(
+                    "bounded mesh cell straddles retained hole boundary",
+                ));
+            }
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }

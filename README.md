@@ -24,6 +24,9 @@ selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.
 [Rectangular UV openings](docs/nurbs-surface-hole.md) additionally retain exact
 inner wires and boundary-conforming display in `web/surface-hole.html`.
+[Material-only NURBS display](docs/nurbs-surface-material.md) evaluates and
+subdivides only retained cells; the same page demonstrates an exact opening
+excluding a singular point of the source surface.
 Arbitrary trim curves and closed NURBS solids remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed

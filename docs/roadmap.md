@@ -709,3 +709,20 @@ This supports axis-aligned rectangular UV inner wires, not arbitrary trim curves
 or closed NURBS solids. Cross-face sewing, global regularity diagnostics,
 intersections, curved Booleans and NURBS STEP remain incomplete. The estimate
 remains **15–25%**, toward **80%**. See [UV openings](nurbs-surface-hole.md).
+
+## Material-only bounded rational face display
+
+Exact excluded knot-span cells are now removed before computing approximation
+bounds, subdivision and analytic normals. Retained cell budgets therefore do
+not charge removed interiors, and a singular point strictly inside a hole no
+longer fails display because the complete supporting surface was sampled first.
+Global dyadic conformity, original UV nodes, one-sided normals and per-cell
+geometric bounds remain unchanged. Full-net refinement/extraction and numerical
+conditioning guards still apply.
+
+Native singularity/budget regressions and independent native/WASM/browser checks
+exercise a polynomial surface whose isolated singular point is excluded by an
+exact inner wire. Retained sampled singularities and resource/accuracy failures
+still return errors. No source repair, global regularity certificate, arbitrary
+trim support or closed NURBS solid is claimed. The estimate remains **15–25%**,
+toward **80%**. See [retained-domain display](nurbs-surface-material.md).

@@ -260,7 +260,7 @@ fn individually_tolerant_vertices_and_curves_must_still_agree() {
 }
 
 #[test]
-fn refinement_resource_and_conservative_full_source_singular_errors() {
+fn refinement_resource_and_excluded_singular_geometry() {
     let count = 256;
     let mut knots = vec![0., 0.];
     knots.extend((1..count - 1).map(|i| i as f64));
@@ -285,8 +285,7 @@ fn refinement_resource_and_conservative_full_source_singular_errors() {
             "NURBS hole refinement exceeds control limit"
         ))
     ));
-    // Structurally valid singular data inside the removed UV region still fails
-    // the conservative whole-source normal check, rather than partial success.
+    // A singularity wholly inside excluded UV material must never be sampled.
     let knots = vec![0., 0., 0., 1., 1., 1.];
     let squared = [0.25, -0.25, 0.25];
     let mut points = Vec::new();
@@ -319,9 +318,14 @@ fn refinement_resource_and_conservative_full_source_singular_errors() {
         Tolerance::default(),
     )
     .unwrap();
-    assert!(face
+    let mesh = face
         .tessellate_bounded(0.01, 4096, Tolerance::default())
-        .is_err());
+        .unwrap();
+    assert!(mesh.error_bounds.iter().all(|b| *b <= 0.01));
+    let Surface::Nurbs(source) = &face.face.surface else {
+        panic!()
+    };
+    assert!(source.tessellate_bounded(0.01, 4096).is_err());
 }
 #[test]
 fn zero_hole_face_remains_an_exact_open_rectangular_patch() {
@@ -338,4 +342,42 @@ fn zero_hole_face_remains_an_exact_open_rectangular_patch() {
         .map(|r| (r[0][1] - r[0][0]) * (r[1][1] - r[1][0]))
         .sum::<f64>();
     assert!((area - 0.8 * 0.6).abs() < 1e-12);
+}
+
+#[test]
+fn retained_cell_budget_excludes_hole_cells_before_subdivision() {
+    let knots = vec![0., 0., 1., 1.];
+    let surface = NurbsSurface::new(
+        [1, 1],
+        [knots.clone(), knots],
+        [2, 2],
+        vec![
+            Point3::new(0., 0., 0.),
+            Point3::new(0., 1., 0.),
+            Point3::new(1., 0., 0.),
+            Point3::new(1., 1., 0.),
+        ],
+        vec![1.; 4],
+    )
+    .unwrap();
+    let tol = Tolerance::default();
+    let face = NurbsHoledFace::new(
+        surface,
+        [[0., 1.], [0., 1.]],
+        vec![[[0.25, 0.75], [0.25, 0.75]]],
+        1,
+        tol,
+    )
+    .unwrap();
+    let Surface::Nurbs(source) = &face.face.surface else {
+        panic!()
+    };
+    assert!(source.tessellate_bounded(0.01, 8).is_err());
+    let retained = face.tessellate_bounded(0.01, 8, tol).unwrap();
+    assert_eq!(retained.uv_ranges.len(), 8);
+    assert_eq!(retained.mesh.triangles.len(), 16);
+    assert!(face.tessellate_bounded(0.01, 7, tol).is_err());
+    for budget in [0, 65537] {
+        assert!(face.tessellate_bounded(0.01, budget, tol).is_err());
+    }
 }
