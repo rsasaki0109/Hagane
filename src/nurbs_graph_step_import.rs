@@ -635,6 +635,24 @@ fn recognize_holed(actual: Solid, tol: Tolerance) -> Result<NurbsGraphHoledSolid
             if !b.is_finite() || !tried.insert(b.to_bits()) {
                 continue;
             }
+            // Reject using the identical retained roof construction/refinement
+            // before paying for complete shared topology. A matching surface is
+            // only a prefilter: the original full canonical admission follows.
+            let Ok(roof_candidate) =
+                crate::nurbs_graph_solid::graph_roof(dimensions, b, [[0., 1.], [0., 1.]])
+            else {
+                continue;
+            };
+            let Ok(roof_candidate) = crate::nurbs_holed_face::refine_hole_surface(
+                roof_candidate,
+                [[0., 1.], [0., 1.]],
+                &[hole],
+            ) else {
+                continue;
+            };
+            if !same_surface(&face.surface, &Surface::Nurbs(Box::new(roof_candidate)))? {
+                continue;
+            }
             let Ok(source) = NurbsGraphSolid::new(dimensions, b, tol) else {
                 continue;
             };

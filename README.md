@@ -75,7 +75,8 @@ six-face graph solids from actual spline geometry and shared references, with
 mm/metre conversion and no snapping. A separate [holed graph importer](docs/nurbs-graph-holed-step-import.md)
 retains one rectangular through opening with sixteen vertices, twenty-four edges
 and ten faces. Restricted and placed imports remain unsupported; rejected browser
-loads preserve the accepted model.
+loads preserve the accepted model. An [exact surface prefilter](docs/nurbs-graph-holed-step-import-performance.md)
+reduces rejected coefficient-candidate work before full B-rep validation.
 A [common typed graph import API](docs/nurbs-graph-step-auto-import.md) selects
 plain or single-opening recognition once and provides shared inspection,
 section, display and export methods.

@@ -830,3 +830,12 @@ classification references above. Convex physical supporting-line clearances
 give a conservative deep-void exclusion before subdivision. Engineering
 arithmetic and work guards remain unchanged. Original Rust implementation;
 no new dependency, external CAD source or license change.
+
+### Holed graph STEP recognition performance
+
+Canonical recognition reuses the same original graph-roof construction and
+rectangular hole knot-insertion routines for an exact surface precheck.
+Matching candidates still undergo the existing full geometry/topology
+reconstruction and validation. Bounded candidate enumeration and admission
+conditions are unchanged. The benchmark uses Rust `Instant` and public kernel
+APIs; no dependency, external CAD source or license change is introduced.

@@ -1141,3 +1141,18 @@ browser queries its accepted model and preserves results/markers after failed
 edits or queries, alongside accepted-model STEP downloads. Multiple-opening
 STEP import and generic NURBS queries remain unsupported. The estimate remains
 **15–25%**, toward **80%**. See [multi-opening point classification](nurbs-graph-polygon-multi-hole-classification.md).
+
+## Exact holed STEP recognition prefilter
+
+The strict identity/full-source-UV graph importer with one rectangular opening
+now compares each bounded coefficient candidate’s actual roof basis before
+building a complete B-rep. Matching candidates still require full actual
+geometry reindexing and canonical validation; acceptance conditions, units,
+parser/search limits and errors remain unchanged. Import-only native and WASM
+measurements separate recognition cost from export and display work. The local
+three-sample WASM finish medians were 7.6–23.8% lower; native medians were mixed
+in the shared environment. These measurements do not establish a universal or
+whole-browser speedup. This adds
+no dependency and does not broaden STEP import to polygon/multiple openings or
+general NURBS shells. The estimate remains **15–25%**, toward **80%**.
+See [holed import recognition cost](nurbs-graph-holed-step-import-performance.md).

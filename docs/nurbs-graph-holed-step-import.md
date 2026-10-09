@@ -40,6 +40,11 @@ prefilter rejects inconsistent footprints before this search. Every accepted can
 **all** parsed curve/surface controls, degrees, knots, weights, pcurves,
 orientations and shared topology exactly after identity reindexing.
 
+An [exact surface-only candidate prefilter](nurbs-graph-holed-step-import-performance.md)
+now rejects mismatching roof bases before full B-rep construction. A matching
+roof still requires reindexing and complete validation of the actual parsed
+geometry and topology; import admission conditions are unchanged.
+
 This is bounded representation recognition, not a general knot-removal solver
 or a promise to recover the original user's parameter bits. It never accepts a
 nearby surface or changes coordinates to fit a candidate. If coefficient

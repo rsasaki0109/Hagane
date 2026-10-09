@@ -8,6 +8,62 @@ pub struct NurbsHoledFace {
     outer: [[f64; 2]; 2],
     holes: Vec<[[f64; 2]; 2]>,
 }
+// Exact surface refinement shared by holed face construction and import
+// prefilters. This intentionally retains insertion order and resource guards.
+pub(crate) fn refine_hole_surface(
+    surface: NurbsSurface,
+    outer: [[f64; 2]; 2],
+    holes: &[[[f64; 2]; 2]],
+) -> Result<NurbsSurface> {
+    validate_regions(outer, holes)?;
+    let mut surface = surface.restricted(outer)?;
+    let mut insertions: [Vec<(f64, usize)>; 2] = [Vec::new(), Vec::new()];
+    let mut counts = surface.control_counts();
+    for axis in 0..2 {
+        let mut parameters = holes.iter().flat_map(|hole| hole[axis]).collect::<Vec<_>>();
+        parameters.sort_by(f64::total_cmp);
+        parameters.dedup();
+        for parameter in parameters {
+            let knots = surface.knots(axis)?;
+            let multiplicity = knots.partition_point(|v| *v <= parameter)
+                - knots.partition_point(|v| *v < parameter);
+            let times = surface.degrees()[axis] - multiplicity;
+            if times > 0 {
+                insertions[axis].push((parameter, times));
+                counts[axis] = counts[axis].saturating_add(times);
+            }
+        }
+    }
+    if counts[0].saturating_mul(counts[1]) > 65536 {
+        return Err(Error::Unsupported(
+            "NURBS hole refinement exceeds control limit",
+        ));
+    }
+    let mut current = surface.control_counts();
+    let mut work = 0usize;
+    for axis in 0..2 {
+        for (_, times) in &insertions[axis] {
+            current[axis] += times;
+            work = work.saturating_add(
+                current[0]
+                    .saturating_mul(current[1])
+                    .saturating_mul(*times)
+                    .saturating_mul(surface.degrees()[axis] + 1),
+            );
+        }
+    }
+    if work > 16_000_000 {
+        return Err(Error::Unsupported(
+            "NURBS hole refinement exceeds work limit",
+        ));
+    }
+    for (axis, insertions) in insertions.into_iter().enumerate() {
+        for (parameter, times) in insertions {
+            surface = surface.insert_knot(axis, parameter, times)?;
+        }
+    }
+    Ok(surface)
+}
 impl NurbsHoledFace {
     pub fn new(
         surface: NurbsSurface,
@@ -17,53 +73,7 @@ impl NurbsHoledFace {
         tol: Tolerance,
     ) -> Result<Self> {
         Tolerance::new(tol.linear)?;
-        validate_regions(outer, &holes)?;
-        let mut surface = surface.restricted(outer)?;
-        let mut insertions: [Vec<(f64, usize)>; 2] = [Vec::new(), Vec::new()];
-        let mut counts = surface.control_counts();
-        for axis in 0..2 {
-            let mut parameters = holes.iter().flat_map(|hole| hole[axis]).collect::<Vec<_>>();
-            parameters.sort_by(f64::total_cmp);
-            parameters.dedup();
-            for parameter in parameters {
-                let knots = surface.knots(axis)?;
-                let multiplicity = knots.partition_point(|v| *v <= parameter)
-                    - knots.partition_point(|v| *v < parameter);
-                let times = surface.degrees()[axis] - multiplicity;
-                if times > 0 {
-                    insertions[axis].push((parameter, times));
-                    counts[axis] = counts[axis].saturating_add(times);
-                }
-            }
-        }
-        if counts[0].saturating_mul(counts[1]) > 65536 {
-            return Err(Error::Unsupported(
-                "NURBS hole refinement exceeds control limit",
-            ));
-        }
-        let mut current = surface.control_counts();
-        let mut work = 0usize;
-        for axis in 0..2 {
-            for (_, times) in &insertions[axis] {
-                current[axis] += times;
-                work = work.saturating_add(
-                    current[0]
-                        .saturating_mul(current[1])
-                        .saturating_mul(*times)
-                        .saturating_mul(surface.degrees()[axis] + 1),
-                );
-            }
-        }
-        if work > 16_000_000 {
-            return Err(Error::Unsupported(
-                "NURBS hole refinement exceeds work limit",
-            ));
-        }
-        for (axis, insertions) in insertions.into_iter().enumerate() {
-            for (parameter, times) in insertions {
-                surface = surface.insert_knot(axis, parameter, times)?;
-            }
-        }
+        let surface = refine_hole_surface(surface, outer, &holes)?;
         let result = Self::assemble(surface, outer, holes, orientation, tol)?;
         result.validate_boundary(tol)?;
         Ok(result)

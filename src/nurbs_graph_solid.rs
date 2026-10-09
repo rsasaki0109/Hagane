@@ -28,7 +28,9 @@ const CORNERS: [[usize; 4]; 6] = [
     [2, 3, 7, 6],
 ];
 const FULL: [[f64; 2]; 2] = [[0., 1.], [0., 1.]];
-fn build(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<Solid> {
+// Shared exact construction order for retained graph roofs and strict import
+// candidate rejection. Shape admission remains with the full solid constructor.
+pub(crate) fn graph_roof(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2]) -> Result<NurbsSurface> {
     let [l, w, h] = d;
     let mut points = Vec::new();
     for i in 0..3 {
@@ -47,6 +49,10 @@ fn build(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<S
     } else {
         original.restricted(ranges)?
     };
+    Ok(roof)
+}
+fn build(d: [f64; 3], b: f64, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<Solid> {
+    let roof = graph_roof(d, b, ranges)?;
     let roof_edges = roof.boundary_edges()?;
     let base_points = roof
         .control_points()
