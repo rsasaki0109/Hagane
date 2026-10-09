@@ -184,7 +184,7 @@ fn untrusted_truncation_and_token_mutations_never_panic() {
     }
 }
 #[test]
-fn curved_holed_and_nonconvex_solids_are_explicitly_unsupported() {
+fn curved_imports_and_strict_convex_holes_and_concavity_are_unsupported() {
     let t = Tolerance::default();
     let cylinder = make_cylinder(
         CylinderSpec {
@@ -204,7 +204,7 @@ fn curved_holed_and_nonconvex_solids_are_explicitly_unsupported() {
     let report: serde_json::Value =
         serde_json::from_str(&export_workflow_step_mm_json(&doc.to_string()).unwrap()).unwrap();
     assert!(matches!(
-        import_step_planar_mm(report["step"].as_str().unwrap(), t),
+        import_step_convex_planar_mm(report["step"].as_str().unwrap(), t),
         Err(Error::Unsupported(_))
     ));
     doc["operations"][0]["holes"] = serde_json::json!([]);
@@ -213,7 +213,7 @@ fn curved_holed_and_nonconvex_solids_are_explicitly_unsupported() {
     let report: serde_json::Value =
         serde_json::from_str(&export_workflow_step_mm_json(&doc.to_string()).unwrap()).unwrap();
     assert!(matches!(
-        import_step_planar_mm(report["step"].as_str().unwrap(), t),
+        import_step_convex_planar_mm(report["step"].as_str().unwrap(), t),
         Err(Error::Unsupported(_))
     ));
 }
@@ -267,4 +267,215 @@ fn structured_resource_limits_fail_before_geometry_reconstruction() {
         ),
         Err(Error::InvalidInput("STEP value budget exceeded"))
     ));
+}
+
+fn concave_profile(scale: f64) -> PolygonProfile {
+    PolygonProfile {
+        origin: Point3::new(0., 0., 0.),
+        outer: [[0., 0.], [8., 0.], [8., 3.], [3., 3.], [3., 8.], [0., 8.]]
+            .map(|p| [p[0] * scale, p[1] * scale])
+            .to_vec(),
+        holes: vec![
+            [[1., 1.], [2., 1.], [2., 2.], [1., 2.]]
+                .map(|p| [p[0] * scale, p[1] * scale])
+                .to_vec(),
+            [[1., 5.], [2., 5.], [2., 6.], [1., 6.]]
+                .map(|p| [p[0] * scale, p[1] * scale])
+                .to_vec(),
+        ],
+    }
+}
+#[test]
+fn concave_two_hole_prisms_round_trip_with_skew_reversal_rotation_and_scale() {
+    for scale in [1e-6, 1., 1000.] {
+        let t = Tolerance::new(1e-8 * scale).unwrap();
+        for sign in [-1., 1.] {
+            let source = extrude_polygon(
+                &concave_profile(scale),
+                Vec3::new(scale, -scale, 4. * scale * sign),
+                t,
+            )
+            .unwrap();
+            for solid in [
+                source.clone(),
+                source
+                    .transformed(Transform::rotation(Vec3::new(1., 2., 3.), 0.7).unwrap(), t)
+                    .unwrap(),
+            ] {
+                let certificate = certify_planar_prism(&solid, t).unwrap();
+                assert_eq!(certificate.profile_corners, 14);
+                assert_eq!(certificate.profile_holes, 2);
+                assert!(
+                    (solid.volume().unwrap() - 148. * scale.powi(3)).abs() < 1e-10 * scale.powi(3)
+                );
+                let step = export_step_planar_mm(&solid, t).unwrap();
+                let restored = import_step_planar_mm(&step, t).unwrap();
+                same_geometry(&solid, &restored, t);
+                assert_eq!(certify_planar_prism(&restored, t).unwrap().profile_holes, 2);
+                assert!(restored.tessellate(0.01 * scale, t).is_ok());
+                assert!(import_step_convex_planar_mm(&step, t).is_err());
+            }
+        }
+    }
+}
+#[test]
+fn oblique_roof_nonprismatic_concave_solid_is_not_admitted_by_closure_alone() {
+    let t = Tolerance::default();
+    let source = extrude_polygon(&concave_profile(1.), Vec3::new(0., 0., 4.), t).unwrap();
+    for slope in [0.1, 1e-10] {
+        let plane = Surface::Plane {
+            origin: Point3::new(0., 0., 2.),
+            u: Vec3::new(1., 0., slope).normalized().unwrap(),
+            v: Vec3::new(0., 1., 0.),
+        };
+        let cut = split_solid_by_plane(&source, &plane, GeometryTolerance::try_from(t).unwrap())
+            .unwrap()
+            .negative;
+        cut.validate(t).unwrap();
+        assert!(matches!(
+            certify_planar_prism(&cut, t),
+            Err(Error::Unsupported(_))
+        ));
+        assert!(matches!(
+            import_step_planar_mm(&export_step_planar_mm(&cut, t).unwrap(), t),
+            Err(Error::Unsupported(_))
+        ));
+    }
+}
+#[test]
+fn inner_bounds_can_precede_outer_but_missing_duplicate_or_multiple_outer_bounds_fail() {
+    let t = Tolerance::default();
+    let source = extrude_polygon(&concave_profile(1.), Vec3::new(1., -1., 4.), t).unwrap();
+    let step = export_step_planar_mm(&source, t).unwrap();
+    let mut reordered = String::new();
+    for line in step.lines() {
+        if line.contains("=ADVANCED_FACE") {
+            let start = line.find("('',(").unwrap() + 5;
+            let end = start + line[start..].find(')').unwrap();
+            let mut ids: Vec<_> = line[start..end].split(',').collect();
+            ids.rotate_left(1);
+            reordered.push_str(&format!(
+                "{}{}{}\n",
+                &line[..start],
+                ids.join(","),
+                &line[end..]
+            ));
+        } else {
+            reordered.push_str(line);
+            reordered.push('\n');
+        }
+    }
+    same_geometry(&source, &import_step_planar_mm(&reordered, t).unwrap(), t);
+    // Reverse each inner bound independently of the plane/face senses.
+    let inner_loops: std::collections::BTreeSet<_> = step
+        .lines()
+        .filter(|line| line.contains("=FACE_BOUND"))
+        .map(|line| line.split(',').nth(1).unwrap().to_string())
+        .collect();
+    let mut reversed_edges = std::collections::BTreeSet::new();
+    let mut reversed = Vec::new();
+    for line in step.lines() {
+        let id = line.split('=').next().unwrap();
+        if inner_loops.contains(id) {
+            let start = line.find("('',(").unwrap() + 5;
+            let end = start + line[start..].find(')').unwrap();
+            let mut entries: Vec<_> = line[start..end].split(',').collect();
+            reversed_edges.extend(entries.iter().map(|id| id.to_string()));
+            entries.reverse();
+            reversed.push(format!(
+                "{}{}{}",
+                &line[..start],
+                entries.join(","),
+                &line[end..]
+            ));
+        } else if line.contains("=FACE_BOUND") {
+            reversed.push(line.replace(",.T.)", ",.F.)"));
+        } else {
+            reversed.push(line.to_string());
+        }
+    }
+    for line in &mut reversed {
+        if reversed_edges.contains(line.split('=').next().unwrap()) {
+            *line = if line.ends_with(",.T.);") {
+                line.replace(",.T.);", ",.F.);")
+            } else {
+                line.replace(",.F.);", ",.T.);")
+            };
+        }
+    }
+    same_geometry(
+        &source,
+        &import_step_planar_mm(&reversed.join("\n"), t).unwrap(),
+        t,
+    );
+
+    let first_bound = step
+        .lines()
+        .find(|line| line.contains("=FACE_OUTER_BOUND"))
+        .unwrap()
+        .split('=')
+        .next()
+        .unwrap();
+    let duplicated = step.replacen(
+        &format!("('',({first_bound},"),
+        &format!("('',({first_bound},{first_bound},"),
+        1,
+    );
+    assert_ne!(duplicated, step);
+    assert!(import_step_planar_mm(&duplicated, t).is_err());
+
+    assert!(import_step_planar_mm(&step.replace("FACE_OUTER_BOUND", "FACE_BOUND"), t).is_err());
+    assert!(import_step_planar_mm(&step.replace("=FACE_BOUND", "=FACE_OUTER_BOUND"), t).is_err());
+    let mut damaged = source.clone();
+    damaged.edges[0].vertices = [0, 0];
+    assert!(certify_planar_prism(&damaged, t).is_err());
+}
+
+#[test]
+fn imported_openings_retain_empty_material_and_conforming_display() {
+    let t = Tolerance::default();
+    let source = extrude_polygon(&concave_profile(1.), Vec3::new(0., 0., 4.), t).unwrap();
+    let solid = import_step_planar_mm(&export_step_planar_mm(&source, t).unwrap(), t).unwrap();
+    let policy = GeometryTolerance::try_from(t).unwrap();
+    for (p, expected) in [
+        (Point3::new(1.5, 1.5, 2.), PointLocation::Outside),
+        (Point3::new(1.5, 5.5, 2.), PointLocation::Outside),
+        (Point3::new(0.5, 0.5, 2.), PointLocation::Inside),
+        (Point3::new(5., 5., 2.), PointLocation::Outside),
+    ] {
+        assert_eq!(
+            classify_point_in_solid(&solid, p, policy).unwrap(),
+            expected
+        );
+    }
+    let mesh = solid.tessellate(0.01, t).unwrap();
+    assert!((mesh.signed_volume() - 148.).abs() < 1e-10);
+    let key = |p: Point3| {
+        [
+            (p.x * 1e9).round() as i64,
+            (p.y * 1e9).round() as i64,
+            (p.z * 1e9).round() as i64,
+        ]
+    };
+    let mut uses = std::collections::BTreeMap::new();
+    for triangle in &mesh.triangles {
+        for i in 0..3 {
+            let a = key(mesh.positions[triangle[i]]);
+            let b = key(mesh.positions[triangle[(i + 1) % 3]]);
+            let (edge, sign) = if a < b { ([a, b], 1) } else { ([b, a], -1) };
+            let entry = uses.entry(edge).or_insert((0, 0));
+            entry.0 += 1;
+            entry.1 += sign;
+        }
+        let points = triangle.map(|i| mesh.positions[i]);
+        if points.iter().all(|p| p.z == 0.) || points.iter().all(|p| p.z == 4.) {
+            let center = (points[0] + points[1] + points[2]) * (1. / 3.);
+            for y in [1., 5.] {
+                assert!(!(center.x > 1. && center.x < 2. && center.y > y && center.y < y + 1.));
+            }
+        }
+    }
+    assert!(uses
+        .values()
+        .all(|&(count, orientation)| count == 2 && orientation == 0));
 }

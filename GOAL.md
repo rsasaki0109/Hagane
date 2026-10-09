@@ -541,5 +541,18 @@ An independently hand-authored metre tetrahedron, microscopic/rotated/large
 round trips, bounded malformed inputs and native/WASM parity are tested. A
 browser import/inspect/re-export page preserves previous valid results on
 failure. An optional external reader checks source and native re-export.
-Curved/holed/nonconvex imports, assemblies and imported modeling history remain
-unsupported; the long-term estimate remains 15–25%, toward the 80% target.
+The polygon-prism extension follows below. Curved and uncertified nonconvex
+imports, assemblies and imported modeling history remain unsupported; the long-term estimate remains 15–25%, toward the 80% target.
+
+## Certified polygon-prism STEP import
+
+The planar reader now additionally accepts concave and polygon-holed straight
+prisms, including skew/reversed extrusion and rigid placement. A bounded
+translation certificate matches both cap rings, shared vertical links and every
+oriented side quadrilateral without snapping or regenerating imported geometry.
+Strict convex-only import remains available separately. Native tests cover
+three scales, two openings, orientation, bounds ordering, empty hole material
+and nearly parallel nonprismatic rejection. Native/WASM report parity and the
+browser's actual skew plate import/re-export sample are verified. Curved and
+uncertified nonconvex imports remain unsupported; see the STEP import document.
+The long-term estimate remains 15–25%, toward the 80% target.

@@ -736,62 +736,94 @@ impl Builder<'_> {
         let surface = self.db.plane(reference(&args[2])?, self.scale)?;
         let orientation = if boolean(&args[3])? { 1 } else { -1 };
         let bounds = list(&args[1])?;
-        // Convexity is certified below; holes remain outside this first reader.
-        if bounds.len() != 1 {
+        if bounds.is_empty() || bounds.len() > 65 {
             return Err(Error::Unsupported(
-                "STEP planar import currently rejects face holes",
+                "STEP import supports one outer and at most 64 inner bounds",
             ));
         }
-        let bound = self
-            .db
-            .simple(reference(&bounds[0])?, "FACE_OUTER_BOUND", 3)?;
-        let bound_forward = boolean(&bound[2])?;
-        let edge_loop = self.db.simple(reference(&bound[1])?, "EDGE_LOOP", 2)?;
-        let entries = list(&edge_loop[1])?;
-        self.coedge_count += entries.len();
-        if entries.len() > 256 || self.coedge_count > 4096 {
-            return Err(Error::Unsupported(
-                "STEP import supports 256 coedges per face and 4096 total",
-            ));
-        }
-        let mut coedges = Vec::new();
-        for value in entries {
-            let oriented = self.db.simple(reference(value)?, "ORIENTED_EDGE", 5)?;
-            if oriented[1] != Value::Derived || oriented[2] != Value::Derived {
-                return Err(SYNTAX);
+        let mut wires = Vec::new();
+        let mut outer = None;
+        let mut seen = BTreeSet::new();
+        let mut face_coedges = 0;
+        for value in bounds {
+            let bound_id = reference(value)?;
+            if !seen.insert(bound_id) {
+                return Err(Error::InvalidTopology("duplicate STEP face bound"));
             }
-            let edge = self.edge(reference(&oriented[3])?)?;
-            let forward = boolean(&oriented[4])? == bound_forward;
-            let Curve::Line { a, b } = self.solid.edges[edge].curve else {
-                unreachable!()
-            };
-            let origin = surface.parameters(a);
-            let end = surface.parameters(b);
-            coedges.push(Coedge {
-                edge,
-                forward,
-                pcurve: PCurve::Affine {
-                    origin,
-                    direction: [end[0] - origin[0], end[1] - origin[1]],
+            let record = self.db.records.get(&bound_id).ok_or(SYNTAX)?;
+            let is_outer = record.len() == 1 && record[0].0 == "FACE_OUTER_BOUND";
+            let bound = self.db.simple(
+                bound_id,
+                if is_outer {
+                    "FACE_OUTER_BOUND"
+                } else {
+                    "FACE_BOUND"
                 },
-            });
+                3,
+            )?;
+            if is_outer && outer.replace(wires.len()).is_some() {
+                return Err(Error::InvalidTopology("multiple STEP outer bounds"));
+            }
+            let bound_forward = boolean(&bound[2])?;
+            let edge_loop = self.db.simple(reference(&bound[1])?, "EDGE_LOOP", 2)?;
+            let entries = list(&edge_loop[1])?;
+            self.coedge_count += entries.len();
+            face_coedges += entries.len();
+            if face_coedges > 256 || self.coedge_count > 4096 {
+                return Err(Error::Unsupported(
+                    "STEP import supports 256 coedges per face and 4096 total",
+                ));
+            }
+            let mut coedges = Vec::new();
+            for value in entries {
+                let oriented = self.db.simple(reference(value)?, "ORIENTED_EDGE", 5)?;
+                if oriented[1] != Value::Derived || oriented[2] != Value::Derived {
+                    return Err(SYNTAX);
+                }
+                let edge = self.edge(reference(&oriented[3])?)?;
+                let forward = boolean(&oriented[4])? == bound_forward;
+                let Curve::Line { a, b } = self.solid.edges[edge].curve else {
+                    unreachable!()
+                };
+                let origin = surface.parameters(a);
+                let end = surface.parameters(b);
+                coedges.push(Coedge {
+                    edge,
+                    forward,
+                    pcurve: PCurve::Affine {
+                        origin,
+                        direction: [end[0] - origin[0], end[1] - origin[1]],
+                    },
+                });
+            }
+            if !bound_forward {
+                coedges.reverse();
+            }
+            wires.push(Wire { coedges });
         }
-        if !bound_forward {
-            coedges.reverse();
-        }
+        let outer = outer.ok_or(Error::InvalidTopology("missing STEP outer bound"))?;
+        let outer_wire = wires.remove(outer);
+        wires.insert(0, outer_wire);
         self.solid.shell.faces.push(Face {
             surface,
             orientation,
-            wires: vec![Wire { coedges }],
+            wires,
         });
         Ok(())
     }
 }
-/// Import one AP214 convex planar straight-edge solid, converting SI mm/m to mm.
+/// Import one AP214 convex or certified prismatic planar straight-edge solid, converting SI mm/m to mm.
 /// Caller tolerance is in mm and is never enlarged by file uncertainty metadata.
 /// STEP identities preserve shared topology; no snapping, sewing or repair occurs.
-/// Curved geometry, holes, nonconvex solids, assemblies and unknown entities fail.
+/// Curved geometry, uncertified nonconvex solids, assemblies and unknown entities fail.
 pub fn import_step_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
+    import_planar(input, tolerance, false)
+}
+/// Import only convex planar solids; polygon holes and concavity are rejected.
+pub fn import_step_convex_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
+    import_planar(input, tolerance, true)
+}
+fn import_planar(input: &str, tolerance: Tolerance, convex_only: bool) -> Result<Solid> {
     Tolerance::new(tolerance.linear)?;
     let db = Parser::new(input)?.document()?;
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
@@ -844,7 +876,13 @@ pub fn import_step_planar_mm(input: &str, tolerance: Tolerance) -> Result<Solid>
             "STEP solid metrics exceed finite arithmetic",
         ));
     }
-    crate::booleans::convex_planes(&builder.solid, GeometryTolerance::try_from(tolerance)?)?;
+    match crate::booleans::convex_planes(&builder.solid, GeometryTolerance::try_from(tolerance)?) {
+        Ok(_) => {}
+        Err(Error::Unsupported(_)) if !convex_only => {
+            crate::prism_validation::certify_validated_planar_prism(&builder.solid, tolerance)?;
+        }
+        Err(error) => return Err(error),
+    }
     const GEOMETRY: &[&str] = &[
         "CARTESIAN_POINT",
         "DIRECTION",
