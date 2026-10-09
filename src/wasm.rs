@@ -253,6 +253,27 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_polygon(
+        height: f64,
+        weight: f64,
+        error: f64,
+        mode: u32,
+        u0: f64,
+        v0: f64,
+        u1: f64,
+        v1: f64,
+        u2: f64,
+        v2: f64,
+    ) -> i32 {
+        generate(crate::nurbs_polygon_demo_json(
+            height,
+            weight,
+            error,
+            mode,
+            vec![[u0, v0], [u1, v1], [u2, v2]],
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_surface_edge(
         height: f64,
         weight: f64,

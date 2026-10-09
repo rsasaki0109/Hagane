@@ -907,3 +907,14 @@ ownership. An OBJ demo exports actual geometry with separate normal indices.
 Existing C1 APIs retain their rejection contract. Holes, general loops, sewing
 and closed rational solids remain incomplete. The estimate remains 15–25%,
 toward 80%. See [crease-aware polygon display](docs/nurbs-polygon-crease.md).
+
+## Editable browser rational polygon faces
+
+The shared native/WASM polygon fixture now exposes an actual retained triangular
+UV B-rep face and bounded interior display in three modes: weighted biquadratic,
+C1 refinement and crossed C0 roof. Browser editing, exact-edge boundary overlays,
+one-sided normals and rejected-edit preservation are verified alongside full
+JSON parity and independent curve/surface/bound checks. A captured actual screen
+documents the working UI. This is an open face, not a closed solid. General loops,
+holes, sewing and closed rational solids remain incomplete. The estimate remains
+15–25%, toward 80%. See [polygon demo](docs/nurbs-polygon-demo.md).

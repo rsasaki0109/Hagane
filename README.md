@@ -37,6 +37,9 @@ open faces and provide [bounded high-degree rational interior display](docs/nurb
 including [C1 multi-span rational surfaces](docs/nurbs-polygon-multispan.md).
 [Crease-aware display](docs/nurbs-polygon-crease.md) additionally splits C0 knots
 and retains one-sided normals through a dedicated API.
+The [editable polygon face demo](docs/nurbs-polygon-demo.md) now exposes single,
+C1 and C0 modes in `web/surface-polygon.html`, with native/WASM parity and
+rejected-edit recovery.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from
