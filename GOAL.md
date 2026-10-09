@@ -389,5 +389,12 @@ certificates. A fixed projection direction with guarded same-sign endpoint gaps
 proves that the tools never meet inside the plate; internally crossing axes are
 rejected even when both caps are disjoint. Exact B-rep, analytic volume, small
 dimensions, native/WASM parity and browser preset 27 are verified. Intersecting
-tools, arbitrary tilt azimuths and uncertified cases remain unsupported. See
+tools and uncertified cases remain unsupported. See
 [independently tilted bores](docs/divergent-tilted-bores.md).
+
+Independent bore inclination and azimuth now preserve exact rotated ellipse
+cap boundaries, oriented shared edges and cylindrical wall pcurves. Full-height
+separation includes both XY drift components and rotated support radii; native
+and WASM tests cover volume, roots, tiny geometry and invalid/crossing tools.
+Browser preset 28 exposes the working closed solid. Intersecting or uncertified
+tools and blind bores remain unsupported. See [oriented bores](docs/oriented-bores.md).

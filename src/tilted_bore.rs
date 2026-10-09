@@ -40,6 +40,38 @@ pub fn tilted_bores_demo_solid(
     bores: &[TiltedBore],
     tol: GeometryTolerance,
 ) -> Result<Solid> {
+    if bores.len() > 16 {
+        return Err(Error::Unsupported(
+            "tilted plate supports at most sixteen bores",
+        ));
+    }
+    let oriented = bores
+        .iter()
+        .map(|b| OrientedBore {
+            radius: b.radius,
+            tilt: b.tilt,
+            azimuth: 0.,
+            center: b.center,
+        })
+        .collect::<Vec<_>>();
+    oriented_bores_demo_solid(radius, height, &oriented, tol)
+}
+/// Circular cylindrical tool with independent inclination and XY azimuth (radians).
+#[derive(Clone, Copy, Debug)]
+pub struct OrientedBore {
+    pub radius: f64,
+    pub tilt: f64,
+    pub azimuth: f64,
+    pub center: [f64; 2],
+}
+/// Exact restricted plate construction with independently oriented through bores.
+/// Each pair must have certified separation throughout the full plate height.
+pub fn oriented_bores_demo_solid(
+    radius: f64,
+    height: f64,
+    bores: &[OrientedBore],
+    tol: GeometryTolerance,
+) -> Result<Solid> {
     if !radius.is_finite()
         || !height.is_finite()
         || radius <= 10. * tol.linear()
@@ -58,6 +90,7 @@ pub fn tilted_bores_demo_solid(
         if !bore.radius.is_finite()
             || bore.radius <= 10. * tol.linear()
             || !bore.tilt.is_finite()
+            || !bore.azimuth.is_finite()
             || bore.tilt.abs() > PI / 3.
             || bore.center.iter().any(|x| !x.is_finite())
         {
@@ -90,9 +123,10 @@ pub fn tilted_bores_demo_solid(
         shell: Shell { faces: Vec::new() },
     };
     let mut cap_wires = [Vec::new(), Vec::new()];
-    for (ring, bore) in std::iter::once(TiltedBore {
+    for (ring, bore) in std::iter::once(OrientedBore {
         radius,
         tilt: 0.,
+        azimuth: 0.,
         center: [0., 0.],
     })
     .chain(bores.iter().copied())
@@ -101,21 +135,23 @@ pub fn tilted_bores_demo_solid(
         let r = bore.radius;
         let angle = bore.tilt;
         let (sin, cos) = angle.sin_cos();
-        let axis = Vec3::new(sin, 0., cos);
-        let basis = Vec3::new(cos, 0., -sin);
+        let (sp, cp) = bore.azimuth.sin_cos();
+        let axis = Vec3::new(sin * cp, sin * sp, cos);
+        let basis = Vec3::new(cos * cp, cos * sp, -sin);
+        let perpendicular = Vec3::new(-sp, cp, 0.);
         let length = 2. * (height + r) / cos;
         let frame_origin = axis * (-length) + Vec3::new(bore.center[0], bore.center[1], 0.);
-        let a = Vec3::new(r / cos, 0., 0.);
-        let b = Vec3::new(0., r, 0.);
+        let a = Vec3::new(r / cos * cp, r / cos * sp, 0.);
+        let b = perpendicular * r;
         let centers = [
             Point3::new(
-                bore.center[0] - height / 2. * angle.tan(),
-                bore.center[1],
+                bore.center[0] - height / 2. * angle.tan() * cp,
+                bore.center[1] - height / 2. * angle.tan() * sp,
                 -height / 2.,
             ),
             Point3::new(
-                bore.center[0] + height / 2. * angle.tan(),
-                bore.center[1],
+                bore.center[0] + height / 2. * angle.tan() * cp,
+                bore.center[1] + height / 2. * angle.tan() * sp,
                 height / 2.,
             ),
         ];
@@ -156,8 +192,8 @@ pub fn tilted_bores_demo_solid(
                     forward: ring == 0,
                     pcurve: PCurve::EllipseArc {
                         center: [centers[level].x, centers[level].y],
-                        cosine: [a.x * sign, 0.],
-                        sine: [0., r * sign],
+                        cosine: [a.x * sign, a.y * sign],
+                        sine: [b.x * sign, b.y * sign],
                         sweep: PI,
                     },
                 })
@@ -170,7 +206,7 @@ pub fn tilted_bores_demo_solid(
         for (half, sign) in [1., -1.].into_iter().enumerate() {
             let frame = Frame3::new(
                 frame_origin,
-                [basis * sign, Vec3::new(0., sign, 0.), axis],
+                [basis * sign, perpendicular * sign, axis],
                 tol.absolute(),
             )?;
             let bottom = length - height / (2. * cos);
@@ -295,16 +331,21 @@ pub fn separated_tilted_bores_demo_json(offset: f64) -> Result<String> {
 // Fixed XY support direction proves separation of every horizontal slice. Center
 // projections vary affinely in Z; a same-sign gap at both endpoints proves
 // separation at every intermediate height, without sampling the solid interior.
-fn separated_through_height(a: &TiltedBore, b: &TiltedBore, height: f64, linear: f64) -> bool {
+fn separated_through_height(a: &OrientedBore, b: &OrientedBore, height: f64, linear: f64) -> bool {
     let dx = b.center[0] - a.center[0];
     let dy = b.center[1] - a.center[1];
-    let drift = height / 2. * (b.tilt.tan() - a.tilt.tan());
+    let (sa, ca) = a.azimuth.sin_cos();
+    let (sb, cb) = b.azimuth.sin_cos();
+    let drift = [
+        height / 2. * (b.tilt.tan() * cb - a.tilt.tan() * ca),
+        height / 2. * (b.tilt.tan() * sb - a.tilt.tan() * sa),
+    ];
     let axes = [a.radius / a.tilt.cos(), b.radius / b.tilt.cos()];
     let arithmetic = 4096.
         * f64::EPSILON
         * (a.center[0].hypot(a.center[1])
             + b.center[0].hypot(b.center[1])
-            + drift.abs()
+            + drift[0].hypot(drift[1])
             + axes[0]
             + axes[1]
             + height);
@@ -312,9 +353,10 @@ fn separated_through_height(a: &TiltedBore, b: &TiltedBore, height: f64, linear:
     (0..64).any(|i| {
         let angle = initial + PI * i as f64 / 64.;
         let (ny, nx) = angle.sin_cos();
-        let low = nx * (dx - drift) + ny * dy;
-        let high = nx * (dx + drift) + ny * dy;
-        let bound = (nx * axes[0]).hypot(ny * a.radius) + (nx * axes[1]).hypot(ny * b.radius);
+        let low = nx * (dx - drift[0]) + ny * (dy - drift[1]);
+        let high = nx * (dx + drift[0]) + ny * (dy + drift[1]);
+        let bound = (axes[0] * (nx * ca + ny * sa)).hypot(a.radius * (-nx * sa + ny * ca))
+            + (axes[1] * (nx * cb + ny * sb)).hypot(b.radius * (-nx * sb + ny * cb));
         let gap = if low > 0. && high > 0. {
             low.min(high) - bound
         } else if low < 0. && high < 0. {
@@ -353,5 +395,38 @@ pub fn divergent_tilted_bores_demo_json(tilt: f64, offset: f64) -> Result<String
         face,
         Point3::new(-34., offset, 4.),
         Vec3::new(2., 0., 0.),
+    )
+}
+
+/// Two arbitrary-azimuth bores; line direction rotates with the queried hole.
+pub fn oriented_bores_demo_json(azimuth: f64, offset: f64) -> Result<String> {
+    if !azimuth.is_finite() || !offset.is_finite() {
+        return Err(Error::InvalidInput("azimuth and offset must be finite"));
+    }
+    let bores = [
+        OrientedBore {
+            radius: 3.,
+            tilt: 0.7,
+            azimuth,
+            center: [0., -8.],
+        },
+        OrientedBore {
+            radius: 3.,
+            tilt: 0.5,
+            azimuth: azimuth + PI / 2.,
+            center: [0., 8.],
+        },
+    ];
+    let solid = oriented_bores_demo_solid(28., 8., &bores, GeometryTolerance::default())?;
+    let (s, c) = azimuth.sin_cos();
+    let u = Vec3::new(c, s, 0.);
+    let v = Vec3::new(-s, c, 0.);
+    let anchor =
+        Point3::new(4. * 0.7f64.tan() * c, -8. + 4. * 0.7f64.tan() * s, 4.) - u * 40. + v * offset;
+    crate::ellipse_planar::ellipse_planar_query_json(
+        &solid,
+        solid.shell.faces.len() - 1,
+        anchor,
+        u * 2.,
     )
 }

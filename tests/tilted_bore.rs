@@ -338,3 +338,101 @@ fn nonparallel_bores_are_certified_through_height_and_interior_crossings_rejecte
         assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &contact, t).is_err());
     }
 }
+
+#[test]
+fn independent_azimuths_preserve_exact_topology_volume_and_classification() {
+    for (scale, epsilon) in [(1., 1e-8), (1e-6, 1e-14)] {
+        let t = GeometryTolerance::new(epsilon, 1e-10, 0.).unwrap();
+        for azimuth in [0., 0.4, 1.2, -2.1, PI] {
+            let bores = [
+                OrientedBore {
+                    radius: 3. * scale,
+                    tilt: 0.7,
+                    azimuth,
+                    center: [0., -8. * scale],
+                },
+                OrientedBore {
+                    radius: 2. * scale,
+                    tilt: 0.5,
+                    azimuth: azimuth + PI / 2.,
+                    center: [0., 8. * scale],
+                },
+            ];
+            let solid = oriented_bores_demo_solid(28. * scale, 8. * scale, &bores, t).unwrap();
+            solid.validate(t.absolute()).unwrap();
+            assert_eq!((solid.shell.faces.len(), solid.edges.len()), (8, 18));
+            let volume = PI * (784. - 9. / 0.7f64.cos() - 4. / 0.5f64.cos()) * 8. * scale.powi(3);
+            assert!((solid.volume().unwrap() - volume).abs() < 1e-9 * scale.powi(3));
+            for bore in bores {
+                for z in [-4., 0., 4.] {
+                    let (s, c) = bore.azimuth.sin_cos();
+                    let p = Point3::new(
+                        bore.center[0] + z * scale * bore.tilt.tan() * c,
+                        bore.center[1] + z * scale * bore.tilt.tan() * s,
+                        z * scale,
+                    );
+                    assert_eq!(
+                        classify_point_in_solid(&solid, p, t).unwrap(),
+                        PointLocation::Outside
+                    );
+                }
+            }
+            let mesh = solid.tessellate(0.02 * scale, t.absolute()).unwrap();
+            assert!((mesh.signed_volume() - volume).abs() < 16. * scale.powi(3));
+            let key = |p: Point3| {
+                [
+                    (p.x / scale * 1e8).round() as i64,
+                    (p.y / scale * 1e8).round() as i64,
+                    (p.z / scale * 1e8).round() as i64,
+                ]
+            };
+            let mut uses = std::collections::BTreeMap::new();
+            for (tri, face) in mesh.triangles.iter().zip(&mesh.face_ids) {
+                let points = tri.map(|index| mesh.positions[index]);
+                for j in 0..3 {
+                    let a = key(points[j]);
+                    let b = key(points[(j + 1) % 3]);
+                    let (edge, sign) = if a < b { ((a, b), 1) } else { ((b, a), -1) };
+                    let count = uses.entry(edge).or_insert((0, 0));
+                    count.0 += 1;
+                    count.1 += sign;
+                }
+                if *face >= 6 {
+                    let p = (points[0] + points[1] + points[2]) * (1. / 3.);
+                    for bore in bores {
+                        let (s, c) = bore.azimuth.sin_cos();
+                        let dx = p.x - bore.center[0] - p.z * bore.tilt.tan() * c;
+                        let dy = p.y - bore.center[1] - p.z * bore.tilt.tan() * s;
+                        let normalized = ((dx * c + dy * s) * bore.tilt.cos())
+                            .hypot(-dx * s + dy * c)
+                            / bore.radius;
+                        assert!(normalized >= 1. - 0.02 * scale / bore.radius);
+                    }
+                }
+            }
+            assert!(uses.values().all(|&(count, sign)| count == 2 && sign == 0));
+        }
+        let crossing = [
+            OrientedBore {
+                radius: 0.5 * scale,
+                tilt: 1.,
+                azimuth: PI / 4.,
+                center: [-4. * scale, -4. * scale],
+            },
+            OrientedBore {
+                radius: 0.5 * scale,
+                tilt: 1.,
+                azimuth: 5. * PI / 4.,
+                center: [4. * scale, 4. * scale],
+            },
+        ];
+        assert!(oriented_bores_demo_solid(28. * scale, 12. * scale, &crossing, t).is_err());
+        let invalid = [OrientedBore {
+            radius: scale,
+            tilt: 0.5,
+            azimuth: f64::NAN,
+            center: [0., 0.],
+        }];
+        assert!(oriented_bores_demo_solid(28. * scale, 8. * scale, &invalid, t).is_err());
+    }
+}

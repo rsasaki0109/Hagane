@@ -427,3 +427,6 @@ accept additional disjoint ellipse layouts and provide a two-bore solid demo.
 
 [Independently tilted bores](docs/divergent-tilted-bores.md) use full-height
 analytic separation certificates and provide a nonparallel two-bore web preset.
+
+[Independent bore azimuths](docs/oriented-bores.md) now preserve rotated ellipse
+cap wires and exact cylindrical walls in a further interactive solid preset.

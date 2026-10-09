@@ -363,3 +363,11 @@ endpoints bounds the affine gap throughout the interval. The guarded finite
 direction search certifies a separating plane, not a sampled mesh
 intersection. See [independently tilted bores](divergent-tilted-bores.md).
 No new dependencies and no OCCT source were used.
+
+## Arbitrary-azimuth cylindrical tools
+
+Independent orthonormal-basis rotation gives axis, radial basis, horizontal
+ellipse section and harmonic wall height coordinates. The full-height
+certificate projects both XY drift components and rotated ellipse basis
+vectors, using the same affine endpoint argument. See [oriented bores](oriented-bores.md).
+No new dependencies or OCCT source were used.

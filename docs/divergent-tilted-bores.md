@@ -34,8 +34,9 @@ whole height. Final B-rep validation also checks cap containment/separation,
 shared edge orientation and pcurve coherence. The original limits remain:
 finite resolved positive dimensions; tilt about Y in [-pi/3,pi/3]; at most sixteen
 holes; conservative normalized enclosing-circle outer containment. General
-curved Boolean operations, intersecting bores and arbitrary tilt azimuths remain
-unsupported. Arbitrary rigid placement of the completed solid is supported.
+curved Boolean operations and intersecting bores remain unsupported.
+[Independent tilt azimuths](oriented-bores.md) are now supported by an expanded
+full-height certificate and rotated cylinder frames. Arbitrary rigid placement of the completed solid is supported.
 
 ## Demo
 

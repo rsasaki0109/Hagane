@@ -294,6 +294,30 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        28 => {
+            if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
+                return Err(Error::Unsupported("oriented bore control must be in 8..24"));
+            }
+            crate::oriented_bores_demo_solid(
+                28.,
+                8.,
+                &[
+                    crate::OrientedBore {
+                        radius: radius / 6.,
+                        tilt: 0.7,
+                        azimuth: 0.4,
+                        center: [0., -8.],
+                    },
+                    crate::OrientedBore {
+                        radius: radius / 6.,
+                        tilt: 0.5,
+                        azimuth: 0.4 + std::f64::consts::PI / 2.,
+                        center: [0., 8.],
+                    },
+                ],
+                crate::GeometryTolerance::default(),
+            )?
+        }
         27 => {
             if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
                 return Err(Error::Unsupported(
