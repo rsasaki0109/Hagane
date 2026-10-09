@@ -582,3 +582,9 @@ bound on the remaining UV product over a triangle bounding rectangle. Shared
 edge midpoint subdivision is implemented independently. Floating arithmetic
 reserves are engineering checks, not interval proofs. No new dependencies or
 OCCT code were used (original code MIT OR Apache-2.0).
+
+Rational bilinear polygon bounds use the quotient identity H=W*S, positive
+Bernstein denominator bounds, differentiated homogeneous control differences
+and the barycentric Taylor remainder with Hessian bounds. These mathematical
+identities are implemented independently with engineering floating guards;
+no interval certification is claimed. No new dependencies or OCCT code were used.

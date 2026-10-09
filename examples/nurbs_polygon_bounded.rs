@@ -10,7 +10,7 @@ fn main() -> Result<()> {
             Point3::new(10., 0., 0.),
             Point3::new(10., 10., 8.),
         ],
-        vec![1.; 4],
+        vec![1., 1.25, 1.5, 1.],
     )?;
     let face = NurbsPolygonFace::new(
         surface,

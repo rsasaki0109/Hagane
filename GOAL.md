@@ -863,3 +863,14 @@ verify this scope. General rational/higher-degree/multi-span polygon display,
 holes, sewing and closed rational solids remain incomplete. Native/WASM builds
 share the kernel; no dedicated browser export was added. The estimate remains
 15–25%, toward 80%. See [bounded polygon display](docs/nurbs-polygon-bounded.md).
+
+## Positive-weight rational bilinear polygon display
+
+Bounded polygon tessellation now accepts nonuniform positive weights on one
+bilinear patch. Homogeneous derivative bounds and a barycentric Taylor remainder
+replace the polynomial-only twist bound, with explicit numerical-conditioning
+and budget rejection. Independent rational formulas and common weight scaling
+tests verify the actual implementation; the OBJ demo now uses nonuniform weights.
+Higher-degree/multi-span display, holes, sewing and closed rational solids remain
+incomplete. The estimate remains 15–25%, toward 80%. See [bounded polygon
+display](docs/nurbs-polygon-bounded.md).

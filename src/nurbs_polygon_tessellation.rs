@@ -1,4 +1,4 @@
-//! Conforming bounded display for one equal-weight bilinear polygon face.
+//! Conforming bounded display for one positive-weight rational bilinear polygon face.
 use crate::*;
 use std::collections::HashMap;
 #[derive(Clone, Debug)]
@@ -10,7 +10,7 @@ pub struct NurbsPolygonMesh {
 }
 impl NurbsPolygonFace {
     /// Display the retained polygon, not a mesh Boolean. Initial support is one
-    /// degree-(1,1), equal-weight patch, including genuinely curved saddles.
+    /// degree-(1,1), positive-weight rational patch, including genuinely curved saddles.
     pub fn tessellate_bilinear_bounded(
         &self,
         error: f64,
@@ -24,35 +24,31 @@ impl NurbsPolygonFace {
             ));
         }
         let s = &self.boundary.surface;
-        if s.degrees() != [1, 1]
-            || s.control_points().len() != 4
-            || s.weights().iter().any(|w| *w != s.weights()[0])
-        {
+        if s.degrees() != [1, 1] || s.control_points().len() != 4 {
             return Err(Error::Unsupported(
-                "bounded polygon display requires one equal-weight bilinear patch",
+                "bounded polygon display requires one rational bilinear patch",
             ));
         }
         let p = s.control_points();
-        let twist = ((p[3] - p[2]) - (p[1] - p[0])).norm();
+        let derivatives = rational_derivative_bounds(s)?;
+        let ratio = s.weights().iter().copied().fold(0f64, f64::max)
+            / s.weights().iter().copied().fold(f64::INFINITY, f64::min);
         let domains = [s.knots(0)?, s.knots(1)?];
         let widths = [domains[0][2] - domains[0][1], domains[1][2] - domains[1][1]];
         let scale = p
             .iter()
             .flat_map(|p| [p.x.abs(), p.y.abs(), p.z.abs()])
             .fold(f64::MIN_POSITIVE, f64::max);
-        let diameter = p
-            .iter()
-            .flat_map(|a| p.iter().map(move |b| (*a - *b).norm()))
-            .fold(0f64, f64::max);
-        let mut arithmetic = 65536. * f64::EPSILON * scale;
+        let mut arithmetic = 65536. * f64::EPSILON * scale * ratio * ratio;
         for axis in 0..2 {
             let parameter_scale = domains[axis]
                 .iter()
                 .map(|x| x.abs())
                 .fold(f64::MIN_POSITIVE, f64::max);
-            arithmetic += 128. * f64::EPSILON * parameter_scale * (diameter / widths[axis]);
+            arithmetic +=
+                128. * f64::EPSILON * parameter_scale * (derivatives[3 + axis] / widths[axis]);
         }
-        if !twist.is_finite() || !arithmetic.is_finite() || arithmetic >= error {
+        if !arithmetic.is_finite() || arithmetic >= error {
             return Err(Error::Tessellation(
                 "bilinear polygon precision cannot resolve requested error",
             ));
@@ -76,10 +72,13 @@ impl NurbsPolygonFace {
                             hi[a] = hi[a].max(uv[id][a]);
                         }
                     }
-                    // Constant and affine terms cancel under barycentric interpolation.
-                    // Both the normalized UV product and its interpolation lie in
-                    // [0, du*dv] after shifting to this triangle's rectangle origin.
-                    twist * ((hi[0] - lo[0]) / widths[0]) * ((hi[1] - lo[1]) / widths[1])
+                    // Taylor remainder about the interpolated UV point. First
+                    // order terms cancel in barycentric interpolation.
+                    let du = (hi[0] - lo[0]) / widths[0];
+                    let dv = (hi[1] - lo[1]) / widths[1];
+                    0.5 * (derivatives[0] * du * du
+                        + 2. * derivatives[1] * du * dv
+                        + derivatives[2] * dv * dv)
                         + arithmetic
                 })
                 .collect();
@@ -154,4 +153,54 @@ impl NurbsPolygonFace {
         }
         unreachable!()
     }
+}
+
+// Bounds in normalized patch coordinates for S=H/W, with positive W.
+// Differentiate H=W*S twice; H_uu=W_uu=H_vv=W_vv=0.
+fn rational_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
+    let points = s.control_points();
+    let maximum = s.weights().iter().copied().fold(0f64, f64::max);
+    let w: Vec<f64> = s.weights().iter().map(|x| x / maximum).collect();
+    let minimum = w.iter().copied().fold(f64::INFINITY, f64::min);
+    let diameter = points
+        .iter()
+        .flat_map(|a| points.iter().map(move |b| (*a - *b).norm()))
+        .fold(0f64, f64::max);
+    let mut h = Vec::new();
+    for (p, w) in points.iter().zip(&w) {
+        let local = *p - points[0];
+        let weighted = local * *w;
+        if !weighted.finite()
+            || [local.x, local.y, local.z]
+                .into_iter()
+                .zip([weighted.x, weighted.y, weighted.z])
+                .any(|(a, b)| a != 0. && b == 0.)
+        {
+            return Err(Error::Tessellation(
+                "rational polygon homogeneous controls exceed numerical range",
+            ));
+        }
+        h.push(weighted);
+    }
+    let hu = (h[2] - h[0]).norm().max((h[3] - h[1]).norm());
+    let hv = (h[1] - h[0]).norm().max((h[3] - h[2]).norm());
+    let huv = ((h[3] - h[2]) - (h[1] - h[0])).norm();
+    let wu = (w[2] - w[0]).abs().max((w[3] - w[1]).abs());
+    let wv = (w[1] - w[0]).abs().max((w[3] - w[2]).abs());
+    let wuv = ((w[3] - w[2]) - (w[1] - w[0])).abs();
+    let su = (hu + diameter * wu) / minimum;
+    let sv = (hv + diameter * wv) / minimum;
+    let bounds = [
+        2. * wu * su / minimum,
+        (huv + diameter * wuv + su * wv + sv * wu) / minimum,
+        2. * wv * sv / minimum,
+        su,
+        sv,
+    ];
+    if minimum <= 0. || !diameter.is_finite() || bounds.iter().any(|x| !x.is_finite()) {
+        return Err(Error::Tessellation(
+            "rational polygon derivative bound exceeds numerical range",
+        ));
+    }
+    Ok(bounds)
 }

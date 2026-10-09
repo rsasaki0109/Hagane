@@ -99,7 +99,7 @@ fn subdivision_is_conforming_covers_uv_polygon_and_preserves_orientation() {
     }
 }
 #[test]
-fn precision_budget_and_unsupported_rational_patch_are_explicit() {
+fn precision_budget_and_unsupported_multispan_patch_are_explicit() {
     let f = face(1);
     assert!(f
         .tessellate_bilinear_bounded(0.001, 2, Tolerance::default())
@@ -119,6 +119,7 @@ fn precision_budget_and_unsupported_rational_patch_are_explicit() {
         vec![1., 2., 1., 1.],
     )
     .unwrap();
+    let rational = rational.insert_knot(0, 4., 1).unwrap();
     let f = NurbsPolygonFace::new(
         rational,
         f.boundary.uv_corners().to_vec(),
@@ -130,4 +131,57 @@ fn precision_budget_and_unsupported_rational_patch_are_explicit() {
         f.tessellate_bilinear_bounded(0.1, 65536, Tolerance::default()),
         Err(Error::Unsupported(_))
     ));
+}
+
+#[test]
+fn rational_triangle_bounds_match_independent_weighted_formula() {
+    let original = face(1);
+    let weights = [1., 1.25, 1.5, 1.];
+    for scale in [1., 1e100, 1e-100] {
+        let s = &original.boundary.surface;
+        let rational = NurbsSurface::new(
+            [1, 1],
+            [s.knots(0).unwrap().to_vec(), s.knots(1).unwrap().to_vec()],
+            [2, 2],
+            s.control_points().to_vec(),
+            weights.map(|w| w * scale).to_vec(),
+        )
+        .unwrap();
+        let face = NurbsPolygonFace::new(
+            rational,
+            original.boundary.uv_corners().to_vec(),
+            1,
+            Tolerance::default(),
+        )
+        .unwrap();
+        let display = face
+            .tessellate_bilinear_bounded(0.1, 65536, Tolerance::default())
+            .unwrap();
+        for (i, t) in display.mesh.triangles.iter().enumerate() {
+            assert!(display.error_bounds[i] <= 0.1);
+            for a in 0..=4 {
+                for b in 0..=4 - a {
+                    let bary = [a as f64 / 4., b as f64 / 4., (4 - a - b) as f64 / 4.];
+                    let mut uv = [0.; 2];
+                    let mut chord = Vec3::new(0., 0., 0.);
+                    for j in 0..3 {
+                        for (axis, v) in uv.iter_mut().enumerate() {
+                            *v += display.vertex_uv[t[j]][axis] * bary[j];
+                        }
+                        chord = chord + display.mesh.positions[t[j]] * bary[j];
+                    }
+                    let u = (uv[0] - 2.) / 4.;
+                    let v = (uv[1] + 3.) / 8.;
+                    let basis = [(1. - u) * (1. - v), (1. - u) * v, u * (1. - v), u * v];
+                    let denominator: f64 = (0..4).map(|j| basis[j] * weights[j]).sum();
+                    let expected = Point3::new(
+                        10. * (basis[2] * weights[2] + basis[3] * weights[3]) / denominator,
+                        10. * (basis[1] * weights[1] + basis[3] * weights[3]) / denominator,
+                        8. * basis[3] * weights[3] / denominator,
+                    );
+                    assert!((expected - chord).norm() <= display.error_bounds[i]);
+                }
+            }
+        }
+    }
 }
