@@ -832,3 +832,13 @@ This provides a prerequisite for straight-boundary surface trims; it does not
 construct arbitrary trimmed faces, sewing, closed rational solids, intersections,
 general curved Booleans or NURBS STEP. The estimate remains **15–25%**, toward
 **80%**. See [surface edges](docs/nurbs-surface-edge.md).
+
+## Closed convex UV surface wires
+
+`NurbsSurfaceWire` now retains exact lifted edges, affine pcurves and shared
+closing vertex indices for 3–64 strictly convex UV corners, in either traversal
+direction. Validation rejects unsupported polygons and corrupted topology.
+Native tests and an executable example verify rational edge/surface identity
+and bounded boundary display. Face interior tessellation, arbitrary trim loops,
+sewing and closed NURBS solids remain incomplete. The long-term estimate remains
+15–25%, toward 80%. See [surface wires](docs/nurbs-surface-wire.md).

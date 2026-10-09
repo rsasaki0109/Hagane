@@ -561,3 +561,13 @@ numerical guards address `f64` stitching separately from the mathematical
 identity. The affine UV pcurve uses the same dimensionless path parameter as
 the retained 3D rational edge. This implementation is independent and uses no
 OCCT source, copied CAD routine or new library.
+
+### Convex UV surface wires
+
+The supporting-half-plane characterization of a strictly convex polygon is used
+with Hagane's independent exact `orient2d` sign predicate: every nonincident
+corner must lie strictly on the same side of each oriented boundary edge.
+This is a mathematical convexity criterion, not an OCCT implementation or a
+borrowed triangulation routine. Lifted geometry uses the Bernstein composition
+already recorded above. No new dependencies or third-party code were added;
+original implementation remains MIT OR Apache-2.0.

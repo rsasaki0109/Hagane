@@ -122,3 +122,6 @@ mod nurbs_surface_edge;
 pub use nurbs_surface_edge::*;
 mod nurbs_surface_edge_demo;
 pub use nurbs_surface_edge_demo::*;
+
+mod nurbs_surface_wire;
+pub use nurbs_surface_wire::*;
