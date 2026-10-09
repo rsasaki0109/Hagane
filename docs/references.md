@@ -907,3 +907,12 @@ witness is independently filtered; actual ruled spline walls cover circular
 rims. Supporting-plane and radial deep-void separation are Euclidean lower
 bounds. These engineering arithmetic guards are not interval certification.
 No CAD source or new dependency is used; original code remains MIT OR Apache-2.0.
+
+### Editable graph workflow
+
+The versioned graph operation document reuses Hagane's original typed graph,
+rational circular-bore, mass, bounded display, classification and STEP APIs.
+Immutable prefix snapshots and transactional replay are original application
+code; saved data records intent rather than supplying geometry. Existing serde
+and serde_json dependencies retain their recorded MIT OR Apache-2.0 terms.
+No external CAD source or additional dependency is introduced.

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": { "linear": 1e-8, "angular": 1e-10, "relative": 0.0 },
+  "display": { "max_error": 0.5, "max_triangles": 65536 },
+  "operations": [
+    { "kind": "graph_stock", "id": "stock", "dimensions": [80.0, 60.0, 20.0], "bulge": 36.0 },
+    { "kind": "uv_trim", "id": "trim", "input": "stock", "ranges": [[0.1, 0.9], [0.1, 0.9]] },
+    { "kind": "placement", "id": "pose", "input": "trim", "axis": [0.0, 1.0, 0.0], "angle": 0.4363323129985824, "translation": [12.0, -5.0, 8.0] },
+    { "kind": "circular_through_bore", "id": "bore", "input": "pose", "center": [40.0, 30.0], "radius": 10.0 }
+  ]
+}

@@ -29,6 +29,11 @@ strictly contained source-XY through bore, checked Euclidean point classificatio
 and dedicated exact AP214 STEP export;
 circular-bore STEP import and general curved Booleans remain planned.
 
+The dedicated [editable graph workflow](docs/graph-workflow.md) connects this
+stock, UV selection, rigid placement and optional circular bore to reproducible
+documents, incremental rebuilding, browser Undo/Redo, autosave, point queries
+and exact STEP downloads. It remains a scoped linear modeling history.
+
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.

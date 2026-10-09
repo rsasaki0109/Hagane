@@ -3,6 +3,8 @@
 #[cfg(target_arch = "wasm32")]
 mod exports {
     use std::sync::Mutex;
+    static GRAPH_WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    static GRAPH_WORKFLOW_SESSION: Mutex<Option<crate::GraphWorkflowSession>> = Mutex::new(None);
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     static GRAPH_CIRCULAR_HOLE_POINT_INPUT: Mutex<(Vec<f64>, bool)> =
         Mutex::new((Vec::new(), false));
@@ -33,6 +35,89 @@ mod exports {
         Mutex::new((Vec::new(), false));
     static GRAPH_STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_begin() {
+        let mut input = GRAPH_WORKFLOW_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_push_byte(byte: u32) -> i32 {
+        let mut input = GRAPH_WORKFLOW_INPUT.lock().unwrap();
+        if input.1 || byte > 255 || input.0.len() >= 64 * 1024 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(byte as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_finish() -> i32 {
+        let (bytes, bad) = {
+            let mut input = GRAPH_WORKFLOW_INPUT.lock().unwrap();
+            (
+                std::mem::take(&mut input.0),
+                std::mem::replace(&mut input.1, false),
+            )
+        };
+        let result = if bad {
+            Err(crate::Error::InvalidInput(
+                "graph workflow document exceeds 64 KiB or has invalid bytes",
+            ))
+        } else {
+            match std::str::from_utf8(&bytes) {
+                Ok(text) => GRAPH_WORKFLOW_SESSION
+                    .lock()
+                    .unwrap()
+                    .get_or_insert_with(crate::GraphWorkflowSession::new)
+                    .evaluate_json(text),
+                Err(_) => Err(crate::Error::InvalidInput(
+                    "graph workflow document must be UTF-8",
+                )),
+            }
+        };
+        graph_workflow_generate(result)
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_reset() -> i32 {
+        *GRAPH_WORKFLOW_SESSION.lock().unwrap() = None;
+        let mut input = GRAPH_WORKFLOW_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+        graph_workflow_generate(Ok("{\"ok\":true}".into()))
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_finish_step_export() -> i32 {
+        let session = GRAPH_WORKFLOW_SESSION.lock().unwrap();
+        graph_workflow_generate(match session.as_ref() {
+            Some(s) => crate::graph_workflow_step_export_json(s),
+            None => Err(crate::Error::InvalidInput(
+                "graph workflow has no accepted shape",
+            )),
+        })
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_workflow_finish_point_query(
+        x: f64,
+        y: f64,
+        z: f64,
+        linear: f64,
+    ) -> i32 {
+        let session = GRAPH_WORKFLOW_SESSION.lock().unwrap();
+        graph_workflow_generate(match session.as_ref() {
+            Some(s) => {
+                crate::graph_workflow_point_query_json(s, crate::Point3::new(x, y, z), linear)
+            }
+            None => Err(crate::Error::InvalidInput(
+                "graph workflow has no accepted shape",
+            )),
+        })
+    }
+    fn graph_workflow_generate(result: crate::Result<String>) -> i32 {
+        let (status, text) = crate::graph_workflow_output(result);
+        *OUTPUT.lock().unwrap() = text.into_bytes();
+        status
+    }
     #[no_mangle]
     pub extern "C" fn hagane_graph_polygon_step_begin() {
         let mut input = GRAPH_POLYGON_STEP_INPUT.lock().unwrap();

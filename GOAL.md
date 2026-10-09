@@ -1308,3 +1308,16 @@ results and markers after rejection. General curved-solid classification and
 editable operation-document integration remain subsequent work. The estimate
 remains **15–25%**, toward **80%**.
 See [circular graph bores](docs/nurbs-graph-circular-hole.md).
+
+## Editable graph operation documents
+
+A dedicated versioned document now connects graph stock, absolute UV selection,
+rigid placement and an optional final circular through bore to typed replay,
+actual incremental prefix reuse and transactional display validation. Browser
+Undo/Redo replays accepted documents; local save/restore validates intent in
+Rust. Accepted-model point queries and STEP export share the retained typed
+shape. Unsupported histories and failed geometry/display edits preserve the
+last accepted state. Complex accepted histories remain editable as JSON rather
+than being flattened by the simple form. General curved modeling, circular-bore
+STEP import and arbitrary operation graphs remain future work. The estimate
+remains **15–25%**, toward **80%**. See [editable graph workflow](docs/graph-workflow.md).
