@@ -984,3 +984,15 @@ volume and transforms the centroid. Browser and native/WASM JSON show accepted
 properties; generic rational-shell mass, mixed density, inertia and surface
 area remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [graph mass properties](nurbs-graph-mass-properties.md).
+
+## Scoped graph centroidal inertia
+
+Polynomial graph solids and rectangular-through-opening solids now expose
+centroidal inertia in world axes at uniform unit density (geometric mm⁵).
+Direct central column moments and positive material strips preserve trims,
+signed roof offsets and rigid placement without mesh or world-moment
+subtraction. Browser diagonal inspection and complete native/WASM tensors
+record explicit units/reference; unresolved numeric results remain errors.
+General-shell mass, mixed density, principal-axis solvers and surface area
+remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [graph inertia](nurbs-graph-inertia.md).

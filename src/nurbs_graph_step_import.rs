@@ -705,6 +705,12 @@ impl ImportedNurbsGraph {
             Self::Holed(body) => body.mass_properties(tol),
         }
     }
+    pub fn inertia_properties(&self, tol: Tolerance) -> Result<NurbsGraphInertiaProperties> {
+        match self {
+            Self::Plain(body) => body.inertia_properties(tol),
+            Self::Holed(body) => body.inertia_properties(tol),
+        }
+    }
     pub fn tessellate_bounded(
         &self,
         error: f64,

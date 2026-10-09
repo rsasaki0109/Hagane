@@ -53,7 +53,8 @@ different questions and retain their respective geometry checks.
 
 Only the certified polynomial graph families are supported. This does not add
 mass properties for arbitrary rational or trimmed NURBS shells, generic `Solid`
-or mixed-density materials. Inertia tensors and surface area remain future work.
+or mixed-density materials. A separate [centroidal inertia API](nurbs-graph-inertia.md) now supports this
+family; general-shell inertia and surface area remain future work.
 Corrupted public B-reps and nonfinite/unresolved numerical results return errors.
 
 The graph browser pages display the world centroid of the accepted body. STEP

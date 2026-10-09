@@ -271,8 +271,17 @@ fn serialize_graph(
         })
         .collect::<Result<Vec<_>>>()?;
     let mass = graph.mass_properties(Tolerance::default())?;
+    let (inertia_properties, inertia_error) = match graph.inertia_properties(Tolerance::default()) {
+        Ok(inertia) => (
+            Some(
+                serde_json::json!({"volume":inertia.volume,"centroid":xyz(inertia.centroid),"inertia":inertia.inertia,"volume_units":"mm3","centroid_units":"mm","inertia_units":"mm5","density":"uniform","reference":"centroid","axes":"world"}),
+            ),
+            None,
+        ),
+        Err(error) => (None, Some(error.to_string())),
+    };
     Ok(serde_json::json!({
-        "width":width,"depth":depth,"height":height,"bulge":bulge,"error":error,"source_domain":graph.source_domain(),"volume":graph.volume()?,"mass_properties":{"volume":mass.volume,"centroid":xyz(mass.centroid),"units":"mm","volume_units":"mm3","centroid_units":"mm","density":"uniform","method":"polynomial column integration"},"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},
+        "width":width,"depth":depth,"height":height,"bulge":bulge,"error":error,"source_domain":graph.source_domain(),"volume":graph.volume()?,"inertia_properties":inertia_properties,"inertia_error":inertia_error,"mass_properties":{"volume":mass.volume,"centroid":xyz(mass.centroid),"units":"mm","volume_units":"mm3","centroid_units":"mm","density":"uniform","method":"polynomial column integration"},"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},
         "positions":positions,"normals":normals,"boundary_samples":boundary_samples,
         "mesh":{"positions":display.mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":display.mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":display.mesh.triangles,"face_ids":display.mesh.face_ids},
         "vertex_nodes":display.vertex_nodes,"vertex_uv":display.vertex_uv,"vertex_faces":display.vertex_faces,"error_bounds":display.error_bounds,"subdivisions":display.subdivisions,

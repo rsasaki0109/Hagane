@@ -717,3 +717,11 @@ sums and local-to-world centroid placement avoid subtractive hole moments and
 large translated world moments. Floating-point guards are engineering checks,
 not interval arithmetic. Original MIT OR Apache-2.0 implementation introduces
 no dependency and copies or translates no OCCT source.
+
+Scoped graph centroidal inertia uses the public central-column identity
+`integral_0^h (z-cz)² dz = h*((h/2-cz)²+h²/12)`, the parallel-axis theorem
+for independent tests, and the rank-two tensor frame transformation `R I Rᵀ`.
+Four-point tensor Gauss–Legendre integration exactly integrates degree-six
+polynomials in real arithmetic; the public NIST quadrature reference above
+applies. Geometric unit-density tensors have length-to-the-fifth units.
+Original MIT OR Apache-2.0 code adds no dependency or OCCT source.
