@@ -225,9 +225,47 @@ normal text-editing shortcuts. Buttons are available regardless of focus.
 Unloaded text in the JSON editor is not a model edit; use Load document to apply
 it. Undo/Redo does not restore camera position, unsubmitted JSON text or rejected
 input text. Download still saves only the current validated modeling document,
-not undo stacks. Reloading the page starts a new edit history.
+not undo stacks. Reloading the page starts a new edit history while restoring the locally saved
+current document as described below.
 
 Browser regression checks exercise exact restored documents and volumes, bore
 selection, add/remove/import recovery, rejected edits without lost redo,
 branch replacement, keyboard focus and the 64-edit bound. Existing native/WASM
 session parity and geometry validation remain the modeling path.
+
+
+## Local autosave and recovery
+
+![Actual validated restoration from local browser storage](workflow-autosave.png)
+
+Every accepted edit saves the current operation document and selected bore to
+this browser's local storage. Undo/Redo and selection changes update that saved
+current model too. On page reload, Hagane reconstructs it through the same
+Rust/WASM validation and B-rep tessellation; it does not trust or save a display
+mesh. The restored model starts a fresh Undo/Redo history and geometry session.
+Rejected edits never replace the saved accepted document.
+
+A local wrapper uses `storage_version: 1`, `document` and `selected` under
+`hagane.workflow.autosave.v1`. Unknown wrapper versions/fields, invalid selection,
+malformed/oversized data and unsupported or invalid model documents are rejected.
+The wrapper is bounded to 65 KiB, and the kernel document retains its separate
+64 KiB input limit. Invalid saved data remains intact while the default part is
+shown with a recovery message. **Save this tab locally** explicitly replaces
+that data with the current validated part. Correct/discard a rejected edit before
+using that button; it cannot save a failed tool as a valid model.
+
+If another tab writes or clears the saved model, this tab keeps its current
+part and pauses automatic writes. Each write also checks the last saved value,
+so a missed or delayed storage event cannot silently overwrite a newer value.
+Use **Save this tab locally** to choose this tab's valid model deliberately.
+This is conflict detection for local tabs, not collaborative editing or an
+atomic cross-tab transaction; simultaneous read/write races remain possible.
+
+Unavailable storage or quota errors display a save failure without rejecting
+a successfully constructed model. Download editable model remains available
+for a portable JSON copy. Local storage belongs to the browser profile and
+site origin: another browser, port or origin has a separate saved model. This
+is not cloud synchronization, a backup guarantee or persistent Undo/Redo.
+Browser checks cover reload/selection recovery, rejected-edit preservation,
+malformed/invalid saved data, explicit recovery, competing tabs, quota failures
+and storage denial without breaking modeling.

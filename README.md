@@ -25,7 +25,8 @@ inspect measured side/floor/hole-pair diagnostics, correct rejected
 edits and save/load a versioned operation document in the browser. Incremental
 B-rep sessions reuse unchanged history prefixes and display which operations
 were rebuilt. Browser Undo/Redo restores validated editing history, including
-imports and added/removed bores. Open
+imports and added/removed bores. Valid models autosave locally and are
+revalidated on reload, with explicit recovery and conflicting-tab protection. Open
 `web/workflow.html` after the normal WASM build. This is a scoped exact workflow,
 not a general parametric CAD system.
 

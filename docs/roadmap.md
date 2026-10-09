@@ -19,7 +19,9 @@ changed suffixes, with native/WASM equality to fresh results, cache-preserving
 failure recovery and browser-visible operation counts. Browser Undo/Redo
 restores up to 64 accepted edits, including imports, dimensions and bore
 add/remove operations; rejected edits preserve accepted history and redo.
-Other operation types,
+Local autosave now restores current documents through Rust validation, preserves
+rejected/corrupt data and detects conflicting tab writes; storage failures leave
+modeling and JSON download usable. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.

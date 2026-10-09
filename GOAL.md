@@ -26,7 +26,9 @@ unchanged exact B-rep prefixes and rebuild only changed suffixes. Rejected
 geometry or display edits retain the accepted cache; tests verify real operation
 evaluation counts and equality to fresh rebuilds. Browser Undo/Redo now restores
 accepted document edits, IDs and bore selection through the same validated
-WASM session; rejected edits do not overwrite accepted history.
+WASM session; rejected edits do not overwrite accepted history. Local autosave
+restores validated current documents after reload; invalid saved data, quota
+failures and competing tabs are handled without replacing valid geometry.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
