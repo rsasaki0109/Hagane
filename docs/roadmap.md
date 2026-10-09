@@ -726,3 +726,19 @@ exact inner wire. Retained sampled singularities and resource/accuracy failures
 still return errors. No source repair, global regularity certificate, arbitrary
 trim support or closed NURBS solid is claimed. The estimate remains **15–25%**,
 toward **80%**. See [retained-domain display](nurbs-surface-material.md).
+
+## Exact diagonal UV edges on rational surfaces
+
+An affine UV path now composes with the homogeneous tensor Bernstein surface
+to produce exact mathematical rational curve pieces at original knot crossings.
+The retained B-rep edge has canonical endpoint references and an affine pcurve
+using the same T=0..1 parameter. Constant-axis paths contract the corresponding
+degree; reversed paths retain direction and correct derivative side semantics.
+Degree, resource, endpoint and numerical conditioning limits fail explicitly.
+
+Native independent formulas and chain-rule/side tests, bounded curve checks,
+native/WASM parity and an actual browser endpoint editor accompany the demo.
+This does not fit a curve from sampled points or claim arbitrary face trim
+support. Surface regularity, general loops, sewing, closed NURBS solids,
+intersections and interchange remain future work. The estimate remains
+**15–25%**, toward **80%**. See [surface edges](nurbs-surface-edge.md).

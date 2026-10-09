@@ -550,3 +550,14 @@ and Bernstein bounds while avoiding evaluations in removed interiors. The
 singular-source demonstration uses independently derived polynomial-to-Bernstein
 coefficients for the displayed formulas, with unit rational weights. These
 changes use no copied source, external CAD implementation or new dependency.
+
+Straight UV path composition restricts homogeneous tensor Bezier controls to
+each path rectangle, contracts constant axes, reverses axis controls when needed,
+and uses the Bernstein product identity
+`B_i^p(t) * B_j^q(t) = binomial(p,i)*binomial(q,j)/binomial(p+q,i+j) * B_(i+j)^(p+q)(t)`.
+Original knot crossings divide the path into exact mathematical pieces with
+common homogeneous weight scaling. Homogeneous endpoint agreement and explicit
+numerical guards address `f64` stitching separately from the mathematical
+identity. The affine UV pcurve uses the same dimensionless path parameter as
+the retained 3D rational edge. This implementation is independent and uses no
+OCCT source, copied CAD routine or new library.

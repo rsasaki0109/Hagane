@@ -27,7 +27,10 @@ inner wires and boundary-conforming display in `web/surface-hole.html`.
 [Material-only NURBS display](docs/nurbs-surface-material.md) evaluates and
 subdivides only retained cells; the same page demonstrates an exact opening
 excluding a singular point of the source surface.
-Arbitrary trim curves and closed NURBS solids remain unsupported.
+[Straight UV surface edges](docs/nurbs-surface-edge.md) now retain exact
+diagonal rational curves and same-parameter pcurves, with an editable
+`web/surface-edge.html` demo. General trimmed faces and closed NURBS solids
+remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

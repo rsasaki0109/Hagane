@@ -811,3 +811,24 @@ editing and recovery. This is display of the retained face, not shape repair or
 a global regularity certificate. Arbitrary trims, cross-face sewing, closed
 rational solids and general curved Booleans remain incomplete. The estimate
 remains **15–25%**, toward **80%**. See [retained-domain display](docs/nurbs-surface-material.md).
+
+## Exact straight UV edges on rational surfaces
+
+`NurbsSurface::parameter_curve` now composes an affine UV segment with the
+homogeneous tensor surface, splitting at original knot crossings and retaining
+an exact mathematical piecewise rational curve over T=0..1. Constant axes are
+contracted, reversed paths preserve their parameter direction, and combined
+degrees or unresolved knot crossings beyond the supported domain fail explicitly.
+`NurbsSurfaceEdge` retains the supporting surface, real B-rep edge, two vertex
+references and same-parameter affine pcurve, independently of display sampling.
+
+Native tests cover independent rational formulas, one-sided source chain rules,
+nonunit domains, reversed paths, topology and bounded polylines. Native/WASM and
+browser fixtures show diagonal edges across smooth and C0 knot boundaries, with
+editable endpoints and rejected-input recovery. Composition/refinement uses
+checked `f64` arithmetic, not fitting or formal interval certification.
+
+This provides a prerequisite for straight-boundary surface trims; it does not
+construct arbitrary trimmed faces, sewing, closed rational solids, intersections,
+general curved Booleans or NURBS STEP. The estimate remains **15–25%**, toward
+**80%**. See [surface edges](docs/nurbs-surface-edge.md).

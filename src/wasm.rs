@@ -253,6 +253,31 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_surface_edge(
+        height: f64,
+        weight: f64,
+        u0: f64,
+        v0: f64,
+        u1: f64,
+        v1: f64,
+        chord_error: f64,
+        crease: u32,
+    ) -> i32 {
+        if crease > 1 {
+            return generate(Err(crate::Error::InvalidInput(
+                "crease mode must be 0 or 1",
+            )));
+        }
+        generate(crate::nurbs_surface_edge_demo_json(
+            height,
+            weight,
+            [u0, v0],
+            [u1, v1],
+            chord_error,
+            crease == 1,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_surface_singular_hole(
         height: f64,
         chord_error: f64,

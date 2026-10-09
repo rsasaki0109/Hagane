@@ -116,3 +116,9 @@ mod nurbs_holed_face;
 pub use nurbs_holed_face::*;
 mod nurbs_surface_hole_demo;
 pub use nurbs_surface_hole_demo::*;
+
+mod nurbs_parameter_curve;
+mod nurbs_surface_edge;
+pub use nurbs_surface_edge::*;
+mod nurbs_surface_edge_demo;
+pub use nurbs_surface_edge_demo::*;
