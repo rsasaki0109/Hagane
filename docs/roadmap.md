@@ -1018,7 +1018,7 @@ walls. Trimmed and placed sources preserve original UV pcurves. Positive
 triangle integration gives volume and world centroid; conforming bounded
 display evaluates actual retained faces. Native/WASM and an editable browser
 demo verify accepted solids and explicit invalid-input rejection. Concave
-boundaries, polygon openings, general curved Booleans and polygon graph STEP
+boundaries, general curved Booleans and polygon graph STEP
 interchange remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [closed polygon graph solids](nurbs-graph-polygon.md).
 
@@ -1033,3 +1033,14 @@ side selection preserve accepted models on contact/conditioning failures.
 Non-source-vertical planes, concave/holed stock and general curved Boolean
 operations remain unsupported. The estimate stays **15–25%**, toward **80%**.
 See [oblique graph partitions](nurbs-graph-polygon-split.md).
+
+## Convex polygon through openings
+
+Closed polynomial graph solids now retain one strictly contained convex polygon
+opening, annular cap wires and shared inward NURBS walls. Positive material-domain
+quadrature gives volume and centroid; checked conforming display preserves the
+void. Native/WASM and the editable browser demo validate topology, precision
+and rejected inputs. Multiple openings, general curved Booleans, polygon-hole
+STEP interchange, classification and inertia remain unsupported. The estimate
+remains **15–25%**, toward **80%**.
+See [polygon through openings](nurbs-graph-polygon-hole.md).

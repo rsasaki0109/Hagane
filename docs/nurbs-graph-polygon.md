@@ -91,8 +91,11 @@ offset, source UV limits, placement and CCW polygon. Rotation and zoom inspect
 the accepted actual solid; rejected edits preserve it. Native and WASM use
 the same Rust JSON entry point and safe bounded numeric transport.
 
-This stage does not add concave polygons, polygon openings, arbitrary curved
+This stage does not add concave polygons, arbitrary curved
 Boolean tools, polygon graph STEP interchange, classification or inertia.
 The separate [source-vertical oblique partition API](nurbs-graph-polygon-split.md)
 now uses these boundaries to return two closed parts and a finite cut face.
 General NURBS Boolean operations remain incomplete.
+
+The separate [polygon opening API](nurbs-graph-polygon-hole.md) now retains
+one strictly contained convex through opening as a closed solid.

@@ -754,3 +754,12 @@ moments and positive triangle quadrature reuse the public references above.
 Closed convex interpolation in display preserves mathematical endpoint ranges
 without changing B-rep geometry. Independent MIT OR Apache-2.0 implementation
 adds no dependency and copies or translates no OCCT source.
+
+### Polygon graph material domains
+
+The existing ISC-licensed `earcutr` dependency supplies candidate planar UV annulus
+triangulations. Original Rust checks exact orientation, embedding, oriented
+incidence and connectivity; bounded convex diagonal flips preserve the same
+planar domain without moving vertices. Positive Duffy/Gauss quadrature integrates
+polynomial column moments. These use planar geometry and polynomial quadrature
+identities; no OCCT source is copied or translated.

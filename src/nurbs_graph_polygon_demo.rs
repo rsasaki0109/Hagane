@@ -107,7 +107,11 @@ pub(crate) fn serialize_polygon_graph(
 
 pub(crate) fn serialize_polygon_brep(graph: &NurbsGraphPolygonSolid) -> Result<serde_json::Value> {
     graph.validate(Tolerance::default())?;
-    let solid = graph.brep();
+    serialize_graph_brep(graph.brep())
+}
+
+/// Geometry metadata only; callers validate their typed wrapper before serialization.
+pub(crate) fn serialize_graph_brep(solid: &Solid) -> Result<serde_json::Value> {
     let xyz = |p: Point3| [p.x, p.y, p.z];
     let curves=solid.edges.iter().map(|edge|match &edge.curve{
         Curve::Nurbs(curve)=>Ok(serde_json::json!({"degree":curve.degree(),"knots":curve.knots(),"weights":curve.weights(),"control_points":curve.control_points().iter().map(|p|xyz(*p)).collect::<Vec<_>>()})),
@@ -168,7 +172,61 @@ pub(crate) fn serialize_polygon_brep(graph: &NurbsGraphPolygonSolid) -> Result<s
                 .collect::<Result<Vec<_>>>()
         })
         .collect::<Result<Vec<_>>>()?;
+    let wire_edges = solid
+        .shell
+        .faces
+        .iter()
+        .map(|f| {
+            f.wires
+                .iter()
+                .map(|w| w.coedges.iter().map(|c| c.edge).collect::<Vec<_>>())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let wire_forwards = solid
+        .shell
+        .faces
+        .iter()
+        .map(|f| {
+            f.wires
+                .iter()
+                .map(|w| {
+                    w.coedges
+                        .iter()
+                        .map(|c| {
+                            if f.orientation > 0 {
+                                c.forward
+                            } else {
+                                !c.forward
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let wire_pcurves = solid
+        .shell
+        .faces
+        .iter()
+        .map(|f| {
+            f.wires
+                .iter()
+                .map(|w| {
+                    w.coedges
+                        .iter()
+                        .map(|c| match c.pcurve {
+                            PCurve::Affine { origin, direction } => {
+                                Ok(serde_json::json!({"origin":origin,"direction":direction}))
+                            }
+                            _ => Err(Error::Unsupported("graph demo pcurve is unsupported")),
+                        })
+                        .collect::<Result<Vec<_>>>()
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .collect::<Result<Vec<_>>>()?;
     Ok(
-        serde_json::json!({"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"faces":solid.shell.faces.len(),"edges":solid.edges.len(),"closed":true,"face_edges":face_edges,"face_forwards":face_forwards,"curves":curves,"pcurves":pcurves,"surfaces":surfaces}),
+        serde_json::json!({"wire_edges":wire_edges,"wire_forwards":wire_forwards,"wire_pcurves":wire_pcurves,"face_orientations":solid.shell.faces.iter().map(|f|f.orientation).collect::<Vec<_>>(),"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"faces":solid.shell.faces.len(),"edges":solid.edges.len(),"closed":true,"face_edges":face_edges,"face_forwards":face_forwards,"curves":curves,"pcurves":pcurves,"surfaces":surfaces}),
     )
 }

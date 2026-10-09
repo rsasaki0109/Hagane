@@ -4,6 +4,7 @@
 mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+    static GRAPH_POLYGON_HOLE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static GRAPH_POLYGON_SPLIT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static GRAPH_POLYGON_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
@@ -12,6 +13,36 @@ mod exports {
     static GRAPH_AUTO_STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static GRAPH_STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_polygon_hole_begin() {
+        let mut input = GRAPH_POLYGON_HOLE_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_polygon_hole_push(value: f64) -> i32 {
+        let mut input = GRAPH_POLYGON_HOLE_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 79 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_polygon_hole_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = GRAPH_POLYGON_HOLE_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            generate(Err(crate::Error::InvalidInput(
+                "polygon opening transport requires at most 79 finite values",
+            )))
+        } else {
+            generate(crate::nurbs_graph_polygon_hole_demo_json(&values))
+        }
+    }
     #[no_mangle]
     pub extern "C" fn hagane_graph_polygon_begin() {
         let mut input = GRAPH_POLYGON_INPUT.lock().unwrap();

@@ -197,6 +197,18 @@ pub use nurbs_graph_polygon_split::*;
 mod nurbs_graph_polygon_split_demo;
 pub use nurbs_graph_polygon_split_demo::*;
 
+mod nurbs_graph_polygon_material;
+
+mod nurbs_graph_polygon_hole;
+pub use nurbs_graph_polygon_hole::*;
+
+mod nurbs_graph_polygon_hole_display;
+
+mod nurbs_graph_polygon_hole_mass;
+
+mod nurbs_graph_polygon_hole_demo;
+pub use nurbs_graph_polygon_hole_demo::*;
+
 mod nurbs_graph_polygon_demo;
 pub use nurbs_graph_polygon_demo::*;
 
