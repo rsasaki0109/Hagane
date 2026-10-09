@@ -102,9 +102,11 @@ edges and volume 106,968.0384 mm³. With the roof offset set to zero, volume is
 92,160 mm³, matching the independent flat analytic value. Bounds remain a
 conservative source control-hull enclosure.
 
-This typed family does not yet provide STEP import/export or point queries.
-The existing single-opening type retains its separate STEP export and point
-classification APIs. More than four openings, concave stock/openings, contact
+This typed family now provides [exact STEP export](nurbs-graph-polygon-multi-hole-step.md),
+including all cap loops and actual rational weights. The browser downloads
+the accepted model; native/WASM export does not require display meshing.
+STEP import and point queries remain unsupported for this family. The existing
+single-opening type retains its separate point classification API. More than four openings, concave stock/openings, contact
 repair and general curved Booleans remain unsupported. Fixed-tolerance numeric
 demos continue to reject oversized geometry before moment calculation.
 

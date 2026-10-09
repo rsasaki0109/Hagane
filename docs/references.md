@@ -811,3 +811,12 @@ oriented boundary/interior incidence and nonintersection checks preserve
 that embedding. Positive Duffy/Gauss polynomial properties and world inertia
 reuse the references above. The existing Rust earcutr dependency remains ISC;
 no new library, external CAD source or license change is introduced.
+
+### Multiple polygon graph STEP export
+
+The retained multi-opening B-rep uses the existing public ISO 10303-21/AP214
+entity mapping and rational spline references recorded above. Outer and inner
+face bounds preserve canonical wire traversal; each shared surface curve has
+both incident pcurves. Independent entity decoding checks topology and spline
+data. See [multi-opening STEP export](nurbs-graph-polygon-multi-hole-step.md).
+Original Rust code; no new dependency, external CAD source or license change.

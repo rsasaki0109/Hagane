@@ -1200,6 +1200,20 @@ faces and excludes every opening. Exact collinear input-vertex edge splits
 handle aligned holes without nudging geometry. Native and WASM share an
 editable Web demo and checked count-based numeric transport. Pair contact,
 overlap/nesting and unresolved precision/resource requests are rejected.
-STEP import/export and point queries for this new family remain pending.
+STEP export now retains all cap loops, actual rational weights and shared
+topology. Native/WASM export builds the model without display meshing, and
+the browser downloads its last accepted part. STEP import and point queries
+for this family remain unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [multiple polygon openings](docs/nurbs-graph-polygon-multi-hole.md).
+
+## STEP export for multiple polygon graph openings
+
+The existing 1–4-opening, 64-total-corner family now exports its validated
+closed B-rep as AP214 in millimeters. Every cap inner wire, inward wall, shared
+edge and incident pcurve is retained, including near-unit rational weights.
+Model-only native/WASM export remains independent of display mesh resources;
+browser downloads use the accepted model. Modeling admission conditions are
+unchanged. Multiple-opening STEP import, point queries and general curved
+Booleans remain unsupported. The estimate remains **15–25%**, toward **80%**.
+See [multi-opening STEP export](docs/nurbs-graph-polygon-multi-hole-step.md).

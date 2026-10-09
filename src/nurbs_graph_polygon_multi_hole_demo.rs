@@ -5,19 +5,10 @@ use crate::*;
 /// UV pairs, then each hole's count (3..16) and UV pairs. Total corners,
 /// including an implicit rectangle's four, are limited to 64; at most 147 values.
 pub fn nurbs_graph_polygon_multi_hole_demo_json(x: &[f64]) -> Result<String> {
-    let (polygon, openings) = decode_polygons(x)?;
+    let body = polygon_multi_hole_model(x)?;
     let tol = Tolerance::default();
-    let source = crate::nurbs_graph_classification_demo::query_source(
-        [x[0], x[1], x[2]],
-        x[3],
-        x[4],
-        x[5],
-        [x[6], x[7], x[8]],
-        [[x[9], x[10]], [x[11], x[12]]],
-    )?;
-    let outer = NurbsGraphPolygonSolid::new(&source, polygon, tol)?;
-    let body = NurbsGraphPolygonMultiHoledSolid::new(&outer, openings, tol)?;
-    body.validate(tol)?;
+    let source = body.source();
+    let outer = NurbsGraphPolygonSolid::new(source, body.outer_polygon().to_vec(), tol)?;
     let display = body.tessellate_bounded(x[4], 65536, tol)?;
     let mass = body.mass_properties(tol)?;
     let (inertia_properties, inertia_error) =
@@ -61,7 +52,7 @@ pub fn nurbs_graph_polygon_multi_hole_demo_json(x: &[f64]) -> Result<String> {
     let removed_volumes = body
         .openings()
         .iter()
-        .map(|opening| NurbsGraphPolygonSolid::new(&source, opening.clone(), tol)?.volume())
+        .map(|opening| NurbsGraphPolygonSolid::new(source, opening.clone(), tol)?.volume())
         .collect::<Result<Vec<_>>>()?;
     let removed_volume = removed_volumes.iter().sum::<f64>();
     Ok(serde_json::json!({
@@ -78,6 +69,24 @@ pub fn nurbs_graph_polygon_multi_hole_demo_json(x: &[f64]) -> Result<String> {
         "vertex_nodes":display.vertex_nodes,"vertex_uv":display.vertex_uv,"vertex_faces":display.vertex_faces,"error_bounds":display.error_bounds,"subdivisions":display.subdivisions,
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.brep())?
     }).to_string())
+}
+
+/// Construct and validate retained geometry without requesting display resources.
+pub(crate) fn polygon_multi_hole_model(x: &[f64]) -> Result<NurbsGraphPolygonMultiHoledSolid> {
+    let (polygon, openings) = decode_polygons(x)?;
+    let tol = Tolerance::default();
+    let source = crate::nurbs_graph_classification_demo::query_source(
+        [x[0], x[1], x[2]],
+        x[3],
+        x[4],
+        x[5],
+        [x[6], x[7], x[8]],
+        [[x[9], x[10]], [x[11], x[12]]],
+    )?;
+    let outer = NurbsGraphPolygonSolid::new(&source, polygon, tol)?;
+    let body = NurbsGraphPolygonMultiHoledSolid::new(&outer, openings, tol)?;
+    body.validate(tol)?;
+    Ok(body)
 }
 
 type DecodedPolygons = (Vec<[f64; 2]>, Vec<Vec<[f64; 2]>>);

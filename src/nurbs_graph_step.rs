@@ -360,3 +360,11 @@ impl NurbsGraphPolygonHoledSolid {
         write(self.brep(), tol)
     }
 }
+impl NurbsGraphPolygonMultiHoledSolid {
+    /// Export the actual multiply-holed manifold B-rep as AP214 in millimetres.
+    /// Every cap wire, shared edge, affine pcurve and rational weight is retained.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
