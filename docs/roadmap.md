@@ -24,7 +24,9 @@ rejected/corrupt data and detects conflicting tab writes; storage failures leave
 modeling and JSON download usable. Polygon extrusion roots now integrate
 profile/height edits and subsequent exact circular bores into the same history,
 including concave boundary containment, incremental invalidation, Undo/Redo and
-JSON/local restoration. Curved/holed profiles and arbitrary extrusion directions
+JSON/local restoration. Polygon profile openings now support up to 64 disjoint
+loops and 256 total corners, exact subsequent bores, opening-clearance diagnostics
+and complete editing/save/restore integration. Curved profiles and arbitrary extrusion directions
 remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over

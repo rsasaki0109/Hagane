@@ -1,7 +1,7 @@
 //! Versioned, deliberately scoped editable modeling intent, not B-rep interchange.
 use crate::operations::{
-    apply_checked_prism_bore, checked_box_bore_tools, checked_polygon_prism_stock,
-    polygon_bore_clearance,
+    apply_checked_prism_bore, checked_box_bore_tools, checked_polygon_region_prism_stock,
+    polygon_region_bore_clearance,
 };
 use crate::*;
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,8 @@ pub enum WorkflowOperation {
     Extrusion {
         id: String,
         outer: Vec<[f64; 2]>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        holes: Vec<Vec<[f64; 2]>>,
         height: f64,
     },
     Box {
@@ -200,20 +202,30 @@ impl WorkflowDocument {
                     None,
                 )
             }
-            WorkflowOperation::Extrusion { id, outer, height } => {
-                let b = checked_polygon_prism_stock(outer, *height, t).map_err(|e| {
-                    let mut d = geometry_error(e, id);
-                    d.code = "profile_rejected";
-                    d.field = Some("outer_or_height");
-                    d
-                })?;
+            WorkflowOperation::Extrusion {
+                id,
+                outer,
+                holes,
+                height,
+            } => {
+                let b =
+                    checked_polygon_region_prism_stock(outer, holes, *height, t).map_err(|e| {
+                        let mut d = geometry_error(e, id);
+                        d.code = "profile_rejected";
+                        d.field = Some(if holes.is_empty() {
+                            "outer_or_height"
+                        } else {
+                            "outer_holes_or_height"
+                        });
+                        d
+                    })?;
                 (
                     id,
                     b,
                     Some(PolygonProfile {
                         origin: Point3::new(0., 0., -*height / 2.),
                         outer: outer.clone(),
-                        holes: vec![],
+                        holes: holes.clone(),
                     }),
                 )
             }
@@ -268,11 +280,14 @@ impl WorkflowDocument {
                     Some("Enter a positive, resolved radius and finite XY center.".into());
                 return Err(d);
             }
-            let clearance = if let Some(profile) = &profile {
-                polygon_bore_clearance(&profile.outer, *center, *radius)
+            let (clearance, profile_hole) = if let Some(profile) = &profile {
+                polygon_region_bore_clearance(&profile.outer, &profile.holes, *center, *radius)
                     .map_err(|e| geometry_error(e, id))?
             } else {
-                (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius
+                (
+                    (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius,
+                    None,
+                )
             };
             let required = 10. * t.linear;
             if !clearance.is_finite() {
@@ -292,10 +307,17 @@ impl WorkflowDocument {
                     Some("center_or_radius"),
                     "The circular tool lies outside, reaches or nearly touches a stock boundary.",
                 );
+                if let Some(index) = profile_hole {
+                    d.code = "profile_hole_clearance";
+                    d.message=format!("Circular tool reaches or lies inside profile hole {index} (zero-based index).");
+                }
                 d.category = "unsupported";
                 d.measured_clearance = Some(clearance);
                 d.required_clearance = Some(required);
                 d.suggestion=Some("Reduce the radius, move the center inward, or enlarge the stock until clearance exceeds the required margin.".into());
+                if profile_hole.is_some() {
+                    d.suggestion=Some("Move the center away from the profile opening, reduce radius, or edit the opening until clearance exceeds the required margin.".into());
+                }
                 return Err(d);
             }
             for (previous, previous_id) in bores.iter().zip(&ids[1..]) {

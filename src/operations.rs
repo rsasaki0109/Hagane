@@ -897,14 +897,27 @@ pub fn subtract_polygon_prism_bores(
     bores: &[BoxBore],
     t: Tolerance,
 ) -> Result<Solid> {
+    subtract_polygon_region_prism_bores(outer, &[], height, bores, t)
+}
+/// Exact polygon-region prism with polygon through openings and optional
+/// independent circular cuts. At most 64 profile holes and 256 total corners.
+pub fn subtract_polygon_region_prism_bores(
+    outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
+    height: f64,
+    bores: &[BoxBore],
+    t: Tolerance,
+) -> Result<Solid> {
     if bores.len() > 256 {
         return Err(Error::Unsupported(
             "at most 256 polygon prism bores are supported",
         ));
     }
-    let stock = checked_polygon_prism_stock(outer, height, t)?;
+    let stock = checked_polygon_region_prism_stock(outer, holes, height, t)?;
     for bore in bores {
-        if polygon_bore_clearance(outer, bore.center, bore.radius)? <= 10. * t.linear {
+        if polygon_region_bore_clearance(outer, holes, bore.center, bore.radius)?.0
+            <= 10. * t.linear
+        {
             return Err(Error::Unsupported(
                 "bore footprint touches or crosses the polygon boundary",
             ));
@@ -915,7 +928,7 @@ pub fn subtract_polygon_prism_bores(
         &PolygonProfile {
             origin: Point3::new(0., 0., -height / 2.),
             outer: outer.to_vec(),
-            holes: vec![],
+            holes: holes.to_vec(),
         },
         Vec3::new(0., 0., height),
         t,
@@ -926,15 +939,16 @@ pub fn subtract_polygon_prism_bores(
     solid.validate(t)?;
     Ok(solid)
 }
-pub(crate) fn checked_polygon_prism_stock(
+pub(crate) fn checked_polygon_region_prism_stock(
     outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
     height: f64,
     t: Tolerance,
 ) -> Result<BoxSpec> {
     Tolerance::new(t.linear)?;
-    if outer.len() > 256 {
+    if holes.len() > 64 || outer.len() + holes.iter().map(Vec::len).sum::<usize>() > 256 {
         return Err(Error::Unsupported(
-            "polygon prism bores support at most 256 corners",
+            "polygon prism bores support at most 64 profile holes and 256 total corners",
         ));
     }
     if !height.is_finite() || height <= 10. * t.linear {
@@ -943,6 +957,19 @@ pub(crate) fn checked_polygon_prism_stock(
         ));
     }
     crate::planar::validate_polygon(outer, t)?;
+    for hole in holes {
+        crate::planar::validate_polygon(hole, t)?;
+    }
+    let hole_loops: Vec<_> = holes
+        .iter()
+        .cloned()
+        .map(crate::planar::PlanarLoop::Polygon)
+        .collect();
+    crate::planar::validate_region(
+        &crate::planar::PlanarLoop::Polygon(outer.to_vec()),
+        &hole_loops,
+        Tolerance::new(10. * t.linear)?,
+    )?;
     let mut min = [f64::INFINITY; 2];
     let mut max = [f64::NEG_INFINITY; 2];
     for point in outer {
@@ -965,6 +992,14 @@ pub(crate) fn polygon_bore_clearance(
     center: [f64; 2],
     radius: f64,
 ) -> Result<f64> {
+    loop_bore_clearance(outer, center, radius, true)
+}
+fn loop_bore_clearance(
+    outer: &[[f64; 2]],
+    center: [f64; 2],
+    radius: f64,
+    inside: bool,
+) -> Result<f64> {
     if !radius.is_finite() || radius <= 0. {
         return Err(Error::InvalidInput(
             "polygon bore radius must be finite and positive",
@@ -979,7 +1014,7 @@ pub(crate) fn polygon_bore_clearance(
             outer[(i + 1) % outer.len()],
         )?);
     }
-    let gap = if location == PointLocation::Inside {
+    let gap = if (location == PointLocation::Inside) == inside {
         distance - radius
     } else {
         -distance - radius
@@ -990,4 +1025,22 @@ pub(crate) fn polygon_bore_clearance(
         ));
     }
     Ok(gap)
+}
+
+pub(crate) fn polygon_region_bore_clearance(
+    outer: &[[f64; 2]],
+    holes: &[Vec<[f64; 2]>],
+    center: [f64; 2],
+    radius: f64,
+) -> Result<(f64, Option<usize>)> {
+    let mut gap = polygon_bore_clearance(outer, center, radius)?;
+    let mut boundary = None;
+    for (i, hole) in holes.iter().enumerate() {
+        let candidate = loop_bore_clearance(hole, center, radius, false)?;
+        if candidate < gap {
+            gap = candidate;
+            boundary = Some(i);
+        }
+    }
+    Ok((gap, boundary))
 }

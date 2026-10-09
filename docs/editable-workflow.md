@@ -278,7 +278,8 @@ and storage denial without breaking modeling.
 
 Select **Polygon extrusion** under Stock operation to replace the root box with
 an eight-corner polygon using its current width/length. Select Box to explicitly
-replace the polygon with a centered box of its displayed bounding width/length.
+replace the polygon (including its profile openings) with a centered box of its
+displayed bounding width/length.
 Switching stock type changes the part geometry; it is an accepted undoable edit.
 The root operation ID is preserved and bores still reference the preceding node.
 
@@ -300,9 +301,8 @@ Version 1 now accepts this additional root operation:
 
 `outer` has 3–256 finite world-XY vertices with an implicit closing edge, in
 either winding. The profile may be concave but must be simple, resolved and have
-no redundant corners or self-intersections. Initial profile holes, curved
-profiles and arbitrary/skew extrusion directions are outside this document
-scope. Height must be positive and exceed ten linear tolerances; stock spans
+no redundant corners or self-intersections. Polygon profile openings are supported as described below; curved profiles
+and arbitrary/skew extrusion directions are outside this document scope. Height must be positive and exceed ten linear tolerances; stock spans
 Z = −height/2 to +height/2. Negative/zero heights and unknown fields are rejected.
 Existing box documents keep their prior behavior and schema version.
 
@@ -331,3 +331,55 @@ and translated XY profiles, material under blind floors, profile/bore contact
 and self-intersection rejection, incremental results equal to fresh builds,
 native/WASM parity and the real browser workflow. Mesh-volume comparison uses
 the circular chord-error bound; the display mesh is not treated as exact volume.
+
+
+## Polygon profile openings
+
+![Actual extruded polygon openings with blind and through bores](workflow-extrusion-openings.png)
+
+An extrusion root may now include optional `holes`, an array of simple polygon
+loops in the same world-XY coordinate system as `outer`. These are through
+openings in the stock profile, distinct from later bore operations. Missing or
+empty `holes` preserves all existing version-1 extrusion documents; empty holes
+are omitted from canonical exports. Null, malformed coordinates and unknown
+fields are errors. Load the [opening example](workflow-extrusion-openings-example.json)
+in the browser or native workflow example.
+
+```json
+"holes": [[[-34,-8],[-22,-8],[-22,8],[-34,8]]]
+```
+
+Use **Polygon openings (JSON array of loops)** and **Apply profile** to edit
+these loops alongside the outer boundary. Each loop has at least three finite,
+resolved corners and an implicit closing edge, in either winding. The stock
+supports up to 64 profile openings and 256 total corners across outer/inner
+loops. Loops must be strictly inside the outer boundary, mutually disjoint,
+non-nested and separated by more than ten linear tolerances. Self-intersections,
+duplicate/redundant corners, overlap and contact are rejected as
+`profile_rejected` on the stock operation. Changing openings invalidates the
+stock node and its following cuts; height and bore edits preserve openings.
+
+A circular bore must lie in stock material and remain more than ten linear
+tolerances from every outer and inner boundary. A tool inside an existing
+opening, touching or crossing an opening, or enclosing an opening is unsupported.
+`profile_hole_clearance` identifies the bore, gives the signed margin and required
+margin, and names the conflicting profile opening by zero-based index. Failed
+edits return no replacement mesh, retain the accepted cache/model and do not
+replace local autosave. Correcting or Undoing them restores the prior document.
+
+Native `subtract_polygon_region_prism_bores(outer, holes, height, bores, tolerance)`
+uses the existing exact polygon-region extrusion and circular-cut construction.
+The original `subtract_polygon_prism_bores` remains the empty-profile-hole
+convenience API. Polygon opening side walls, cap boundaries, circular bore walls
+and blind floors all use shared exact edges and surface pcurves. The displayed
+mesh is generated afterward; no mesh Boolean or polygon-to-circle replacement
+is used. JSON save/load, autosave and Undo/Redo preserve the actual opening loops.
+
+Tests verify independent area-minus-openings volumes minus mixed bore volumes,
+closure/orientation, material and void probes, both windings, small/large scales,
+mesh-volume chord bounds, profile/opening/tool rejection, incremental cache
+recovery, native/WASM equality and the browser edit/download/reload workflow.
+Rounded/curved opening loops, general intersecting cuts and skew/arbitrary-plane
+extrusion nodes remain later work. Mathematical provenance remains the planar
+containment/boundary-distance references recorded in [references](references.md);
+no new dependency or OCCT source was introduced.

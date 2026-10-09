@@ -78,7 +78,8 @@ claim compatibility with its data structures or APIs.
   Implemented directly in Rust, without importing predicate source code.
   Polygon-prism circular bore containment combines exact center classification
   with Euclidean distance to every boundary segment: a connected disk cannot
-  leave a simple polygon without crossing its boundary (see the
+  leave a simple polygon or enter a polygon opening without crossing a boundary
+  (see the
   [Jordan curve theorem](https://en.wikipedia.org/wiki/Jordan_curve_theorem)).
   Exact removed volumes use circular area times depth; display volume bounds
   use the inscribed circle chord/sagitta bound. No reference code or prose was copied.
