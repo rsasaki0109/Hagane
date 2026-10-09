@@ -294,6 +294,21 @@ pub fn demo_preset_json(preset: u32, radius: f64, chord_error: f64) -> Result<St
                 .compose(Transform::rotation(Vec3::new(1.0, 2.0, 0.5), 0.8)?)?,
             tol,
         )?,
+        26 => {
+            if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
+                return Err(Error::Unsupported("parallel bore control must be in 8..24"));
+            }
+            crate::tilted_bores_demo_solid(
+                24.,
+                8.,
+                &[-5., 5.].map(|y| crate::TiltedBore {
+                    radius: radius / 6.,
+                    tilt: 1.,
+                    center: [0., y],
+                }),
+                crate::GeometryTolerance::default(),
+            )?
+        }
         25 => {
             if !radius.is_finite() || !(8.0..=24.0).contains(&radius) {
                 return Err(Error::Unsupported("tilted bore control must be in 8..24"));

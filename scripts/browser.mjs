@@ -203,6 +203,18 @@ try {
  await page.locator('#reset').click();
  if(process.argv.includes('--capture-tilted-bore-solid'))await page.screenshot({path:new URL('../docs/tilted-bore-solid.png',import.meta.url).pathname});
 
+ await page.locator('#preset').selectOption('26');
+ assert.deepEqual(await page.locator('.range-label span').allTextContents(),['1.33 mm','4 mm']);
+ for(const control of [8,14,24]){
+  await page.locator('#radius').evaluate((e,value)=>{e.value=value;e.dispatchEvent(new Event('input'));},control);
+  const part=await page.evaluate(()=>window.haganeDemo.mesh);
+  assert.equal(part.faces,8);assert.equal(part.edges,18);
+  assert.ok(Math.abs(part.volume-Math.PI*(576-2*(control/6)**2/Math.cos(1))*8)<1e-8);
+ }
+ await page.locator('#reset').click();
+ if(process.argv.includes('--capture-separated-bores'))await page.screenshot({path:new URL('../docs/separated-tilted-bores.png',import.meta.url).pathname});
+ await page.locator('#radius').evaluate(e=>{e.value=14;e.dispatchEvent(new Event('input'));});
+
 
  await page.locator('#preset').selectOption('1');
  const unplaced=await page.evaluate(()=>window.haganeDemo.mesh);
@@ -413,5 +425,5 @@ try {
  const tiltedView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),tiltedView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: tilted through-bore cap, unequal-axis hole roots/volume, empty/tangent errors, recovery and orbit passed.');
- console.log('Browser: 26 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
+ console.log('Browser: 27 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

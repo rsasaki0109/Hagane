@@ -13,24 +13,73 @@ pub fn tilted_bore_demo_solid(
     tilt: f64,
     tol: GeometryTolerance,
 ) -> Result<Solid> {
+    tilted_bores_demo_solid(
+        radius,
+        height,
+        &[TiltedBore {
+            radius: bore_radius,
+            tilt,
+            center: [0., 0.],
+        }],
+        tol,
+    )
+}
+/// Circular cylindrical tool, translated in XY and tilted about Y.
+#[derive(Clone, Copy, Debug)]
+pub struct TiltedBore {
+    pub radius: f64,
+    pub tilt: f64,
+    pub center: [f64; 2],
+}
+/// Restricted analytic plate construction with up to sixteen separated bores.
+/// Uses exact cylinder walls/ellipse caps, not a general Boolean operation.
+pub fn tilted_bores_demo_solid(
+    radius: f64,
+    height: f64,
+    bores: &[TiltedBore],
+    tol: GeometryTolerance,
+) -> Result<Solid> {
     if !radius.is_finite()
-        || !bore_radius.is_finite()
         || !height.is_finite()
-        || !tilt.is_finite()
         || radius <= 10. * tol.linear()
-        || bore_radius <= 10. * tol.linear()
         || height <= 10. * tol.linear()
-        || tilt.abs() > PI / 3.
     {
         return Err(Error::InvalidInput(
-            "tilted bore requires resolved positive dimensions and tilt in [-pi/3, pi/3]",
+            "tilted plate dimensions must be finite and resolved",
         ));
     }
-    let clearance = radius - height / 2. * tilt.tan().abs() - bore_radius / tilt.cos();
-    if !clearance.is_finite() || clearance <= 20. * tol.linear() {
+    if bores.len() > 16 {
         return Err(Error::Unsupported(
-            "tilted bore touches or leaves the circular plate",
+            "tilted plate supports at most sixteen bores",
         ));
+    }
+    if let Some(first) = bores.first() {
+        if bores.iter().any(|bore| bore.tilt != first.tilt) {
+            return Err(Error::Unsupported(
+                "multiple bores must have exactly parallel axes",
+            ));
+        }
+    }
+    for bore in bores {
+        if !bore.radius.is_finite()
+            || bore.radius <= 10. * tol.linear()
+            || !bore.tilt.is_finite()
+            || bore.tilt.abs() > PI / 3.
+            || bore.center.iter().any(|x| !x.is_finite())
+        {
+            return Err(Error::InvalidInput(
+                "tilted bore requires resolved dimensions, finite center and tilt in [-pi/3, pi/3]",
+            ));
+        }
+        let clearance = radius
+            - bore.center[0].hypot(bore.center[1])
+            - height / 2. * bore.tilt.tan().abs()
+            - bore.radius / bore.tilt.cos();
+        if !clearance.is_finite() || clearance <= 20. * tol.linear() {
+            return Err(Error::Unsupported(
+                "tilted bore touches or leaves the circular plate",
+            ));
+        }
     }
     let mut solid = Solid {
         vertices: Vec::new(),
@@ -38,17 +87,34 @@ pub fn tilted_bore_demo_solid(
         shell: Shell { faces: Vec::new() },
     };
     let mut cap_wires = [Vec::new(), Vec::new()];
-    for (ring, (r, angle)) in [(radius, 0.), (bore_radius, tilt)].into_iter().enumerate() {
+    for (ring, bore) in std::iter::once(TiltedBore {
+        radius,
+        tilt: 0.,
+        center: [0., 0.],
+    })
+    .chain(bores.iter().copied())
+    .enumerate()
+    {
+        let r = bore.radius;
+        let angle = bore.tilt;
         let (sin, cos) = angle.sin_cos();
         let axis = Vec3::new(sin, 0., cos);
         let basis = Vec3::new(cos, 0., -sin);
         let length = 2. * (height + r) / cos;
-        let frame_origin = axis * (-length);
+        let frame_origin = axis * (-length) + Vec3::new(bore.center[0], bore.center[1], 0.);
         let a = Vec3::new(r / cos, 0., 0.);
         let b = Vec3::new(0., r, 0.);
         let centers = [
-            Point3::new(-height / 2. * angle.tan(), 0., -height / 2.),
-            Point3::new(height / 2. * angle.tan(), 0., height / 2.),
+            Point3::new(
+                bore.center[0] - height / 2. * angle.tan(),
+                bore.center[1],
+                -height / 2.,
+            ),
+            Point3::new(
+                bore.center[0] + height / 2. * angle.tan(),
+                bore.center[1],
+                height / 2.,
+            ),
         ];
         let vertex = solid.vertices.len();
         let edge = solid.edges.len();
@@ -86,7 +152,7 @@ pub fn tilted_bore_demo_solid(
                     edge: edge + level * 2 + half,
                     forward: ring == 0,
                     pcurve: PCurve::EllipseArc {
-                        center: [centers[level].x, 0.],
+                        center: [centers[level].x, centers[level].y],
                         cosine: [a.x * sign, 0.],
                         sine: [0., r * sign],
                         sweep: PI,
@@ -189,5 +255,36 @@ pub fn tilted_bore_demo_json(tilt: f64, offset: f64, placement: f64) -> Result<S
         5,
         origin - u * 34. + v * offset,
         u * 2.,
+    )
+}
+
+/// Exact two-tilted-bore cap query demonstrating overlapping enclosing circles.
+pub fn separated_tilted_bores_demo_json(offset: f64) -> Result<String> {
+    if !offset.is_finite() {
+        return Err(Error::InvalidInput("offset must be finite"));
+    }
+    let solid = tilted_bores_demo_solid(
+        24.,
+        8.,
+        &[
+            TiltedBore {
+                radius: 3.,
+                tilt: 1.,
+                center: [0., -4.],
+            },
+            TiltedBore {
+                radius: 3.,
+                tilt: 1.,
+                center: [0., 4.],
+            },
+        ],
+        GeometryTolerance::default(),
+    )?;
+    let face = solid.shell.faces.len() - 1;
+    crate::ellipse_planar::ellipse_planar_query_json(
+        &solid,
+        face,
+        Point3::new(-34., offset, 4.),
+        Vec3::new(2., 0., 0.),
     )
 }

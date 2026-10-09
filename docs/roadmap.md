@@ -323,6 +323,13 @@ containment and separation certificates. A closed circular plate with a tilted
 true cylindrical through bore preserves exact ellipse rims, shared edges and
 harmonic cylinder pcurves. Native/WASM and browser checks cover analytic volume,
 classification, bounded tessellation and invalid inputs. Main solid preset 25
-and a cap intersection demo expose the implementation. Overlapping enclosing
-circles, arc/chord holes and general curved Boolean operations remain unsupported.
+and a cap intersection demo expose the implementation. Arc/chord holes and
+general curved Boolean operations remain unsupported.
 See [tilted through bores](tilted-bore.md).
+
+Analytic supporting-line certificates now accept separated ellipse holes even
+when enclosing circles overlap. Translated parallel tilted cylindrical bores
+form closed solids with exact ellipse rims and harmonic pcurves; preset 26
+exposes radius controls. Native/WASM and browser tests cover volume, material,
+contacts and invalid inputs. Nonparallel bores and configurations without a
+certificate remain unsupported. See [ellipse separation](ellipse-separation.md).

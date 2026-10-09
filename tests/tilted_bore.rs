@@ -194,3 +194,51 @@ fn touching_outside_degenerate_and_unresolved_bore_inputs_are_rejected() {
     assert!(tilted_bore_demo_json(0.5, f64::NAN, 0.).is_err());
     assert!(tilted_bore_demo_json(0.5, 3., f64::INFINITY).is_err());
 }
+
+#[test]
+fn parallel_tilted_bores_with_overlapping_envelopes_are_closed_and_separated() {
+    for (scale, epsilon) in [(1., 1e-8), (1e-6, 1e-14)] {
+        let t = GeometryTolerance::new(epsilon, 1e-10, 0.).unwrap();
+        let bores = [-4., 4.].map(|y| TiltedBore {
+            radius: 3. * scale,
+            tilt: 1.,
+            center: [0., y * scale],
+        });
+        // Semimajor axes 3/cos(1) exceed half the center separation 4.
+        assert!(3. / 1f64.cos() > 4.);
+        let solid = tilted_bores_demo_solid(24. * scale, 8. * scale, &bores, t).unwrap();
+        solid.validate(t.absolute()).unwrap();
+        assert_eq!((solid.shell.faces.len(), solid.edges.len()), (8, 18));
+        let volume = PI * (576. - 18. / 1f64.cos()) * 8. * scale.powi(3);
+        assert!((solid.volume().unwrap() - volume).abs() < 1e-9 * scale.powi(3));
+        for (p, expected) in [
+            (Point3::new(0., 0., 0.), PointLocation::Inside),
+            (Point3::new(0., 4., 0.), PointLocation::Outside),
+            (Point3::new(0., -4., 0.), PointLocation::Outside),
+            (Point3::new(0., 1., 0.), PointLocation::Boundary),
+        ] {
+            assert_eq!(
+                classify_point_in_solid(&solid, p * scale, t).unwrap(),
+                expected
+            );
+        }
+        let mesh = solid.tessellate(0.02 * scale, t.absolute()).unwrap();
+        assert!((mesh.signed_volume() - volume).abs() < 12. * scale.powi(3));
+        let mut invalid = bores;
+        invalid[1].center[1] = 2. * scale; // Contact at y=-1.
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
+        invalid[1].center[1] += 1e-9 * scale;
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
+        invalid[1].center[1] = scale; // Actual overlap.
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
+        invalid = bores;
+        invalid[1].tilt = -1.;
+        assert!(matches!(
+            tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t),
+            Err(Error::Unsupported(_))
+        ));
+        invalid = bores;
+        invalid[1].center[0] = f64::NAN;
+        assert!(tilted_bores_demo_solid(24. * scale, 8. * scale, &invalid, t).is_err());
+    }
+}

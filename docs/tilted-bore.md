@@ -11,10 +11,10 @@ pcurves remain exact; tessellation is only for display.
 
 Map the outer ellipse to the unit disk. For each hole, the largest singular
 value of its transformed two-axis matrix bounds an enclosing circle. Accept
-only circles strictly inside the unit disk and strictly separated from every
-other hole circle, with physical tolerance, curve coherence and floating-point
-margins. This sufficient certificate can reject valid nonoverlapping ellipses
-whose enclosing circles overlap. Rejection means unsupported or unresolved,
+only circles strictly inside the unit disk and separated from every
+other hole circle or certified by an analytic supporting line, with physical tolerance, curve coherence and floating-point
+margins. The finite supporting-line search can reject valid nonoverlapping ellipses
+when it finds no direction with a resolved gap. Rejection means unsupported or unresolved,
 not proof that the actual ellipses intersect. Ill-conditioned axes, touching,
 near-coincident boundaries and more than sixteen holes are rejected. Holes in
 arc/chord loops and arbitrary mixed boundary loops remain unsupported.
@@ -76,5 +76,6 @@ from the largest eigenvalue of a 2×2 Gram matrix, the triangle inequality and
 a lower bound on the outer matrix's least singular value. Oblique cylinder
 sections follow direct substitution of a plane into the circular cylinder
 parameterization. These are independently implemented public mathematical
-facts; no OCCT source or new dependency was used. See [references](references.md)
+facts; no OCCT source or new dependency was used. See [supporting-line separation and parallel bores](ellipse-separation.md),
+[references](references.md)
 and [licenses](../LICENSE-MIT).

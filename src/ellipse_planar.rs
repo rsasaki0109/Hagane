@@ -259,16 +259,44 @@ pub(crate) fn ring(face: &Face, tol: Tolerance) -> Result<EllipseRegion> {
         normalized_holes.push((ratio, center_offset, sigma_lower, error + arithmetic));
     }
     for (i, &(radius, center, sigma, error)) in normalized_holes.iter().enumerate() {
-        for &(other_radius, other_center, _, other_error) in &normalized_holes[..i] {
+        for (j, &(other_radius, other_center, _, other_error)) in
+            normalized_holes[..i].iter().enumerate()
+        {
             let clearance = (norm(sub(center, other_center)) - radius - other_radius) * sigma;
-            if !clearance.is_finite() || clearance <= 10. * tol.linear + error + other_error {
-                return Err(Error::Unsupported(
-                    "ellipse hole enclosing circles are not separated at required precision",
-                ));
+            let budget = 10. * tol.linear + error + other_error;
+            if !clearance.is_finite() || clearance <= budget {
+                let first = &rings[i + 1];
+                // Each direction supplies an analytic supporting-line certificate.
+                // Trying finitely many directions can miss separation, but cannot
+                // accept overlapping ellipses when the guarded gap is positive.
+                let separated = separated_ellipses(first, &rings[j + 1], budget);
+                if !separated {
+                    return Err(Error::Unsupported(
+                        "ellipse holes have no certified separating line",
+                    ));
+                }
             }
         }
     }
     Ok(EllipseRegion { rings })
+}
+fn separated_ellipses(a: &EllipseRing, b: &EllipseRing, budget: f64) -> bool {
+    let delta = sub(b.center, a.center);
+    let length = norm(delta);
+    if !length.is_finite() || length == 0. {
+        return false;
+    }
+    let initial = delta[1].atan2(delta[0]);
+    let arithmetic =
+        2048. * f64::EPSILON * (norm(a.center) + norm(b.center) + a.scale() + b.scale());
+    (0..64).any(|i| {
+        let angle = initial + PI * i as f64 / 64.;
+        let n = [angle.cos(), angle.sin()];
+        let ra = dot(n, a.cosine).hypot(dot(n, a.sine));
+        let rb = dot(n, b.cosine).hypot(dot(n, b.sine));
+        let gap = dot(n, delta).abs() - ra - rb;
+        gap.is_finite() && gap > budget + arithmetic
+    })
 }
 /// One full ellipse, or a minor ellipse arc followed by its closing chord.
 fn single_ring(face: &Face, wire: usize, tol: Tolerance) -> Result<EllipseRing> {
@@ -1231,12 +1259,40 @@ mod tests {
         assert_eq!(region.location([10., -2.]).unwrap(), PointLocation::Inside);
         assert!(region.within_boundary([10.9, -1.9], 1e-5).unwrap());
         // Actual skinny ellipses are disjoint, but their enclosing circles
-        // overlap. The sufficient certificate must reject this valid geometry.
+        // overlap. Analytic support lines certify their physical separation.
         face.wires = vec![
             wire([0., 0.], [3., 0.], [0., 3.], true),
             wire([0., -0.3], [0.6, 0.], [0., 0.1], false),
             wire([0., 0.3], [0.6, 0.], [0., 0.1], false),
         ];
+        let region = ring(&face, tol).unwrap();
+        let first = EllipseRing {
+            center: [0., 0.],
+            cosine: [0.6, 0.],
+            sine: [0., 0.1],
+            coherence_error: 0.,
+            segment_sweep: None,
+        };
+        let second = EllipseRing {
+            center: [0.4, 0.3],
+            ..first.clone()
+        };
+        // The center direction fails; an oblique search direction succeeds.
+        let n = [0.8, 0.6];
+        assert!(
+            dot(n, sub(second.center, first.center))
+                - 2. * dot(n, first.cosine).hypot(dot(n, first.sine))
+                < 0.
+        );
+        assert!(separated_ellipses(&first, &second, 1e-7));
+        assert!(!separated_ellipses(&first, &second, 1.));
+        assert_eq!(region.location([0., 0.]).unwrap(), PointLocation::Inside);
+        assert_eq!(region.location([0., 0.3]).unwrap(), PointLocation::Outside);
+        face.wires[2] = wire([0., -0.1], [0.6, 0.], [0., 0.1], false);
+        assert!(matches!(ring(&face, tol), Err(Error::Unsupported(_))));
+        face.wires[2] = wire([0., -0.1 + 1e-9], [0.6, 0.], [0., 0.1], false);
+        assert!(matches!(ring(&face, tol), Err(Error::Unsupported(_))));
+        face.wires[2] = wire([0., -0.2], [0.6, 0.], [0., 0.1], false);
         assert!(matches!(ring(&face, tol), Err(Error::Unsupported(_))));
     }
     #[test]

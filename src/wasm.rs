@@ -5,6 +5,10 @@ mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     #[no_mangle]
+    pub extern "C" fn hagane_separated_tilted_bores_demo(offset: f64) -> i32 {
+        generate(crate::separated_tilted_bores_demo_json(offset))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_tilted_bore_demo(tilt: f64, offset: f64, placement: f64) -> i32 {
         generate(crate::tilted_bore_demo_json(tilt, offset, placement))
     }

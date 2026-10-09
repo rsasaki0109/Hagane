@@ -346,3 +346,11 @@ eigenvalues (spectral norm), enclosing-circle triangle inequality clearance,
 and direct oblique plane/cylinder substitution underpin the
 [tilted-bore implementation](tilted-bore.md). No new dependencies or OCCT source
 were used. Original implementation remains MIT OR Apache-2.0.
+
+## Ellipse supporting-line certificate
+
+The projection radius `hypot(n·A,n·B)` is derived independently by maximizing
+a sine/cosine linear combination. Strictly separated projection intervals
+certify separation of the convex filled ellipses. A finite direction search
+with physical and arithmetic guards is sufficient, not complete. See
+[ellipse separation](ellipse-separation.md). No new dependency or OCCT source.

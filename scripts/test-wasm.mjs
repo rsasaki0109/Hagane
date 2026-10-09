@@ -17,7 +17,7 @@ for(const control of [8,14,24]){
 }
 for(const control of [0,7,25,NaN,Infinity])assert.equal(preset(25,control).status,1);
 assert.equal(preset(25,14,0).status,1);assert.equal(preset(25).status,0);
-const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:22,edges:58},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:34,edges:80},{volume:Math.PI*(576-49/Math.cos(.5))*16,faces:6,edges:12}];
+const expected=[{volume:115200-Math.PI*196*24,faces:7,edges:15},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:69336,faces:12,edges:30},{volume:Math.PI*(900-196)*24,faces:4,edges:6},{volume:115200-Math.PI*196*24,faces:10,edges:24},{volume:(4800-(4-Math.PI)*196)*24,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:115200-Math.PI*49*24,faces:8,edges:18},{volume:(4800-(4-Math.PI)*576)*24,faces:13,edges:31},{volume:103680,faces:15,edges:45},{volume:5376*Math.PI,faces:11,edges:26},{volume:115200-3456*Math.PI,faces:13,edges:34},{volume:115200,faces:6,edges:13},{volume:67200,faces:6,edges:12},{volume:(4096-(32*Math.SQRT2-38)**2-(32*Math.SQRT2-42)**2-2*(32*Math.SQRT2-30)**2)*24,faces:10,edges:24},{volume:107520,faces:20,edges:44},{volume:174720,faces:24,edges:52},{volume:122880,faces:26,edges:52},{volume:122880,faces:10,edges:34},{volume:174720,faces:12,edges:38},{volume:122880,faces:10,edges:24},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(4600+(4-Math.PI)*9-Math.PI*196/2)*24,faces:16,edges:42},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:22,edges:58},{volume:(64*48-(4-Math.PI)*100-(20*16-(4-Math.PI)*16))*24,faces:34,edges:80},{volume:Math.PI*(576-49/Math.cos(.5))*16,faces:6,edges:12},{volume:Math.PI*(576-2*(14/6)**2/Math.cos(1))*8,faces:8,edges:18}];
 for(let id=0;id<expected.length;id++){
  const {status,result:wasm}=preset(id);assert.equal(status,0);assert.ok(Math.abs(wasm.volume-expected[id].volume)<1e-8);assert.equal(wasm.faces,expected[id].faces);assert.equal(wasm.edges,expected[id].edges);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','part','--',String(id)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
@@ -32,7 +32,7 @@ for(const radius of [8,14,24]){const {status,result}=preset(6,radius);assert.equ
 for(const radius of [0,-1,30,NaN,Infinity])assert.equal(preset(6,radius).status,1);
 assert.equal(preset(6,14,0).status,1);assert.equal(preset(6).status,0);
 assert.equal(preset(999).status,1);assert.equal(preset(1,30).status,1);assert.equal(preset(3,30).status,1);assert.equal(preset(2,14,0).status,1);assert.equal(preset(1).status,0);
-console.log('All 26 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
+console.log('All 27 presets: native/WASM geometry parity, metrics, errors and recovery passed.');
 function nurbs(weight,parameter){const status=k.hagane_generate_nurbs(weight,parameter);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
 for(const weight of [Math.SQRT1_2,0.1,1,2]){for(const parameter of [0,0.25,0.5,1]){
  const {status,result}=nurbs(weight,parameter);assert.equal(status,0);assert.equal(result.samples.length,129*3);
@@ -477,3 +477,23 @@ for(const tilt of [1.04,Math.PI/3+0.01,NaN,Infinity])assert.equal(tiltedBore(til
 for(const [offset,placement] of [[0,0],[6,0],[6+1e-9,0],[24,0],[NaN,0],[3,Infinity]])assert.equal(tiltedBore(0.5,offset,placement).status,1);
 assert.equal(tiltedBore(0.5,3).status,0);
 console.log('Unequal-axis ellipse hole/tilted bore: independent roots/volume, native/WASM parity, tilt placement, contacts/containment errors and recovery passed.');
+
+for(const offset of [-3,0.5,3,14]){
+ const status=k.hagane_separated_tilted_bores_demo(offset);
+ const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));
+ assert.equal(status,0);assert.equal(result.mesh.faces,8);assert.equal(result.mesh.edges,18);
+ assert.ok(Math.abs(result.mesh.volume-Math.PI*(576-18/Math.cos(1))*8)<1e-8);
+ assert.equal(result.intersection.intervals.length,Math.abs(offset)===3?2:1);
+ const outer=Math.sqrt(576-offset**2),inner=Math.sqrt(8)/Math.cos(1),center=4*Math.tan(1);
+ const roots=Math.abs(offset)===3?[(34-outer)/2,(34+center-inner)/2,(34+center+inner)/2,(34+outer)/2]:[(34-outer)/2,(34+outer)/2];
+ assert.equal(result.intersection.hits.length,roots.length);result.intersection.hits.forEach((hit,i)=>assert.ok(Math.abs(hit.parameter-roots[i])<1e-10));
+ if(offset===3){const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','separated_tilted_bores'],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);}
+}
+assert.equal(k.hagane_separated_tilted_bores_demo(NaN),1);
+assert.equal(k.hagane_separated_tilted_bores_demo(1),1); // Hole tangent.
+assert.equal(k.hagane_separated_tilted_bores_demo(3),0);
+console.log('Supporting-line separation: parallel tilted bores, independent volume/intervals, native/WASM parity, contacts/errors and recovery passed.');
+
+for(const control of [8,14,24]){const {status,result}=preset(26,control);assert.equal(status,0);assert.ok(Math.abs(result.volume-Math.PI*(576-2*(control/6)**2/Math.cos(1))*8)<1e-8);}
+for(const control of [0,7,25,NaN,Infinity])assert.equal(preset(26,control).status,1);
+assert.equal(preset(26,14,0).status,1);assert.equal(preset(26).status,0);
