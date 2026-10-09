@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub const STEP_IMPORT_MAX_BYTES: usize = 1_048_576;
 const SYNTAX: Error = Error::InvalidInput("invalid or unsupported STEP Part 21 syntax");
 #[derive(Clone, Debug, PartialEq)]
-enum Value {
+pub(crate) enum Value {
     Number(f64),
     String(String),
     Enum(String),
@@ -25,14 +25,14 @@ enum Token {
     Symbol(u8),
     End,
 }
-struct Parser<'a> {
+pub(crate) struct Parser<'a> {
     input: &'a str,
     offset: usize,
     look: Token,
     values: usize,
 }
 impl<'a> Parser<'a> {
-    fn new(input: &'a str) -> Result<Self> {
+    pub(crate) fn new(input: &'a str) -> Result<Self> {
         if input.len() > STEP_IMPORT_MAX_BYTES {
             return Err(Error::InvalidInput("STEP input exceeds 1 MiB"));
         }
@@ -214,7 +214,13 @@ impl<'a> Parser<'a> {
         let name = self.name()?;
         Ok((name, self.args(0)?))
     }
-    fn document(mut self) -> Result<Database> {
+    fn document(self) -> Result<Database> {
+        self.document_mode(false)
+    }
+    pub(crate) fn document_graph(self) -> Result<Database> {
+        self.document_mode(true)
+    }
+    fn document_mode(mut self, graph: bool) -> Result<Database> {
         self.keyword("ISO-10303-21")?;
         self.symbol(b';')?;
         self.keyword("HEADER")?;
@@ -302,44 +308,44 @@ impl<'a> Parser<'a> {
             records,
             used: RefCell::new(BTreeSet::new()),
         };
-        db.check_records()?;
+        db.check_records(graph)?;
         Ok(db)
     }
 }
-type Record = Vec<(String, Vec<Value>)>;
-struct Database {
-    records: BTreeMap<u32, Record>,
-    used: RefCell<BTreeSet<u32>>,
+pub(crate) type Record = Vec<(String, Vec<Value>)>;
+pub(crate) struct Database {
+    pub(crate) records: BTreeMap<u32, Record>,
+    pub(crate) used: RefCell<BTreeSet<u32>>,
 }
-fn list(value: &Value) -> Result<&[Value]> {
+pub(crate) fn list(value: &Value) -> Result<&[Value]> {
     if let Value::List(v) = value {
         Ok(v)
     } else {
         Err(SYNTAX)
     }
 }
-fn reference(value: &Value) -> Result<u32> {
+pub(crate) fn reference(value: &Value) -> Result<u32> {
     if let Value::Ref(id) = value {
         Ok(*id)
     } else {
         Err(SYNTAX)
     }
 }
-fn number(value: &Value) -> Result<f64> {
+pub(crate) fn number(value: &Value) -> Result<f64> {
     if let Value::Number(v) = value {
         Ok(*v)
     } else {
         Err(SYNTAX)
     }
 }
-fn boolean(value: &Value) -> Result<bool> {
+pub(crate) fn boolean(value: &Value) -> Result<bool> {
     match value {
         Value::Enum(s) if s == "T" => Ok(true),
         Value::Enum(s) if s == "F" => Ok(false),
         _ => Err(SYNTAX),
     }
 }
-fn named(args: &[Value], count: usize) -> Result<()> {
+pub(crate) fn named(args: &[Value], count: usize) -> Result<()> {
     if args.len() != count || !matches!(args.first(), Some(Value::String(_))) {
         return Err(SYNTAX);
     }
@@ -357,7 +363,7 @@ fn all_refs(value: &Value, output: &mut Vec<u32>) {
     }
 }
 impl Database {
-    fn check_records(&self) -> Result<()> {
+    fn check_records(&self, graph: bool) -> Result<()> {
         const SIMPLE: &[&str] = &[
             "CARTESIAN_POINT",
             "DIRECTION",
@@ -397,7 +403,15 @@ impl Database {
                 return Err(SYNTAX);
             }
             if record.len() == 1 {
-                if !SIMPLE.contains(&record[0].0.as_str()) {
+                if !SIMPLE.contains(&record[0].0.as_str())
+                    && !(graph
+                        && [
+                            "B_SPLINE_CURVE_WITH_KNOTS",
+                            "B_SPLINE_SURFACE_WITH_KNOTS",
+                            "SURFACE_CURVE",
+                        ]
+                        .contains(&record[0].0.as_str()))
+                {
                     return Err(Error::Unsupported("unsupported STEP entity (unknown curves, assemblies and extensions are rejected)"));
                 }
                 let signature = match record[0].0.as_str() {
@@ -475,7 +489,7 @@ impl Database {
             .get(&id)
             .ok_or(Error::InvalidInput("missing STEP entity"))
     }
-    fn component(&self, id: u32, name: &str) -> Result<&[Value]> {
+    pub(crate) fn component(&self, id: u32, name: &str) -> Result<&[Value]> {
         self.record(id)?
             .iter()
             .find(|(n, _)| n == name)
@@ -484,7 +498,7 @@ impl Database {
                 "STEP reference has the wrong entity type",
             ))
     }
-    fn simple(&self, id: u32, name: &str, count: usize) -> Result<&[Value]> {
+    pub(crate) fn simple(&self, id: u32, name: &str, count: usize) -> Result<&[Value]> {
         let record = self.record(id)?;
         if record.len() != 1 || record[0].0 != name {
             return Err(Error::Unsupported(
@@ -495,7 +509,7 @@ impl Database {
         named(args, count)?;
         Ok(args)
     }
-    fn unique(&self, name: &str) -> Result<u32> {
+    pub(crate) fn unique(&self, name: &str) -> Result<u32> {
         let ids: Vec<_> = self
             .records
             .iter()
@@ -509,7 +523,7 @@ impl Database {
         }
         Ok(ids[0])
     }
-    fn point(&self, id: u32, scale: f64) -> Result<Point3> {
+    pub(crate) fn point(&self, id: u32, scale: f64) -> Result<Point3> {
         let args = self.simple(id, "CARTESIAN_POINT", 2)?;
         let coords = list(&args[1])?;
         if coords.len() != 3 {
@@ -579,7 +593,7 @@ impl Database {
             v: frame.axes()[1],
         })
     }
-    fn units(&self, context: u32) -> Result<f64> {
+    pub(crate) fn units(&self, context: u32) -> Result<f64> {
         if self
             .records
             .values()

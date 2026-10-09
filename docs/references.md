@@ -690,3 +690,11 @@ MIT OR Apache-2.0 writer adds no dependency or copied/translated OCCT source.
 The optional `occt-import-js` reader remains an external LGPL-2.1 test oracle
 with bundled OCCT's LGPL-2.1/OCCT exception, as recorded in
 [STEP export](step-export.md); its imported mesh mass is approximate evidence.
+
+The strict graph STEP importer reuses the bounded original Part 21 parser with
+a separate allowance for polynomial B-spline curves/surfaces and surface curves.
+Control-net identities recognize the canonical graph and retain actual parsed
+geometry; only shared reference indices and cyclic wire starts are reordered.
+No coordinate fitting or tolerance-based snapping is performed. Public
+geometry/topology entity definitions are linked above; this original
+MIT OR Apache-2.0 implementation adds no dependency or OCCT source.

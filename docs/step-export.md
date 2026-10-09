@@ -2,7 +2,9 @@
 
 The canonical polynomial NURBS graph-solid family has a separate
 [scoped exact STEP exporter](nurbs-graph-step.md), including rectangular through
-openings. It does not widen the generic analytic writer or STEP importer below.
+openings. A separate [strict graph importer](nurbs-graph-step-import.md) reads
+full, unplaced six-face graphs. These APIs do not widen the generic analytic
+writer or STEP importer below.
 
 Hagane writes one validated closed solid as an AP214 ISO 10303-21 text file,
 preserving analytic lines, complete circles, planes and full cylindrical faces.

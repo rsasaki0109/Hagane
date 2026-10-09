@@ -935,3 +935,15 @@ the subset. Native/WASM and browser accepted-model downloads share one writer.
 General rational shells, arbitrary trims and graph STEP import remain
 unsupported. The estimate remains **15–25%**, toward **80%**.
 See [graph-solid STEP export](nurbs-graph-step.md).
+
+## Strict full-graph NURBS STEP import
+
+Actual polynomial spline nets and all same-parameter face uses now reconstruct
+one unplaced/full-domain six-face graph solid, retaining the parsed geometry
+under exact canonical validation. Entity IDs, record/face ordering and cyclic
+wire starts are not geometric identity. SI mm/metre conversion, no-snapping
+rejection and bounded parser failure/recovery are independently verified.
+Native/WASM and browser file/text import share the same Rust implementation.
+Placed, restricted, holed and general rational imports remain unsupported.
+The estimate remains **15–25%**, toward **80%**.
+See [strict graph STEP import](nurbs-graph-step-import.md).

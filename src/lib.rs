@@ -168,3 +168,9 @@ mod nurbs_graph_step_demo;
 pub use nurbs_graph_step_demo::*;
 
 mod nurbs_graph_step;
+
+mod nurbs_graph_step_import_demo;
+pub use nurbs_graph_step_import_demo::*;
+
+mod nurbs_graph_step_import;
+pub use nurbs_graph_step_import::*;

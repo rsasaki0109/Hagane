@@ -1024,3 +1024,16 @@ accepted-model browser downloads share the writer. Non-unit rational geometry,
 arbitrary NURBS shells and graph-solid STEP import remain unsupported. The
 long-term estimate remains **15–25%**, toward **80%**.
 See [scoped NURBS STEP export](docs/nurbs-graph-step.md).
+
+## Strict full-graph NURBS STEP import
+
+One unplaced, full-domain six-face polynomial graph solid can now be read from
+actual STEP spline controls, knots, pcurves and shared topology. Exact canonical
+recognition retains the parsed geometry, reindexes identities and rejects even
+sub-tolerance noncanonical edits without snapping. Independent tests cover
+mm/metre conversion, entity/record/face ordering, cyclic wire starts and invalid
+geometry/units/references/resource limits. Native/WASM and browser import and
+re-export share the Rust parser, preserving accepted models on rejected input.
+Placed, restricted, holed and general rational imports remain unsupported.
+The long-term estimate remains **15–25%**, toward **80%**.
+See [strict graph STEP import](docs/nurbs-graph-step-import.md).
