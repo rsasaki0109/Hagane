@@ -4,6 +4,7 @@
 mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+    static GRAPH_CIRCULAR_HOLE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static GRAPH_RATIONAL_ROOF_CIRCLE_INPUT: Mutex<(Vec<f64>, bool)> =
         Mutex::new((Vec::new(), false));
     static GRAPH_POLYGON_STEP_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
@@ -271,6 +272,38 @@ mod exports {
         } else {
             generate(crate::nurbs_graph_polygon_hole_demo_json(&values))
         }
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_circular_hole_begin() {
+        let mut input = GRAPH_CIRCULAR_HOLE_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_circular_hole_push(value: f64) -> i32 {
+        let mut input = GRAPH_CIRCULAR_HOLE_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 16 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_graph_circular_hole_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = GRAPH_CIRCULAR_HOLE_INPUT.lock().unwrap();
+            (
+                std::mem::take(&mut input.0),
+                std::mem::replace(&mut input.1, false),
+            )
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "circular hole transport needs exactly 16 finite values",
+            )));
+        }
+        generate(crate::nurbs_graph_circular_hole_demo_json(&values))
     }
     #[no_mangle]
     pub extern "C" fn hagane_graph_rational_roof_circle_begin() {

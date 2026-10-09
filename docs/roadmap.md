@@ -1183,3 +1183,16 @@ actual geometry and leaves the stock solid unchanged. Circular-bore topology,
 curved cap trims and their bounded display remain next prerequisites, not
 completed Boolean operations. The estimate remains **15–25%**, toward **80%**.
 See [rational roof-circle paths](nurbs-graph-rational-roof-circle.md).
+
+## Closed circular graph bores
+
+A dedicated checked graph operation now removes one strictly contained
+source-XY circular through column, preserving rational circular cap trims,
+shared degree-eight boundaries and four inward ruled walls in a closed B-rep.
+Volume, centroid and full world inertia use real-exact polynomial quadrature
+with cancellation and scaling guards. Display samples the actual B-rep;
+its bounds include circular trim approximation rather than claiming exact
+mesh coverage of the circle. General curved Booleans, blind graph bores,
+interacting tools, STEP interchange and editable document integration remain
+subsequent work. The estimate remains **15–25%**, toward **80%**.
+See [circular graph bores](nurbs-graph-circular-hole.md).

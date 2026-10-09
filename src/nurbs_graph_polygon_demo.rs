@@ -184,10 +184,11 @@ pub(crate) fn serialize_graph_brep(solid: &Solid) -> Result<serde_json::Value> {
             face.wires
                 .iter()
                 .flat_map(|wire| {
-                    wire.coedges.iter().map(|c| match c.pcurve {
+                    wire.coedges.iter().map(|c| match &c.pcurve {
                         PCurve::Affine { origin, direction } => {
                             Ok(serde_json::json!({"origin":origin,"direction":direction}))
                         }
+                        PCurve::Nurbs(curve) => Ok(serde_json::json!({"kind":"nurbs","degree":curve.degree(),"knots":curve.knots(),"weights":curve.weights(),"control_points":curve.control_points().iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"parameter_range":curve.domain()})),
                         _ => Err(Error::Unsupported("graph demo pcurve is unsupported")),
                     })
                 })
@@ -237,11 +238,12 @@ pub(crate) fn serialize_graph_brep(solid: &Solid) -> Result<serde_json::Value> {
                 .map(|w| {
                     w.coedges
                         .iter()
-                        .map(|c| match c.pcurve {
+                        .map(|c| match &c.pcurve {
                             PCurve::Affine { origin, direction } => {
                                 Ok(serde_json::json!({"origin":origin,"direction":direction}))
                             }
-                            _ => Err(Error::Unsupported("graph demo pcurve is unsupported")),
+                            PCurve::Nurbs(curve) => Ok(serde_json::json!({"kind":"nurbs","degree":curve.degree(),"knots":curve.knots(),"weights":curve.weights(),"control_points":curve.control_points().iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"parameter_range":curve.domain()})),
+                        _ => Err(Error::Unsupported("graph demo pcurve is unsupported")),
                         })
                         .collect::<Result<Vec<_>>>()
                 })

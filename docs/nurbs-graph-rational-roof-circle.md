@@ -89,9 +89,9 @@ At this milestone, all 735 native tests, formatting, strict all-target Clippy,
 the WASM build, the complete WASM execution suite and the complete browser
 regression suite passed. The new page also passed a focused browser run.
 
-Closed circular-bore topology, circular cap trims, their bounded display and
-mass properties remain subsequent work. Polygonal hole tessellation does not
-replace these curved trims. General curved Boolean operations, rational
+Closed circular-bore topology, circular cap trims, bounded display and mass
+properties are implemented separately in the [circular graph bore](nurbs-graph-circular-hole.md).
+The path demo still leaves its stock unchanged. General curved Boolean operations, rational
 trimmed-solid classification and rational-pcurve STEP import/export remain
 unsupported.
 

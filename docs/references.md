@@ -864,3 +864,24 @@ interval are retained. Conditioning guards are engineering checks, not formal
 interval bounds. `PCurve::Nurbs` and the roof-circle path demo add no dependency
 or license change. Original code is MIT OR Apache-2.0. See
 [rational roof-circle paths](nurbs-graph-rational-roof-circle.md).
+
+### Circular graph bores and disk moments
+
+Circular trims use standard rational quadratic Bezier quarters and the
+original homogeneous surface/curve composition described above. Ruled wall
+controls retain the same weights in both height rows. Typed canonical
+validation is original Rust code; no external CAD source was used.
+
+Disk column moments follow polar coordinates with squared radius, the
+trapezoidal sum for finite angular Fourier polynomials, and four-point
+Gauss-Legendre quadrature (the public NIST DLMF 3.5(v) reference above).
+Sixteen angular nodes and four squared-radius nodes integrate the required
+degree-twelve polynomial moments in real arithmetic. Separate positive stock
+and disk quadratures use checked compensated subtraction. Independent tests
+use the classical closed even disk moments
+`π r^(2a+2c+2) (2a)! (2c)! / [4^(a+c) a! c! (a+c+1)!]`.
+Display interpolation uses rational derivative recurrence from `H = W C`,
+homogeneous de Casteljau restriction, graph Hessian bounds and an explicit
+circular trim chord allowance. Floating-point guards are engineering bounds,
+not interval certificates. Original code is MIT OR Apache-2.0; no dependency
+or license change. See [circular graph bores](nurbs-graph-circular-hole.md).
