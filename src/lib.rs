@@ -27,6 +27,7 @@ mod solid_split;
 mod tilted_bore;
 mod topology;
 mod wasm;
+mod workflow;
 pub use booleans::*;
 pub use box_booleans::*;
 pub use circular_face_intersections::*;
@@ -51,6 +52,7 @@ pub use sewing::*;
 pub use solid_split::*;
 pub use tilted_bore::*;
 pub use topology::*;
+pub use workflow::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     InvalidInput(&'static str),

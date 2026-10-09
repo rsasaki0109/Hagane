@@ -1,4 +1,4 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,unlinkSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 const {instance}=await WebAssembly.instantiate(readFileSync(new URL('../web/hagane.wasm',import.meta.url)),{});
@@ -554,3 +554,26 @@ assert.equal(k.hagane_box_face_blind_bore_demo(5,7,20),0);
 for(const radius of [0,40,NaN,Infinity])assert.equal(preset(30,radius).status,1);
 assert.equal(preset(30,14,0).status,1);assert.equal(preset(30).status,0);
 console.log('Six-face blind bores: side/bottom entry, independent volume/depth, native/WASM geometry parity, errors and recovery passed.');
+
+function workflow(document){const text=typeof document==='string'?document:JSON.stringify(document);k.hagane_workflow_begin();for(const byte of new TextEncoder().encode(text)){if(k.hagane_workflow_push_byte(byte))break;}assert.equal(k.hagane_workflow_finish(),0);return JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));}
+const workflowFixture=JSON.parse(readFileSync(new URL('../docs/workflow-example.json',import.meta.url),'utf8'));
+const workflowFile=new URL('../target/workflow-parity.json',import.meta.url);
+try{
+ for(const radius of [8,14,24])for(const depth of [8,16,20]){
+  const doc=structuredClone(workflowFixture);doc.operations[1].radius=radius;doc.operations[1].depth=depth;
+  const report=workflow(doc);assert.equal(report.ok,true);assert.ok(Math.abs(report.mesh.volume-(115200-Math.PI*radius**2*depth))<1e-8);assert.deepEqual(workflow(report.document),report);
+  writeFileSync(workflowFile,JSON.stringify(doc));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','workflow','--',workflowFile.pathname],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));compareIntersection(report,native);
+ }
+}finally{try{unlinkSync(workflowFile);}catch{}}
+for(const [field,value,code] of [['radius',30,'side_clearance'],['depth',24,'floor_thickness'],['input','missing','invalid_reference']]){
+ const doc=structuredClone(workflowFixture);doc.operations[1][field]=value;const report=workflow(doc);assert.equal(report.ok,false);assert.equal(report.diagnostic.code,code);assert.equal(report.diagnostic.operation_id,'bore-1');assert.equal('mesh' in report,false);
+}
+for(const text of ['{','{}','[]','{"schema_version":1,"schema_version":2}'])assert.equal(workflow(text).diagnostic.code,'invalid_document');
+assert.equal(workflow({...workflowFixture,schema_version:99}).diagnostic.code,'unsupported_schema');
+k.hagane_workflow_begin();assert.equal(k.hagane_workflow_push_byte(256),1);assert.equal(k.hagane_workflow_finish(),0);assert.equal(JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len()))).ok,false);
+k.hagane_workflow_begin();k.hagane_workflow_push_byte(255);assert.equal(k.hagane_workflow_finish(),0);assert.equal(JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len()))).diagnostic.code,'invalid_document');
+assert.equal(workflow(' '.repeat(65537)).ok,false);assert.equal(workflow(workflowFixture).ok,true);
+console.log('Editable workflow: versioned document round trips, independent volume, native/WASM parity, operation diagnostics, bounded UTF-8 transport and recovery passed.');
+
+const extremeWorkflow=structuredClone(workflowFixture);extremeWorkflow.operations[1].center=[Number.MAX_VALUE,0];extremeWorkflow.operations[1].radius=Number.MAX_VALUE;
+assert.equal(workflow(extremeWorkflow).diagnostic.category,'numerically_unresolved');assert.equal(workflow(extremeWorkflow).diagnostic.code,'finite_clearance');

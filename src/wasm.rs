@@ -4,6 +4,42 @@
 mod exports {
     use std::sync::Mutex;
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+    static WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_begin() {
+        let mut input = WORKFLOW_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_push_byte(byte: u32) -> i32 {
+        let mut input = WORKFLOW_INPUT.lock().unwrap();
+        if input.1 || byte > 255 || input.0.len() >= 65536 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(byte as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_workflow_finish() -> i32 {
+        let (bytes, bad) = {
+            let mut input = WORKFLOW_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), input.1)
+        };
+        if bad {
+            return generate(crate::workflow_input_failure(
+                "Invalid byte or operation document exceeds 64 KiB.",
+            ));
+        }
+        match std::str::from_utf8(&bytes) {
+            Ok(text) => generate(crate::evaluate_workflow_json(text)),
+            Err(_) => generate(crate::workflow_input_failure(
+                "Operation document must be valid UTF-8.",
+            )),
+        }
+    }
+
     #[no_mangle]
     pub extern "C" fn hagane_box_face_blind_bore_demo(face: u32, radius: f64, depth: f64) -> i32 {
         generate(crate::box_face_blind_bore_demo_json(face, radius, depth))

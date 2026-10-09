@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
 const root=new URL('../web/',import.meta.url);
-const types={'/intersections.html':'text/html','/intersections.js':'text/javascript','/classification.html':'text/html','/classification.js':'text/javascript','/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
+const types={'/third-party-notices.txt':'text/plain','/workflow.html':'text/html','/workflow.js':'text/javascript','/intersections.html':'text/html','/intersections.js':'text/javascript','/classification.html':'text/html','/classification.js':'text/javascript','/':'text/html','/index.html':'text/html','/app.js':'text/javascript','/style.css':'text/css','/hagane.wasm':'application/wasm','/nurbs.html':'text/html','/nurbs.js':'text/javascript','/surface.html':'text/html','/surface.js':'text/javascript','/viewer.js':'text/javascript'};
 const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://localhost').pathname;if(!types[path]){res.writeHead(404);res.end();return;}const data=await readFile(new URL(path==='/'?'index.html':path.slice(1),root));res.writeHead(200,{'Content-Type':types[path]});res.end(data);}catch{res.writeHead(500);res.end('Build the WASM module first.');}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
@@ -478,5 +478,26 @@ try {
  const tiltedView=await page.locator('canvas').screenshot();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),tiltedView);
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
  console.log('Browser: tilted through-bore cap, unequal-axis hole roots/volume, empty/tangent errors, recovery and orbit passed.');
+ await page.goto(`http://127.0.0.1:${server.address().port}/workflow.html`);await page.waitForFunction(()=>window.haganeWorkflow?.ready);
+ const workflowInitial=await page.evaluate(()=>window.haganeWorkflow.lastValid);
+ assert.ok(Math.abs(workflowInitial.mesh.volume-(115200-Math.PI*196*16))<1e-8);
+ await page.locator('#radius').fill('30');const workflowFailure=await page.evaluate(()=>window.haganeWorkflow.report);
+ assert.equal(workflowFailure.ok,false);assert.equal(workflowFailure.diagnostic.code,'side_clearance');assert.equal(workflowFailure.diagnostic.operation_id,'bore-1');assert.match(await page.locator('#result-state').textContent(),/previous valid/);assert.equal(await page.locator('#save').isDisabled(),true);assert.deepEqual(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh),workflowInitial.mesh);assert.ok(workflowFailure.candidate_segments.length>0);
+ if(process.argv.includes('--capture-workflow-failure')){await page.locator('canvas').evaluate(e=>e.blur());await page.screenshot({path:new URL('../docs/workflow-failure.png',import.meta.url).pathname});}
+ await page.locator('#radius').fill('14');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);
+ await page.locator('#depth').fill('24');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.code),'floor_thickness');await page.locator('#depth').fill('12');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*196*12))<1e-8);
+ const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#save').click()]);const saved=await readFile(await download.path(),'utf8');const savedModel=JSON.parse(saved);assert.equal(savedModel.operations[1].depth,12);
+ await page.locator('#radius').fill('8');await page.locator('#document').fill(saved);await page.locator('#load').click();assert.equal(await page.locator('#radius').inputValue(),'14');assert.equal(await page.locator('#depth').inputValue(),'12');assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.ok),true);
+ await page.locator('#radius').fill('8');
+ await page.locator('#file').setInputFiles({name:'model.json',mimeType:'application/json',buffer:Buffer.from(saved)});await page.waitForFunction(()=>document.getElementById('radius').value==='14'&&window.haganeWorkflow.report?.ok);assert.equal(await page.locator('#depth').inputValue(),'12');
+ const badSchema={...savedModel,schema_version:99};await page.locator('#document').fill(JSON.stringify(badSchema));await page.locator('#load').click();assert.equal(await page.evaluate(()=>window.haganeWorkflow.report.diagnostic.code),'unsupported_schema');assert.match(await page.locator('#result-state').textContent(),/previous valid/);
+ await page.locator('#document').fill(saved);await page.locator('#load').click();await page.locator('#mode').selectOption('through');assert.equal(await page.locator('#depth').isDisabled(),true);assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(115200-Math.PI*196*24))<1e-8);
+ await page.locator('#mode').selectOption('box_only');assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.faces),6);assert.equal(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume),115200);
+ await page.locator('#document').fill(saved);await page.locator('#load').click();await page.locator('#reset').click();
+ if(process.argv.includes('--capture-workflow'))await page.screenshot({path:new URL('../docs/workflow.png',import.meta.url).pathname});
+ await page.locator('#width').fill('100');assert.ok(Math.abs(await page.evaluate(()=>window.haganeWorkflow.lastValid.mesh.volume)-(144000-Math.PI*196*12))<1e-8);await page.locator('#width').fill('80');
+ await page.locator('canvas').focus();const workflowCanvas=await page.locator('canvas').screenshot();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),workflowCanvas);
+ assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);assert.deepEqual(errors,[]);
+ console.log('Browser: editable operation history, side/floor diagnostics, previous valid result, corrections, download/import round trips, modes and exact metrics passed.');
  console.log('Browser: 31 B-rep presets including skew circular and oblique ellipse subdivision, WASM generation, radius, keyboard/drag orbit, wheel zoom, wireframe, reset, responsive rendering passed.');
 } finally {await browser?.close();server.close();}

@@ -9,9 +9,11 @@ verified completion criteria take precedence over broad feature labels.
 Following the [product direction](product-direction.md), the next priority is
 an explainable editable box-and-bore workflow: real operation history, parameter
 editing, typed failure diagnostics, visible failed candidate tools and versioned
-JSON operation-document round trips shared by native and WASM. These are planned,
-not current capabilities. Acceptance requires real browser failure/correction
-and round-trip tests, exact B-rep validation and independent geometry checks.
+JSON operation-document round trips shared by native and WASM. A
+[first scoped implementation](editable-workflow.md) now passes browser
+failure/correction and round-trip tests, exact B-rep validation and independent
+geometry checks for a box plus optional through/blind bore. Broader histories,
+incremental rebuilding and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.
 

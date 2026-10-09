@@ -18,8 +18,8 @@ coverage. Pure Rust/WASM and feature counts are not evidence of superiority.
 See [product direction](docs/product-direction.md) for target outcomes, evaluation
 and the next acceptance milestone.
 
-The immediate priority is an integrated editable box-and-bore workflow with
-operation history, structured diagnostics and versioned document round trips.
+The first scoped editable box-and-bore workflow now implements operation
+history, structured diagnostics and versioned document round trips.
 Reuse the existing exact supported operations; do not claim a general CAD
 workflow from this limited first document format. This user-value milestone
 runs ahead of further isolated primitive presets, while the long-term kernel
@@ -429,3 +429,12 @@ classification, tolerance bands, microscopic/rotated solids, mesh closure and
 wrong-face/breakthrough rejection. Native/WASM parity and side-entry browser
 preset 30 are verified. Mixed-face, intersecting and oblique blind tools remain
 unsupported. See [six-face blind bores](docs/box-face-blind-bore.md).
+
+The first [editable workflow](docs/editable-workflow.md) rebuilds a centered box
+with an optional through/blind bore from schema-versioned millimetre JSON.
+Typed operation IDs, measured side/floor diagnostics, rejected-tool outlines,
+clearly labeled previous valid results, correction and save/load round trips
+are verified natively, in WASM and in browser tests. This is a two-node supported
+history, not general parametric CAD or persistent topology naming. Broader
+histories, incremental rebuilds and comparative user-value measurements remain
+next work.

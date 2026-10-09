@@ -387,3 +387,36 @@ normal to canonical +Z. Exact primitive blind construction followed by checked
 rigid B-rep placement preserves normals, curves, pcurves and volume. See
 [six-face blind bores](box-face-blind-bore.md). No dependencies or OCCT source
 were added.
+
+## Editable workflow documents
+
+The operation document is independently designed, with strict typed JSON
+encoding using [Serde](https://serde.rs/) and serde_json. JSON syntax follows
+[RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). Modeling continues to use
+Hagane exact primitives and tolerance checks. These libraries implement
+serialization, not geometry. No OCCT source or bindings are used.
+
+Additional locked Rust dependencies (runtime serialization and compile-time
+derive tooling):
+
+| Package | Locked version | Declared license | Source |
+| --- | --- | --- | --- |
+| itoa | 1.0.18 | MIT OR Apache-2.0 | https://github.com/dtolnay/itoa |
+| memchr | 2.8.3 | Unlicense OR MIT | https://github.com/BurntSushi/memchr |
+| proc-macro2 | 1.0.107 | MIT OR Apache-2.0 | https://github.com/dtolnay/proc-macro2 |
+| quote | 1.0.47 | MIT OR Apache-2.0 | https://github.com/dtolnay/quote |
+| serde | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
+| serde_core | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
+| serde_derive | 1.0.229 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde |
+| serde_json | 1.0.151 | MIT OR Apache-2.0 | https://github.com/serde-rs/json |
+| syn | 3.0.6 | MIT OR Apache-2.0 | https://github.com/dtolnay/syn |
+| unicode-ident | 1.0.26 | (MIT OR Apache-2.0) AND Unicode-3.0 | https://github.com/dtolnay/unicode-ident |
+| zmij | 1.0.23 | MIT | https://github.com/dtolnay/zmij |
+
+Bundled license files were inspected. The MIT alternative is retained in
+[workflow dependency notices](workflow-dependency-notices.txt); unicode-ident
+also requires Unicode-3.0, whose full copyright/permission notice is included.
+Preserve these notices when redistributing relevant source/artifacts.
+
+The browser distribution also includes [full kernel/dependency notices](../web/third-party-notices.txt),
+including existing triangulation dependencies, so these notices accompany web artifacts.

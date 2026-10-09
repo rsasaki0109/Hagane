@@ -9,3 +9,6 @@ repository = "https://github.com/rsasaki0109/Hagane"
 crate-type = ["rlib", "cdylib"]
 [dependencies]
 earcutr = "0.4.3"
+
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
