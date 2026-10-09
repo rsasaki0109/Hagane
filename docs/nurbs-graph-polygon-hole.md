@@ -71,7 +71,7 @@ Tests check independent analytic moments, thin material frames, full cap
 triangle exclusion from the opening, closed oriented mesh incidence, inward
 cavity normals, actual surface approximation, corruption and rejected inputs.
 Contact, CW/nonconvex wires, multiple openings, arbitrary curved Boolean tools,
-polygon-hole STEP interchange, inertia and splitting holed
+polygon-hole STEP import, inertia and splitting holed
 stock remain unsupported. Existing affine UV precision guards also apply;
 near-axis directions and unresolved arithmetic are rejected rather than snapped.
 
@@ -82,3 +82,6 @@ the WASM build and native/WASM regression checks.
 
 [Typed point classification](nurbs-graph-polygon-classification.md) now checks
 world points against actual retained faces, including polygon openings.
+
+[STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
+B-reps with retained rational weights. Polygon STEP import remains unsupported.

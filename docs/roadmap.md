@@ -1019,7 +1019,7 @@ triangle integration gives volume and world centroid; conforming bounded
 display evaluates actual retained faces. Native/WASM and an editable browser
 demo verify accepted solids and explicit invalid-input rejection. Concave
 boundaries, general curved Booleans and polygon graph STEP
-interchange remain unsupported. The estimate remains **15–25%**, toward **80%**.
+import remains unsupported. The estimate remains **15–25%**, toward **80%**.
 See [closed polygon graph solids](nurbs-graph-polygon.md).
 
 ## Source-vertical oblique graph partitions
@@ -1041,7 +1041,7 @@ opening, annular cap wires and shared inward NURBS walls. Positive material-doma
 quadrature gives volume and centroid; checked conforming display preserves the
 void. Native/WASM and the editable browser demo validate topology, precision
 and rejected inputs. Multiple openings, general curved Booleans, polygon-hole
-STEP interchange and inertia remain unsupported. The estimate
+STEP import and inertia remain unsupported. The estimate
 remains **15–25%**, toward **80%**.
 See [polygon through openings](nurbs-graph-polygon-hole.md).
 
@@ -1056,3 +1056,13 @@ and subdivision limits return explicit errors. General NURBS classification,
 multiple openings and curved Booleans remain unsupported. The estimate remains
 **15–25%**, toward **80%**.
 See [polygon graph point classification](nurbs-graph-polygon-classification.md).
+
+## Polygon graph STEP export
+
+Convex polygon and single-opening polynomial graph solids now export actual
+closed B-reps as AP214 STEP. Rational complex spline records preserve retained
+near-unit weights, parameter maps, annular bounds and shared topology.
+Native/WASM and browser downloads use accepted modeling inputs. Polygon STEP
+import, multiple openings and general curved Booleans remain unsupported.
+The estimate remains **15–25%**, toward **80%**.
+See [polygon graph STEP export](nurbs-graph-polygon-step.md).

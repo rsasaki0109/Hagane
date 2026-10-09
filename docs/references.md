@@ -772,3 +772,14 @@ iteration candidates never establish convergence or a closest-point proof.
 Planar convex clipping restricts search cells without changing the B-rep.
 Original code combines these mathematical identities with bounded subdivision
 and explicit engineering precision guards; no external CAD source is used.
+
+### Rational polygon graph STEP export
+
+ISO 10303 spline subtype definitions encode rational curves/surfaces with
+Part 21 complex entity components: inherited B-spline basis attributes,
+knot data and explicit positive weights. The existing public STEP Tools
+entity reference above provides the geometry/topology definitions. Original
+Rust serialization retains actual near-unit binary64 weights without fitting
+or normalization. The existing optional `occt-import-js` reader is only an
+external interoperability oracle under its recorded LGPL/OCCT exception terms;
+it is not a kernel dependency and no OCCT source is copied or translated.

@@ -209,6 +209,9 @@ mod nurbs_graph_polygon_classification_demo;
 mod nurbs_graph_polygon_hole_mass;
 pub use nurbs_graph_polygon_classification_demo::*;
 
+mod nurbs_graph_polygon_step_demo;
+pub use nurbs_graph_polygon_step_demo::*;
+
 mod nurbs_graph_polygon_hole_demo;
 pub use nurbs_graph_polygon_hole_demo::*;
 

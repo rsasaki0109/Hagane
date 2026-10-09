@@ -10,14 +10,9 @@ pub fn nurbs_graph_polygon_point_demo_json(values: &[f64]) -> Result<String> {
         ));
     }
     let model = &values[..values.len() - 4];
-    let source = query_source(model)?;
-    let graph = NurbsGraphPolygonSolid::new(
-        &source,
-        model[13..].as_chunks::<2>().0.to_vec(),
-        Tolerance::default(),
-    )?;
+    let graph = crate::nurbs_graph_polygon_step_demo::polygon_model(model)?;
     query(
-        &source,
+        graph.source(),
         values,
         |point, tol| graph.classify_point(point, tol),
         "convex polygon polynomial graph solid",
@@ -33,53 +28,12 @@ pub fn nurbs_graph_polygon_hole_point_demo_json(values: &[f64]) -> Result<String
         ));
     }
     let model = &values[..values.len() - 4];
-    let count = |v: f64, outer: bool| -> Result<usize> {
-        if v.fract() != 0. || !((3. ..=16.).contains(&v) || (outer && v == 0.)) {
-            return Err(Error::InvalidInput(
-                "polygon query counts must be 3..16, or outer zero",
-            ));
-        }
-        Ok(v as usize)
-    };
-    let no = count(model[13], true)?;
-    let ni = count(model[14], false)?;
-    if model.len() != 15 + 2 * (no + ni) {
-        return Err(Error::InvalidInput(
-            "polygon query count does not match UV pairs",
-        ));
-    }
-    let source = query_source(model)?;
-    let outer = if no == 0 {
-        vec![
-            [model[9], model[11]],
-            [model[10], model[11]],
-            [model[10], model[12]],
-            [model[9], model[12]],
-        ]
-    } else {
-        model[15..15 + 2 * no].as_chunks::<2>().0.to_vec()
-    };
-    let outer = NurbsGraphPolygonSolid::new(&source, outer, Tolerance::default())?;
-    let graph = NurbsGraphPolygonHoledSolid::new(
-        &outer,
-        model[15 + 2 * no..].as_chunks::<2>().0.to_vec(),
-        Tolerance::default(),
-    )?;
+    let graph = crate::nurbs_graph_polygon_step_demo::polygon_hole_model(model)?;
     query(
-        &source,
+        graph.source(),
         values,
         |point, tol| graph.classify_point(point, tol),
         "convex polygon graph solid with one convex through opening",
-    )
-}
-fn query_source(x: &[f64]) -> Result<NurbsGraphSolid> {
-    crate::nurbs_graph_classification_demo::query_source(
-        [x[0], x[1], x[2]],
-        x[3],
-        x[4],
-        x[5],
-        [x[6], x[7], x[8]],
-        [[x[9], x[10]], [x[11], x[12]]],
     )
 }
 fn query(

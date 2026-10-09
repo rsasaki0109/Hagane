@@ -72,9 +72,9 @@ impl Writer {
         ))
     }
     fn curve(&mut self, curve: &NurbsCurve) -> Result<usize> {
-        if curve.weights().iter().any(|w| *w != 1.) {
-            return Err(Error::Unsupported(
-                "graph STEP export supports canonical unit spline weights only",
+        if curve.weights().iter().any(|w| !w.is_finite() || *w <= 0.) {
+            return Err(Error::InvalidInput(
+                "STEP rational curve weights must be positive and finite",
             ));
         }
         let points = curve
@@ -83,12 +83,23 @@ impl Writer {
             .map(|p| self.point(*p))
             .collect::<Result<Vec<_>>>()?;
         let (mults, knots) = knot_data(curve.knots())?;
-        self.entity(format!("B_SPLINE_CURVE_WITH_KNOTS('',{},({}),.UNSPECIFIED.,.F.,.F.,({mults}),({knots}),.UNSPECIFIED.)",curve.degree(),refs(&points)))
+        if curve.weights().iter().all(|w| *w == 1.) {
+            self.entity(format!("B_SPLINE_CURVE_WITH_KNOTS('',{},({}),.UNSPECIFIED.,.F.,.F.,({mults}),({knots}),.UNSPECIFIED.)",curve.degree(),refs(&points)))
+        } else {
+            let weights = curve
+                .weights()
+                .iter()
+                .copied()
+                .map(number)
+                .collect::<Vec<_>>()
+                .join(",");
+            self.entity(format!("(BOUNDED_CURVE() B_SPLINE_CURVE({},({}),.UNSPECIFIED.,.F.,.F.) B_SPLINE_CURVE_WITH_KNOTS(({mults}),({knots}),.UNSPECIFIED.) CURVE() GEOMETRIC_REPRESENTATION_ITEM() RATIONAL_B_SPLINE_CURVE(({weights})) REPRESENTATION_ITEM(''))",curve.degree(),refs(&points)))
+        }
     }
     fn surface(&mut self, surface: &NurbsSurface) -> Result<usize> {
-        if surface.weights().iter().any(|w| *w != 1.) {
-            return Err(Error::Unsupported(
-                "graph STEP export supports canonical unit spline weights only",
+        if surface.weights().iter().any(|w| !w.is_finite() || *w <= 0.) {
+            return Err(Error::InvalidInput(
+                "STEP rational surface weights must be positive and finite",
             ));
         }
         let [nu, nv] = surface.control_counts();
@@ -103,7 +114,26 @@ impl Writer {
         let (um, uk) = knot_data(surface.knots(0)?)?;
         let (vm, vk) = knot_data(surface.knots(1)?)?;
         let [ud, vd] = surface.degrees();
-        self.entity(format!("B_SPLINE_SURFACE_WITH_KNOTS('',{ud},{vd},({}),.UNSPECIFIED.,.F.,.F.,.F.,({um}),({vm}),({uk}),({vk}),.UNSPECIFIED.)",rows.join(",")))
+        if surface.weights().iter().all(|w| *w == 1.) {
+            self.entity(format!("B_SPLINE_SURFACE_WITH_KNOTS('',{ud},{vd},({}),.UNSPECIFIED.,.F.,.F.,.F.,({um}),({vm}),({uk}),({vk}),.UNSPECIFIED.)",rows.join(",")))
+        } else {
+            let weights = surface
+                .weights()
+                .chunks(nv)
+                .map(|row| {
+                    format!(
+                        "({})",
+                        row.iter()
+                            .copied()
+                            .map(number)
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",");
+            self.entity(format!("(BOUNDED_SURFACE() B_SPLINE_SURFACE({ud},{vd},({}),.UNSPECIFIED.,.F.,.F.,.F.) B_SPLINE_SURFACE_WITH_KNOTS(({um}),({vm}),({uk}),({vk}),.UNSPECIFIED.) GEOMETRIC_REPRESENTATION_ITEM() RATIONAL_B_SPLINE_SURFACE(({weights})) REPRESENTATION_ITEM('') SURFACE())",rows.join(",")))
+        }
     }
     fn pcurve(&mut self, surface: usize, pcurve: &PCurve, context: usize) -> Result<usize> {
         let PCurve::Affine { origin, direction } = pcurve else {
@@ -299,6 +329,22 @@ impl NurbsGraphSolid {
 }
 impl NurbsGraphHoledSolid {
     /// Export the actual holed caps and eight shared ruled walls, never a mesh.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
+
+impl NurbsGraphPolygonSolid {
+    /// AP214 export of actual shared polygon boundaries and rational ruled walls.
+    /// Nonunit positive weights are preserved, including binary64 near-unit values.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
+impl NurbsGraphPolygonHoledSolid {
+    /// Export the retained genus-one B-rep, including both annular cap wires.
     pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
         self.validate(tol)?;
         write(self.brep(), tol)

@@ -57,7 +57,7 @@ query results.
 This API supports the documented polynomial roof family, convex stock and at
 most one strictly contained convex polygon opening, including retained UV
 limits and rigid placement. It does not add general NURBS classification,
-multiple openings, arbitrary curved Boolean operations or STEP interchange.
+multiple openings, arbitrary curved Boolean operations or STEP import.
 
 ```sh
 cargo run --example nurbs_graph_polygon_classification -- 0
@@ -83,3 +83,6 @@ The WASM build and full native/WASM regression checks also passed.
 The complete browser regression passed. A focused follow-up verified 14 fresh
 successful queries, blank/invalid-input result and marker preservation, and
 the actual Outside capture on the same final WASM binary.
+
+[STEP export](nurbs-graph-polygon-step.md) now writes actual polygon graph
+B-reps with retained rational weights. Polygon STEP import remains unsupported.
