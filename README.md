@@ -61,6 +61,9 @@ cut faces and conserved volume. `web/graph-split.html` selects either side.
 roof/base wires to four cavity walls in a closed genus-one NURBS solid.
 `web/graph-hole.html` edits an actual opening with stable analytic volume
 and boundary-conforming display; general curved Booleans remain unsupported.
+[Scoped graph-solid point queries](docs/nurbs-graph-classification.md) distinguish
+material, the through-opening void and Euclidean boundary bands directly from
+retained NURBS faces. Unresolved tolerance thresholds return explicit errors.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

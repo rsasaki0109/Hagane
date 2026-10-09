@@ -901,3 +901,14 @@ and editable browser demonstrations cover retained rectangles and placement.
 General tools, multiple openings, curved Booleans and NURBS interchange remain
 incomplete. The estimate remains 15–25%, toward 80%.
 See [graph through openings](nurbs-graph-hole.md).
+## Scoped NURBS graph-solid point classification
+
+Canonical graph solids, including restricted/placed solids and one retained
+rectangular through opening, now expose Euclidean point classification.
+Adaptive rational Bezier control-box lower bounds and actual surface witnesses
+separate the boundary band before analytic material membership is used. Hole
+cap interiors are excluded. Unsupported precision, threshold and resource
+conditions return explicit errors rather than guesses; generic NURBS shell
+classification remains unsupported. Native and browser queries share Rust.
+See [scoped graph classification](nurbs-graph-classification.md).
+The long-term estimate remains **15–25%**, toward the **80%** target.

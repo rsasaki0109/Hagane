@@ -660,3 +660,13 @@ count includes each cap's inner wire. Explicit knot-side derivatives handle
 structural refinement knots on the geometrically smooth polynomial graph.
 This is independent original MIT OR Apache-2.0 code, with no added dependency
 or OCCT source.
+
+Scoped graph-solid point classification uses the positive-weight rational
+Bezier convex-hull property for control-box distance lower bounds. Actual
+surface evaluations supply upper bounds; adaptive subdivision refines the
+Euclidean boundary band. Tangent-plane least-squares steps propose witnesses
+only and are not assumed to converge to a global minimum. Canonical analytic
+graph membership is used only after separation from retained boundary patches.
+This independent MIT OR Apache-2.0 implementation adds no dependency and uses
+no OCCT source. Floating-point guards are engineering bounds, not interval
+arithmetic certificates.

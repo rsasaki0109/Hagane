@@ -152,3 +152,8 @@ pub use nurbs_graph_hole_demo::*;
 
 mod nurbs_graph_holed;
 pub use nurbs_graph_holed::*;
+
+mod nurbs_graph_classification_demo;
+pub use nurbs_graph_classification_demo::*;
+
+mod nurbs_graph_classification;

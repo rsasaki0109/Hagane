@@ -991,3 +991,12 @@ genus-one solids, including trimmed and placed sources. Arbitrary tools,
 multiple/intersecting openings, general curved Booleans and NURBS interchange
 remain incomplete. The estimate remains 15–25%, toward 80%.
 See [graph through openings](docs/nurbs-graph-hole.md).
+## Scoped NURBS graph-solid query milestone
+
+Point classification now checks actual retained rational faces, including the
+single through opening, with Euclidean distance bounds and explicit unresolved
+errors. Restricted/placed graph solids share the same native/WASM query, with
+browser point inputs and a world-coordinate marker. This is groundwork for
+curved-solid queries; it does not implement general NURBS classification or
+Boolean intersections. The long-term estimate remains **15–25%**, toward the
+**80%** target. See [query contract](docs/nurbs-graph-classification.md).
