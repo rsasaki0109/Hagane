@@ -372,7 +372,7 @@ checks. General curved Booleans and document history integration remain next wor
 - General Boolean operations on arbitrary manifold solids.
 - Fillets/chamfers and continuity constraints.
 - Shape healing, tolerant sewing, and imported-shape diagnostics.
-- STEP import, broader curved/NURBS export and assembly/unit mapping beyond
+- Broader STEP curve/trim import, curved/NURBS export and assembly/unit mapping beyond
   the working single-solid planar/full-cylinder export subset.
 
 These are plans, not stubbed operations or claims of current support. Every
@@ -444,5 +444,18 @@ both UV parameter curves; native cylinder/tube primitives, rigid placements and
 through/blind bore workflows export exact geometry with mm units. Native/WASM
 byte parity, browser downloads and independent external import checks verify
 face counts, bounds, retained floors/webs and bounded mesh volume. Arcs, ellipses,
-height-graph trims, skew circular surfaces, STEP import and assemblies remain
-unsupported. The long-term estimate remains 15–25%, toward the 80% target.
+height-graph trims, skew circular surfaces and assemblies remain unsupported.
+The initial convex planar reader follows below. The long-term estimate remains 15–25%, toward the 80% target.
+
+## Initial convex planar STEP import
+
+[STEP import](step-import.md) now reads one closed convex planar straight-edge AP214
+solid, preserves shared entity identities and separate edge/bound/face senses,
+rebuilds affine pcurves and converts source SI mm/metres to mm. Closure, finite
+positive volume and convex supporting-plane certification precede success.
+An independently hand-authored metre tetrahedron, microscopic/rotated/large
+round trips, bounded malformed inputs and native/WASM parity are tested. A
+browser import/inspect/re-export page preserves previous valid results on
+failure. An optional external reader checks source and native re-export.
+Curved/holed/nonconvex imports, assemblies and imported modeling history remain
+unsupported; the long-term estimate remains 15–25%, toward the 80% target.

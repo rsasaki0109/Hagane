@@ -22,8 +22,11 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from
 native Rust or the editable browser. Cylinders, tubes and through/blind bore
-workflows are supported; arcs, ellipses, general curved export and STEP import
-remain unsupported.
+workflows are supported; arcs, ellipses and general curved export remain
+unsupported. [Initial STEP import](docs/step-import.md) now reads one convex
+planar straight-edge solid, preserving shared topology and converting SI mm/m
+to mm. A dedicated `web/step.html` page imports, inspects and re-exports the
+validated solid. Curves, holes, nonconvex imports and assemblies remain unsupported.
 
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
 box/bore dimensions or extrude an editable polygon profile with inner openings
@@ -483,4 +486,5 @@ units in one validated AP214 solid. Native/WASM byte parity and browser download
 cover through/blind cuts; periodic seam edges carry both parameter curves.
 An optional independent reader verifies cylinders/tubes, rigid placement,
 retained floors, bounds and analytically bounded mesh volumes. General curved
-export, import and assemblies remain unsupported.
+export and assemblies remain unsupported. Convex planar import is described
+[in the importer documentation](docs/step-import.md).

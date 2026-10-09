@@ -6,6 +6,39 @@ mod exports {
     static OUTPUT: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     static WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static WORKFLOW_SESSION: Mutex<Option<crate::WorkflowSession>> = Mutex::new(None);
+    static STEP_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_step_import_begin() {
+        let mut input = STEP_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_step_import_push_byte(byte: u32) -> i32 {
+        let mut input = STEP_INPUT.lock().unwrap();
+        if input.1 || byte > 255 || input.0.len() >= crate::STEP_IMPORT_MAX_BYTES {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(byte as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_step_import_finish() -> i32 {
+        let (bytes, bad) = {
+            let mut input = STEP_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), input.1)
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "STEP import transport exceeds 1 MiB or has invalid bytes",
+            )));
+        }
+        match std::str::from_utf8(&bytes) {
+            Ok(text) => generate(crate::import_step_planar_json(text)),
+            Err(_) => generate(Err(crate::Error::InvalidInput("STEP import must be UTF-8"))),
+        }
+    }
     #[no_mangle]
     pub extern "C" fn hagane_workflow_reset_session() {
         *WORKFLOW_SESSION.lock().unwrap() = None;

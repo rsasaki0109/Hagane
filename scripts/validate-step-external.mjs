@@ -58,5 +58,8 @@ try{
  for(const scale of [1,1000])for(const mode of ['cylinder','tube','placed-tube']){
   const tube=mode!=='cylinder';check(run('step_analytic',[mode,String(scale)]),{faces:tube?4:3,volume:Math.PI*(tube?48:64)*24,bounds:mode==='placed-tube'?placedBounds:[[-8,8],[-8,8],[-12,12]],radialHeight:(tube?12:8)*24},scale);
  }
- console.log('External STEP import: planes, circles, cylinders, tubes, rigid placement, through/blind/opposing holes, face counts, bounds, bounded mesh volume, retained floors and mm/metre conversion passed.');
+ const tetra=readFileSync(new URL('../docs/step-tetrahedron-metres.step',import.meta.url));
+ const tetraExpected={faces:4,volume:4,bounds:[[0,2],[0,3],[0,4]]};check(tetra,tetraExpected);
+ const imported=JSON.parse(run('step_import',[]).toString());assert.equal(imported.units,'mm');assert.equal(imported.vertices,4);assert.deepEqual(imported.bounds,{min:[0,0,0],max:[2,3,4]});check(Buffer.from(imported.step),tetraExpected);
+ console.log('External STEP import: planes, circles, cylinders, tubes, rigid placement, through/blind/opposing holes, face counts, bounds, bounded mesh volume, retained floors, mm/metre conversion and independent metre tetrahedron native import/re-export passed.');
 }finally{rmSync(temporary,{recursive:true,force:true});}

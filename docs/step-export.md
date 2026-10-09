@@ -40,8 +40,9 @@ Cylinder trims must cover exactly 2π with rectangular constant-height bands.
 Bounded circular arcs, ellipses, oblique bore rims, skew circular extrusion
 surfaces, height-graph cylinder trims and invalid topology return errors. No
 unsupported geometry is tessellated or replaced by an approximate CAD surface.
-STEP import, general curved export, assemblies and rich product metadata remain
-future work. This is a supported subset, not general AP214 conformance.
+[Convex planar STEP import](step-import.md) is now implemented as a narrower
+subset. Curved/holed/nonconvex import, general curved export, assemblies and rich
+product metadata remain future work. This is a supported subset, not general AP214 conformance.
 
 ## Native and browser examples
 
@@ -87,7 +88,9 @@ mesh verify the retained blind floors/web and absence of material in a through
 hole. The oracle exposes a display mesh, so its signed volume is checked within
 an explicit chord-loss bound `2π δ Σ(radius*height)` plus float32 coordinate
 roundoff, against analytical expectations. This is interoperability testing,
-not native STEP import or a general exact-volume certification of the reader.
+not a general exact-volume certification of the reader. The validator also
+checks an independently hand-authored metre tetrahedron and its native
+import/re-export against analytical face count, dimensions and volume.
 
 This tool is an external test oracle only, not a Hagane dependency or shipped
 artifact. Its wrapper is LGPL-2.1 according to the package metadata; source and

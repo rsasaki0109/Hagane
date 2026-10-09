@@ -5,7 +5,7 @@ pub enum SolidIntersection {
     Empty,
     Solid(Solid),
 }
-fn convex_planes(solid: &Solid, tol: GeometryTolerance) -> Result<Vec<Surface>> {
+pub(crate) fn convex_planes(solid: &Solid, tol: GeometryTolerance) -> Result<Vec<Surface>> {
     let patches = planar_face_patches(solid, tol.absolute())?;
     if patches.len() > 128 {
         return Err(Error::Unsupported(

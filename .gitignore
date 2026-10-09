@@ -1,3 +1,4 @@
 /target/
 /web/hagane.wasm
 /node_modules/
+/web/step-tetrahedron-metres.step
