@@ -1,6 +1,6 @@
 //! Versioned, deliberately scoped editable modeling intent, not B-rep interchange.
 use crate::operations::{
-    apply_checked_prism_bore, checked_box_bore_tools, checked_polygon_region_prism_stock,
+    apply_checked_prism_bore, checked_polygon_region_prism_stock, checked_skew_prism_bore_tools,
     swept_polygon_region_bore_clearance,
 };
 use crate::*;
@@ -276,18 +276,6 @@ impl WorkflowDocument {
                     "Only bores may follow the initial stock operation.",
                 ));
             };
-            if (direction.x != 0. || direction.y != 0.) && *mode == WorkflowBoreMode::Blind {
-                let mut d = diagnostic(
-                    "unsupported_skew_bore",
-                    Some(id),
-                    Some("offset"),
-                    "Blind bores on a skew extrusion are not yet supported.",
-                );
-                d.category = "unsupported";
-                d.suggestion =
-                    Some("Use a through bore or set both extrusion offsets to zero.".into());
-                return Err(d);
-            }
             if ids.contains(&id.as_str()) || input != ids.last().unwrap() {
                 return Err(diagnostic(
                 "invalid_reference",
@@ -310,6 +298,29 @@ impl WorkflowDocument {
                     Some("Enter a positive, resolved radius and finite XY center.".into());
                 return Err(d);
             }
+            if *mode == WorkflowBoreMode::Blind {
+                let valid_depth =
+                    depth
+                        .filter(|v| v.is_finite() && *v > 10. * t.linear)
+                        .ok_or_else(|| {
+                            diagnostic("invalid_depth",Some(id),Some("depth"),
+                        "Blind bores require finite depth greater than ten linear tolerances.")
+                        })?;
+                if size.z - valid_depth <= 10. * t.linear {
+                    let mut d = diagnostic(
+                        "floor_thickness",
+                        Some(id),
+                        Some("depth"),
+                        "The requested blind depth breaks through or leaves an unresolved floor.",
+                    );
+                    d.category = "unsupported";
+                    d.measured_clearance = Some(size.z - valid_depth);
+                    d.required_clearance = Some(10. * t.linear);
+                    d.suggestion =
+                        Some("Reduce depth or increase height to retain a resolved floor.".into());
+                    return Err(d);
+                }
+            }
             let (clearance, profile_hole) = if let Some(profile) = &profile {
                 swept_polygon_region_bore_clearance(
                     &profile.outer,
@@ -318,6 +329,11 @@ impl WorkflowDocument {
                     *radius,
                     [direction.x, direction.y],
                     size.z,
+                    if *mode == WorkflowBoreMode::Blind {
+                        *depth
+                    } else {
+                        None
+                    },
                 )
                 .map_err(|e| geometry_error(e, id))?
             } else {
@@ -401,40 +417,16 @@ impl WorkflowDocument {
                     });
                 }
                 WorkflowBoreMode::Blind => {
-                    let depth = depth
-                        .filter(|v| v.is_finite() && *v > required)
-                        .ok_or_else(|| {
-                            diagnostic(
-                            "invalid_depth",
-                            Some(id),
-                            Some("depth"),
-                            "Blind bores require finite depth greater than ten linear tolerances.",
-                        )
-                        })?;
-                    let floor = size.z - depth;
-                    if floor <= required {
-                        let mut d = diagnostic(
-                        "floor_thickness",
-                        Some(id),
-                        Some("depth"),
-                        "The requested blind depth breaks through or leaves an unresolved floor.",
-                    );
-                        d.category = "unsupported";
-                        d.measured_clearance = Some(floor);
-                        d.required_clearance = Some(required);
-                        d.suggestion=Some("Reduce depth or increase box height so the remaining floor exceeds the required margin.".into());
-                        return Err(d);
-                    }
                     bores.push(BoxBore {
                         center: *center,
                         radius: *radius,
-                        depth: Some(depth),
+                        depth: *depth,
                     });
                 }
             }
             ids.push(id.as_str());
         }
-        let tools = checked_box_bore_tools(b, &bores, t)
+        let tools = checked_skew_prism_bore_tools(b, [direction.x, direction.y], &bores, t)
             .map_err(|e| geometry_error(e, ids.last().unwrap()))?;
         Ok(WorkflowPlan {
             stock: b,

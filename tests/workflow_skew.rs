@@ -63,7 +63,7 @@ fn skew_history_preserves_exact_volume_openings_and_closure_across_scales() {
     }
 }
 #[test]
-fn skew_blind_tools_and_invalid_offsets_are_rejected_without_committing_or_ignoring() {
+fn skew_breakthrough_and_invalid_offsets_are_rejected_without_committing_or_ignoring() {
     let mut session = WorkflowSession::new();
     let mut doc = fixture();
     session.rebuild(&doc).unwrap();
@@ -73,10 +73,10 @@ fn skew_blind_tools_and_invalid_offsets_are_rejected_without_committing_or_ignor
         mode: WorkflowBoreMode::Blind,
         center: [0., 0.],
         radius: 4.,
-        depth: Some(8.),
+        depth: Some(24.),
     });
     let diagnostic = session.rebuild(&doc).unwrap_err();
-    assert_eq!(diagnostic.code, "unsupported_skew_bore");
+    assert_eq!(diagnostic.code, "floor_thickness");
     assert_eq!(diagnostic.operation_id.as_deref(), Some("bore-1"));
     assert_eq!(diagnostic.category, "unsupported");
     let mut nearly_vertical = doc.clone();
@@ -85,7 +85,7 @@ fn skew_blind_tools_and_invalid_offsets_are_rejected_without_committing_or_ignor
     }
     assert_eq!(
         session.rebuild(&nearly_vertical).unwrap_err().code,
-        "unsupported_skew_bore"
+        "floor_thickness"
     );
     doc.operations.pop();
     assert_eq!(session.rebuild(&doc).unwrap().stats.rebuilt_operations, 0);

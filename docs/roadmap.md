@@ -28,10 +28,10 @@ JSON/local restoration. Polygon profile openings now support up to 64 disjoint
 loops and 256 total corners, exact subsequent bores, opening-clearance diagnostics
 and complete editing/save/restore integration. Finite XY offsets now add skew
 polygon stock to document history with exact caps/walls, profile openings,
-editing and restoration. Disjoint world-Z through bores now retain exact
-cap circles/cylinder walls on skew polygon stock; whole-height swept-footprint
-certificates reject side/opening crossings and near contacts. Blind cuts on
-skew stock remain explicitly unsupported. Curved profiles and arbitrary-plane extrusion frames
+editing and restoration. Disjoint world-Z through/blind bores now retain exact
+cap circles/cylinder walls and blind floors on skew polygon stock. Swept-footprint
+certificates use the actual tool depth, rejecting side/opening crossings and
+near contacts; blind floor thickness is independently checked. Curved profiles and arbitrary-plane extrusion frames
 remain outside the document scope. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over

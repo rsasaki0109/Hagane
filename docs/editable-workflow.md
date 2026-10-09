@@ -445,15 +445,58 @@ adding/editing a bore reuses unchanged prefixes, while changing an offset
 invalidates the root. Undo/Redo, downloads, autosave and validated reload retain
 both direction and machining nodes.
 
-**Blind bores on skew stock remain unsupported**, returning
-`unsupported_skew_bore` at the bore ID. Side-crossing, touching, overlapping and
-unresolved tools are rejected, with no replacement mesh or accepted-cache
-change. Offsets smaller than tolerance are not snapped to zero. General curved
-Boolean operations, side-entry and oblique-axis tools remain outside this
-workflow's domain.
+Side-crossing, touching, overlapping and unresolved tools are rejected, with no
+replacement mesh or accepted-cache change. Offsets smaller than tolerance are
+not snapped to zero. General curved Boolean operations, side-entry and
+oblique-axis tools remain outside this workflow's domain. The blind extension
+below retains the same explicit restrictions.
 
 Native tests cover independently calculated volume, shared topology/pcurves,
 material/hole/rim classification, sagitta-bounded display, tiny/large geometry,
 contacts, concave re-entry and an opening crossing between clear caps.
 Native/WASM comparisons check full reports and meshes; browser checks exercise
-through-bore editing, Undo/Redo, download/reload, blind rejection and recovery.
+through-bore editing, Undo/Redo, download/reload, breakthrough rejection and recovery.
+
+## Top-entry blind bores in skew stock
+
+![Actual skew stock with a blind bore and its circular floor](workflow-skew-blind.png)
+
+Skew polygon stocks now also accept `blind` nodes. `depth` is a positive finite
+world-Z distance inward from the upper cap, not a distance along the skew
+extrusion vector. The cut floor is at `Z = height/2 - depth`; its exact circular
+boundary is shared between an inward-facing cylindrical wall and an outward
++Z planar floor. The lower stock cap is unchanged. Exact removed volume is
+`pi * radius^2 * depth`. The
+[blind example](workflow-skew-blind-example.json) has volume
+`4408 * 24 - 16 * pi * 8` cubic millimetres and can be imported in the workflow
+page or evaluated with `cargo run --example workflow --
+docs/workflow-skew-blind-example.json`.
+
+For a blind cut the moving-coordinate center path starts at
+`center - offset * (1 - depth/height)` and ends at `center - offset`. Only that
+segment is tested against every profile boundary; the same slope factor gives
+a conservative physical wall-clearance lower bound. A shallow hole may lie
+outside the original lower footprint while remaining wholly inside the upper
+stock. Tool validation therefore uses the envelope of both translated caps,
+while the swept profile certificate determines actual containment. A deeper
+edit may hit a side or opening and is rejected. Through cuts still test the
+full-height path. Mixed blind/through nodes require disjoint XY footprints,
+even when a more general Boolean could resolve interacting tools.
+
+Both depth and remaining floor thickness must exceed ten linear tolerances.
+Invalid depths return `invalid_depth`; breakthrough and unresolved floors return
+`floor_thickness` with measured thickness and required margin. Swept-side and
+opening failures retain `side_clearance` / `profile_hole_clearance`. No
+unsupported case is treated as a through cut or silently shortened.
+`subtract_skew_polygon_region_prism_bores` accepts `BoxBore.depth: Some(depth)`
+for these top-entry blind cuts; `None` remains through. No schema version or
+additional dependency is needed.
+
+Browser mode/depth edits, incremental prefix reuse, Undo/Redo, JSON downloads,
+local autosave and validated reload use the same Rust kernel. Tests check exact
+volume, true material below the floor, floor/rim classification, bounds,
+opposite shared-edge mesh uses and cylinder sagitta at microscopic/normal/large
+scales. Native checks cover reversed profiles, shallow cuts beyond the lower
+footprint, deep-cut interference with openings/sides, breakthrough and cache
+recovery. Native/WASM reports and meshes agree; browser tests edit depth, reject
+breakthrough, recover and restore the saved blind model.

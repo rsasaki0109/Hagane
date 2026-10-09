@@ -163,7 +163,7 @@ fn swept_boundary_contacts_and_interior_crossings_are_rejected() {
         24.,
         [20., 0.],
         &[BoxBore {
-            depth: Some(8.),
+            depth: Some(24.),
             ..tool
         }],
         t

@@ -82,7 +82,8 @@ claim compatibility with its data structures or APIs.
   (see the
   [Jordan curve theorem](https://en.wikipedia.org/wiki/Jordan_curve_theorem)).
   Skew-stock tool containment follows a moving-coordinate change: the fixed
-  world-axis center traces a segment in the translated profile. Endpoint
+  world-axis center traces a segment in the translated profile over the actual
+  tool depth (the full height for through cuts). Endpoint
   classification plus segment/boundary separation certifies the complete swept
   disk. Dividing the gap by the wall-slope norm gives a conservative physical
   clearance bound by Cauchy–Schwarz. Implemented independently from these

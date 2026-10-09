@@ -1045,10 +1045,11 @@ pub(crate) fn polygon_region_bore_clearance(
     Ok((gap, boundary))
 }
 
-/// Exact skew polygon stock minus disjoint world-Z through cylinders.
+/// Exact skew polygon stock minus disjoint world-Z through/blind cylinders.
 /// The lower profile is at Z=-height/2; its upper copy is translated by offset.
-/// The complete swept tool footprint must clear every profile boundary by
-/// more than ten linear tolerances. Blind and side-crossing tools are rejected.
+/// The swept footprint over each tool depth must clear all profile boundaries
+/// by ten linear tolerances. Blind depths are measured from the +Z cap; a
+/// resolved floor is required. Side-crossing and overlapping tools are rejected.
 pub fn subtract_skew_polygon_region_prism_bores(
     outer: &[[f64; 2]],
     holes: &[Vec<[f64; 2]>],
@@ -1064,9 +1065,6 @@ pub fn subtract_skew_polygon_region_prism_bores(
         ));
     }
     for bore in bores {
-        if bore.depth.is_some() {
-            return Err(Error::Unsupported("skew stock supports only through bores"));
-        }
         if swept_polygon_region_bore_clearance(
             outer,
             holes,
@@ -1074,15 +1072,16 @@ pub fn subtract_skew_polygon_region_prism_bores(
             bore.radius,
             offset,
             height,
+            bore.depth,
         )?
         .0 <= 10. * t.linear
         {
             return Err(Error::Unsupported(
-                "through tool crosses or nearly touches a swept stock boundary",
+                "tool crosses or nearly touches a swept stock boundary",
             ));
         }
     }
-    let tools = checked_box_bore_tools(stock, bores, t)?;
+    let tools = checked_skew_prism_bore_tools(stock, offset, bores, t)?;
     let mut solid = extrude_polygon(
         &PolygonProfile {
             origin: Point3::new(0., 0., -height / 2.),
@@ -1098,7 +1097,8 @@ pub fn subtract_skew_polygon_region_prism_bores(
     solid.validate(t)?;
     Ok(solid)
 }
-// In moving profile coordinates, a fixed world-Z tool traces c -> c-offset.
+// In moving profile coordinates a fixed world-Z tool traces the center
+// segment over its actual depth, ending at c-offset on the upper cap.
 // Segment/boundary separation certifies every intermediate cross section,
 // including concave re-entry and an opening crossed between two valid caps.
 // Divide by a slope bound to obtain a conservative physical wall clearance.
@@ -1109,16 +1109,28 @@ pub(crate) fn swept_polygon_region_bore_clearance(
     radius: f64,
     offset: [f64; 2],
     height: f64,
+    depth: Option<f64>,
 ) -> Result<(f64, Option<usize>)> {
+    let depth = depth.unwrap_or(height);
+    if !depth.is_finite() || depth <= 0. || depth > height {
+        return Err(Error::InvalidInput(
+            "invalid tool depth for swept clearance",
+        ));
+    }
     if offset == [0., 0.] {
         return polygon_region_bore_clearance(outer, holes, center, radius);
     }
+    let start_fraction = 1. - depth / height;
+    let start = [
+        center[0] - offset[0] * start_fraction,
+        center[1] - offset[1] * start_fraction,
+    ];
     let end = [center[0] - offset[0], center[1] - offset[1]];
     let factor = 1_f64.hypot(offset[0].hypot(offset[1]) / height);
-    if end.iter().any(|v| !v.is_finite()) || !factor.is_finite() || height <= 0. {
+    if start.iter().chain(&end).any(|v| !v.is_finite()) || !factor.is_finite() || height <= 0. {
         return Err(Error::Unsupported("unresolved swept tool coordinates"));
     }
-    let mut result = polygon_region_bore_clearance(outer, holes, center, radius)?;
+    let mut result = polygon_region_bore_clearance(outer, holes, start, radius)?;
     let endpoint = polygon_region_bore_clearance(outer, holes, end, radius)?;
     if endpoint.0 < result.0 {
         result = endpoint;
@@ -1129,7 +1141,7 @@ pub(crate) fn swept_polygon_region_bore_clearance(
     {
         for i in 0..boundary.len() {
             let gap = crate::planar::segments_distance(
-                center,
+                start,
                 end,
                 boundary[i],
                 boundary[(i + 1) % boundary.len()],
@@ -1141,4 +1153,27 @@ pub(crate) fn swept_polygon_region_bore_clearance(
     }
     result.0 /= factor;
     Ok(result)
+}
+
+// Tool validation needs the envelope of both stock caps, not only the lower
+// footprint: a shallow blind hole can lie wholly outside the lower footprint.
+pub(crate) fn checked_skew_prism_bore_tools(
+    stock: BoxSpec,
+    offset: [f64; 2],
+    bores: &[BoxBore],
+    t: Tolerance,
+) -> Result<Vec<CylinderSpec>> {
+    let envelope = BoxSpec {
+        min: Point3::new(
+            stock.min.x + offset[0].min(0.),
+            stock.min.y + offset[1].min(0.),
+            stock.min.z,
+        ),
+        size: Vec3::new(
+            stock.size.x + offset[0].abs(),
+            stock.size.y + offset[1].abs(),
+            stock.size.z,
+        ),
+    };
+    checked_box_bore_tools(envelope, bores, t)
 }
