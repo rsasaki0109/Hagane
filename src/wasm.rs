@@ -266,6 +266,11 @@ mod exports {
         generate(crate::solid_split_demo_json(offset))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_split_components_demo(offset: f64) -> i32 {
+        generate(crate::solid_split_components_demo_json(offset))
+    }
+
+    #[no_mangle]
     pub extern "C" fn hagane_convex_intersection_demo(offset: f64) -> i32 {
         generate(crate::convex_intersection_demo_json(offset))
     }

@@ -84,6 +84,72 @@ pub(crate) fn patches(
     }
     Ok(result)
 }
+/// Independently closed connected components on each side of a plane.
+#[derive(Clone, Debug)]
+pub struct SolidPlaneComponents {
+    pub negative: Vec<Solid>,
+    pub positive: Vec<Solid>,
+    pub section: Vec<PlanarFacePatch>,
+}
+// Generated split patches share exact intersection/source vertices. Use those
+// vertices to group face adjacency, then validate/sew every component. This
+// does not snap nearby vertices or interpret mesh connectivity as geometry.
+fn sew_split_components(patches: &[PlanarFacePatch], tol: GeometryTolerance) -> Result<Vec<Solid>> {
+    if patches.is_empty()
+        || patches.len() > 512
+        || patches
+            .iter()
+            .flat_map(|p| &p.rings)
+            .map(Vec::len)
+            .sum::<usize>()
+            > 4096
+    {
+        return Err(Error::Unsupported(
+            "component sewing supports at most 512 total patches and 4096 corners per side",
+        ));
+    }
+    let mut parents: Vec<_> = (0..patches.len()).collect();
+    fn root(parents: &mut [usize], mut i: usize) -> usize {
+        while parents[i] != i {
+            parents[i] = parents[parents[i]];
+            i = parents[i];
+        }
+        i
+    }
+    let mut owners = std::collections::BTreeMap::new();
+    let mut unique_points: Vec<Point3> = Vec::new();
+    for (i, patch) in patches.iter().enumerate() {
+        for p in patch.rings.iter().flatten() {
+            let bits = |v: f64| if v == 0. { 0 } else { v.to_bits() };
+            let key = [bits(p.x), bits(p.y), bits(p.z)];
+            if let Some(&owner) = owners.get(&key) {
+                let a = root(&mut parents, i);
+                let b = root(&mut parents, owner);
+                parents[a] = b;
+            } else {
+                if unique_points
+                    .iter()
+                    .any(|&q| tol.absolute().coincident(*p, q))
+                {
+                    return Err(Error::Unsupported(
+                        "near-coincident split component vertices require explicit healing",
+                    ));
+                }
+                unique_points.push(*p);
+                owners.insert(key, i);
+            }
+        }
+    }
+    let mut groups = std::collections::BTreeMap::<usize, Vec<PlanarFacePatch>>::new();
+    for (i, patch) in patches.iter().enumerate() {
+        let r = root(&mut parents, i);
+        groups.entry(r).or_default().push(patch.clone());
+    }
+    groups
+        .into_values()
+        .map(|group| sew_planar_faces(&group, tol))
+        .collect()
+}
 /// Split a validated planar straight-edge solid by a transverse plane.
 /// All original vertices must clear the plane by ten local length budgets.
 /// Both sides must form one connected closed solid. Contacts, coincident faces,
@@ -93,6 +159,24 @@ pub fn split_solid_by_plane(
     plane: &Surface,
     tol: GeometryTolerance,
 ) -> Result<SolidPlaneSplit> {
+    let mut components = split_solid_by_plane_components(solid, plane, tol)?;
+    if components.negative.len() != 1 || components.positive.len() != 1 {
+        return Err(Error::InvalidTopology("disconnected shell"));
+    }
+    Ok(SolidPlaneSplit {
+        negative: components.negative.pop().unwrap(),
+        positive: components.positive.pop().unwrap(),
+        section: components.section,
+    })
+}
+/// Partition a planar straight-edge solid into independently closed components.
+/// Multiple components per side are supported; contact/near-contact and curved
+/// inputs retain the existing transverse plane-partition rejection contract.
+pub fn split_solid_by_plane_components(
+    solid: &Solid,
+    plane: &Surface,
+    tol: GeometryTolerance,
+) -> Result<SolidPlaneComponents> {
     let source = planar_face_patches(solid, tol.absolute())?;
     let Surface::Plane { origin, u, v } = *plane else {
         return Err(Error::Unsupported("solid partition requires a plane"));
@@ -209,14 +293,23 @@ pub fn split_solid_by_plane(
         positive.orientation = -1;
         children[1].push(positive);
     }
-    let negative = sew_planar_faces(&children[0], tol)?;
-    let positive = sew_planar_faces(&children[1], tol)?;
-    if (negative.volume()? + positive.volume()? - volume).abs() > volume.abs() * 1e-10 {
+    let negative = sew_split_components(&children[0], tol)?;
+    let positive = sew_split_components(&children[1], tol)?;
+    if negative.is_empty() || positive.is_empty() {
+        return Err(Error::InvalidTopology(
+            "partition side has no closed components",
+        ));
+    }
+    let total = negative
+        .iter()
+        .chain(&positive)
+        .try_fold(0., |sum, s| Ok::<_, Error>(sum + s.volume()?))?;
+    if (total - volume).abs() > volume.abs() * 1e-10 {
         return Err(Error::InvalidTopology(
             "solid partition does not conserve volume",
         ));
     }
-    Ok(SolidPlaneSplit {
+    Ok(SolidPlaneComponents {
         negative,
         positive,
         section,
@@ -244,5 +337,47 @@ pub fn solid_split_demo_json(offset: f64) -> Result<String> {
         r.positive.mesh_json(0.05, tol.absolute())?,
         r.section.len(),
         s.volume()?
+    ))
+}
+
+/// Exact U-shaped stock separates into two upper arms and one lower bridge.
+pub fn solid_split_components_demo_json(offset: f64) -> Result<String> {
+    let tol = GeometryTolerance::default();
+    let solid = extrude_polygon(
+        &PolygonProfile {
+            origin: Point3::new(0., 0., -12.),
+            outer: vec![
+                [-30., -20.],
+                [30., -20.],
+                [30., 20.],
+                [10., 20.],
+                [10., -5.],
+                [-10., -5.],
+                [-10., 20.],
+                [-30., 20.],
+            ],
+            holes: vec![],
+        },
+        Vec3::new(0., 0., 24.),
+        tol.absolute(),
+    )?;
+    let plane = Surface::Plane {
+        origin: Point3::new(0., offset, 0.),
+        u: Vec3::new(0., 0., 1.),
+        v: Vec3::new(1., 0., 0.),
+    };
+    let split = split_solid_by_plane_components(&solid, &plane, tol)?;
+    let meshes = |solids: &[Solid]| {
+        solids
+            .iter()
+            .map(|s| s.mesh_json(0.05, tol.absolute()))
+            .collect::<Result<Vec<_>>>()
+    };
+    Ok(format!(
+        "{{\"negative\":[{}],\"positive\":[{}],\"section_faces\":{},\"original_volume\":{}}}",
+        meshes(&split.negative)?.join(","),
+        meshes(&split.positive)?.join(","),
+        split.section.len(),
+        solid.volume()?
     ))
 }

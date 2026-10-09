@@ -337,6 +337,14 @@ results are checked. Curved tools, cavities, disconnected outputs and editable
 Boolean document nodes remain unsupported. See
 [planar/convex Booleans](planar-convex-booleans.md).
 
+Multi-component plane partition now preserves separate closed planar solids
+on either side, with exact component grouping, no near-vertex snapping, checked
+per-component topology and total volume. Native/WASM and browser checks cover
+concave stock with two separated arms. The original one-solid partition API
+retains its rejection of multiple pieces. Consuming component collections in
+Boolean clipping and document history remains next work. See
+[multi-component partition](solid-split-components.md).
+
 ## Next: broaden analytic B-rep operations
 
 - Extend frame-aware primitive/profile APIs and intersection routines.

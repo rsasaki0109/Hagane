@@ -39,6 +39,9 @@ including a second cut that preserves an existing through opening. A dedicated
 `web/planar-boolean.html` demo shows actual B-rep results and explicit contact
 failures. Curved inputs, cavities and disconnected results remain unsupported;
 this API is not yet an editable document node.
+[Multi-component plane partitions](docs/solid-split-components.md) now return
+independently closed solids when a planar cut separates the stock into pieces;
+choose the partition mode in the same browser demo.
 
 Checked [rigid placement and coordinate frames](docs/frames.md) preserve exact
 B-rep geometry and support polygon extrusion in arbitrary planes. The browser

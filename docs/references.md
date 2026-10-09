@@ -444,3 +444,10 @@ including existing triangulation dependencies, so these notices accompany web ar
   Deterministic plane scheduling defers disconnected intermediate shells rather
   than altering geometry. Implemented independently, using no OCCT/reference
   source code and no additional dependency. See [planar/convex Boolean scope](planar-convex-booleans.md).
+
+- Multi-component planar partition groups generated faces through exact shared
+  source/intersection vertices (connected-component graph traversal), then sews
+  and validates each group independently. No display mesh or tolerance snapping
+  defines component membership. Volume conservation follows the existing plane
+  partition / divergence-theorem construction. Independently implemented,
+  without new libraries or copied reference code.

@@ -83,6 +83,13 @@ and a single connected shell. Native/WASM and browser demonstrations are
 verified. This remains a scoped planar operation, not general curved Boolean
 coverage, and is not yet a node in the editable operation document.
 
+Multi-component planar plane partition now returns independently validated
+closed solids per side, with exact shared section boundaries and conserved
+combined volume. Native/WASM and browser side-selection demos verify a concave
+stock separating into multiple parts. Boolean difference/intersection APIs
+still return one shell; consuming components in general Booleans and editable
+document nodes remains subsequent work.
+
 ## Completion criteria
 
 - Exact curves and surfaces, including NURBS, integrate with shared, oriented

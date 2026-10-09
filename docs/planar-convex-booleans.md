@@ -73,3 +73,12 @@ recovery. Browser tests exercise both operations, contact rejection with the
 previous result retained, empty/unchanged results and camera/wireframe controls.
 No new library or source-code dependency was introduced; mathematical provenance
 is recorded in [references](references.md).
+
+## Multi-component partition mode
+
+The browser demo now also offers **Plane partition into parts**. This mode uses
+`split_solid_by_plane_components`, not the single-shell Boolean APIs above.
+A U-shaped stock splits into one negative-side bridge and two positive-side
+arms. Choose a displayed side to inspect the separate closed parts and their
+combined exact volume. Plane offsets use world Y in this mode. See
+[multi-component partition](solid-split-components.md) for contracts and tests.
