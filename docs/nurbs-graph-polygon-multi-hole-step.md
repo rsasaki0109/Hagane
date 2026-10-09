@@ -88,8 +88,9 @@ the mesh budget. Native/WASM checks compare STEP bytes for identical numeric
 inputs and verify transport rejection and recovery. Browser checks exercise
 actual downloads and preservation of the accepted export model after edits.
 
-This adds export for the existing typed family. STEP import and point queries
-for multiple polygon openings remain unsupported. No export-import round
+This adds export for the existing typed family. [Point classification](nurbs-graph-polygon-multi-hole-classification.md)
+now queries the accepted multi-opening model and preserves STEP download
+state. STEP import remains unsupported. No export-import round
 trip, general rational-shell interchange or general curved Boolean operation
 is claimed. The existing polygon STEP oracle and its reader limitations are
 documented [separately](nurbs-graph-polygon-step.md); a requested external-reader

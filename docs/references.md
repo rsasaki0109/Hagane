@@ -820,3 +820,13 @@ face bounds preserve canonical wire traversal; each shared surface curve has
 both incident pcurves. Independent entity decoding checks topology and spline
 data. See [multi-opening STEP export](nurbs-graph-polygon-multi-hole-step.md).
 Original Rust code; no new dependency, external CAD source or license change.
+
+### Multiple polygon graph point classification
+
+The existing retained-face classification algorithm now excludes the union of
+all admitted convex openings. Positive material-region triangles, Bernstein
+control-hull distance bounds and actual surface witnesses reuse the polygon
+classification references above. Convex physical supporting-line clearances
+give a conservative deep-void exclusion before subdivision. Engineering
+arithmetic and work guards remain unchanged. Original Rust implementation;
+no new dependency, external CAD source or license change.

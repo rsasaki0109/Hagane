@@ -1202,8 +1202,8 @@ editable Web demo and checked count-based numeric transport. Pair contact,
 overlap/nesting and unresolved precision/resource requests are rejected.
 STEP export now retains all cap loops, actual rational weights and shared
 topology. Native/WASM export builds the model without display meshing, and
-the browser downloads its last accepted part. STEP import and point queries
-for this family remain unsupported.
+the browser downloads its last accepted part. Point classification now checks
+the retained material outside every opening; STEP import remains unsupported.
 The estimate remains **15–25%**, toward **80%**.
 See [multiple polygon openings](docs/nurbs-graph-polygon-multi-hole.md).
 
@@ -1214,6 +1214,20 @@ closed B-rep as AP214 in millimeters. Every cap inner wire, inward wall, shared
 edge and incident pcurve is retained, including near-unit rational weights.
 Model-only native/WASM export remains independent of display mesh resources;
 browser downloads use the accepted model. Modeling admission conditions are
-unchanged. Multiple-opening STEP import, point queries and general curved
-Booleans remain unsupported. The estimate remains **15–25%**, toward **80%**.
+unchanged. Multiple-opening point classification is now available; STEP import
+and general curved Booleans remain unsupported. The estimate remains **15–25%**, toward **80%**.
 See [multi-opening STEP export](docs/nurbs-graph-polygon-multi-hole-step.md).
+
+## Point classification for multiple polygon graph openings
+
+The typed 1–4-opening, 64-total-corner family now classifies world points
+through a Euclidean band around actual retained cap material and finite walls.
+Positive UV material regions exclude every removed cap area; guarded supporting
+planes resolve deep void points in any opening before curved-face search.
+Source/world arithmetic and depth/visit/work budgets are unchanged, with
+explicit unresolved errors. Model-only native/WASM queries share checked
+transport with four appended query values, at most 151 finite values. The
+browser queries its accepted model and preserves results/markers after failed
+edits or queries, alongside accepted-model STEP downloads. Multiple-opening
+STEP import and generic NURBS queries remain unsupported. The estimate remains
+**15–25%**, toward **80%**. See [multi-opening point classification](docs/nurbs-graph-polygon-multi-hole-classification.md).

@@ -105,8 +105,9 @@ conservative source control-hull enclosure.
 This typed family now provides [exact STEP export](nurbs-graph-polygon-multi-hole-step.md),
 including all cap loops and actual rational weights. The browser downloads
 the accepted model; native/WASM export does not require display meshing.
-STEP import and point queries remain unsupported for this family. The existing
-single-opening type retains its separate point classification API. More than four openings, concave stock/openings, contact
+[Point classification](nurbs-graph-polygon-multi-hole-classification.md) now
+checks the accepted multi-opening material and retained boundary faces. STEP
+import remains unsupported for this family. More than four openings, concave stock/openings, contact
 repair and general curved Booleans remain unsupported. Fixed-tolerance numeric
 demos continue to reject oversized geometry before moment calculation.
 

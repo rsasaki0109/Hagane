@@ -46,13 +46,18 @@ fn contains(polygon: &[[f64; 2]], point: [f64; 2], strict: bool) -> Result<bool>
     }
     Ok(true)
 }
-fn material(outer: &[[f64; 2]], hole: Option<&[[f64; 2]]>, point: [f64; 2]) -> Result<bool> {
-    Ok(contains(outer, point, false)?
-        && !match hole {
-            Some(h) => contains(h, point, true)?,
-            None => false,
-        })
+fn material(outer: &[[f64; 2]], holes: &[&[[f64; 2]]], point: [f64; 2]) -> Result<bool> {
+    if !contains(outer, point, false)? {
+        return Ok(false);
+    }
+    for hole in holes {
+        if contains(hole, point, true)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
+
 fn clip(region: &[[f64; 2]], ranges: [[f64; 2]; 2]) -> Result<Vec<[f64; 2]>> {
     let mut result = region.to_vec();
     for axis in 0..2 {
@@ -176,14 +181,14 @@ fn witnesses(
     initial: [f64; 2],
     query: Point3,
     outer: &[[f64; 2]],
-    hole: Option<&[[f64; 2]]>,
+    holes: &[&[[f64; 2]]],
 ) -> Result<f64> {
     let domain = cell.surface.domain();
     let region = cell.region.as_deref();
     let mut uv = project(region, domain, initial)?;
     let mut upper = f64::INFINITY;
     let candidate = |uv: [f64; 2]| -> Result<Option<f64>> {
-        if cell.face < 2 && !material(outer, hole, uv)? {
+        if cell.face < 2 && !material(outer, holes, uv)? {
             return Ok(None);
         }
         let distance = (original.evaluate(uv[0], uv[1])? - query).norm();
@@ -268,7 +273,7 @@ fn physical_margins(
 fn membership(
     source: &NurbsGraphSolid,
     outer: &[[f64; 2]],
-    hole: Option<&[[f64; 2]]>,
+    holes: &[&[[f64; 2]]],
     local: Point3,
     guard: f64,
 ) -> Result<PointLocation> {
@@ -278,12 +283,12 @@ fn membership(
         return Ok(PointLocation::Outside);
     }
     let mut hole_outside = true;
-    if let Some(hole) = hole {
+    for hole in holes {
         let margins = physical_margins(source, hole, local)?;
         if margins.iter().all(|d| *d > guard) {
             return Ok(PointLocation::Outside);
         }
-        hole_outside = margins.iter().any(|d| *d < -guard);
+        hole_outside &= margins.iter().any(|d| *d < -guard);
     }
     let u = local.x / l;
     let v = local.y / w;
@@ -305,7 +310,7 @@ fn classify(
     source: &NurbsGraphSolid,
     solid: &Solid,
     outer: &[[f64; 2]],
-    hole: Option<&[[f64; 2]]>,
+    holes: &[&[[f64; 2]]],
     triangles: Vec<[[f64; 2]; 3]>,
     query: Point3,
     tol: GeometryTolerance,
@@ -329,7 +334,7 @@ fn classify(
         return Err(unsupported());
     }
     // Every retained face projects into the convex outer footprint and outside
-    // the strict convex opening. A separating support line therefore bounds
+    // the union of strict convex openings. A separating support line bounds
     // distance to ALL actual faces, independently of the query's height.
     // Keep the existing world/source arithmetic allowance and an extra guard
     // for normalized signed-distance evaluation; do not classify near walls.
@@ -340,14 +345,16 @@ fn classify(
     if physical_margins(source, outer, local)?
         .iter()
         .any(|d| *d < -separation)
-        || match hole {
-            Some(h) => physical_margins(source, h, local)?
-                .iter()
-                .all(|d| *d > separation),
-            None => false,
-        }
     {
         return Ok(PointLocation::Outside);
+    }
+    for hole in holes {
+        if physical_margins(source, hole, local)?
+            .iter()
+            .all(|d| *d > separation)
+        {
+            return Ok(PointLocation::Outside);
+        }
     }
     let originals = solid
         .shell
@@ -419,16 +426,17 @@ fn classify(
         let initial = if cell.face < 2 {
             [local.x / l, local.y / w]
         } else {
-            let polygon = if cell.face < 2 + outer.len() {
-                outer
-            } else {
-                hole.ok_or(Error::InvalidTopology("missing opening walls"))?
-            };
-            let i = if cell.face < 2 + outer.len() {
-                cell.face - 2
-            } else {
-                cell.face - 2 - outer.len()
-            };
+            let mut index = cell.face - 2;
+            let mut selected = None;
+            for polygon in std::iter::once(outer).chain(holes.iter().copied()) {
+                if index < polygon.len() {
+                    selected = Some((polygon, index));
+                    break;
+                }
+                index -= polygon.len();
+            }
+            let (polygon, i) =
+                selected.ok_or(Error::InvalidTopology("missing opening wall parameter map"))?;
             let a = polygon[i];
             let b = polygon[(i + 1) % polygon.len()];
             let dx = l * (b[0] - a[0]);
@@ -443,7 +451,7 @@ fn classify(
                 source.dimensions()[2] + source.bulge() * (4. * u * (1. - u) * v * (1. - v));
             [t, local.z / height]
         };
-        if witnesses(originals[cell.face], &cell, initial, query, outer, hole)? + guard <= budget {
+        if witnesses(originals[cell.face], &cell, initial, query, outer, holes)? + guard <= budget {
             return Ok(PointLocation::Boundary);
         }
         let middle = domain.map(|[a, b]| a + (b - a) / 2.);
@@ -487,14 +495,14 @@ fn classify(
             }
         }
     }
-    membership(source, outer, hole, local, arithmetic)
+    membership(source, outer, holes, local, arithmetic)
 }
 impl NurbsGraphPolygonSolid {
     pub fn classify_point(&self, point: Point3, tol: GeometryTolerance) -> Result<PointLocation> {
         self.validate(tol.absolute())?;
         let p = self.polygon();
         let triangles = (1..p.len() - 1).map(|i| [p[0], p[i], p[i + 1]]).collect();
-        classify(self.source(), self.brep(), p, None, triangles, point, tol)
+        classify(self.source(), self.brep(), p, &[], triangles, point, tol)
     }
 }
 impl NurbsGraphPolygonHoledSolid {
@@ -515,7 +523,34 @@ impl NurbsGraphPolygonHoledSolid {
             self.source(),
             self.brep(),
             self.outer_polygon(),
-            Some(self.opening()),
+            &[self.opening()],
+            triangles,
+            point,
+            tol,
+        )
+    }
+}
+
+impl NurbsGraphPolygonMultiHoledSolid {
+    /// Euclidean actual-face classification, excluding every opening from cap witnesses.
+    pub fn classify_point(&self, point: Point3, tol: GeometryTolerance) -> Result<PointLocation> {
+        self.validate(tol.absolute())?;
+        let material = self.material()?;
+        let triangles = material
+            .triangles
+            .into_iter()
+            .map(|tri| tri.map(|i| material.points[i]))
+            .collect();
+        let holes = self
+            .openings()
+            .iter()
+            .map(Vec::as_slice)
+            .collect::<Vec<_>>();
+        classify(
+            self.source(),
+            self.brep(),
+            self.outer_polygon(),
+            &holes,
             triangles,
             point,
             tol,

@@ -174,7 +174,9 @@ support 1–4 separated through openings in a closed NURBS graph B-rep, with
 checked volume, centroid, inertia and an editable browser demo. The new family's
 [STEP export](docs/nurbs-graph-polygon-multi-hole-step.md) retains all cap loops,
 rational weights and shared topology, with downloads from the accepted model.
-STEP import and point queries remain unsupported.
+[Point classification](docs/nurbs-graph-polygon-multi-hole-classification.md)
+checks the actual retained material and every opening through a Euclidean band.
+STEP import remains unsupported.
 
 ## Quick start
 
