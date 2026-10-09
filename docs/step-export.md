@@ -1,5 +1,9 @@
 # Exact planar and cylindrical STEP export
 
+The canonical polynomial NURBS graph-solid family has a separate
+[scoped exact STEP exporter](nurbs-graph-step.md), including rectangular through
+openings. It does not widen the generic analytic writer or STEP importer below.
+
 Hagane writes one validated closed solid as an AP214 ISO 10303-21 text file,
 preserving analytic lines, complete circles, planes and full cylindrical faces.
 Shared vertices/edges, oriented face bounds (including polygon/circular openings),

@@ -67,6 +67,9 @@ retained NURBS faces. Unresolved tolerance thresholds return explicit errors.
 [Source-vertical sections](docs/nurbs-graph-section.md) return physical-height
 material intervals, cap crossing points and outward normals for this family,
 including empty opening lines and explicit wall-contact rejection.
+[Scoped NURBS STEP export](docs/nurbs-graph-step.md) writes these polynomial
+graph solids with original spline bases, shared topology and both pcurve uses
+per edge. The browser downloads the accepted model in explicit mm units.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

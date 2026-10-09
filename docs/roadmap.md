@@ -923,3 +923,15 @@ invalid metadata and insufficient precision return errors. The browser overlays
 the actual query line, material segment and crossing normals, sharing Rust
 with native JSON examples. Arbitrary directions and general NURBS intersection
 remain unsupported. See [source-vertical sections](nurbs-graph-section.md).
+
+## Scoped polynomial NURBS STEP export
+
+Canonical graph-solid wrappers now write AP214 with actual spline degrees,
+controls, original knots/multiplicities, shared edges and both face pcurves.
+Inner cap wires and inward cavity walls preserve through openings. Independent
+native basis/topology checks and an external reader's mm/metre face counts,
+closed imported display, bounded approximate volume and hole crossings verify
+the subset. Native/WASM and browser accepted-model downloads share one writer.
+General rational shells, arbitrary trims and graph STEP import remain
+unsupported. The estimate remains **15–25%**, toward **80%**.
+See [graph-solid STEP export](nurbs-graph-step.md).

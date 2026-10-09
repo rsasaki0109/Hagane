@@ -679,3 +679,14 @@ wall is its horizontal distance to the wall's rectangular base segment; endpoint
 clamping and hypot preserve Euclidean corner contacts. Section metadata is
 checked against the canonical retained construction. This independent
 MIT OR Apache-2.0 implementation adds no dependency or OCCT source.
+
+The graph-solid STEP writer follows public ISO 10303 geometry/topology entity
+definitions for `b_spline_curve_with_knots`, `b_spline_surface_with_knots`,
+`surface_curve`, `pcurve`, oriented face bounds and manifold solids. Original
+unit-weight control nets represent polynomial geometry exactly without fitting;
+affine UV lines preserve retained parameter maps. Public entity reference:
+<https://www.steptools.com/stds/stp_aim/html/>. This independent original
+MIT OR Apache-2.0 writer adds no dependency or copied/translated OCCT source.
+The optional `occt-import-js` reader remains an external LGPL-2.1 test oracle
+with bundled OCCT's LGPL-2.1/OCCT exception, as recorded in
+[STEP export](step-export.md); its imported mesh mass is approximate evidence.

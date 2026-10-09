@@ -1011,3 +1011,16 @@ certificates and unresolved precision return explicit errors. Arbitrary line
 directions and general curved-solid intersections remain unsupported. The
 estimate remains **15–25%**, toward **80%**.
 See [source-vertical sections](docs/nurbs-graph-section.md).
+
+## Scoped NURBS graph-solid STEP export
+
+Graph solids, including restricted/placed sources and one rectangular through
+opening, now export actual polynomial spline bases, shared B-rep topology and
+both retained pcurve uses as AP214 in explicit mm units. Independent tests
+evaluate the serialized bases and topology; an optional external reader verifies
+four documents in mm/metre output units, face counts, closed imported meshes,
+bounded approximate volumes and preserved hole crossings. Native/WASM and
+accepted-model browser downloads share the writer. Non-unit rational geometry,
+arbitrary NURBS shells and graph-solid STEP import remain unsupported. The
+long-term estimate remains **15–25%**, toward **80%**.
+See [scoped NURBS STEP export](docs/nurbs-graph-step.md).

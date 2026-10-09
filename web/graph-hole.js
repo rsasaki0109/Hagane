@@ -12,7 +12,7 @@ try{
   const status=k.hagane_generate_graph_solid_hole(width,depth,height,bulge,error,angle,tx,ty,tz,...domain,...hole),data=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(data.error);
   const center=[0,1,2].map(axis=>{let lo=Infinity,hi=-Infinity;for(let i=axis;i<data.positions.length;i+=3){lo=Math.min(lo,data.positions[i]);hi=Math.max(hi,data.positions[i]);}return (lo+hi)/2;});
   const segments=[];for(const samples of data.boundary_samples)for(let i=3;i<samples.length;i+=3)segments.push([samples.slice(i-3,i),samples.slice(i,i+3)]);
-  viewer.setMesh({positions:data.positions.map((x,i)=>x-center[i%3]),normals:data.normals});viewer.setSegments(segments.map(segment=>segment.map(point=>point.map((x,i)=>x-center[i]))));window.haganeGraphHole.data=data;accepted=data;displayCenter=center;boundarySegments=segments;window.haganeGraphHole.query=null;$('classification').textContent='Model accepted. Classify a world point.';window.haganeGraphHole.section=null;pointSegments=[];sectionSegments=[];$('section-result').textContent='Model accepted. Query a source-vertical section.';
+  viewer.setMesh({positions:data.positions.map((x,i)=>x-center[i%3]),normals:data.normals});viewer.setSegments(segments.map(segment=>segment.map(point=>point.map((x,i)=>x-center[i]))));window.haganeGraphHole.data=data;accepted=data;displayCenter=center;boundarySegments=segments;window.haganeGraphHole.query=null;$('classification').textContent='Model accepted. Classify a world point.';window.haganeGraphHole.section=null;pointSegments=[];sectionSegments=[];$('section-result').textContent='Model accepted. Query a source-vertical section.';window.haganeGraphHole.step=null;$('step-status').textContent='Exports the accepted B-rep model.';
   $('surface-error-label').value=error.toFixed(3);$('volume').textContent=data.volume.toFixed(3)+' mm³';$('removed-volume').textContent=data.removed_volume.toFixed(3)+' mm³';$('source-volume').textContent=data.source_volume.toFixed(3)+' mm³';$('faces').textContent=String(data.brep.faces);$('edges').textContent=String(data.brep.edges);$('triangles').textContent=String(data.mesh.triangles.length);$('surface-bound').textContent=data.error_bounds.reduce((maximum,bound)=>Math.max(maximum,bound),0).toExponential(3);$('status').textContent='✓ Closed genus-one B-rep validated · exact inner walls · bounded triangles';
  }
  function showPoint(point){
@@ -37,5 +37,13 @@ try{
  }
  $('section-query').addEventListener('click',verticalSection);
 
+
+ function downloadStep(){
+  if(!accepted)return;const d=accepted,domain=d.source_domain.flat(),hole=d.hole.flat();
+  try{const status=k.hagane_export_graph_hole_step(d.width,d.depth,d.height,d.bulge,d.error,d.placement.angle,...d.placement.translation,...domain,...hole),result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));if(status)throw Error(result.error);window.haganeGraphHole.step=result;
+   const url=URL.createObjectURL(new Blob([result.step],{type:'application/step'})),link=document.createElement('a');link.href=url;link.download='hagane-graph-through-hole.step';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('step-status').textContent='✓ Exact accepted B-rep exported · AP214 · mm';
+  }catch(e){$('step-status').textContent='STEP export rejected: '+e.message;}
+ }
+ $('download-step').addEventListener('click',downloadStep);
  const update=()=>{try{generate();}catch(e){$('status').textContent=e.message;}};$('apply').addEventListener('click',update);$('surface-error').addEventListener('input',update);$('wire').addEventListener('change',()=>viewer.wireframe=$('wire').checked);$('reset').addEventListener('click',()=>viewer.reset());generate();window.haganeGraphHole.ready=true;
 }catch(e){$('status').textContent=e.message;console.error(e);}

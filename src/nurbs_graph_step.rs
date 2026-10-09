@@ -1,0 +1,306 @@
+//! Original ISO 10303-21 / AP214 writer for the canonical polynomial graph family.
+//! Actual retained spline bases and same-parameter UV uses are serialized without fitting.
+use crate::*;
+use std::fmt::Write;
+#[derive(Default)]
+struct Writer {
+    records: Vec<String>,
+}
+fn number(value: f64) -> String {
+    let s = value.to_string();
+    if s.contains('.') || s.contains('e') || s.contains('E') {
+        s.replace('e', "E")
+    } else {
+        format!("{s}.")
+    }
+}
+fn refs(ids: &[usize]) -> String {
+    ids.iter()
+        .map(|id| format!("#{id}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+fn logical(value: bool) -> &'static str {
+    if value {
+        ".T."
+    } else {
+        ".F."
+    }
+}
+fn knot_data(knots: &[f64]) -> Result<(String, String)> {
+    if knots.is_empty() || knots.iter().any(|x| !x.is_finite()) {
+        return Err(Error::InvalidInput("STEP spline knots must be finite"));
+    }
+    let mut values = Vec::new();
+    let mut mults = Vec::new();
+    for &knot in knots {
+        if values.last().is_some_and(|last| *last == knot) {
+            *mults.last_mut().unwrap() += 1usize;
+        } else {
+            values.push(knot);
+            mults.push(1);
+        }
+    }
+    Ok((
+        mults
+            .iter()
+            .map(usize::to_string)
+            .collect::<Vec<_>>()
+            .join(","),
+        values.into_iter().map(number).collect::<Vec<_>>().join(","),
+    ))
+}
+impl Writer {
+    fn entity(&mut self, body: String) -> Result<usize> {
+        if self.records.len() >= 100000 {
+            return Err(Error::Unsupported(
+                "graph STEP export exceeds entity budget",
+            ));
+        }
+        self.records.push(body);
+        Ok(self.records.len())
+    }
+    fn point(&mut self, p: Point3) -> Result<usize> {
+        if !p.finite() {
+            return Err(Error::InvalidInput("STEP control point is nonfinite"));
+        }
+        self.entity(format!(
+            "CARTESIAN_POINT('',({},{},{}))",
+            number(p.x),
+            number(p.y),
+            number(p.z)
+        ))
+    }
+    fn curve(&mut self, curve: &NurbsCurve) -> Result<usize> {
+        if curve.weights().iter().any(|w| *w != 1.) {
+            return Err(Error::Unsupported(
+                "graph STEP export supports canonical unit spline weights only",
+            ));
+        }
+        let points = curve
+            .control_points()
+            .iter()
+            .map(|p| self.point(*p))
+            .collect::<Result<Vec<_>>>()?;
+        let (mults, knots) = knot_data(curve.knots())?;
+        self.entity(format!("B_SPLINE_CURVE_WITH_KNOTS('',{},({}),.UNSPECIFIED.,.F.,.F.,({mults}),({knots}),.UNSPECIFIED.)",curve.degree(),refs(&points)))
+    }
+    fn surface(&mut self, surface: &NurbsSurface) -> Result<usize> {
+        if surface.weights().iter().any(|w| *w != 1.) {
+            return Err(Error::Unsupported(
+                "graph STEP export supports canonical unit spline weights only",
+            ));
+        }
+        let [nu, nv] = surface.control_counts();
+        let mut rows = Vec::new();
+        for i in 0..nu {
+            let points = surface.control_points()[i * nv..(i + 1) * nv]
+                .iter()
+                .map(|p| self.point(*p))
+                .collect::<Result<Vec<_>>>()?;
+            rows.push(format!("({})", refs(&points)));
+        }
+        let (um, uk) = knot_data(surface.knots(0)?)?;
+        let (vm, vk) = knot_data(surface.knots(1)?)?;
+        let [ud, vd] = surface.degrees();
+        self.entity(format!("B_SPLINE_SURFACE_WITH_KNOTS('',{ud},{vd},({}),.UNSPECIFIED.,.F.,.F.,.F.,({um}),({vm}),({uk}),({vk}),.UNSPECIFIED.)",rows.join(",")))
+    }
+    fn pcurve(&mut self, surface: usize, pcurve: &PCurve, context: usize) -> Result<usize> {
+        let PCurve::Affine { origin, direction } = pcurve else {
+            return Err(Error::Unsupported(
+                "graph STEP export requires retained affine pcurves",
+            ));
+        };
+        let length = direction[0].hypot(direction[1]);
+        if origin.iter().chain(direction).any(|x| !x.is_finite())
+            || !length.is_finite()
+            || length == 0.
+        {
+            return Err(Error::InvalidTopology("graph STEP pcurve is unresolved"));
+        }
+        let point = self.entity(format!(
+            "CARTESIAN_POINT('',({},{}))",
+            number(origin[0]),
+            number(origin[1])
+        ))?;
+        let axis = self.entity(format!(
+            "DIRECTION('',({},{}))",
+            number(direction[0] / length),
+            number(direction[1] / length)
+        ))?;
+        let vector = self.entity(format!("VECTOR('',#{axis},{})", number(length)))?;
+        let line = self.entity(format!("LINE('',#{point},#{vector})"))?;
+        let representation = self.entity(format!(
+            "DEFINITIONAL_REPRESENTATION('',(#{line}),#{context})"
+        ))?;
+        self.entity(format!("PCURVE('',#{surface},#{representation})"))
+    }
+}
+fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
+    Tolerance::new(tolerance.linear)?;
+    if solid.vertices.len() > 4096 || solid.edges.len() > 4096 || solid.shell.faces.len() > 512 {
+        return Err(Error::Unsupported(
+            "graph STEP export exceeds topology budget",
+        ));
+    }
+    let mut controls = 0usize;
+    for edge in &solid.edges {
+        let Curve::Nurbs(c) = &edge.curve else {
+            return Err(Error::Unsupported(
+                "graph STEP requires retained spline edge geometry",
+            ));
+        };
+        controls = controls.saturating_add(c.control_points().len());
+    }
+    for face in &solid.shell.faces {
+        let Surface::Nurbs(s) = &face.surface else {
+            return Err(Error::Unsupported(
+                "graph STEP requires retained spline face geometry",
+            ));
+        };
+        controls = controls.saturating_add(s.control_points().len());
+    }
+    if controls > 65536 {
+        return Err(Error::Unsupported(
+            "graph STEP export exceeds control budget",
+        ));
+    }
+    let mut w = Writer::default();
+    let mut vertices = Vec::new();
+    for vertex in &solid.vertices {
+        let point = w.point(vertex.point)?;
+        vertices.push(w.entity(format!("VERTEX_POINT('',#{point})"))?);
+    }
+    let mut surfaces = Vec::new();
+    for face in &solid.shell.faces {
+        let Surface::Nurbs(surface) = &face.surface else {
+            unreachable!()
+        };
+        surfaces.push(w.surface(surface)?);
+    }
+    let uv_context =
+        w.entity("(GEOMETRIC_REPRESENTATION_CONTEXT(2) REPRESENTATION_CONTEXT('',''))".into())?;
+    let mut uses = vec![Vec::new(); solid.edges.len()];
+    for (fi, face) in solid.shell.faces.iter().enumerate() {
+        for c in face.wires.iter().flat_map(|wire| &wire.coedges) {
+            if c.edge >= uses.len() {
+                return Err(Error::InvalidTopology("STEP coedge reference is invalid"));
+            }
+            uses[c.edge].push((fi, c));
+        }
+    }
+    let mut edges = Vec::new();
+    for (ei, edge) in solid.edges.iter().enumerate() {
+        if uses[ei].len() != 2
+            || uses[ei][0].0 == uses[ei][1].0
+            || edge.vertices.iter().any(|v| *v >= vertices.len())
+        {
+            return Err(Error::InvalidTopology(
+                "graph STEP requires two distinct face uses per shared edge",
+            ));
+        }
+        let Curve::Nurbs(curve) = &edge.curve else {
+            unreachable!()
+        };
+        let geometry = w.curve(curve)?;
+        let pcurves = uses[ei]
+            .iter()
+            .map(|(fi, c)| w.pcurve(surfaces[*fi], &c.pcurve, uv_context))
+            .collect::<Result<Vec<_>>>()?;
+        let geometry = w.entity(format!(
+            "SURFACE_CURVE('',#{geometry},({}),.CURVE_3D.)",
+            refs(&pcurves)
+        ))?;
+        edges.push(w.entity(format!(
+            "EDGE_CURVE('',#{},#{},#{geometry},.T.)",
+            vertices[edge.vertices[0]], vertices[edge.vertices[1]]
+        ))?);
+    }
+    let mut faces = Vec::new();
+    for (fi, face) in solid.shell.faces.iter().enumerate() {
+        let mut bounds = Vec::new();
+        for (wi, wire) in face.wires.iter().enumerate() {
+            let oriented = wire
+                .coedges
+                .iter()
+                .map(|c| {
+                    w.entity(format!(
+                        "ORIENTED_EDGE('',*,*,#{},{})",
+                        edges[c.edge],
+                        logical(c.forward)
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let edge_loop = w.entity(format!("EDGE_LOOP('',({}))", refs(&oriented)))?;
+            bounds.push(w.entity(format!(
+                "{}('',#{edge_loop},.T.)",
+                if wi == 0 {
+                    "FACE_OUTER_BOUND"
+                } else {
+                    "FACE_BOUND"
+                }
+            ))?);
+        }
+        faces.push(w.entity(format!(
+            "ADVANCED_FACE('',({}),#{},{})",
+            refs(&bounds),
+            surfaces[fi],
+            logical(face.orientation > 0)
+        ))?);
+    }
+    let shell = w.entity(format!("CLOSED_SHELL('',({}))", refs(&faces)))?;
+    let brep = w.entity(format!("MANIFOLD_SOLID_BREP('Hagane graph part',#{shell})"))?;
+    let length = w.entity("(LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.))".into())?;
+    let angle = w.entity("(NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.))".into())?;
+    let solid_angle =
+        w.entity("(NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT())".into())?;
+    let uncertainty = w.entity(format!(
+        "UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE({}),#{length},'distance_accuracy_value','')",
+        number(tolerance.linear)
+    ))?;
+    let context=w.entity(format!("(GEOMETRIC_REPRESENTATION_CONTEXT(3) GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#{uncertainty})) GLOBAL_UNIT_ASSIGNED_CONTEXT((#{length},#{angle},#{solid_angle})) REPRESENTATION_CONTEXT('',''))"))?;
+    let representation = w.entity(format!(
+        "ADVANCED_BREP_SHAPE_REPRESENTATION('',(#{brep}),#{context})"
+    ))?;
+    let application = w.entity("APPLICATION_CONTEXT('automotive_design')".into())?;
+    w.entity(format!("APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,#{application})"))?;
+    let product_context = w.entity(format!("PRODUCT_CONTEXT('',#{application},'mechanical')"))?;
+    let product = w.entity(format!(
+        "PRODUCT('hagane','Hagane graph part','',(#{product_context}))"
+    ))?;
+    let formation = w.entity(format!("PRODUCT_DEFINITION_FORMATION('','',#{product})"))?;
+    let definition_context = w.entity(format!(
+        "PRODUCT_DEFINITION_CONTEXT('part definition',#{application},'design')"
+    ))?;
+    let definition = w.entity(format!(
+        "PRODUCT_DEFINITION('design','',#{formation},#{definition_context})"
+    ))?;
+    let shape = w.entity(format!("PRODUCT_DEFINITION_SHAPE('','',#{definition})"))?;
+    w.entity(format!(
+        "SHAPE_DEFINITION_REPRESENTATION(#{shape},#{representation})"
+    ))?;
+    let mut result=String::from("ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('Hagane exact polynomial graph B-rep'),'2;1');\nFILE_NAME('hagane-graph.step','',('Hagane'),(''),'Hagane','Hagane','');\nFILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\nENDSEC;\nDATA;\n");
+    for (i, record) in w.records.iter().enumerate() {
+        writeln!(result, "#{}={record};", i + 1).expect("writing into String");
+        if result.len() > 32 * 1024 * 1024 {
+            return Err(Error::Unsupported("graph STEP output exceeds 32 MiB"));
+        }
+    }
+    result.push_str("ENDSEC;\nEND-ISO-10303-21;\n");
+    Ok(result)
+}
+impl NurbsGraphSolid {
+    /// Export this validated polynomial B-rep as AP214, interpreting lengths as mm.
+    /// Original spline knots/UV domains and both PCURVE uses are preserved.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
+impl NurbsGraphHoledSolid {
+    /// Export the actual holed caps and eight shared ruled walls, never a mesh.
+    pub fn export_step_mm(&self, tol: Tolerance) -> Result<String> {
+        self.validate(tol)?;
+        write(self.brep(), tol)
+    }
+}
