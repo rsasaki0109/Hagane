@@ -33,7 +33,7 @@ impl NurbsPolygonFace {
         max_triangles: usize,
         tol: Tolerance,
     ) -> Result<NurbsPolygonMesh> {
-        self.tessellate_polygon(error, max_triangles, tol, false)
+        self.tessellate_polygon(error, max_triangles, tol, false, &[])
     }
     /// Split every structural C0 knot before display; duplicate only normals.
     pub fn tessellate_crease_bounded(
@@ -42,7 +42,18 @@ impl NurbsPolygonFace {
         max_triangles: usize,
         tol: Tolerance,
     ) -> Result<NurbsPolygonMesh> {
-        self.tessellate_polygon(error, max_triangles, tol, true)
+        self.tessellate_polygon(error, max_triangles, tol, true, &[])
+    }
+    /// Display a previously validated B-rep region with rectangular UV holes.
+    /// Cut at every hole boundary before masking and sampling retained triangles.
+    pub(crate) fn tessellate_holed_bounded(
+        &self,
+        error: f64,
+        max_triangles: usize,
+        tol: Tolerance,
+        holes: &[[[f64; 2]; 2]],
+    ) -> Result<NurbsPolygonMesh> {
+        self.tessellate_polygon(error, max_triangles, tol, true, holes)
     }
     fn tessellate_polygon(
         &self,
@@ -50,11 +61,25 @@ impl NurbsPolygonFace {
         max_triangles: usize,
         tol: Tolerance,
         split_creases: bool,
+        holes: &[[[f64; 2]; 2]],
     ) -> Result<NurbsPolygonMesh> {
         self.validate(tol)?;
         if !error.is_finite() || error <= 0. || !(1..=65536).contains(&max_triangles) {
             return Err(Error::InvalidInput(
                 "polygon display needs positive error and 1..65536 triangles",
+            ));
+        }
+        if holes.len() > 16
+            || holes.iter().any(|hole| {
+                (0..2).any(|axis| {
+                    !hole[axis][0].is_finite()
+                        || !hole[axis][1].is_finite()
+                        || hole[axis][0] >= hole[axis][1]
+                })
+            })
+        {
+            return Err(Error::InvalidInput(
+                "polygon display hole ranges are invalid",
             ));
         }
         let s = &self.boundary.surface;
@@ -93,17 +118,21 @@ impl NurbsPolygonFace {
         } else {
             [Vec::new(), Vec::new()]
         };
-        let mut clipping_work = 0usize;
-        for (axis, values) in creases.iter().enumerate() {
-            for &value in values {
-                clipping_work = clipping_work.saturating_add(triangles.len());
-                if clipping_work > 16_000_000 {
-                    return Err(Error::Unsupported(
-                        "polygon crease clipping exceeds work limit",
-                    ));
+        if holes.is_empty() {
+            let mut clipping_work = 0usize;
+            for (axis, values) in creases.iter().enumerate() {
+                for &value in values {
+                    clipping_work = clipping_work.saturating_add(triangles.len());
+                    if clipping_work > 16_000_000 {
+                        return Err(Error::Unsupported(
+                            "polygon crease clipping exceeds work limit",
+                        ));
+                    }
+                    triangles = split_triangles(&mut uv, triangles, axis, value, max_triangles)?;
                 }
-                triangles = split_triangles(&mut uv, triangles, axis, value, max_triangles)?;
             }
+        } else {
+            triangles = partition_material_cells(&mut uv, holes, &creases, max_triangles)?;
         }
         for depth in 0..=10 {
             if triangles.len() > max_triangles {
@@ -351,6 +380,152 @@ fn source_creases(s: &NurbsSurface) -> Result<[Vec<f64>; 2]> {
         }
     }
     Ok(result)
+}
+// Partition the exact outer UV polygon before creating artificial diagonals.
+// Every coordinate-line intersection is shared by adjacent convex cells.
+fn partition_material_cells(
+    uv: &mut Vec<[f64; 2]>,
+    holes: &[[[f64; 2]; 2]],
+    creases: &[Vec<f64>; 2],
+    max_triangles: usize,
+) -> Result<Vec<[usize; 3]>> {
+    let mut cells = vec![(0..uv.len()).collect::<Vec<_>>()];
+    let mut lines = creases.clone();
+    for hole in holes {
+        for axis in 0..2 {
+            lines[axis].extend(hole[axis]);
+        }
+    }
+    for values in &mut lines {
+        values.sort_by(f64::total_cmp);
+        values.dedup();
+    }
+    let mut work = 0usize;
+    for (axis, values) in lines.iter().enumerate() {
+        for &value in values {
+            let mut crossings = HashMap::new();
+            let mut next = Vec::new();
+            let mut count = 0usize;
+            for cell in cells {
+                work = work.saturating_add(cell.len());
+                if work > 16_000_000 {
+                    return Err(Error::Unsupported(
+                        "polygon region clipping exceeds work limit",
+                    ));
+                }
+                let lo = cell
+                    .iter()
+                    .map(|id| uv[*id][axis])
+                    .fold(f64::INFINITY, f64::min);
+                let hi = cell
+                    .iter()
+                    .map(|id| uv[*id][axis])
+                    .fold(f64::NEG_INFINITY, f64::max);
+                if lo >= value || hi <= value {
+                    count += cell.len() - 2;
+                    next.push(cell);
+                } else {
+                    for left in [true, false] {
+                        let mut polygon = Vec::new();
+                        for index in 0..cell.len() {
+                            let a = cell[index];
+                            let b = cell[(index + 1) % cell.len()];
+                            let inside = |x: f64| if left { x <= value } else { x >= value };
+                            let ia = inside(uv[a][axis]);
+                            let ib = inside(uv[b][axis]);
+                            if ia {
+                                polygon.push(a);
+                            }
+                            if ia != ib {
+                                let id = if uv[a][axis] == value {
+                                    a
+                                } else if uv[b][axis] == value {
+                                    b
+                                } else {
+                                    let key = if a < b { [a, b] } else { [b, a] };
+                                    if let Some(id) = crossings.get(&key) {
+                                        *id
+                                    } else {
+                                        let t = (value - uv[a][axis]) / (uv[b][axis] - uv[a][axis]);
+                                        if !t.is_finite() || t <= 0. || t >= 1. {
+                                            return Err(Error::Tessellation(
+                                                "polygon region intersection is unresolved",
+                                            ));
+                                        }
+                                        let other = 1 - axis;
+                                        let mut point = uv[a];
+                                        point[axis] = value;
+                                        point[other] =
+                                            uv[a][other] + t * (uv[b][other] - uv[a][other]);
+                                        if !point[other].is_finite()
+                                            || point == uv[a]
+                                            || point == uv[b]
+                                        {
+                                            return Err(Error::Tessellation(
+                                                "polygon region UV intersection collapses",
+                                            ));
+                                        }
+                                        let id = uv.len();
+                                        uv.push(point);
+                                        crossings.insert(key, id);
+                                        id
+                                    }
+                                };
+                                polygon.push(id);
+                            }
+                        }
+                        polygon.dedup();
+                        if polygon.len() > 1 && polygon.first() == polygon.last() {
+                            polygon.pop();
+                        }
+                        if polygon.len() < 3 {
+                            return Err(Error::Tessellation("polygon region cell collapses"));
+                        }
+                        count += polygon.len() - 2;
+                        next.push(polygon);
+                    }
+                }
+                if count > max_triangles {
+                    return Err(Error::Tessellation(
+                        "polygon region clipping exceeds triangle budget",
+                    ));
+                }
+            }
+            cells = next;
+        }
+    }
+    let mut triangles = Vec::new();
+    for cell in cells {
+        let mut lo = uv[cell[0]];
+        let mut hi = lo;
+        for &id in &cell[1..] {
+            for axis in 0..2 {
+                lo[axis] = lo[axis].min(uv[id][axis]);
+                hi[axis] = hi[axis].max(uv[id][axis]);
+            }
+        }
+        if holes
+            .iter()
+            .any(|h| (0..2).all(|axis| lo[axis] >= h[axis][0] && hi[axis] <= h[axis][1]))
+        {
+            continue;
+        }
+        if holes
+            .iter()
+            .any(|h| (0..2).all(|axis| lo[axis] < h[axis][1] && hi[axis] > h[axis][0]))
+        {
+            return Err(Error::Tessellation("polygon hole clipping is unresolved"));
+        }
+        for i in 1..cell.len() - 1 {
+            triangles.push([cell[0], cell[i], cell[i + 1]]);
+        }
+    }
+    if triangles.is_empty() {
+        return Err(Error::Tessellation(
+            "polygon holes leave no display material",
+        ));
+    }
+    Ok(triangles)
 }
 fn split_triangles(
     uv: &mut Vec<[f64; 2]>,

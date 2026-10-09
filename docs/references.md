@@ -606,3 +606,15 @@ UV triangles, shared-edge intersection identity, uniform midpoint subdivision
 and explicit one-sided source derivatives. No third-party clipping code or
 OCCT source was used; engineering f64 guards remain distinct from interval
 certification (MIT OR Apache-2.0 original code, no new dependencies).
+
+Convex rational-face openings use exact affine-UV inner wires with clockwise
+traversal and independent convex-cell half-plane partition before triangulation.
+Source-domain clearance guards are separate from physical-length tolerance.
+Material-only normal sampling follows the retained UV region; global bounds
+remain conservative engineering checks. No dependencies or OCCT source were
+added (original implementation MIT OR Apache-2.0).
+
+Mathematical clipping reference: I. E. Sutherland and G. W. Hodgman,
+“Reentrant Polygon Clipping,” Communications of the ACM 17(1), 32–42 (1974),
+https://doi.org/10.1145/360767.360802. The half-plane procedure here is independently
+implemented; no code from that publication or another CAD kernel was copied.

@@ -1,6 +1,6 @@
 # Editable rational polygon face demo
 
-![Actual Rust/WASM polygon face with crease normals](nurbs-polygon.png)
+![Actual Rust/WASM rational polygon face with an opening](nurbs-polygon.png)
 
 `web/surface-polygon.html` edits a counterclockwise triangular UV boundary on an
 actual retained NURBS polygon B-rep face. Controls select a weighted biquadratic
@@ -18,9 +18,9 @@ Open `surface-polygon.html` on the local server. Drag/arrow keys rotate, wheel
 zooms, the mesh checkbox exposes triangles and reset restores the view. Invalid
 edits show the actual kernel error while retaining the previous accepted mesh
 and JSON. This page displays an open face, not a closed solid or volume operation.
-The editor currently accepts exactly three UV corners; the native polygon API
-supports 3–64 strictly convex corners. Holes and concave/general trim loops remain
-unsupported. Display conditioning and work/triangle limits still apply.
+The editor accepts three UV corners and one optional editable rectangular
+opening. The native holed API supports 3–64 convex corners and up to 16 separated
+rectangular holes. Concave/general trim loops remain unsupported. Display conditioning and work/triangle limits still apply.
 
 The shared native example returns the same diagnostic JSON:
 
@@ -50,3 +50,8 @@ use engineering f64 reserves rather than formal interval certification. Sewing,
 global regularity/injectivity, closed NURBS solids and NURBS STEP remain future
 work. No new dependencies or OCCT source were added; original code is
 MIT OR Apache-2.0.
+
+[Rectangular inner wires](nurbs-polygon-holes.md) now expose the optional browser
+opening through `hagane_generate_polygon_hole`; the final four arguments are
+hole U min/max and V min/max. Native/WASM diagnostic JSON includes actual inner
+wire pcurves, global references and hole material bounds.

@@ -828,3 +828,15 @@ JSON parity and independent curve/surface/bound checks. A captured actual screen
 documents the working UI. This is an open face, not a closed solid. General loops,
 holes, sewing and closed rational solids remain incomplete. The estimate remains
 15–25%, toward 80%. See [polygon demo](nurbs-polygon-demo.md).
+
+## Rectangular inner wires on convex rational faces
+
+`NurbsPolygonHoledFace` retains exact clockwise inner wires and shared global
+references inside a convex UV outer boundary, with independently guarded UV
+clearance and explicit contact/overlap rejection. Convex cell partition before
+triangulation preserves material boundaries, C0 normal identities and excluded
+singularity sampling. Native independent bounds/area/topology/resource tests,
+full native/WASM diagnostic parity and an editable browser opening are verified.
+Nonrectangular holes, general trims, sewing and closed rational solids remain
+incomplete. The long-term estimate remains 15–25%, toward 80%. See [convex
+face openings](nurbs-polygon-holes.md).

@@ -134,3 +134,6 @@ pub use nurbs_polygon_tessellation::*;
 
 mod nurbs_polygon_demo;
 pub use nurbs_polygon_demo::*;
+
+mod nurbs_polygon_holed;
+pub use nurbs_polygon_holed::*;

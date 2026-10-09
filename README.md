@@ -40,6 +40,8 @@ and retains one-sided normals through a dedicated API.
 The [editable polygon face demo](docs/nurbs-polygon-demo.md) now exposes single,
 C1 and C0 modes in `web/surface-polygon.html`, with native/WASM parity and
 rejected-edit recovery.
+[Rectangular inner wires](docs/nurbs-polygon-holes.md) now retain openings inside
+convex rational boundaries, with shared topology and editable browser display.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

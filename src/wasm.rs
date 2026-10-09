@@ -253,6 +253,32 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_polygon_hole(
+        height: f64,
+        weight: f64,
+        error: f64,
+        mode: u32,
+        u0: f64,
+        v0: f64,
+        u1: f64,
+        v1: f64,
+        u2: f64,
+        v2: f64,
+        hu0: f64,
+        hu1: f64,
+        hv0: f64,
+        hv1: f64,
+    ) -> i32 {
+        generate(crate::nurbs_polygon_hole_demo_json(
+            height,
+            weight,
+            error,
+            mode,
+            vec![[u0, v0], [u1, v1], [u2, v2]],
+            vec![[[hu0, hu1], [hv0, hv1]]],
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_polygon(
         height: f64,
         weight: f64,
