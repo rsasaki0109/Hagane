@@ -1,10 +1,16 @@
-//! Bounded tensor-Bernstein display of C1 tensor-product rational patches.
+//! Bounded tensor-Bernstein display with explicit one-sided crease normals.
 use crate::nurbs::{project, weighted_controls};
-use crate::{Error, Mesh, NurbsSurface, Point3, Result, Vec3};
+use crate::{Error, KnotSide, Mesh, NurbsSurface, Point3, Result, Vec3};
 
 #[derive(Clone, Debug)]
 pub struct NurbsSurfaceMesh {
     pub mesh: Mesh,
+    /// Original UV coordinate for each display vertex.
+    pub vertex_uv: Vec<[f64; 2]>,
+    /// Canonical geometric node per display vertex; crease duplicates share it.
+    pub vertex_nodes: Vec<usize>,
+    /// Explicit source derivative limits used for each display normal.
+    pub normal_sides: Vec<[KnotSide; 2]>,
     /// One original-parameter rectangle per cell; each cell emits two triangles.
     pub uv_ranges: Vec<[[f64; 2]; 2]>,
     /// One bound per rectangle, shared by its two emitted triangles.
@@ -17,7 +23,7 @@ struct Cell {
 }
 impl NurbsSurface {
     /// Conforming bounded tessellation of positive rational Bezier spans.
-    /// C0 interior knot lines are unsupported. All spans share one dyadic level.
+    /// C0 knot lines retain separate one-sided display normals. All spans share one dyadic level.
     pub fn tessellate_bounded(
         &self,
         chord_error: f64,
@@ -29,23 +35,11 @@ impl NurbsSurface {
             ));
         }
         let [p, q] = self.degrees();
-        let counts = self.control_counts();
         let [nu, nv] = [p + 1, q + 1];
         let mut spans = [0usize; 2];
-        for axis in 0..2 {
-            let degree = self.degrees()[axis];
+        for (axis, span_count) in spans.iter_mut().enumerate() {
             let knots = self.knots(axis)?;
-            spans[axis] = knots.windows(2).filter(|pair| pair[0] < pair[1]).count();
-            let mut i = degree + 1;
-            while i < counts[axis] {
-                let next = knots.partition_point(|v| *v <= knots[i]);
-                if next - i == degree {
-                    return Err(Error::Unsupported(
-                        "bounded surface tessellation requires C1 interior knot lines",
-                    ));
-                }
-                i = next;
-            }
+            *span_count = knots.windows(2).filter(|pair| pair[0] < pair[1]).count();
         }
         if spans[0].saturating_mul(spans[1]) > max_cells {
             return Err(Error::Tessellation(
@@ -244,6 +238,25 @@ fn emit(surface: &NurbsSurface, cells: Vec<Cell>, bounds: Vec<f64>) -> Result<Nu
     let mut mesh = Mesh::default();
     let mut uv_ranges = Vec::with_capacity(cells.len());
     let mut shared = std::collections::BTreeMap::new();
+    let mut geometric = std::collections::BTreeMap::new();
+    let mut vertex_uv = Vec::new();
+    let mut vertex_nodes = Vec::new();
+    let mut normal_sides = Vec::new();
+    let mut creases: [std::collections::BTreeSet<u64>; 2] =
+        std::array::from_fn(|_| std::collections::BTreeSet::new());
+    for (axis, set) in creases.iter_mut().enumerate() {
+        let degree = surface.degrees()[axis];
+        let knots = surface.knots(axis)?;
+        let count = surface.control_counts()[axis];
+        let mut i = degree + 1;
+        while i < count {
+            let next = knots.partition_point(|v| *v <= knots[i]);
+            if next - i == degree {
+                set.insert(canonical_parameter(knots[i]).to_bits());
+            }
+            i = next;
+        }
+    }
     for cell in cells {
         let [[u0, u1], [v0, v1]] = cell.uv;
         let mut ids = [0usize; 4];
@@ -251,15 +264,44 @@ fn emit(surface: &NurbsSurface, cells: Vec<Cell>, bounds: Vec<f64>) -> Result<Nu
             .into_iter()
             .enumerate()
         {
-            let key = (u.to_bits(), v.to_bits());
+            // Signed zero is one numerical parameter, regardless of knot spelling.
+            let u = canonical_parameter(u);
+            let v = canonical_parameter(v);
+            let uv_key = (u.to_bits(), v.to_bits());
+            let sides = [
+                if creases[0].contains(&u.to_bits()) && u == u1 {
+                    KnotSide::Left
+                } else {
+                    KnotSide::Right
+                },
+                if creases[1].contains(&v.to_bits()) && v == v1 {
+                    KnotSide::Left
+                } else {
+                    KnotSide::Right
+                },
+            ];
+            let key = (
+                uv_key,
+                sides[0] == KnotSide::Left,
+                sides[1] == KnotSide::Left,
+            );
             ids[i] = if let Some(id) = shared.get(&key) {
                 *id
             } else {
-                let e = surface.partials(u, v)?;
-                let normal = e.normal()?;
+                let (node, point) = if let Some(value) = geometric.get(&uv_key) {
+                    *value
+                } else {
+                    let value = (geometric.len(), surface.evaluate(u, v)?);
+                    geometric.insert(uv_key, value);
+                    value
+                };
+                let normal = surface.evaluate_with_partials(u, v, sides)?.normal()?;
                 let id = mesh.positions.len();
-                mesh.positions.push(e.point);
+                mesh.positions.push(point);
                 mesh.normals.push(normal);
+                vertex_uv.push([u, v]);
+                vertex_nodes.push(node);
+                normal_sides.push(sides);
                 shared.insert(key, id);
                 id
             };
@@ -284,5 +326,16 @@ fn emit(surface: &NurbsSurface, cells: Vec<Cell>, bounds: Vec<f64>) -> Result<Nu
         mesh,
         uv_ranges,
         error_bounds: bounds,
+        vertex_uv,
+        vertex_nodes,
+        normal_sides,
     })
+}
+
+fn canonical_parameter(parameter: f64) -> f64 {
+    if parameter == 0.0 {
+        0.0
+    } else {
+        parameter
+    }
 }

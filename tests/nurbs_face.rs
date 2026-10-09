@@ -236,7 +236,7 @@ fn bounded_face_mesh_respects_orientation_and_rejects_dirty_boundaries() {
         .is_err());
 }
 #[test]
-fn bounded_multispan_face_preserves_orientation_and_rejects_c0_lines() {
+fn bounded_multispan_face_preserves_orientation_and_handles_c0_lines() {
     let smooth = surface()
         .insert_knot(0, 3., 1)
         .unwrap()
@@ -262,8 +262,24 @@ fn bounded_multispan_face_preserves_orientation_and_rejects_c0_lines() {
     )
     .unwrap();
     c0.validate_boundary(Tolerance::default()).unwrap();
-    assert!(matches!(
-        c0.tessellate_bounded(0.01, 4096, Tolerance::default()),
-        Err(Error::Unsupported(_))
-    ));
+    let displayed = c0
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    assert!(
+        displayed.vertex_nodes.len() > displayed.vertex_nodes.iter().copied().max().unwrap() + 1
+    );
+    let mut negative = c0;
+    negative.face.orientation = -1;
+    let flipped = negative
+        .tessellate_bounded(0.01, 4096, Tolerance::default())
+        .unwrap();
+    assert_eq!(displayed.vertex_uv, flipped.vertex_uv);
+    assert_eq!(displayed.vertex_nodes, flipped.vertex_nodes);
+    assert_eq!(displayed.normal_sides, flipped.normal_sides);
+    for (a, b) in displayed.mesh.triangles.iter().zip(&flipped.mesh.triangles) {
+        assert_eq!(*b, [a[0], a[2], a[1]]);
+    }
+    for (a, b) in displayed.mesh.normals.iter().zip(&flipped.mesh.normals) {
+        assert!((*a + *b).norm() < 1e-15);
+    }
 }

@@ -100,15 +100,15 @@ for(const args of [[0,0,0.5,0.5],[101,1,0.5,0.5],[NaN,1,0.5,0.5],[0,1,1.1,0.5],[
 assert.equal(surface(35,1,0.5,0.5).status,0);
 console.log('NURBS surfaces: 6 native/WASM grid/partial/normal/exact-section cases, independent tensor evaluation, interval chord bounds, oriented boundary closure and errors/recovery passed.');
 function boundedSurface(height,weight,u,v,error){const status=k.hagane_generate_surface_bounded(height,weight,u,v,error);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
-function checkSurfaceMesh(data){
+function checkSurfaceMesh(data,oracle=surfacePoint){
  assert.equal(data.triangles,2*data.cells);assert.equal(data.positions.length,data.cells*18);assert.equal(data.normals.length,data.positions.length);assert.equal(data.cell_bounds.length,data.cells);assert.equal(data.cell_ranges.length,data.cells);
  const patches=data.patch_ranges??[[[0,1],[0,1]]],grid=new Map(),rectangles=new Set(),side=Math.sqrt(data.cells/patches.length),counts=patches.map(()=>0);assert.ok(Number.isInteger(side));let area=0;
  for(let i=0;i<data.cells;i++){
   const [[u0,u1],[v0,v1]]=data.cell_ranges[i],bound=data.cell_bounds[i];assert.ok(0<=u0&&u0<u1&&u1<=1&&0<=v0&&v0<v1&&v1<=1);const index=patches.findIndex(([[a,b],[c,d]])=>u0>=a&&u1<=b&&v0>=c&&v1<=d);assert.ok(index>=0);counts[index]++;const [[a,b],[c,d]]=patches[index];assert.ok(Math.abs((u1-u0)-(b-a)/side)<1e-14&&Math.abs((v1-v0)-(d-c)/side)<1e-14);for(const x of [(u0-a)*side/(b-a),(v0-c)*side/(d-c)])assert.ok(Math.abs(x-Math.round(x))<1e-10);assert.ok(Number.isFinite(bound)&&bound>0&&bound<=data.surface_error);const rect=JSON.stringify(data.cell_ranges[i]);assert.ok(!rectangles.has(rect));rectangles.add(rect);area+=(u1-u0)*(v1-v0);
   const uv=[[u0,v0],[u1,v0],[u1,v1],[u0,v0],[u1,v1],[u0,v1]],p=uv.map((_,j)=>data.positions.slice(i*18+j*3,i*18+j*3+3));
-  uv.forEach(([u,v],j)=>{compareIntersection(p[j],surfacePoint(data.height,data.weight,u,v));const key=`${u},${v}`;if(grid.has(key))assert.deepEqual(p[j],grid.get(key));else grid.set(key,p[j]);const normal=data.normals.slice(i*18+j*3,i*18+j*3+3);assert.ok(Math.abs(Math.hypot(...normal)-1)<1e-12);assert.ok(normal[2]>0);});
+  uv.forEach(([u,v],j)=>{compareIntersection(p[j],oracle(data.height,data.weight,u,v));const key=`${u},${v}`;if(grid.has(key))assert.deepEqual(p[j],grid.get(key));else grid.set(key,p[j]);const normal=data.normals.slice(i*18+j*3,i*18+j*3+3);assert.ok(Math.abs(Math.hypot(...normal)-1)<1e-12);assert.ok(normal[2]>0);});
   for(let triangle=0;triangle<2;triangle++){const [a,b,c]=p.slice(triangle*3,triangle*3+3),ab=b.map((x,j)=>x-a[j]),ac=c.map((x,j)=>x-a[j]);assert.ok(ab[0]*ac[1]-ab[1]*ac[0]>0);}
-  for(let a=0;a<=4;a++)for(let b=0;b<=4;b++){const s=a/4,t=b/4,exact=surfacePoint(data.height,data.weight,u0+(u1-u0)*s,v0+(v1-v0)*t),linear=s>=t?p[0].map((x,j)=>(1-s)*x+(s-t)*p[1][j]+t*p[2][j]):p[0].map((x,j)=>(1-t)*x+s*p[2][j]+(t-s)*p[5][j]);assert.ok(Math.hypot(...exact.map((x,j)=>x-linear[j]))<=bound+1e-10,`surface cell=${i}, s=${s}, t=${t}`);}
+  for(let a=0;a<=4;a++)for(let b=0;b<=4;b++){const s=a/4,t=b/4,exact=oracle(data.height,data.weight,u0+(u1-u0)*s,v0+(v1-v0)*t),linear=s>=t?p[0].map((x,j)=>(1-s)*x+(s-t)*p[1][j]+t*p[2][j]):p[0].map((x,j)=>(1-t)*x+s*p[2][j]+(t-s)*p[5][j]);assert.ok(Math.hypot(...exact.map((x,j)=>x-linear[j]))<=bound+1e-10,`surface cell=${i}, s=${s}, t=${t}`);}
  }
  assert.ok(Math.abs(area-1)<1e-10);const nu=new Set(patches.flatMap(p=>p[0])).size-1,nv=new Set(patches.flatMap(p=>p[1])).size-1;assert.equal(grid.size,(nu*side+1)*(nv*side+1));assert.equal(rectangles.size,data.cells);counts.forEach(n=>assert.equal(n,side**2));
 }
@@ -128,6 +128,29 @@ for(const error of [0,NaN,Infinity,1e-14])assert.equal(multispanSurface(35,1,0.5
 assert.equal(multispanSurface(35,1,0.5,0.5,0.1).status,0);
 const exhaustedSurface=multispanSurface(60,4,0.5,0.5,0.02);assert.equal(exhaustedSurface.status,1);assert.match(exhaustedSurface.result.error,/cell|depth|limit/i);assert.equal(multispanSurface(60,4,0.5,0.5,0.1).status,0);
 console.log('Multi-span surfaces: 4 native/WASM refined shape cases, independent triangle bounds, per-patch UV coverage, identical shared seam vertices, original shape preservation and errors/recovery passed.');
+function creaseSurface(...args){const status=k.hagane_generate_surface_crease(...args);const result=JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())));return {status,result};}
+function roofPoint(height,weight,u,v){if(u<=0.5){const s=2*u,f=weight*s/(1-s+weight*s);return [-40+40*f,60*v-30,height*f];}const s=2*u-1,f=s/(weight*(1-s)+s);return [40*f,60*v-30,height*(1-f)];}
+function roofNormal(height,right){const n=[(right?1:-1)*height/40,0,1],length=Math.hypot(...n);return n.map(x=>x/length);}
+function checkCreaseTopology(data){
+ checkSurfaceMesh(data,roofPoint);assert.equal(data.crease,true);assert.deepEqual(data.control_counts,[3,2]);assert.deepEqual(data.patch_ranges,[[[0,0.5],[0,1]],[[0.5,1],[0,1]]]);assert.equal(data.triangle_nodes.length,data.triangles);assert.equal(data.triangle_uvs.length,data.triangles);
+ compareIntersection(data.point,roofPoint(data.height,data.weight,data.u,data.v));compareIntersection(data.normal,roofNormal(data.height,data.u===0.5?data.normal_side===1:data.u>0.5));
+ const nodes=new Map(),edges=new Map(),uvNodes=new Map(),seam=new Map();
+ data.triangle_nodes.forEach((ids,t)=>{
+  assert.equal(new Set(ids).size,3);const right=data.cell_ranges[Math.floor(t/2)][0][0]>=0.5;
+  ids.forEach((id,j)=>{assert.ok(Number.isInteger(id)&&id>=0);const p=data.positions.slice(t*9+j*3,t*9+j*3+3),uv=data.triangle_uvs[t][j],normal=data.normals.slice(t*9+j*3,t*9+j*3+3);compareIntersection(p,roofPoint(data.height,data.weight,...uv));compareIntersection(normal,roofNormal(data.height,right));if(nodes.has(id))assert.deepEqual(nodes.get(id),{p,uv});else nodes.set(id,{p,uv});const key=JSON.stringify(uv);if(uvNodes.has(key))assert.equal(uvNodes.get(key),id);else uvNodes.set(key,id);if(uv[0]===0.5){if(!seam.has(key))seam.set(key,new Set());seam.get(key).add(right);}});
+  for(let j=0;j<3;j++){const a=ids[j],b=ids[(j+1)%3],key=[Math.min(a,b),Math.max(a,b)].join(',');const edge=edges.get(key)??{a,b,count:0,balance:0};edge.count++;edge.balance+=a<b?1:-1;edges.set(key,edge);}
+ });
+ assert.equal(nodes.size,data.geometric_vertices);const side=Math.sqrt(data.cells/2);assert.equal(nodes.size,(2*side+1)*(side+1));assert.ok(data.shading_vertices>=data.geometric_vertices);if(data.height!==0)assert.ok(data.shading_vertices>data.geometric_vertices);
+ for(const edge of edges.values()){const a=nodes.get(edge.a).uv,b=nodes.get(edge.b).uv,outer=[0,1].some(i=>a[i]===b[i]&&(a[i]===0||a[i]===1));assert.equal(edge.count,outer?1:2);assert.equal(Math.abs(edge.balance),outer?1:0);}
+ assert.equal(seam.size,side+1);for(const sides of seam.values())assert.deepEqual([...sides].sort(),[false,true]);
+ for(const section of data.sections){const exact=t=>roofPoint(data.height,data.weight,section.fixed_axis===0?section.fixed_parameter:t,section.fixed_axis===1?section.fixed_parameter:t);section.parameters.forEach((t,i)=>compareIntersection(section.samples.slice(i*3,i*3+3),exact(t)));}
+}
+for(const args of [[35,1,0.5,0.5,0.05,0],[35,1,0.5,0.5,0.05,1],[-35,2,0.5,0.7,0.5,1],[0,1,0.75,0.2,0.05,1]]){
+ const {status,result}=creaseSurface(...args);assert.equal(status,0,JSON.stringify(result));const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface_crease','--',...args.map(String)],{encoding:'utf8',maxBuffer:32*1024*1024,cwd:new URL('../',import.meta.url)}));compareIntersection(result,native);checkCreaseTopology(result);
+}
+for(const args of [[35,1,0.5,0.5,0.05,2],[35,0,0.5,0.5,0.05,0],[35,-1,0.5,0.5,0.05,0],[35,NaN,0.5,0.5,0.05,0],[NaN,1,0.5,0.5,0.05,0],[35,1,NaN,0.5,0.05,0],[35,1,0.5,0.5,0,0],[35,1,0.5,0.5,NaN,0],[35,1,0.5,0.5,1e-14,0]])assert.equal(creaseSurface(...args).status,1);
+assert.equal(creaseSurface(35,1,0.5,0.5,0.05,0).status,0);
+console.log('C0 roof: 4 native/WASM cases, independent rational geometry/error bounds, one-sided facet normals, welded geometric seam topology, oriented edge incidence and errors/recovery passed.');
 
 // Independent BigInt oracle: decode exact IEEE-754 coordinates to integers
 // in units of 2^-1074. No floating arithmetic in the reference determinant.

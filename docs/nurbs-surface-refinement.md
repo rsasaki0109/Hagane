@@ -116,7 +116,8 @@ checks exercise the same section and boundary demo.
 
 [Exact Bezier patch extraction](nurbs-surface-extraction.md) now retains original
 parameter rectangles and supports C1 multi-span bounded display.
-Cross-face shared NURBS B-rep edges, general surface trims, bounded C0/trimmed surface
+[C0 crease display](nurbs-surface-crease.md) now adds explicit one-sided normals
+and shared UV geometric node metadata. Cross-face shared NURBS B-rep edges, general surface trims, bounded arbitrary trimmed surface
 meshing, patch sewing, intersections and wider STEP interchange remain future
 work. Periodic axes and higher/mixed derivatives are also unsupported. Published
 mathematical provenance is recorded in [references](references.md); no OCCT

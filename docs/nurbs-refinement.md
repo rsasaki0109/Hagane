@@ -6,7 +6,7 @@ existing positive-weight, clamped, nonperiodic curve domain. They also supply
 the exact boundaries of [rectangular open NURBS faces](nurbs-face.md); generic
 NURBS solid operations remain unsupported. [Bounded rational surface display](nurbs-surface-tessellation.md)
 is implemented separately and now supports [C1 multi-span extraction](nurbs-surface-extraction.md);
-C0 meshing and arbitrary trimmed surfaces remain unsupported.
+[C0 crease meshing](nurbs-surface-crease.md) is supported; arbitrary trimmed surfaces remain unsupported.
 
 ![Actual Rust/WASM bounded NURBS curve demo](nurbs-bounded.png)
 

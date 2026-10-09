@@ -2,10 +2,11 @@
 
 `NurbsSurface::tessellate_bounded(error, max_cells)` now produces a conforming
 triangle mesh with a per-cell surface approximation bound for **positive-weight
-rational Bezier patches and C1 multi-span surfaces**. `NurbsFace::tessellate_bounded(error,
+rational Bezier patches and multi-span surfaces**. `NurbsFace::tessellate_bounded(error,
 max_cells, tolerance)` first validates the retained rectangular B-rep boundary
 and applies face orientation to the result. [Exact patch extraction](nurbs-surface-extraction.md) extends this to nonuniform
-C1 multi-span sources. C0 knot lines, arbitrary trims, cross-face stitching and
+multi-span sources. [C0 knot lines](nurbs-surface-crease.md) retain separate
+one-sided normals. Arbitrary trims, cross-face stitching and
 generic NURBS solid tessellation remain unsupported.
 
 ![Actual Rust/WASM bounded NURBS face display](nurbs-surface-bounded.png)
@@ -26,11 +27,16 @@ let face_display = face.tessellate_bounded(0.05, 16_384, tolerance)?;
 | `mesh` | Shared-vertex positions, analytic normals, triangles and face IDs |
 | `uv_ranges` | One original U/V parameter rectangle per cell |
 | `error_bounds` | One bound per cell, shared by its two triangles |
+| `vertex_uv` | Original parameter pair for each display vertex |
+| `vertex_nodes` | UV-based shared geometric node for each display vertex |
+| `normal_sides` | Explicit source partial limits for each display normal |
 
 Triangle entries `2*i` and `2*i+1` correspond to cell `i`. The parameter
 rectangle is `[[u_start,u_end],[v_start,v_end]]`. Its diagonal joins the lower-left
-and upper-right corners. All patches share the same dyadic level; grid vertices are evaluated from the original
-source surface at their stored UV coordinates; adjacent cells share vertex indices.
+and upper-right corners. All patches share the same dyadic level; geometric nodes are evaluated from the
+original source at their stored UV coordinates. Smooth neighbors share display
+indices; C0 neighbors share geometric node IDs with separate normal-side display
+vertices. `vertex_uv`, `vertex_nodes` and `normal_sides` preserve that distinction.
 The face wrapper reverses triangle winding and normals for negative orientation.
 
 The chord error and control coordinates use the caller's consistent length
@@ -101,9 +107,9 @@ all cell bounds satisfy the requested error. This uniform-level policy avoids
 T-junctions within the patch; it may generate more cells than local adaptive
 refinement. There is no cross-face grid coordination.
 
-- Exact Bezier extraction handles C1 multi-span source axes. Interior
-  multiplicity equal to degree is rejected even when the particular source is
-  geometrically smooth. Existing degrees 1..16 and positive clamped weights remain required.
+- Exact Bezier extraction handles C1 and C0 multi-span axes. C0 display
+  normals use explicit side limits; ordinary partial/normal APIs retain their
+  side requirements. Existing degrees 1..16 and positive clamped weights remain required.
 - Source knot-span product is checked against `max_cells` before extraction;
   extraction has its own control/patch/cumulative-work preflight.
 - The error must be finite and positive; `max_cells` is 1..65,536.
@@ -118,7 +124,7 @@ refinement. There is no cross-face grid coordination.
 
 These sampled normal/orientation checks are **not** a global regularity,
 nonfolding or manifold certificate. A singular patch may pass structural face
-validation and fail display. General trim loops, C0 patches and
+validation and fail display. General trim loops and
 sewing adjacent rational faces remain future work.
 
 ## Native and browser demo

@@ -266,7 +266,8 @@ fabricate the demo image.
   Boundary validation is structural; generic NURBS solid operations remain unsupported.
 - [Bounded rational surface display](docs/nurbs-surface-tessellation.md) with
   per-cell Bernstein bounds, [exact Bezier extraction](docs/nurbs-surface-extraction.md)
-  and conforming C1 multi-span grids; C0 and arbitrary trimmed meshing remain unsupported.
+  and conforming multi-span grids, including [C0 crease normals](docs/nurbs-surface-crease.md);
+  arbitrary trimmed meshing remains unsupported.
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
   horizontal-plane/bounded-Z-cylinder intersections.
 - Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
@@ -399,7 +400,10 @@ B-rep. The **Surfaces** page offers height, weight, U/V, normal-marker and surfa
 error controls, with four boundary curves and selected sections. Its triangles
 now use per-cell Bernstein bounds on the retained open face. **Insert knots ·
 preserve shape** switches to a genuine 4-by-4, four-span source;
-`cargo run --locked --example nurbs_surface_multispan` runs that fixture natively. The
+`cargo run --locked --example nurbs_surface_multispan` runs that fixture natively.
+**C0 ridge · split normals** shows an exact degree-1 rational roof with separate
+left/right analytic normals. `cargo run --locked --example nurbs_surface_crease`
+runs that fixture; mesh metadata separates shading vertices from shared UV geometry nodes. The
 legacy uniform `sample_grid` and `nurbs_surface` fixture remain uncertified.
 These are **open rectangular faces, not closed solids or arbitrary trims**.
 [Surface documentation](docs/nurbs-surface.md) and

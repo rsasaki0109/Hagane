@@ -2,9 +2,9 @@
 
 `NurbsSurface::bezier_patches()` now extracts exact rational Bezier patches
 from a clamped positive-weight tensor-product surface, retaining each patch's
-original parameter rectangle. Bounded surface display now accepts **C1
-multi-span surfaces**, with one conforming grid across all extracted patches.
-C0 extraction is supported; C0 bounded display remains explicitly unsupported.
+original parameter rectangle. Bounded surface display accepts C1 and
+[C0 multi-span surfaces](nurbs-surface-crease.md), with one conforming geometric
+grid across extracted patches and separate one-sided crease shading normals.
 
 ![Actual Rust/WASM multi-span NURBS face](nurbs-surface-multispan.png)
 
@@ -56,7 +56,7 @@ All limits fail with explicit errors. The existing source degrees 1..16,
 clamped axes, positive weights and finite parameter-domain contracts remain.
 Degree-one or already-full-multiplicity axes do not perform unnecessary insertion.
 
-## C1 multi-span bounded mesh
+## Multi-span bounded mesh and crease normals
 
 The [Bernstein surface bounds](nurbs-surface-tessellation.md) are unchanged:
 `maximum_norm(X-W*B coefficients)/minimum_weight`, plus the bilinear corner
@@ -84,13 +84,11 @@ before extraction. The existing cell limit, eight dyadic levels, control-work
 limit, precision guard and sampled normal/orientation errors still apply. A
 multi-span source may exhaust those resources earlier than a single-span source.
 
-An interior knot of multiplicity equal to its degree is **always rejected by
-bounded display**. This includes a smooth curve/surface representation produced
-by inserting redundant knots to that multiplicity: the API conservatively
-requires C1 from the knot structure rather than proving coincident one-sided
-partials. A degree-one axis with interior knots is consequently extraction-only
-in this bounded display path. Ordinary seam normals are not silently selected
-for potentially nonsmooth geometry.
+Interior knots of multiplicity equal to degree are now supported with
+[explicit one-sided display normals](nurbs-surface-crease.md). Smooth sources
+represented with nominal C0 knots are accepted too. Ordinary source partials
+and normals at those knots still require explicit sides; the mesher chooses
+the owning cell's inward side. Degree-one multi-span sources are supported.
 
 ## Native and browser demo
 
@@ -128,12 +126,13 @@ with a partial mesh or silently relax the requested precision.
 Tests cover nonuniform parameter tiling, exact patch/partial invariance, positive
 weights, C0 one-sided extraction, degree 16, common weight scaling, tiny dimensions,
 control/work preflight and degree-one no-op refinement. Dense independent
-same-parameter and geometric triangle-distance checks verify C1 rational
-multi-span display, shared seams, original normals and explicit C0/resource errors.
+same-parameter and geometric triangle-distance checks verify rational
+multi-span display, shared seams, original normals and resource errors.
+[Crease tests](nurbs-surface-crease.md) separately verify C0 side and node metadata.
 
 ## Remaining work
 
-C0 seam-aware meshing, arbitrary trim loops, adaptive locally balanced grids,
+Arbitrary trim loops, adaptive locally balanced grids,
 cross-face shared boundaries, regularity diagnostics, sewing, closed NURBS solids,
 intersections and STEP interchange remain future work. A conforming grid and
 geometric distance bound do not establish global injectivity or manifoldness.

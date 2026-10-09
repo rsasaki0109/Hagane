@@ -76,11 +76,11 @@ This is a numerical angular guard, not a general surface-regularity certificate.
 
 ## Display sampling and demo
 
-The browser now uses [bounded single/C1 multi-span surface triangles](nurbs-surface-tessellation.md)
+The browser now uses [bounded multi-span surface triangles](nurbs-surface-tessellation.md)
 through the retained `NurbsFace`. `tessellate_bounded(error,max_cells)` returns
 shared vertices, original UV cell ranges and per-cell Bernstein bounds.
 [Bezier extraction](nurbs-surface-extraction.md) supports exact patches including
-C0, while the bounded mesh conservatively requires C1 interior knot lines. The uniform API below
+C0, with [one-sided display normals](nurbs-surface-crease.md) at creases. The uniform API below
 is retained for compatibility.
 
 
@@ -90,7 +90,8 @@ parameter cells per axis. It is an open patch, not a closed CAD solid. All
 Positions and normals are evaluated from the exact surface; triangles are
 checked for finite, nondegenerate geometry and consistency with sampled normals.
 A grid that is too coarse for the sampled orientation returns `Tessellation`.
-C0 interior knot lines require future splitting and return `Unsupported`.
+This compatibility method still rejects C0 interior knot lines; use the
+bounded tessellator for explicit [one-sided crease normals](nurbs-surface-crease.md).
 
 **There is no certified chord-error, global injectivity or surface-coverage
 claim for this sampling method.** It does not implement trimmed face meshing.
@@ -125,7 +126,7 @@ parameter changes, geometry changes, error controls and bound compliance.
 
 ## Remaining work
 
-Periodic axes, higher/mixed derivatives, bounded C0/trimmed surface display
+Periodic axes, higher/mixed derivatives, bounded arbitrary trimmed surface display
 meshing, arbitrary trimming, intersections, cross-face sewing and closed
 NURBS solids remain unimplemented. Rectangular open-face topology is supported
 by [NurbsFace](nurbs-face.md). Surface evaluation alone does

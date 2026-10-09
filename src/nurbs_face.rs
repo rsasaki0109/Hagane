@@ -155,8 +155,8 @@ impl NurbsFace {
         }
         Ok(mesh)
     }
-    /// Approximate a C1 rational surface face with per-cell geometric bounds.
-    /// Interior C0 knot lines remain unsupported by this display path.
+    /// Approximate a rational surface face with per-cell geometric bounds.
+    /// C0 knot lines retain separate one-sided shading normals.
     pub fn tessellate_bounded(
         &self,
         chord_error: f64,

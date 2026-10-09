@@ -516,3 +516,13 @@ subdivision level preserves the tensor grid across nonuniform knot spans.
 Original-source evaluation supplies shared positions and C1 seam normals.
 Extraction rounding is handled by the engineering arithmetic allowance, not
 formal interval certification. No reference code or new dependency is used.
+
+
+C0 rational surface shading uses the existing analytic one-sided rational
+partials independently on each incident parameter cell. A UV-only canonical
+node retains the continuous source position while separate side-pair display
+vertices retain crease normals. This preserves the preceding geometric bounds
+without averaging normals or welding coincident positions at unrelated UV.
+Signed-zero parameters are numerically equal and therefore canonicalized for
+node/cache keys. These are independent topology/display policies derived from
+continuity and one-sided derivatives, with no copied reference code or dependency.

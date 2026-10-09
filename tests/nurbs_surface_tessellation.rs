@@ -189,7 +189,7 @@ fn rounded_original_parameter_midpoints_match_mesh() {
     assert!(surface.tessellate_bounded(1e-4, 65536).is_err());
 }
 #[test]
-fn rejects_invalid_c0_singular_precision_and_resources() {
+fn rejects_invalid_singular_precision_and_resources() {
     let s = warped(1., 1.);
     for error in [0., -1., f64::NAN, f64::INFINITY] {
         assert!(s.tessellate_bounded(error, 10).is_err());
@@ -202,8 +202,8 @@ fn rejects_invalid_c0_singular_precision_and_resources() {
     assert!(s
         .insert_knot(0, 4., 1)
         .unwrap()
-        .tessellate_bounded(0.1, 10)
-        .is_err());
+        .tessellate_bounded(0.3, 16)
+        .is_ok());
     let shifted = NurbsSurface::new(
         s.degrees(),
         [s.knots(0).unwrap().to_vec(), s.knots(1).unwrap().to_vec()],

@@ -366,7 +366,7 @@ checks. General curved Booleans and document history integration remain next wor
 
 ## Later: full CAD kernel work
 
-- Higher NURBS derivatives, periodic curves, surface patch splitting, bounded C0/trimmed
+- Higher NURBS derivatives, periodic curves, surface patch splitting, bounded arbitrary trimmed
   surface tessellation, higher/mixed surface derivatives, surface trimming, intersections,
   and integration with B-rep edges/faces.
 - General Boolean operations on arbitrary manifold solids.
@@ -646,3 +646,27 @@ C0 meshing, arbitrary trims, cross-face sharing/sewing, global regularity, close
 NURBS solids, intersections and STEP remain incomplete. Legacy single-span and
 uniform compatibility APIs remain available. The estimate remains **15–25%**,
 toward the **80%** target. See [surface extraction](nurbs-surface-extraction.md).
+
+
+## Bounded C0 rational faces with one-sided crease normals
+
+Bounded rational surface display now accepts C0 knot lines, including degree-one
+multi-span ridges and smooth geometry represented at nominal C0 multiplicity.
+Each incident cell chooses its own analytic one-sided normal, with all positions
+reusing the original source's continuous UV evaluation. `vertex_uv`,
+`vertex_nodes` and `normal_sides` separate geometric connectivity from shading
+vertices: seam copies are bit-identical and share logical nodes, four side pairs
+can meet at a crossing, and unrelated UVs are never welded solely by XYZ. Mixed
+signed-zero knots canonicalize cache and crease keys without changing cell ranges.
+
+The existing Bernstein geometric bounds, precision/resource guards and global
+dyadic conformity remain. Ordinary source normal/partial queries at C0 still
+require explicit sides. Singular side normals and sampled orientation errors
+fail explicitly, without establishing global regularity or manifoldness. The
+native/WASM browser now retains an actual 3-by-2 rational roof face and can show
+either selected normal limit while keeping both in its bounded mesh. Smooth
+fixtures and legacy APIs remain available. Arbitrary trims, cross-face sewing,
+closed rational solids, intersections and STEP remain incomplete.
+
+This supersedes earlier C1-only display restrictions. The estimate remains
+**15–25%**, toward the **80%** target. See [C0 face display](nurbs-surface-crease.md).
