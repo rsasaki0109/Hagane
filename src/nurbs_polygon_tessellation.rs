@@ -1,4 +1,4 @@
-//! Conforming bounded display for one positive-weight rational bilinear polygon face.
+//! Conforming bounded display for one positive-weight rational Bezier polygon face.
 use crate::*;
 use std::collections::HashMap;
 #[derive(Clone, Debug)]
@@ -17,6 +17,19 @@ impl NurbsPolygonFace {
         max_triangles: usize,
         tol: Tolerance,
     ) -> Result<NurbsPolygonMesh> {
+        if self.boundary.surface.degrees() != [1, 1] {
+            return Err(Error::Unsupported("bilinear display requires degree (1,1)"));
+        }
+        self.tessellate_bounded(error, max_triangles, tol)
+    }
+    /// Bounded convex polygon display on one rational tensor Bezier patch.
+    /// Multiple knot spans remain unsupported; boundary degree/work limits apply.
+    pub fn tessellate_bounded(
+        &self,
+        error: f64,
+        max_triangles: usize,
+        tol: Tolerance,
+    ) -> Result<NurbsPolygonMesh> {
         self.validate(tol)?;
         if !error.is_finite() || error <= 0. || !(1..=65536).contains(&max_triangles) {
             return Err(Error::InvalidInput(
@@ -24,9 +37,10 @@ impl NurbsPolygonFace {
             ));
         }
         let s = &self.boundary.surface;
-        if s.degrees() != [1, 1] || s.control_points().len() != 4 {
+        let degrees = s.degrees();
+        if s.control_points().len() != (degrees[0] + 1) * (degrees[1] + 1) {
             return Err(Error::Unsupported(
-                "bounded polygon display requires one rational bilinear patch",
+                "bounded polygon display requires one rational Bezier patch",
             ));
         }
         let p = s.control_points();
@@ -34,12 +48,17 @@ impl NurbsPolygonFace {
         let ratio = s.weights().iter().copied().fold(0f64, f64::max)
             / s.weights().iter().copied().fold(f64::INFINITY, f64::min);
         let domains = [s.knots(0)?, s.knots(1)?];
-        let widths = [domains[0][2] - domains[0][1], domains[1][2] - domains[1][1]];
+        let widths = [
+            domains[0][degrees[0] + 1] - domains[0][degrees[0]],
+            domains[1][degrees[1] + 1] - domains[1][degrees[1]],
+        ];
         let scale = p
             .iter()
             .flat_map(|p| [p.x.abs(), p.y.abs(), p.z.abs()])
             .fold(f64::MIN_POSITIVE, f64::max);
-        let mut arithmetic = 65536. * f64::EPSILON * scale * ratio * ratio;
+        let mut arithmetic =
+            65536. * f64::EPSILON * scale * ratio * ratio * (degrees[0] + degrees[1] + 2) as f64
+                / 4.;
         for axis in 0..2 {
             let parameter_scale = domains[axis]
                 .iter()
@@ -50,7 +69,7 @@ impl NurbsPolygonFace {
         }
         if !arithmetic.is_finite() || arithmetic >= error {
             return Err(Error::Tessellation(
-                "bilinear polygon precision cannot resolve requested error",
+                "rational polygon precision cannot resolve requested error",
             ));
         }
         let mut uv = self.boundary.uv_corners().to_vec();
@@ -156,7 +175,7 @@ impl NurbsPolygonFace {
 }
 
 // Bounds in normalized patch coordinates for S=H/W, with positive W.
-// Differentiate H=W*S twice; H_uu=W_uu=H_vv=W_vv=0.
+// Differentiate H=W*S twice and bound each Bernstein derivative control net.
 fn rational_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
     let points = s.control_points();
     let maximum = s.weights().iter().copied().fold(0f64, f64::max);
@@ -182,18 +201,43 @@ fn rational_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
         }
         h.push(weighted);
     }
-    let hu = (h[2] - h[0]).norm().max((h[3] - h[1]).norm());
-    let hv = (h[1] - h[0]).norm().max((h[3] - h[2]).norm());
-    let huv = ((h[3] - h[2]) - (h[1] - h[0])).norm();
-    let wu = (w[2] - w[0]).abs().max((w[3] - w[1]).abs());
-    let wv = (w[1] - w[0]).abs().max((w[3] - w[2]).abs());
-    let wuv = ((w[3] - w[2]) - (w[1] - w[0])).abs();
+    let counts = [s.degrees()[0] + 1, s.degrees()[1] + 1];
+    let (hu_net, wu_net, cu) = differentiate(&h, &w, counts, 0);
+    let (hv_net, wv_net, cv) = differentiate(&h, &w, counts, 1);
+    let (huu_net, wuu_net, _) = differentiate(&hu_net, &wu_net, cu, 0);
+    let (hvv_net, wvv_net, _) = differentiate(&hv_net, &wv_net, cv, 1);
+    let (huv_net, wuv_net, _) = differentiate(&hu_net, &wu_net, cu, 1);
+    if [&hu_net, &hv_net, &huu_net, &hvv_net, &huv_net]
+        .into_iter()
+        .flatten()
+        .any(|v| !v.finite())
+    {
+        return Err(Error::Tessellation(
+            "rational polygon derivative controls exceed numerical range",
+        ));
+    }
+    let norm = |net: &[Vec3]| net.iter().map(|v| v.norm()).fold(0f64, f64::max);
+    let abs = |net: &[f64]| net.iter().map(|v| v.abs()).fold(0f64, f64::max);
+    let (hu, hv, huu, huv, hvv) = (
+        norm(&hu_net),
+        norm(&hv_net),
+        norm(&huu_net),
+        norm(&huv_net),
+        norm(&hvv_net),
+    );
+    let (wu, wv, wuu, wuv, wvv) = (
+        abs(&wu_net),
+        abs(&wv_net),
+        abs(&wuu_net),
+        abs(&wuv_net),
+        abs(&wvv_net),
+    );
     let su = (hu + diameter * wu) / minimum;
     let sv = (hv + diameter * wv) / minimum;
     let bounds = [
-        2. * wu * su / minimum,
+        (huu + diameter * wuu + 2. * wu * su) / minimum,
         (huv + diameter * wuv + su * wv + sv * wu) / minimum,
-        2. * wv * sv / minimum,
+        (hvv + diameter * wvv + 2. * wv * sv) / minimum,
         su,
         sv,
     ];
@@ -203,4 +247,29 @@ fn rational_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
         ));
     }
     Ok(bounds)
+}
+
+fn differentiate(
+    h: &[Vec3],
+    w: &[f64],
+    counts: [usize; 2],
+    axis: usize,
+) -> (Vec<Vec3>, Vec<f64>, [usize; 2]) {
+    if counts[axis] <= 1 {
+        return (Vec::new(), Vec::new(), [0, 0]);
+    }
+    let degree = (counts[axis] - 1) as f64;
+    let mut result = counts;
+    result[axis] -= 1;
+    let step = if axis == 0 { counts[1] } else { 1 };
+    let mut dh = Vec::with_capacity(result[0] * result[1]);
+    let mut dw = Vec::with_capacity(result[0] * result[1]);
+    for i in 0..result[0] {
+        for j in 0..result[1] {
+            let index = i * counts[1] + j;
+            dh.push((h[index + step] - h[index]) * degree);
+            dw.push((w[index + step] - w[index]) * degree);
+        }
+    }
+    (dh, dw, result)
 }

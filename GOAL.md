@@ -874,3 +874,14 @@ tests verify the actual implementation; the OBJ demo now uses nonuniform weights
 Higher-degree/multi-span display, holes, sewing and closed rational solids remain
 incomplete. The estimate remains 15–25%, toward 80%. See [bounded polygon
 display](docs/nurbs-polygon-bounded.md).
+
+## High-degree rational polygon display
+
+`NurbsPolygonFace::tessellate_bounded` extends conforming polygon display to one
+positive-weight high-degree Bezier patch. General Bernstein first/second derivative
+control nets supply checked Hessian bounds. Independent biquadratic and asymmetric
+cubic/linear rational formulas test every emitted triangle bound; a weighted
+biquadratic OBJ demo exercises actual retained-face display. The bilinear API
+retains its original contract. Multiple spans, general trim loops, holes, sewing
+and closed rational solids remain incomplete. The estimate remains 15–25%,
+toward 80%. See [Bezier polygon display](docs/nurbs-polygon-bezier.md).

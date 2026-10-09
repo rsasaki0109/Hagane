@@ -588,3 +588,9 @@ Bernstein denominator bounds, differentiated homogeneous control differences
 and the barycentric Taylor remainder with Hessian bounds. These mathematical
 identities are implemented independently with engineering floating guards;
 no interval certification is claimed. No new dependencies or OCCT code were used.
+
+High-degree polygon bounds use the standard Bernstein derivative identity
+`d B_i^n/dt = n*(B_(i-1)^(n-1)-B_i^(n-1))`, scaled tensor control differences,
+positive rational denominator bounds and twice-differentiated H=W*S. The
+implementation is independent and retains engineering arithmetic reserves; no
+OCCT code or dependencies were introduced (MIT OR Apache-2.0 original code).

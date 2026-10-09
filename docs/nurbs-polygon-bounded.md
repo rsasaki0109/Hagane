@@ -51,3 +51,6 @@ browser page/WASM callable export is not yet provided.
 Higher-degree/multi-span rational polygon display, holes, concave boundaries, cross-face
 sewing, closed rational solids and NURBS STEP remain future work. No dependency
 or OCCT source was added. Original code: MIT OR Apache-2.0.
+
+The newer [high-degree Bezier display](nurbs-polygon-bezier.md) API supports
+non-bilinear single patches; this page describes the bilinear entry point.

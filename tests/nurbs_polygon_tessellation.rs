@@ -185,3 +185,89 @@ fn rational_triangle_bounds_match_independent_weighted_formula() {
         }
     }
 }
+
+#[test]
+fn higher_degree_rational_bounds_match_independent_bernstein_surface() {
+    fn bernstein(n: usize, i: usize, t: f64) -> f64 {
+        let mut choose = 1.;
+        for j in 0..i {
+            choose *= (n - j) as f64 / (j + 1) as f64;
+        }
+        choose * t.powi(i as i32) * (1. - t).powi((n - i) as i32)
+    }
+    for degrees in [[2, 2], [3, 1], [1, 3]] {
+        let [p, q] = degrees;
+        let mut points = Vec::new();
+        let mut weights = Vec::new();
+        for i in 0..=p {
+            for j in 0..=q {
+                points.push(Point3::new(
+                    i as f64 * 6. / p as f64,
+                    j as f64 * 6. / q as f64,
+                    (i * j) as f64 + if i == 1 && j == 1 { 2. } else { 0. },
+                ));
+                weights.push(1. + 0.05 * (i + j) as f64);
+            }
+        }
+        let domains = [[2., 6.], [-3., 5.]];
+        let knots = |degree: usize, domain: [f64; 2]| {
+            let mut k = vec![domain[0]; degree + 1];
+            k.extend(vec![domain[1]; degree + 1]);
+            k
+        };
+        let s = NurbsSurface::new(
+            degrees,
+            [knots(p, domains[0]), knots(q, domains[1])],
+            [p + 1, q + 1],
+            points.clone(),
+            weights.clone(),
+        )
+        .unwrap();
+        let face = NurbsPolygonFace::new(
+            s,
+            vec![[2.5, -2.], [5.5, -1.], [3., 4.]],
+            1,
+            Tolerance::default(),
+        )
+        .unwrap();
+        assert!(matches!(
+            face.tessellate_bilinear_bounded(0.1, 65536, Tolerance::default()),
+            Err(Error::Unsupported(_))
+        ));
+        let display = face
+            .tessellate_bounded(0.1, 65536, Tolerance::default())
+            .unwrap();
+        for (index, t) in display.mesh.triangles.iter().enumerate() {
+            assert!(display.error_bounds[index] <= 0.1);
+            for a in 0..=4 {
+                for b in 0..=4 - a {
+                    let bary = [a as f64 / 4., b as f64 / 4., (4 - a - b) as f64 / 4.];
+                    let mut uv = [0.; 2];
+                    let mut chord = Vec3::new(0., 0., 0.);
+                    for j in 0..3 {
+                        for (axis, v) in uv.iter_mut().enumerate() {
+                            *v += display.vertex_uv[t[j]][axis] * bary[j];
+                        }
+                        chord = chord + display.mesh.positions[t[j]] * bary[j];
+                    }
+                    let mut numerator = Vec3::new(0., 0., 0.);
+                    let mut denominator = 0.;
+                    for i in 0..=p {
+                        for j in 0..=q {
+                            let id = i * (q + 1) + j;
+                            let w = bernstein(p, i, (uv[0] - 2.) / 4.)
+                                * bernstein(q, j, (uv[1] + 3.) / 8.)
+                                * weights[id];
+                            numerator = numerator + points[id] * w;
+                            denominator += w;
+                        }
+                    }
+                    assert!(
+                        (numerator * (1. / denominator) - chord).norm()
+                            <= display.error_bounds[index]
+                    );
+                }
+            }
+        }
+    }
+}

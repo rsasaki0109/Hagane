@@ -29,11 +29,16 @@ Native tests check the independent analytic triangle area, both orientations,
 retained curved B-rep, unsupported display and corrupted entities. Native and
 WASM share the implementation; no browser UI or dedicated WASM export was added.
 
-Holes, concave/general trim loops, bounded curved-interior tessellation, sewing,
+Holes, concave/general trim loops, multi-span curved-interior tessellation, sewing,
 closed rational solids and NURBS STEP remain unsupported. Mathematical convex
 fan triangulation is implemented independently, with no new dependency or OCCT
 source. Original code: MIT OR Apache-2.0.
 
 A subsequent [bounded bilinear display](nurbs-polygon-bounded.md) API supports
 genuinely curved positive-weight rational saddle patches; the affine API retains its original
-contract. Higher-degree and multi-span rational polygon display remain unsupported.
+contract. The bilinear entry point remains limited to degree (1,1); see the newer
+high-degree API below.
+
+[High-degree rational Bezier display](nurbs-polygon-bezier.md) now supports
+single high-degree patches through `tessellate_bounded`; multi-span polygon
+interiors remain unsupported.
