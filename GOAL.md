@@ -9,6 +9,22 @@ regression tests, examples, and documentation, not only designs or evaluators.
 Broad OCCT-equivalent functionality remains the long-term direction; milestone
 completion must never be presented as full OCCT compatibility.
 
+## User-value direction
+
+Build measurable value for developers embedding exact modeling in web apps and
+users generating parametric part variants. Prioritize explainable failures,
+reproducible editable modeling intent and browser access alongside mathematical
+coverage. Pure Rust/WASM and feature counts are not evidence of superiority.
+See [product direction](docs/product-direction.md) for target outcomes, evaluation
+and the next acceptance milestone.
+
+The immediate priority is an integrated editable box-and-bore workflow with
+operation history, structured diagnostics and versioned document round trips.
+Reuse the existing exact supported operations; do not claim a general CAD
+workflow from this limited first document format. This user-value milestone
+runs ahead of further isolated primitive presets, while the long-term kernel
+completion criteria below remain in force.
+
 ## Completion criteria
 
 - Exact curves and surfaces, including NURBS, integrate with shared, oriented

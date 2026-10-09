@@ -4,6 +4,17 @@ This roadmap implements the standing [development goal](../GOAL.md): a usable
 end-to-end pure Rust CAD workflow. Feature-specific supported domains and
 verified completion criteria take precedence over broad feature labels.
 
+## Immediate product milestone
+
+Following the [product direction](product-direction.md), the next priority is
+an explainable editable box-and-bore workflow: real operation history, parameter
+editing, typed failure diagnostics, visible failed candidate tools and versioned
+JSON operation-document round trips shared by native and WASM. These are planned,
+not current capabilities. Acceptance requires real browser failure/correction
+and round-trip tests, exact B-rep validation and independent geometry checks.
+Measure task success and rebuild behavior before claiming an advantage over
+established CAD tools. Further isolated presets are secondary to this workflow.
+
 ## Working milestone
 
 Analytic box/cylinder/tube primitives; rectangle/disk extrusion; simple concave
