@@ -190,6 +190,11 @@ pub fn classify_point_in_solid(
     let mut cylinders = Vec::new();
     for face in &solid.shell.faces {
         match face.surface {
+            Surface::Nurbs(_) => {
+                return Err(Error::Unsupported(
+                    "NURBS solid classification is not implemented",
+                ))
+            }
             Surface::ExtrudedCircle {
                 frame,
                 radius,

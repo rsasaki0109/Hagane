@@ -3,8 +3,9 @@
 Standalone `NurbsSurface` objects now support shape-preserving knot insertion
 on either tensor axis, exact isoparametric curves and the rectangular patch's
 four oriented boundary curves. This supplies geometry and same-parameter UV
-maps needed for future B-rep integration; it does not create shared topological
-edges, trimmed faces, shells or solids.
+maps used by [rectangular open NURBS faces](nurbs-face.md). These geometry
+methods alone do not create cross-face shared edges, arbitrary trimmed faces,
+shells or solids.
 
 ![Actual Rust/WASM NURBS surface sections](nurbs-surface-sections.png)
 
@@ -111,7 +112,7 @@ checks exercise the same section and boundary demo.
 
 ## Remaining work
 
-Shared NURBS B-rep edges and pcurves, general surface trims, bounded surface
+Cross-face shared NURBS B-rep edges, general surface trims, bounded surface
 meshing, patch sewing, intersections and wider STEP interchange remain future
 work. Periodic axes and higher/mixed derivatives are also unsupported. Published
 mathematical provenance is recorded in [references](references.md); no OCCT

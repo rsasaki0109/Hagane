@@ -1,7 +1,12 @@
-use crate::{Error, Frame3, GeometryTolerance, Point3, Result, Tolerance, Transform, Vec3};
+use crate::{
+    Error, Frame3, GeometryTolerance, NurbsCurve, NurbsSurface, Point3, Result, Tolerance,
+    Transform, Vec3,
+};
 use std::f64::consts::TAU;
 #[derive(Clone, Debug)]
 pub enum Curve {
+    /// Validated rational B-spline geometry with its original knot parameter.
+    Nurbs(Box<NurbsCurve>),
     /// Exact bounded ellipse, parameterized by a shared angular parameter.
     EllipseArc {
         center: Point3,
@@ -28,8 +33,25 @@ pub enum Curve {
     },
 }
 impl Curve {
+    /// Checked evaluation; rational geometry rejects parameters outside its domain.
+    pub fn try_evaluate(&self, t: f64) -> Result<Point3> {
+        if let Self::Nurbs(curve) = self {
+            return curve.evaluate(t);
+        }
+        let point = self.evaluate(t);
+        if !point.finite() {
+            return Err(Error::InvalidInput("curve evaluation exceeds finite range"));
+        }
+        Ok(point)
+    }
+    /// Unchecked compatibility evaluation; errors in rational geometry produce NaN.
     pub fn evaluate(&self, t: f64) -> Point3 {
         match *self {
+            Self::Nurbs(ref curve) => {
+                curve
+                    .evaluate(t)
+                    .unwrap_or(Vec3::new(f64::NAN, f64::NAN, f64::NAN))
+            }
             Self::EllipseArc {
                 center,
                 cosine,
@@ -47,6 +69,16 @@ impl Curve {
     }
     pub fn transformed(&self, transform: Transform) -> Result<Self> {
         Ok(match *self {
+            Self::Nurbs(ref curve) => Self::Nurbs(Box::new(NurbsCurve::new(
+                curve.degree(),
+                curve.knots().to_vec(),
+                curve
+                    .control_points()
+                    .iter()
+                    .map(|p| transform.point(*p))
+                    .collect(),
+                curve.weights().to_vec(),
+            )?)),
             Self::EllipseArc {
                 center,
                 cosine,
@@ -98,6 +130,7 @@ impl Curve {
     }
     pub fn range(&self) -> [f64; 2] {
         match self {
+            Self::Nurbs(curve) => curve.domain(),
             Self::Line { .. } => [0.0, 1.0],
             Self::Arc { sweep, .. } | Self::EllipseArc { sweep, .. } => [0.0, *sweep],
             Self::Circle { .. } | Self::FramedCircle { .. } => [0.0, TAU],
@@ -106,6 +139,8 @@ impl Curve {
 }
 #[derive(Clone, Debug)]
 pub enum Surface {
+    /// Validated untrimmed rational tensor-product geometry.
+    Nurbs(Box<NurbsSurface>),
     Plane {
         origin: Point3,
         u: Vec3,
@@ -132,8 +167,64 @@ pub enum Surface {
     },
 }
 impl Surface {
+    /// Checked evaluation of the original rational U/V domain.
+    pub fn try_evaluate(&self, u: f64, v: f64) -> Result<Point3> {
+        if let Self::Nurbs(surface) = self {
+            return surface.evaluate(u, v);
+        }
+        let point = self.evaluate(u, v);
+        if !point.finite() {
+            return Err(Error::InvalidInput(
+                "surface evaluation exceeds finite range",
+            ));
+        }
+        Ok(point)
+    }
+    /// Surface normal at a complete parameter pair. NURBS requires both coordinates.
+    pub fn normal_at(&self, u: f64, v: f64) -> Result<Vec3> {
+        if let Self::Nurbs(surface) = self {
+            return surface.normal(u, v);
+        }
+        if !u.is_finite() || !v.is_finite() {
+            return Err(Error::InvalidInput(
+                "surface normal needs finite parameters",
+            ));
+        }
+        self.normal(u).normalized()
+    }
+    /// Checked analytic inverse; general NURBS point inversion is unsupported.
+    pub fn try_parameters(&self, point: Point3) -> Result<[f64; 2]> {
+        if !point.finite() {
+            return Err(Error::InvalidInput(
+                "surface inversion needs a finite point",
+            ));
+        }
+        if matches!(self, Self::Nurbs(_)) {
+            return Err(Error::Unsupported(
+                "NURBS surface point inversion is not implemented",
+            ));
+        }
+        let uv = self.parameters(point);
+        if uv.iter().any(|v| !v.is_finite()) {
+            return Err(Error::InvalidInput(
+                "surface parameters exceed finite range",
+            ));
+        }
+        Ok(uv)
+    }
     pub fn transformed(&self, transform: Transform) -> Result<Self> {
         Ok(match *self {
+            Self::Nurbs(ref surface) => Self::Nurbs(Box::new(NurbsSurface::new(
+                surface.degrees(),
+                [surface.knots(0)?.to_vec(), surface.knots(1)?.to_vec()],
+                surface.control_counts(),
+                surface
+                    .control_points()
+                    .iter()
+                    .map(|p| transform.point(*p))
+                    .collect(),
+                surface.weights().to_vec(),
+            )?)),
             Self::Plane { origin, u, v } => {
                 let origin = transform.point(origin);
                 if !origin.finite() {
@@ -178,8 +269,14 @@ impl Surface {
             },
         })
     }
+    /// Unchecked compatibility evaluation; rational failures produce NaN.
     pub fn evaluate(&self, u: f64, v: f64) -> Point3 {
         match *self {
+            Self::Nurbs(ref surface) => {
+                surface
+                    .evaluate(u, v)
+                    .unwrap_or(Vec3::new(f64::NAN, f64::NAN, f64::NAN))
+            }
             Self::Plane {
                 origin,
                 u: du,
@@ -203,8 +300,11 @@ impl Surface {
             }
         }
     }
+    /// Analytic compatibility normal. NURBS needs both parameters: use `normal_at`;
+    /// this single-parameter method returns NaN for rational surfaces.
     pub fn normal(&self, u: f64) -> Vec3 {
         match *self {
+            Self::Nurbs(_) => Vec3::new(f64::NAN, f64::NAN, f64::NAN),
             Self::Plane { u, v, .. } => u.cross(v),
             Self::ExtrudedCircle { frame, drift, .. } => {
                 let scale = drift[0].abs().max(drift[1].abs()).max(1.);
@@ -222,8 +322,11 @@ impl Surface {
             Self::FramedCylinder { frame, .. } => frame.vector(Vec3::new(u.cos(), u.sin(), 0.0)),
         }
     }
+    /// Unchecked analytic inverse. NURBS inversion is unsupported and returns NaN;
+    /// use `try_parameters` to receive an explicit error.
     pub fn parameters(&self, p: Point3) -> [f64; 2] {
         match *self {
+            Self::Nurbs(_) => [f64::NAN, f64::NAN],
             Self::Plane { origin, u, v } => [(p - origin).dot(u), (p - origin).dot(v)],
             Self::ExtrudedCircle { frame, drift, .. } => {
                 let p = frame.local_point(p);

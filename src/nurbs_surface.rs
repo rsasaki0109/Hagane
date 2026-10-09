@@ -295,7 +295,8 @@ pub fn nurbs_surface_demo_json(height: f64, weight: f64, u: f64, v: f64) -> Resu
     let surface = NurbsSurface::new([2, 2], [knots.clone(), knots], [3, 3], points, weights)?;
     let e = surface.partials(u, v)?;
     let normal = e.normal()?;
-    let mesh = surface.sample_grid([24, 24])?;
+    let brep = crate::NurbsFace::new(surface.clone(), 1, crate::Tolerance::default())?;
+    let mesh = brep.sample_grid([24, 24], crate::Tolerance::default())?;
     let mut output=format!("{{\"height\":{height},\"weight\":{weight},\"u\":{u},\"v\":{v},\"point\":[{},{},{}],\"du\":[{},{},{}],\"dv\":[{},{},{}],\"normal\":[{},{},{}],\"positions\":[",e.point.x,e.point.y,e.point.z,e.du.x,e.du.y,e.du.z,e.dv.x,e.dv.y,e.dv.z,normal.x,normal.y,normal.z);
     for (i, p) in mesh.positions.iter().enumerate() {
         if i > 0 {
@@ -347,6 +348,15 @@ pub fn nurbs_surface_demo_json(height: f64, weight: f64, u: f64, v: f64) -> Resu
     let mut json: serde_json::Value = serde_json::from_str(&output)
         .map_err(|_| Error::InvalidInput("surface demo serialization failed"))?;
     json["sections"] = serde_json::json!(sections);
+    json["brep"] = serde_json::json!({
+        "vertices": brep.vertices.iter().map(|v| [v.point.x,v.point.y,v.point.z]).collect::<Vec<_>>(),
+        "edge_vertices": brep.edges.iter().map(|e| e.vertices).collect::<Vec<_>>(),
+        "edge_ranges": brep.edges.iter().map(|e| e.curve.range()).collect::<Vec<_>>(),
+        "coedge_edges": brep.face.wires[0].coedges.iter().map(|c| c.edge).collect::<Vec<_>>(),
+        "coedge_forward": brep.face.wires[0].coedges.iter().map(|c| c.forward).collect::<Vec<_>>(),
+        "orientation": brep.face.orientation, "faces": 1, "closed": false,
+        "validation": "canonical rectangular boundary; global surface regularity is not certified"
+    });
     json["refined_control_counts"] = serde_json::json!(refined.control_counts());
     json["section_chord_error"] = serde_json::json!(0.05);
     Ok(json.to_string())

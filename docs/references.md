@@ -487,3 +487,11 @@ including existing triangulation dependencies, so these notices accompany web ar
   [Neumaier compensated-sum variant](https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements).
   Implemented independently from these mathematical operations without new
   libraries, OCCT code or translated implementation source.
+
+
+Rectangular NURBS face topology uses the independently implemented rational
+isocurve contraction above, positive UV loop orientation and explicit affine
+same-parameter maps. Canonical control/basis checks establish restricted
+boundary structure; no global regularity or injectivity theorem is claimed.
+Rigid placement acts directly on rational control coordinates. No OCCT code,
+external NURBS implementation or new dependency is used.

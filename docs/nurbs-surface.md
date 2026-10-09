@@ -5,8 +5,10 @@ clamped, nonperiodic, positive-weight rational B-spline surface**. It evaluates
 points, analytic first partials, and oriented normals. [Surface refinement and
 sections](nurbs-surface-refinement.md) adds shape-preserving knot insertion, exact
 isocurves and oriented rectangular boundary data. It does not create a
-B-rep face, shell or solid, and provides no surface intersections or Boolean
-operations. Existing B-rep faces still use analytic planes and Z cylinders.
+shell or solid, and provides no surface intersections or Boolean operations.
+The separate [NurbsFace](nurbs-face.md) API now retains a complete rectangular
+patch as an open face using existing B-rep topology; arbitrary trims and closed
+NURBS solid operations remain unsupported.
 
 ## Control grid and checked input
 
@@ -109,11 +111,12 @@ to `[-100,100]`; core surfaces do not have that arbitrary demo limit. Any
 compare full sampled grids, selected points, partials and normals for six
 fixtures; browser tests verify parameter changes, geometry changes and controls.
 
-![Actual Rust/WASM NURBS surface sections](nurbs-surface-sections.png)
+![Actual Rust/WASM open NURBS face](nurbs-face.png)
 
 ## Remaining work
 
 Periodic axes, higher/mixed derivatives, certified adaptive surface display
-meshing, trimming, intersections, and NURBS integration with B-rep faces,
-coedges/pcurves and solids remain unimplemented. Surface evaluation alone does
+meshing, arbitrary trimming, intersections, cross-face sewing and closed
+NURBS solids remain unimplemented. Rectangular open-face topology is supported
+by [NurbsFace](nurbs-face.md). Surface evaluation alone does
 not imply support for any of those operations.

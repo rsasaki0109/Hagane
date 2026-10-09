@@ -1,10 +1,11 @@
 # NURBS curve foundation
 
 `NurbsCurve` is an immutable, validated, positive-weight, clamped, nonperiodic
-rational B-spline curve. It is a standalone geometry API: it is **not yet** a
-B-rep edge type, a NURBS surface or a curve intersection solver. Existing B-rep
-solids still use lines and analytic circles. [Refinement and bounded display](nurbs-refinement.md)
-adds shape-preserving knot insertion, Bezier spans and adaptive curve sampling.
+rational B-spline curve. It supplies geometry to the common `Curve::Nurbs`
+variant and [rectangular open NURBS faces](nurbs-face.md), while general solid
+integration, curve intersections and arbitrary trims remain unsupported.
+[Refinement and bounded display](nurbs-refinement.md) adds shape-preserving
+knot insertion, Bezier spans and adaptive curve sampling.
 
 ## Input contract
 
@@ -91,7 +92,7 @@ not a general NURBS serialization or editor API.
 
 Derivatives of higher order, periodic curves, curve
 frames/trims, intersections,
-and integration with B-rep coedges/pcurves remain unimplemented. Standalone
+and general integration with closed B-rep solids remain unimplemented. Standalone
 NURBS surface evaluation and first partials are implemented separately; see
 [nurbs-surface.md](nurbs-surface.md). They must not
 be inferred from the presence of a curve evaluator.

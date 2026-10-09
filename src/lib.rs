@@ -92,3 +92,6 @@ mod nurbs_surface_refinement;
 
 mod nurbs_surface_boundary;
 pub use nurbs_surface_boundary::*;
+
+mod nurbs_face;
+pub use nurbs_face::*;

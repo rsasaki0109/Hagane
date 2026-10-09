@@ -315,6 +315,7 @@ try {
  let patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(patch.point[2]-8.75)<1e-13);assert.deepEqual(patch.normal,[0,0,1]);const initialPatch=await page.locator('canvas').screenshot();
  function checkSurfaceSections(data){
   assert.equal(data.sections.length,6);assert.equal(data.section_chord_error,0.05);assert.deepEqual(data.refined_control_counts,[4,4]);
+  const topology=data.brep;assert.equal(topology.faces,1);assert.equal(topology.closed,false);assert.equal(topology.orientation,1);assert.equal(topology.validation,'canonical rectangular boundary; global surface regularity is not certified');assert.deepEqual(topology.edge_vertices,[[0,1],[1,2],[3,2],[0,3]]);assert.deepEqual(topology.edge_ranges,[[0,1],[0,1],[0,1],[0,1]]);assert.deepEqual(topology.coedge_edges,[0,1,2,3]);assert.deepEqual(topology.coedge_forward,[true,true,false,false]);assert.deepEqual(topology.vertices,[[-40,-30,0],[40,-30,0],[40,30,0],[-40,30,0]]);
   const point=(u,v)=>{const bu=[(1-u)**2,2*u*(1-u),u*u],bv=[(1-v)**2,2*v*(1-v),v*v],p=[0,0,0];let sum=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++){const center=i===1&&j===1,w=bu[i]*bv[j]*(center?data.weight:1),control=[-40+40*i,-30+30*j,center?data.height:0];sum+=w;control.forEach((x,k)=>p[k]+=w*x);}return p.map(x=>x/sum);};
   const near=(a,b)=>a.forEach((x,i)=>assert.ok(Math.abs(x-b[i])<1e-10));near(data.point,point(data.u,data.v));
   const configs=[[1,0,true,true],[0,1,true,true],[1,1,true,false],[0,0,true,false],[0,data.u,false,true],[1,data.v,false,true]];
@@ -327,6 +328,7 @@ try {
   for(let i=0;i<4;i++){const a=data.sections[i],b=data.sections[(i+1)%4];near(a.forward?a.samples.slice(-3):a.samples.slice(0,3),b.forward?b.samples.slice(0,3):b.samples.slice(-3));}
  }
  checkSurfaceSections(patch);
+ assert.equal(await page.locator('#status').textContent(),'✓ B-rep boundary validated · 4 vertices / 4 edges / 1 face');
  await page.locator('#height').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.equal(patch.point[2],0);assert.notDeepEqual(await page.locator('canvas').screenshot(),initialPatch);
  await page.locator('#height').evaluate(e=>{e.value=35;e.dispatchEvent(new Event('input'));});await page.locator('#weight').evaluate(e=>{e.value=2;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(patch.point[2]-14)<1e-13);
  await page.locator('#u').evaluate(e=>{e.value=0.3;e.dispatchEvent(new Event('input'));});await page.locator('#v').evaluate(e=>{e.value=0.7;e.dispatchEvent(new Event('input'));});patch=await page.evaluate(()=>window.haganeSurface.data);assert.ok(Math.abs(Math.hypot(...patch.normal)-1)<1e-13);assert.ok(Math.abs(patch.normal[0])+Math.abs(patch.normal[1])>0.01);
@@ -334,6 +336,7 @@ try {
  const shaded=await page.locator('canvas').screenshot();await page.locator('#wire').check();assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);await page.locator('#wire').uncheck();await page.locator('canvas').focus();await page.keyboard.press('ArrowRight');assert.notDeepEqual(await page.locator('canvas').screenshot(),shaded);
  if(process.argv.includes('--capture')){await page.locator('#height').evaluate(e=>{e.value=60;e.dispatchEvent(new Event('input'));});await page.locator('#weight').evaluate(e=>{e.value=2;e.dispatchEvent(new Event('input'));});await page.locator('#wire').check();await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-surface.png',import.meta.url).pathname});}
  if(process.argv.includes('--capture-surface-sections')){await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-surface-sections.png',import.meta.url).pathname});}
+ if(process.argv.includes('--capture-nurbs-face')){await page.locator('#reset').click();await page.screenshot({path:new URL('../docs/nurbs-face.png',import.meta.url).pathname});}
  assert.equal(await page.evaluate(()=>document.getElementById('view').getContext('webgl').getError()),0);await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert.deepEqual(errors,[]);
  await page.setViewportSize({width:1440,height:900});
  await page.goto(`http://127.0.0.1:${server.address().port}/classification.html`);await page.waitForFunction(()=>window.haganeClassification?.ready);

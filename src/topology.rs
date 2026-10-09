@@ -139,6 +139,11 @@ impl Face {
     // Precisely delimit the trim domains covered by this first kernel milestone.
     fn validate_supported_trim(&self, tol: Tolerance) -> Result<()> {
         match self.surface {
+            Surface::Nurbs(_) => {
+                return Err(Error::Unsupported(
+                    "NURBS solid trim validation is not implemented",
+                ))
+            }
             Surface::Plane { .. } => {
                 if crate::ellipse_planar::has_ellipse(self) {
                     crate::ellipse_planar::ring(self, tol)?;
@@ -279,6 +284,20 @@ impl Solid {
         Ok(result)
     }
     pub fn validate(&self, tol: Tolerance) -> Result<()> {
+        if self
+            .edges
+            .iter()
+            .any(|e| matches!(e.curve, Curve::Nurbs(_)))
+            || self
+                .shell
+                .faces
+                .iter()
+                .any(|f| matches!(f.surface, Surface::Nurbs(_)))
+        {
+            return Err(Error::Unsupported(
+                "NURBS geometry is supported by open NurbsFace, not generic Solid validation",
+            ));
+        }
         Tolerance::new(tol.linear)?;
         if self.shell.faces.is_empty() || self.vertices.is_empty() {
             return Err(Error::InvalidTopology("empty solid"));
@@ -297,6 +316,11 @@ impl Solid {
                 let point = self.vertices[vertex].point;
                 let (cosine, sine) = (parameter.cos(), parameter.sin());
                 let error = match e.curve {
+                    Curve::Nurbs(_) => {
+                        return Err(Error::Unsupported(
+                            "NURBS solid edge validation is not implemented",
+                        ))
+                    }
                     Curve::Circle { center, radius } => {
                         (point - center) - Vec3::new(radius * cosine, radius * sine, 0.)
                     }
@@ -370,6 +394,11 @@ impl Solid {
                 ));
             }
             match f.surface {
+                Surface::Nurbs(_) => {
+                    return Err(Error::Unsupported(
+                        "NURBS solid face validation is not implemented",
+                    ))
+                }
                 Surface::Plane { origin, u, v } => {
                     if !origin.finite()
                         || !crate::geometry::plane_basis_valid(
@@ -643,6 +672,20 @@ impl Solid {
     }
     /// Divergence theorem, integrated analytically over the supported exact surfaces.
     pub fn volume(&self) -> Result<f64> {
+        if self
+            .edges
+            .iter()
+            .any(|e| matches!(e.curve, Curve::Nurbs(_)))
+            || self
+                .shell
+                .faces
+                .iter()
+                .any(|f| matches!(f.surface, Surface::Nurbs(_)))
+        {
+            return Err(Error::Unsupported(
+                "NURBS solid volume integration is not implemented",
+            ));
+        }
         let reference = self
             .vertices
             .first()
@@ -659,6 +702,11 @@ impl Solid {
                 crate::circular_trims::volume_term(f, reference)?
             } else {
                 match f.surface {
+                    Surface::Nurbs(_) => {
+                        return Err(Error::Unsupported(
+                            "NURBS solid volume integration is not implemented",
+                        ))
+                    }
                     Surface::Plane { origin, u, v } => {
                         (origin - reference).dot(u.cross(v))
                             * f.wires.iter().map(wire_area).sum::<f64>()
@@ -712,6 +760,9 @@ impl Solid {
         }
         Ok(sum)
     }
+    /// Analytic bounds for supported solids; raw rational geometry receives a
+    /// conservative control-hull enclosure, not exact rational extrema.
+    /// Bounds alone do not validate a solid or enable NURBS solid operations.
     pub fn bounds(&self) -> Bounds {
         let mut lo = Vec3::new(f64::INFINITY, f64::INFINITY, f64::INFINITY);
         let mut hi = lo * (-1.0);
@@ -726,8 +777,23 @@ impl Solid {
         for v in &self.vertices {
             add(v.point);
         }
+        // Rational convex hulls supply conservative raw bounds only. Generic
+        // NURBS solids are explicitly rejected by validate/volume/tessellate.
+        for face in &self.shell.faces {
+            if let Surface::Nurbs(ref surface) = face.surface {
+                for point in surface.control_points() {
+                    add(*point);
+                }
+            }
+        }
         for e in &self.edges {
             let circle = match e.curve {
+                Curve::Nurbs(ref curve) => {
+                    for point in curve.control_points() {
+                        add(*point);
+                    }
+                    None
+                }
                 Curve::Circle { center, radius } => Some((
                     center,
                     Vec3::new(1.0, 0.0, 0.0),

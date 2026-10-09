@@ -151,7 +151,7 @@ pcurve validation, exact metrics, bounded analytic display tessellation, and
 native/WASM browser demos. Standalone NURBS curves and tensor-product surfaces
 support evaluation and first derivatives with dedicated demos.
 
-Still incomplete: NURBS B-rep integration, trimmed NURBS tessellation, general
+Still incomplete: general NURBS solid integration, trimmed NURBS tessellation, general
 Booleans, fillets/chamfers, healing, and STEP interchange. NURBS surface display
 grids currently have no certified chord-error bound. See
 [the roadmap](docs/roadmap.md) and [README](README.md) for feature-specific limits.
@@ -662,3 +662,23 @@ The surface display grid remains uniform and has no certified surface chord
 error. General trims, shared B-rep NURBS edges/faces, sewing, intersections and
 broader STEP interchange remain incomplete. The overall estimate remains
 **15–25%**, toward the **80%** target. See [surface refinement](docs/nurbs-surface-refinement.md).
+
+
+## First retained rectangular NURBS B-rep face
+
+`Curve::Nurbs` and `Surface::Nurbs` now participate in the common geometry enums,
+with checked evaluation/normal dispatch and exact-control rigid placement.
+`NurbsFace` retains a complete rectangular surface using the existing four
+vertices, four edges, oriented coedges, affine same-parameter pcurves and Face.
+Boundary validation checks shared corner references, canonical rational basis
+and weights, control-coordinate tolerance and traversal; it does not establish
+global surface regularity, injectivity, sewing or a closed manifold. Singular
+structural faces are accepted and fail display sampling when normals are unusable.
+
+The native/WASM browser now samples its retained open face; whole-surface grid
+sampling remains uncertified. Generic NURBS Solid validation/volume/Boolean/
+classification/STEP paths remain unsupported; arbitrary trims and cross-patch
+shared edges remain future work. This supersedes the earlier standalone-only
+NURBS boundary milestones without establishing general rational solid support.
+The engineering estimate remains **15–25%**, toward the **80%** target.
+See [rectangular NURBS face](docs/nurbs-face.md).

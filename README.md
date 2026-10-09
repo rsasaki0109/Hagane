@@ -261,6 +261,9 @@ fabricate the demo image.
   analytic U/V partials, oriented regular-point normals and uniform display grids;
   [shape-preserving tensor refinement, exact isocurves and oriented rectangular
   boundaries](docs/nurbs-surface-refinement.md).
+- [Rectangular open NURBS B-rep faces](docs/nurbs-face.md) retain exact rational
+  surfaces/edges, shared corner vertices and same-parameter oriented coedges.
+  Boundary validation is structural; generic NURBS solid operations remain unsupported.
 - Checked line/plane intersection and tolerance-based parallel/coincident classification;
   horizontal-plane/bounded-Z-cylinder intersections.
 - Typed plane/plane intersections with shared-parameter UV curves; line/framed-cylinder
@@ -370,8 +373,9 @@ let polyline = refined.tessellate_bounded(0.001, 16_384)?;
 original parameters and per-segment chord-error bounds.
 The solid demo links to a separate **NURBS curves** page with weight, parameter
 and display-error controls. [Curve documentation](docs/nurbs.md) explains knot-side
-semantics, numerical limits and the actual WASM demo. These curves are not yet
-integrated with B-rep edges; intersections and trimming remain future work.
+semantics, numerical limits and the actual WASM demo. These curves are now
+used by [rectangular open NURBS B-rep faces](docs/nurbs-face.md); general
+solid integration, intersections and arbitrary trimming remain future work.
 
 ## NURBS surfaces
 
@@ -383,14 +387,17 @@ explicitly; C0 knot lines require an explicit side in each parameter direction.
 `insert_knot(axis, parameter, times)` preserves the rational surface,
 `isocurve(axis, parameter)` returns an exact section with the other axis
 parameter, and `boundary_edges()` supplies four oriented curves and same-parameter
-UV maps. These data are not yet shared B-rep edges.
+UV maps. [NurbsFace](docs/nurbs-face.md) retains them using existing vertices,
+edges, coedges and faces; cross-face shared edges and sewing remain future work.
 
-Run `cargo run --locked --example nurbs_surface` for the native JSON fixture.
+Run `cargo run --locked --example nurbs_surface` for the native JSON fixture
+or `cargo run --locked --example nurbs_face` for an exact quarter-cylinder open
+B-rep with four shared corners/edges and its display grid.
 The **Surfaces** link opens the interactive 3D WASM demo with height, weight,
 U/V and normal-marker controls, four boundary curves and selected U/V sections.
 Section curves have bounded adaptive display polylines; the 24-by-24 surface grid has no certified
-chord-error bound. These are untrimmed standalone patches, **not B-rep faces or
-solids**. [Surface documentation](docs/nurbs-surface.md) describes the API,
+chord-error bound. The demo now samples a retained rectangular open B-rep face,
+**not a closed solid or a general trimmed NURBS face**. [Surface documentation](docs/nurbs-surface.md) describes the API,
 control ordering, mathematical formulas, numerical guards and remaining work.
 
 ## Explicit limits

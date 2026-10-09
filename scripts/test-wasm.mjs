@@ -73,7 +73,11 @@ for(const [height,weight,u,v] of [[0,1,0.5,0.5],[35,1,0.5,0.5],[35,2,0.3,0.7],[-
  const {status,result}=surface(height,weight,u,v);assert.equal(status,0);assert.equal(result.positions.length,24*24*2*9);assert.equal(result.positions.length,result.normals.length);
  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_surface','--',...[height,weight,u,v].map(String)],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
  for(const field of ['point','du','dv','normal','positions','normals']){assert.equal(result[field].length,native[field].length);native[field].forEach((value,i)=>assert.ok(Math.abs(value-result[field][i])<1e-10));}
- for(const field of ['sections','section_chord_error','refined_control_counts'])compareIntersection(result[field],native[field]);
+ for(const field of ['sections','section_chord_error','refined_control_counts','brep'])compareIntersection(result[field],native[field]);
+ const topology=result.brep;assert.equal(topology.faces,1);assert.equal(topology.closed,false);assert.equal(topology.orientation,1);assert.equal(topology.validation,'canonical rectangular boundary; global surface regularity is not certified');assert.equal(topology.vertices.length,4);
+ assert.deepEqual(topology.edge_vertices,[[0,1],[1,2],[3,2],[0,3]]);assert.deepEqual(topology.edge_ranges,[[0,1],[0,1],[0,1],[0,1]]);assert.deepEqual(topology.coedge_edges,[0,1,2,3]);assert.deepEqual(topology.coedge_forward,[true,true,false,false]);
+ [[0,0],[1,0],[1,1],[0,1]].forEach(([a,b],i)=>compareIntersection(topology.vertices[i],surfacePoint(height,weight,a,b)));
+ const orientedEdges=topology.coedge_edges.map((edge,i)=>topology.coedge_forward[i]?topology.edge_vertices[edge]:topology.edge_vertices[edge].toReversed());orientedEdges.forEach((edge,i)=>assert.equal(edge[1],orientedEdges[(i+1)%4][0]));
  assert.deepEqual(result.refined_control_counts,[4,4]);assert.equal(result.section_chord_error,0.05);assert.equal(result.sections.length,6);
  const configs=[[1,0,true,true],[0,1,true,true],[1,1,true,false],[0,0,true,false],[0,u,false,true],[1,v,false,true]];
  for(let s=0;s<6;s++){

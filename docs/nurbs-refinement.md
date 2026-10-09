@@ -2,8 +2,9 @@
 
 Hagane's standalone `NurbsCurve` now supports interior knot insertion, rational
 Bezier span extraction and adaptive display polylines. These operate on the
-existing positive-weight, clamped, nonperiodic curve domain. They do not add a
-NURBS B-rep edge, face, Boolean operation or surface tessellator.
+existing positive-weight, clamped, nonperiodic curve domain. They also supply
+the exact boundaries of [rectangular open NURBS faces](nurbs-face.md); generic
+NURBS solid operations and bounded surface tessellation remain unsupported.
 
 ![Actual Rust/WASM bounded NURBS curve demo](nurbs-bounded.png)
 
@@ -114,7 +115,7 @@ native/WASM parity checks exercise the same adaptive demo path.
 
 ## Next steps
 
-Integrate rational curves with shared B-rep edges and surface pcurves; then add
+Extend rectangular open-face integration to cross-face shared edges, general
 trimmed NURBS surfaces, curve/surface intersections and broader STEP interchange.
 Periodic curves, higher derivatives and surface refinement remain future work.
 See [references](references.md) for mathematical provenance; no external NURBS

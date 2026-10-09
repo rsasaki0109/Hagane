@@ -91,6 +91,11 @@ fn coordinate_roundoff_budget(solid: &Solid) -> Result<f64> {
     }
     for edge in &solid.edges {
         match edge.curve {
+            Curve::Nurbs(_) => {
+                return Err(Error::Unsupported(
+                    "NURBS solid tessellation is not implemented",
+                ))
+            }
             Curve::Line { a, b } => {
                 observe(a)?;
                 observe(b)?;
@@ -183,6 +188,11 @@ pub(crate) fn shared_edge_counts(solid: &Solid, error: f64) -> Result<Vec<usize>
     let mut maxima = vec![0; solid.edges.len()];
     for (i, edge) in solid.edges.iter().enumerate() {
         let count = match edge.curve {
+            Curve::Nurbs(_) => {
+                return Err(Error::Unsupported(
+                    "NURBS solid tessellation is not implemented",
+                ))
+            }
             Curve::Line { .. } => 1,
             Curve::Circle { radius, .. } | Curve::FramedCircle { radius, .. } => {
                 circle_segments(radius, error)?
@@ -237,6 +247,11 @@ impl Solid {
         let mut mesh = Mesh::default();
         for (fi, f) in self.shell.faces.iter().enumerate() {
             match f.surface {
+                Surface::Nurbs(_) => {
+                    return Err(Error::Unsupported(
+                        "NURBS solid tessellation is not implemented",
+                    ))
+                }
                 Surface::Plane { .. } => {
                     let mut coords = Vec::new();
                     let mut holes = Vec::new();
