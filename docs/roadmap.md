@@ -762,3 +762,14 @@ and normals. Curved face construction is supported, while curved interior displa
 returns an explicit unsupported error. General trims, holes, sewing and closed
 rational solids remain incomplete. The estimate remains 15–25%, toward 80%.
 See [polygon faces](nurbs-polygon-face.md).
+
+## Bounded curved bilinear polygon display
+
+Convex UV faces now have conforming bounded interior display for one equal-weight
+bilinear patch, including genuinely curved saddles. Shared midpoint indices,
+original UVs and per-triangle engineering bounds preserve the retained region.
+Native independent formula/coverage/orientation tests and an actual OBJ demo
+verify this scope. General rational/higher-degree/multi-span polygon display,
+holes, sewing and closed rational solids remain incomplete. Native/WASM builds
+share the kernel; no dedicated browser export was added. The estimate remains
+15–25%, toward 80%. See [bounded polygon display](nurbs-polygon-bounded.md).

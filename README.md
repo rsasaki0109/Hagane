@@ -33,8 +33,8 @@ diagonal rational curves and same-parameter pcurves, with an editable
 remain unsupported. [Convex UV surface wires](docs/nurbs-surface-wire.md)
 now connect lifted edges with shared closing vertices.
 [Convex UV polygon faces](docs/nurbs-polygon-face.md) retain those boundaries as
-open faces and provide scoped affine-patch interior display; curved polygon
-interior display remains unsupported.
+open faces and provide [bounded bilinear interior display](docs/nurbs-polygon-bounded.md),
+including curved saddle patches. General rational polygon display remains unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from

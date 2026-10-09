@@ -33,3 +33,7 @@ Holes, concave/general trim loops, bounded curved-interior tessellation, sewing,
 closed rational solids and NURBS STEP remain unsupported. Mathematical convex
 fan triangulation is implemented independently, with no new dependency or OCCT
 source. Original code: MIT OR Apache-2.0.
+
+A subsequent [bounded bilinear display](nurbs-polygon-bounded.md) API supports
+genuinely curved equal-weight saddle patches; the affine API retains its original
+contract. Higher-degree/nonuniform rational polygon display remains unsupported.

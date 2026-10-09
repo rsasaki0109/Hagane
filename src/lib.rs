@@ -128,3 +128,6 @@ pub use nurbs_surface_wire::*;
 
 mod nurbs_polygon_face;
 pub use nurbs_polygon_face::*;
+
+mod nurbs_polygon_tessellation;
+pub use nurbs_polygon_tessellation::*;

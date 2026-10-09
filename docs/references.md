@@ -576,3 +576,9 @@ Convex polygon-face display uses independent fan triangulation on the UV
 polygon and affine invariance, with an engineering reserve for residual bilinear
 twist and coordinate arithmetic. No third-party code or new dependencies were
 introduced (MIT OR Apache-2.0 original code).
+
+Bilinear polygon display uses barycentric affine reproduction and the range
+bound on the remaining UV product over a triangle bounding rectangle. Shared
+edge midpoint subdivision is implemented independently. Floating arithmetic
+reserves are engineering checks, not interval proofs. No new dependencies or
+OCCT code were used (original code MIT OR Apache-2.0).
