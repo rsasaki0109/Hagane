@@ -253,6 +253,34 @@ mod exports {
         ))
     }
     #[no_mangle]
+    pub extern "C" fn hagane_generate_surface_trim(
+        height: f64,
+        weight: f64,
+        u: f64,
+        v: f64,
+        chord_error: f64,
+        u_min: f64,
+        u_max: f64,
+        v_min: f64,
+        v_max: f64,
+        crease: u32,
+    ) -> i32 {
+        if crease > 1 {
+            return generate(Err(crate::Error::InvalidInput(
+                "crease mode must be 0 or 1",
+            )));
+        }
+        generate(crate::nurbs_surface_trim_demo_json(
+            height,
+            weight,
+            u,
+            v,
+            chord_error,
+            [[u_min, u_max], [v_min, v_max]],
+            crease == 1,
+        ))
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_generate_surface_crease(
         height: f64,
         weight: f64,

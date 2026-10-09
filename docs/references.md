@@ -526,3 +526,11 @@ without averaging normals or welding coincident positions at unrelated UV.
 Signed-zero parameters are numerically equal and therefore canonicalized for
 node/cache keys. These are independent topology/display policies derived from
 continuity and one-sided derivatives, with no copied reference code or dependency.
+
+Rectangular rational surface restriction uses homogeneous knot insertion to
+raise cut multiplicities, tensor control-net selection and endpoint clamping.
+It follows the same publicly described B-spline refinement identities cited
+above (de Boor; Piegl and Tiller), independently implemented without copied
+source or an additional dependency. Rational geometry is preserved mathematically;
+the implementation uses checked `f64` arithmetic rather than symbolic or interval
+arithmetic. Boundary topology is regenerated from exact retained isocurves.

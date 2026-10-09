@@ -13,6 +13,10 @@ generic NURBS solid tessellation remain unsupported.
 
 ## API and output
 
+[Rectangular restrictions](nurbs-surface-trim.md) use the same bounded mesher on
+their retained rational surface, preserving original UV values and inward C0
+endpoint limits. Nonrectangular trim loops remain unsupported.
+
 For an existing validated surface or rectangular open face:
 
 ```rust

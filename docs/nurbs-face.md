@@ -96,6 +96,11 @@ shared grid vertices and applying face orientation after boundary validation.
 geometric nodes; arbitrary trims remain unsupported. [Bezier extraction](nurbs-surface-extraction.md)
 handles the source spans.
 
+`trimmed(ranges, tolerance)` now restricts an existing validated face to a
+[rectangular UV subset](nurbs-surface-trim.md), preserving orientation and exact
+rational geometry by knot insertion/control selection. It regenerates canonical
+boundaries on the new clamped surface; it does not store arbitrary trim loops.
+
 
 `NurbsFace::sample_grid(cells, tolerance)` validates the retained boundary and
 samples the actual retained surface. Negative face orientation reverses mesh

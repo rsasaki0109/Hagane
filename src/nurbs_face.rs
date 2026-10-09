@@ -178,6 +178,15 @@ impl NurbsFace {
         }
         Ok(output)
     }
+    /// Restrict this open face to an exact U/V rectangle and regenerate its
+    /// canonical boundary. Arbitrary trim loops and solid cuts are unsupported.
+    pub fn trimmed(&self, ranges: [[f64; 2]; 2], tol: Tolerance) -> Result<Self> {
+        self.validate_boundary(tol)?;
+        let Surface::Nurbs(surface) = &self.face.surface else {
+            unreachable!()
+        };
+        Self::new(surface.restricted(ranges)?, self.face.orientation, tol)
+    }
     /// Place the exact surface and regenerate its canonical boundary topology.
     pub fn transformed(&self, transform: Transform, tol: Tolerance) -> Result<Self> {
         self.validate_boundary(tol)?;

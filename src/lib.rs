@@ -107,3 +107,7 @@ pub use nurbs_surface_extraction::*;
 
 mod nurbs_surface_crease_demo;
 pub use nurbs_surface_crease_demo::*;
+
+mod nurbs_surface_trim;
+mod nurbs_surface_trim_demo;
+pub use nurbs_surface_trim_demo::*;

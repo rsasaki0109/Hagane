@@ -670,3 +670,23 @@ closed rational solids, intersections and STEP remain incomplete.
 
 This supersedes earlier C1-only display restrictions. The estimate remains
 **15–25%**, toward the **80%** target. See [C0 face display](nurbs-surface-crease.md).
+
+## Exact rectangular NURBS restriction
+
+Rational surfaces now restrict to an original-parameter UV rectangle by
+homogeneous knot insertion, tensor control selection and endpoint clamping.
+The retained open face regenerates four exact isocurve edges, shared corners,
+oriented coedges and affine pcurves while preserving face orientation. C0 cut
+endpoints use their inward derivative limits; retained interior creases preserve
+split normals and shared geometric nodes. No fitting or mesh Boolean is used.
+
+Native source/derivative and B-rep boundary tests, bounded display checks and
+native/WASM/browser edit/rejection/recovery accompany the actual demo. Resource
+preflight limits refinement controls and cumulative work. Mathematical shape
+preservation is subject to checked `f64` rounding; display bounds concern the
+retained restricted surface and remain engineering bounds, not interval proofs.
+
+This is rectangular surface restriction, not arbitrary trim-loop support.
+General trims/holes, cross-face sewing, closed NURBS solids, intersections and
+NURBS STEP remain future work. The estimate remains **15–25%**, toward **80%**.
+See [rectangular restriction](nurbs-surface-trim.md).

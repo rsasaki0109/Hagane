@@ -151,9 +151,11 @@ pcurve validation, exact metrics, bounded analytic display tessellation, and
 native/WASM browser demos. Standalone NURBS curves and tensor-product surfaces
 support evaluation and first derivatives with dedicated demos.
 
-Still incomplete: general NURBS solid integration, trimmed NURBS tessellation, general
-Booleans, fillets/chamfers, healing, and STEP interchange. NURBS surface display
-grids currently have no certified chord-error bound. See
+Still incomplete: general NURBS solid integration, arbitrary trimmed NURBS
+tessellation, general Booleans, fillets/chamfers, healing, and broader STEP
+interchange. Legacy uniform NURBS grids have no certified chord-error bound;
+rectangular retained faces have bounded display with an engineering floating-point
+allowance rather than formal interval certification. See
 [the roadmap](docs/roadmap.md) and [README](README.md) for feature-specific limits.
 
 Stage 1 now includes checked coordinate frames, rigid analytic B-rep transforms,
@@ -754,3 +756,23 @@ closed rational solids, intersections and STEP remain incomplete.
 
 This supersedes earlier C1-only display restrictions. The estimate remains
 **15–25%**, toward the **80%** target. See [C0 face display](docs/nurbs-surface-crease.md).
+
+## Exact rectangular NURBS restriction
+
+`NurbsSurface::restricted` retains an original-parameter UV rectangle using
+homogeneous knot insertion and tensor control selection, without fitting or
+mesh clipping. `NurbsFace::trimmed` validates the source and regenerates exact
+rational boundary edges, shared corner references and affine pcurves on the new
+clamped surface, retaining face orientation. Interior C0 creases keep their
+one-sided shading normals; cuts at a crease use the retained inward derivative.
+
+Native tests compare source/restricted geometry and partials, boundary identity,
+orientation, nonunit domains and invalid/resource cases. The native/WASM/browser
+demo edits bounds and precision and preserves accepted geometry after rejected
+inputs. Bounded display concerns the retained rational surface, with existing
+engineering arithmetic guards rather than formal interval certification.
+
+This supplies rectangular restrictions, not arbitrary trim curves or holes.
+Cross-face sewing, global regularity, closed NURBS solids, intersections,
+general curved Booleans and NURBS STEP remain incomplete. The estimate remains
+**15–25%**, toward **80%**. See [rectangular restriction](docs/nurbs-surface-trim.md).
