@@ -1,4 +1,4 @@
-//! Conforming bounded display for one positive-weight rational Bezier polygon face.
+//! Conforming bounded display for C1 positive-weight rational polygon faces.
 use crate::*;
 use std::collections::HashMap;
 #[derive(Clone, Debug)]
@@ -22,8 +22,8 @@ impl NurbsPolygonFace {
         }
         self.tessellate_bounded(error, max_triangles, tol)
     }
-    /// Bounded convex polygon display on one rational tensor Bezier patch.
-    /// Multiple knot spans remain unsupported; boundary degree/work limits apply.
+    /// Bounded convex polygon display across structurally C1 rational spans.
+    /// C0 knots remain unsupported; boundary/extraction/work limits apply.
     pub fn tessellate_bounded(
         &self,
         error: f64,
@@ -38,20 +38,13 @@ impl NurbsPolygonFace {
         }
         let s = &self.boundary.surface;
         let degrees = s.degrees();
-        if s.control_points().len() != (degrees[0] + 1) * (degrees[1] + 1) {
-            return Err(Error::Unsupported(
-                "bounded polygon display requires one rational Bezier patch",
-            ));
-        }
         let p = s.control_points();
-        let derivatives = rational_derivative_bounds(s)?;
+        let derivatives = surface_derivative_bounds(s)?;
         let ratio = s.weights().iter().copied().fold(0f64, f64::max)
             / s.weights().iter().copied().fold(f64::INFINITY, f64::min);
         let domains = [s.knots(0)?, s.knots(1)?];
-        let widths = [
-            domains[0][degrees[0] + 1] - domains[0][degrees[0]],
-            domains[1][degrees[1] + 1] - domains[1][degrees[1]],
-        ];
+        let ranges = s.domain();
+        let widths = [ranges[0][1] - ranges[0][0], ranges[1][1] - ranges[1][0]];
         let scale = p
             .iter()
             .flat_map(|p| [p.x.abs(), p.y.abs(), p.z.abs()])
@@ -272,4 +265,65 @@ fn differentiate(
         }
     }
     (dh, dw, result)
+}
+
+// A C1 function has an absolutely continuous first derivative along each
+// triangle segment. Piecewise Hessian bounds therefore bound its Taylor
+// remainder across knot crossings, even where second derivatives jump.
+fn surface_derivative_bounds(s: &NurbsSurface) -> Result<[f64; 5]> {
+    let degrees = s.degrees();
+    let domains = s.domain();
+    let mut patch_count = 1usize;
+    for axis in 0..2 {
+        let knots = s.knots(axis)?;
+        let mut index = 0;
+        while index < knots.len() {
+            let value = knots[index];
+            let next = knots.partition_point(|v| *v <= value);
+            if value > domains[axis][0] && value < domains[axis][1] && next - index >= degrees[axis]
+            {
+                return Err(Error::Unsupported(
+                    "polygon display requires C1 source knots; C0 creases need explicit splitting",
+                ));
+            }
+            index = next;
+        }
+        patch_count = patch_count.saturating_mul(knots.windows(2).filter(|v| v[0] < v[1]).count());
+    }
+    let net = (degrees[0] + 1) * (degrees[1] + 1);
+    if patch_count.saturating_mul(net).saturating_mul(net) > 16_000_000 {
+        return Err(Error::Unsupported(
+            "polygon derivative bounds exceed control work limit",
+        ));
+    }
+    if patch_count == 1 {
+        return rational_derivative_bounds(s);
+    }
+    let mut result = [0f64; 5];
+    for patch in s.bezier_patches()? {
+        let local = rational_derivative_bounds(&patch.surface)?;
+        let factors = [
+            (domains[0][1] - domains[0][0])
+                / (patch.parameter_ranges[0][1] - patch.parameter_ranges[0][0]),
+            (domains[1][1] - domains[1][0])
+                / (patch.parameter_ranges[1][1] - patch.parameter_ranges[1][0]),
+        ];
+        let scaling = [
+            factors[0] * factors[0],
+            factors[0] * factors[1],
+            factors[1] * factors[1],
+            factors[0],
+            factors[1],
+        ];
+        for i in 0..5 {
+            let bound = local[i] * scaling[i];
+            if !bound.is_finite() {
+                return Err(Error::Tessellation(
+                    "polygon span derivative scaling exceeds numerical range",
+                ));
+            }
+            result[i] = result[i].max(bound);
+        }
+    }
+    Ok(result)
 }

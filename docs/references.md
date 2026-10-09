@@ -594,3 +594,9 @@ High-degree polygon bounds use the standard Bernstein derivative identity
 positive rational denominator bounds and twice-differentiated H=W*S. The
 implementation is independent and retains engineering arithmetic reserves; no
 OCCT code or dependencies were introduced (MIT OR Apache-2.0 original code).
+
+C1 multi-span polygon bounds combine independent rational Bezier extraction,
+UV chain-rule rescaling of first/second derivative bounds, and the fundamental
+theorem of calculus for a continuous piecewise-smooth first derivative. The
+implementation does not claim interval certification and adds no dependencies
+or OCCT code (original code MIT OR Apache-2.0).

@@ -885,3 +885,14 @@ biquadratic OBJ demo exercises actual retained-face display. The bilinear API
 retains its original contract. Multiple spans, general trim loops, holes, sewing
 and closed rational solids remain incomplete. The estimate remains 15–25%,
 toward 80%. See [Bezier polygon display](docs/nurbs-polygon-bezier.md).
+
+## C1 multi-span rational polygon display
+
+Bounded polygon display now covers structurally C1 source knots through scaled
+per-Bezier-patch derivative bounds. Independent Cox–de Boor evaluation verifies
+triangles crossing both U and V knots in nonunit domains; the OBJ demo exports
+an actual four-span rational face. Structural C0 knots are explicitly rejected,
+including geometrically smooth over-multiplied knots. Full-source extraction,
+derivative work and display budgets remain checked. C0 polygon interiors, holes,
+general trims, sewing and closed rational solids remain incomplete. The estimate
+remains 15–25%, toward 80%. See [C1 polygon display](docs/nurbs-polygon-multispan.md).

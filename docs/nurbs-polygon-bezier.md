@@ -7,8 +7,10 @@ The previous `tessellate_bilinear_bounded` entry point retains its degree-(1,1)
 contract and delegates to the shared implementation. Affine display retains its
 original contract as well.
 
-The surface must contain exactly `(p+1)*(q+1)` control points: additional knot
-spans are rejected. Source degree/control limits and exact boundary construction
+For the single-span case the surface contains exactly `(p+1)*(q+1)` control
+points. The current API additionally accepts structurally C1 spans through the
+[whole-source derivative extension](nurbs-polygon-multispan.md). C0 knots are
+rejected. Source degree/control limits and exact boundary construction
 limits still apply. In particular a diagonal lifted boundary has degree p+q and
 must fit the curve degree limit of 16; a constant UV axis contracts that degree.
 Nonrepresentable or poorly conditioned inputs may be rejected even when they
@@ -43,6 +45,10 @@ in nonunit UV domains, checking reported bounds; existing UV coverage, shared-ed
 weight-scale, precision and failure tests remain. The kernel builds for native
 and WASM; no dedicated browser export was added in this milestone.
 
-Multi-span/C0 polygon interiors, holes, concave/general trim curves, sewing,
+C0 polygon interiors, holes, concave/general trim curves, sewing,
 closed rational solids and NURBS STEP remain future work. No dependency or OCCT
 source was added. Original code: MIT OR Apache-2.0.
+
+The subsequent [C1 multi-span display](nurbs-polygon-multispan.md) extension
+now accepts structurally C1 source knots through the general bounded API. C0
+polygon interiors remain unsupported.

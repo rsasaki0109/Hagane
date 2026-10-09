@@ -131,6 +131,10 @@ fn precision_budget_and_unsupported_multispan_patch_are_explicit() {
         f.tessellate_bilinear_bounded(0.1, 65536, Tolerance::default()),
         Err(Error::Unsupported(_))
     ));
+    assert!(matches!(
+        f.tessellate_bounded(0.1, 65536, Tolerance::default()),
+        Err(Error::Unsupported(_))
+    ));
 }
 
 #[test]
@@ -270,4 +274,145 @@ fn higher_degree_rational_bounds_match_independent_bernstein_surface() {
             }
         }
     }
+}
+
+#[test]
+fn c1_multispan_rational_bounds_cover_triangles_crossing_both_knots() {
+    fn basis(i: usize, d: usize, t: f64, k: &[f64]) -> f64 {
+        if d == 0 {
+            return if k[i] <= t && t < k[i + 1] { 1. } else { 0. };
+        }
+        let left = if k[i + d] > k[i] {
+            (t - k[i]) / (k[i + d] - k[i]) * basis(i, d - 1, t, k)
+        } else {
+            0.
+        };
+        let right = if k[i + d + 1] > k[i + 1] {
+            (k[i + d + 1] - t) / (k[i + d + 1] - k[i + 1]) * basis(i + 1, d - 1, t, k)
+        } else {
+            0.
+        };
+        left + right
+    }
+    let ku = vec![2., 2., 2., 4., 6., 6., 6.];
+    let kv = vec![-3., -3., -3., 1., 5., 5., 5.];
+    let mut points = Vec::new();
+    let mut weights = Vec::new();
+    for i in 0..4 {
+        for j in 0..4 {
+            points.push(Point3::new(i as f64 * 3., j as f64 * 3., (i * j) as f64));
+            weights.push(1. + 0.05 * (i + j) as f64);
+        }
+    }
+    let surface = NurbsSurface::new(
+        [2, 2],
+        [ku.clone(), kv.clone()],
+        [4, 4],
+        points.clone(),
+        weights.clone(),
+    )
+    .unwrap();
+    let face = NurbsPolygonFace::new(
+        surface,
+        vec![[2.5, -2.], [5.5, -1.], [3., 4.]],
+        1,
+        Tolerance::default(),
+    )
+    .unwrap();
+    let display = face
+        .tessellate_bounded(0.1, 65536, Tolerance::default())
+        .unwrap();
+    let mut crossing = [false; 2];
+    for (index, t) in display.mesh.triangles.iter().enumerate() {
+        for axis in 0..2 {
+            let knot = [4., 1.][axis];
+            let lo = t
+                .iter()
+                .map(|i| display.vertex_uv[*i][axis])
+                .fold(f64::INFINITY, f64::min);
+            let hi = t
+                .iter()
+                .map(|i| display.vertex_uv[*i][axis])
+                .fold(f64::NEG_INFINITY, f64::max);
+            crossing[axis] |= lo < knot && hi > knot;
+        }
+        for a in 0..=4 {
+            for b in 0..=4 - a {
+                let bary = [a as f64 / 4., b as f64 / 4., (4 - a - b) as f64 / 4.];
+                let mut uv = [0.; 2];
+                let mut chord = Vec3::new(0., 0., 0.);
+                for j in 0..3 {
+                    for (axis, v) in uv.iter_mut().enumerate() {
+                        *v += display.vertex_uv[t[j]][axis] * bary[j];
+                    }
+                    chord = chord + display.mesh.positions[t[j]] * bary[j];
+                }
+                let mut numerator = Vec3::new(0., 0., 0.);
+                let mut denominator = 0.;
+                for i in 0..4 {
+                    for j in 0..4 {
+                        let id = i * 4 + j;
+                        let w = basis(i, 2, uv[0], &ku) * basis(j, 2, uv[1], &kv) * weights[id];
+                        numerator = numerator + points[id] * w;
+                        denominator += w;
+                    }
+                }
+                assert!(
+                    (numerator * (1. / denominator) - chord).norm() <= display.error_bounds[index]
+                );
+            }
+        }
+    }
+    assert_eq!(crossing, [true, true]);
+    let mut dirty = face.clone();
+    dirty.face.wires[0].coedges[0].forward = false;
+    assert!(dirty
+        .tessellate_bounded(0.1, 65536, Tolerance::default())
+        .is_err());
+    assert!(face
+        .tessellate_bounded(0.001, 4, Tolerance::default())
+        .is_err());
+}
+
+#[test]
+fn genuine_c0_crease_remains_an_explicit_unsupported_display() {
+    let mut points = Vec::new();
+    for i in 0..5 {
+        for j in 0..3 {
+            points.push(Point3::new(
+                i as f64 * 2.,
+                j as f64 * 3.,
+                if i == 2 { 4. } else { 0. },
+            ));
+        }
+    }
+    let surface = NurbsSurface::new(
+        [2, 2],
+        [
+            vec![0., 0., 0., 0.5, 0.5, 1., 1., 1.],
+            vec![0., 0., 0., 1., 1., 1.],
+        ],
+        [5, 3],
+        points,
+        vec![1.; 15],
+    )
+    .unwrap();
+    let left = surface
+        .evaluate_with_partials(0.5, 0.5, [KnotSide::Left; 2])
+        .unwrap();
+    let right = surface
+        .evaluate_with_partials(0.5, 0.5, [KnotSide::Right; 2])
+        .unwrap();
+    assert!((left.du - right.du).norm() > 1.);
+    let face = NurbsPolygonFace::new(
+        surface,
+        vec![[0.125, 0.125], [0.875, 0.25], [0.25, 0.875]],
+        1,
+        Tolerance::default(),
+    )
+    .unwrap();
+    assert!(matches!(
+        face.tessellate_bounded(0.1, 65536, Tolerance::default()),
+        Err(Error::Unsupported(_))
+    ));
 }

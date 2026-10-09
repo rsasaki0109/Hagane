@@ -34,8 +34,8 @@ remain unsupported. [Convex UV surface wires](docs/nurbs-surface-wire.md)
 now connect lifted edges with shared closing vertices.
 [Convex UV polygon faces](docs/nurbs-polygon-face.md) retain those boundaries as
 open faces and provide [bounded high-degree rational interior display](docs/nurbs-polygon-bezier.md)
-on a single Bezier patch, including curved patches with nonuniform positive weights.
-Multi-span polygon display remains unsupported.
+including [C1 multi-span rational surfaces](docs/nurbs-polygon-multispan.md).
+C0 polygon interiors remain unsupported.
 
 [Planar/cylindrical STEP export](docs/step-export.md) now writes exact closed
 B-rep geometry with shared topology, periodic seam pcurves and mm units, from
