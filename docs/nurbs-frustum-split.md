@@ -9,6 +9,11 @@ curves and planar caps. Their frame axes are retained; the upper origin moves
 to the cut plane. The four `section` curves are the actual lower top-cap rims.
 No mesh cut or fitted surface is used.
 
+The separate [oblique split API](nurbs-frustum-plane-split.md) constructs a
+different typed child when a closed tilted section remains strictly between
+the caps. This axial API retains its canonical child representation and
+existing mass-property/STEP scope.
+
 `split_axial_many(&[6., 12., 18.], policy)` partitions the same source into
 four ordered closed parts. It accepts 1–16 finite, strictly increasing local
 heights. Every interval, including the last, must exceed ten full-source

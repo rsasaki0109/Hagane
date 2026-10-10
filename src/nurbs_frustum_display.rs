@@ -89,201 +89,254 @@ impl NurbsFrustumSolid {
     /// positions exactly while keeping the cap/side normal discontinuity.
     pub fn tessellate(&self, chord_error: f64, policy: GeometryTolerance) -> Result<Mesh> {
         self.validate(policy)?;
-        if !chord_error.is_finite() || chord_error <= 0. {
-            return Err(Error::InvalidInput(
-                "frustum display needs positive finite chord error",
-            ));
-        }
-        let body = self.solid();
-        let mut scale = 0f64;
-        for face in &body.shell.faces {
-            match &face.surface {
-                Surface::Nurbs(s) => {
-                    for p in s.control_points() {
-                        scale = scale.max(p.x.abs()).max(p.y.abs()).max(p.z.abs());
-                    }
-                }
-                Surface::Plane { origin, .. } => {
-                    scale = scale
-                        .max(origin.x.abs())
-                        .max(origin.y.abs())
-                        .max(origin.z.abs())
-                }
-                _ => return Err(failure()),
-            }
-        }
-        let arithmetic = 65536. * f64::EPSILON * scale.max(f64::MIN_POSITIVE);
-        if !arithmetic.is_finite() || arithmetic >= chord_error / 16. {
+        tessellate_ruled_four_quarters(self.solid(), chord_error, policy, None)
+    }
+}
+pub(crate) fn tessellate_ruled_four_quarters(
+    body: &Solid,
+    chord_error: f64,
+    _policy: GeometryTolerance,
+    generator_weights: Option<[[f64; 2]; 4]>,
+) -> Result<Mesh> {
+    // Private helper: callers must certify their retained typed B-rep first.
+    // Generic Solid validation does not admit these rational trim domains.
+    if body.vertices.len() != 8 || body.edges.len() != 12 || body.shell.faces.len() != 6 {
+        return Err(failure());
+    }
+    if let Some(weights) = generator_weights {
+        if weights.iter().flatten().any(|w| !w.is_finite() || *w <= 0.) {
             return Err(failure());
         }
-        let surfaces = body.shell.faces[2..]
-            .iter()
-            .map(|f| match &f.surface {
-                Surface::Nurbs(s) => Ok(s.as_ref()),
-                _ => Err(failure()),
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let rims = body.edges[..8]
-            .iter()
-            .map(|e| match &e.curve {
-                Curve::Nurbs(c) => Ok(c.as_ref()),
-                _ => Err(failure()),
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let mut count = 1usize;
-        for surface in &surfaces {
-            let bounded = surface.tessellate_bounded(chord_error * 0.5, 4096)?;
-            let n = (bounded.uv_ranges.len() as f64).sqrt() as usize;
-            if n * n != bounded.uv_ranges.len() || !n.is_power_of_two() {
-                return Err(failure());
-            }
-            count = count.max(n);
-        }
-        loop {
-            if count > 64 {
-                return Err(failure());
-            }
-            let mut all = true;
-            for curve in &rims {
-                for i in 0..count {
-                    all &= rim_bound(
-                        curve,
-                        i as f64 / count as f64,
-                        (i + 1) as f64 / count as f64,
-                        arithmetic,
-                    )? <= chord_error * 0.75;
+    }
+    if !chord_error.is_finite() || chord_error <= 0. {
+        return Err(Error::InvalidInput(
+            "frustum display needs positive finite chord error",
+        ));
+    }
+    let mut scale = 0f64;
+    for face in &body.shell.faces {
+        match &face.surface {
+            Surface::Nurbs(s) => {
+                for p in s.control_points() {
+                    scale = scale.max(p.x.abs()).max(p.y.abs()).max(p.z.abs());
                 }
             }
-            if all {
-                break;
+            Surface::Plane { origin, .. } => {
+                scale = scale
+                    .max(origin.x.abs())
+                    .max(origin.y.abs())
+                    .max(origin.z.abs())
             }
-            count *= 2;
+            _ => return Err(failure()),
         }
-        // Cache by topology IDs/parameters, never by approximate XYZ proximity.
-        let edge_points = body
-            .edges
-            .iter()
-            .enumerate()
-            .map(|(edge, e)| {
-                (0..=count)
-                    .map(|i| {
-                        if i == 0 {
-                            Ok(body.vertices[e.vertices[0]].point)
-                        } else if i == count {
-                            Ok(body.vertices[e.vertices[1]].point)
-                        } else {
-                            let t = i as f64 / count as f64;
-                            let p = e.curve.try_evaluate(t)?;
-                            if !p.finite() {
-                                Err(failure())
-                            } else {
-                                Ok(p)
+    }
+    let mut weight_ratio = 1.;
+    if generator_weights.is_some() {
+        for face in &body.shell.faces {
+            if let Surface::Nurbs(surface) = &face.surface {
+                let min = surface
+                    .weights()
+                    .iter()
+                    .copied()
+                    .fold(f64::INFINITY, f64::min);
+                let max = surface.weights().iter().copied().fold(0., f64::max);
+                weight_ratio = f64::max(weight_ratio, max / min);
+            }
+        }
+        for edge in &body.edges {
+            if let Curve::Nurbs(curve) = &edge.curve {
+                let min = curve
+                    .weights()
+                    .iter()
+                    .copied()
+                    .fold(f64::INFINITY, f64::min);
+                let max = curve.weights().iter().copied().fold(0., f64::max);
+                weight_ratio = f64::max(weight_ratio, max / min);
+            }
+        }
+    }
+    let arithmetic = 65536. * f64::EPSILON * scale.max(f64::MIN_POSITIVE) * weight_ratio;
+    if !arithmetic.is_finite() || arithmetic >= chord_error / 16. {
+        return Err(failure());
+    }
+    let surfaces = body.shell.faces[2..]
+        .iter()
+        .map(|f| match &f.surface {
+            Surface::Nurbs(s) => Ok(s.as_ref()),
+            _ => Err(failure()),
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let rims = body.edges[..8]
+        .iter()
+        .map(|e| match &e.curve {
+            Curve::Nurbs(c) => Ok(c.as_ref()),
+            _ => Err(failure()),
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let mut count = 1usize;
+    for surface in &surfaces {
+        let bounded = surface.tessellate_bounded(chord_error * 0.5, 4096)?;
+        let n = (bounded.uv_ranges.len() as f64).sqrt() as usize;
+        if n * n != bounded.uv_ranges.len() || !n.is_power_of_two() {
+            return Err(failure());
+        }
+        count = count.max(n);
+    }
+    loop {
+        if count > 64 {
+            return Err(failure());
+        }
+        let mut all = true;
+        for curve in &rims {
+            for i in 0..count {
+                all &= rim_bound(
+                    curve,
+                    i as f64 / count as f64,
+                    (i + 1) as f64 / count as f64,
+                    arithmetic,
+                )? <= chord_error * 0.75;
+            }
+        }
+        if all {
+            break;
+        }
+        count *= 2;
+    }
+    // Cache by topology IDs/parameters, never by approximate XYZ proximity.
+    let edge_points = body
+        .edges
+        .iter()
+        .enumerate()
+        .map(|(edge, e)| {
+            (0..=count)
+                .map(|i| {
+                    if i == 0 {
+                        Ok(body.vertices[e.vertices[0]].point)
+                    } else if i == count {
+                        Ok(body.vertices[e.vertices[1]].point)
+                    } else {
+                        let mut t = i as f64 / count as f64;
+                        if edge >= 8 {
+                            if let Some(weights) = generator_weights {
+                                let [w0, w1] = weights[edge - 8];
+                                let scale = w0.max(w1);
+                                let (w0, w1) = (w0 / scale, w1 / scale);
+                                t = t * w1 / ((1. - t) * w0 + t * w1);
+                                if !t.is_finite() || t <= 0. || t >= 1. {
+                                    return Err(failure());
+                                }
                             }
                         }
-                    })
-                    .collect::<Result<Vec<_>>>()
-                    .map(|p| (edge, p))
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let mut mesh = Mesh::default();
-        for (q, surface) in surfaces.iter().enumerate() {
-            let mut points = Vec::with_capacity((count + 1) * (count + 1));
-            let mut normals = Vec::with_capacity(points.capacity());
-            let mut mismatch = 0f64;
-            for i in 0..=count {
-                for j in 0..=count {
-                    let u = i as f64 / count as f64;
-                    let v = j as f64 / count as f64;
-                    let exact = surface.evaluate(u, v)?;
-                    let canonical = if j == 0 {
-                        edge_points[q].1[i]
-                    } else if j == count {
-                        edge_points[4 + q].1[i]
-                    } else if i == 0 {
-                        edge_points[8 + q].1[j]
-                    } else if i == count {
-                        edge_points[8 + (q + 1) % 4].1[j]
-                    } else {
-                        exact
-                    };
-                    mismatch = mismatch.max(norm(canonical - exact));
-                    points.push(canonical);
-                    normals.push(surface.normal(u, v)?);
-                }
-            }
-            if !mismatch.is_finite() || mismatch + arithmetic > chord_error * 0.25 {
-                return Err(failure());
-            }
-            for i in 0..count {
-                for j in 0..count {
-                    let ranges = [
-                        [i as f64 / count as f64, (i + 1) as f64 / count as f64],
-                        [j as f64 / count as f64, (j + 1) as f64 / count as f64],
-                    ];
-                    let restricted = surface.restricted(ranges)?;
-                    let bounded = restricted
-                        .tessellate_bounded(chord_error * 0.75 - mismatch - arithmetic, 1)?;
-                    if bounded.error_bounds.len() != 1
-                        || bounded.error_bounds[0] + mismatch + arithmetic > chord_error
-                    {
-                        return Err(failure());
+                        let p = e.curve.try_evaluate(t)?;
+                        if !p.finite() {
+                            Err(failure())
+                        } else {
+                            Ok(p)
+                        }
                     }
-                    let a = i * (count + 1) + j;
-                    let b = (i + 1) * (count + 1) + j;
-                    let c = b + 1;
-                    let d = a + 1;
-                    for indices in [[a, b, c], [a, c, d]] {
-                        emit(
-                            &mut mesh,
-                            indices.map(|k| points[k]),
-                            indices.map(|k| normals[k]),
-                            q + 2,
-                            body.shell.faces[q + 2].orientation,
-                        )?;
-                    }
-                }
+                })
+                .collect::<Result<Vec<_>>>()
+                .map(|p| (edge, p))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let mut mesh = Mesh::default();
+    for (q, surface) in surfaces.iter().enumerate() {
+        let mut points = Vec::with_capacity((count + 1) * (count + 1));
+        let mut normals = Vec::with_capacity(points.capacity());
+        let mut mismatch = 0f64;
+        for i in 0..=count {
+            for j in 0..=count {
+                let u = i as f64 / count as f64;
+                let v = j as f64 / count as f64;
+                let exact = surface.evaluate(u, v)?;
+                let canonical = if j == 0 {
+                    edge_points[q].1[i]
+                } else if j == count {
+                    edge_points[4 + q].1[i]
+                } else if i == 0 {
+                    edge_points[8 + q].1[j]
+                } else if i == count {
+                    edge_points[8 + (q + 1) % 4].1[j]
+                } else {
+                    exact
+                };
+                mismatch = mismatch.max(norm(canonical - exact));
+                points.push(canonical);
+                normals.push(surface.normal(u, v)?);
             }
         }
-        for cap in 0..2 {
-            let face = &body.shell.faces[cap];
-            let center = match face.surface {
-                Surface::Plane { origin, .. } => origin,
-                _ => return Err(failure()),
-            };
-            let normal = face.surface.normal_at(0., 0.)?;
-            for q in 0..4 {
-                for i in 0..count {
-                    let curve = rims[cap * 4 + q];
-                    let bound = rim_bound(
-                        curve,
-                        i as f64 / count as f64,
-                        (i + 1) as f64 / count as f64,
-                        arithmetic,
-                    )?;
-                    let a = i as f64 / count as f64;
-                    let b = (i + 1) as f64 / count as f64;
-                    let replacement = norm(edge_points[cap * 4 + q].1[i] - curve.evaluate(a)?)
-                        .max(norm(edge_points[cap * 4 + q].1[i + 1] - curve.evaluate(b)?));
-                    if !replacement.is_finite() || bound + replacement > chord_error {
-                        return Err(failure());
-                    }
-                    emit(
-                        &mut mesh,
-                        [
-                            center,
-                            edge_points[cap * 4 + q].1[i],
-                            edge_points[cap * 4 + q].1[i + 1],
-                        ],
-                        [normal; 3],
-                        cap,
-                        face.orientation,
-                    )?;
-                }
-            }
-        }
-        if mesh.signed_volume() <= 0. || !mesh.signed_volume().is_finite() {
+        if !mismatch.is_finite() || mismatch + arithmetic > chord_error * 0.25 {
             return Err(failure());
         }
-        Ok(mesh)
+        for i in 0..count {
+            for j in 0..count {
+                let ranges = [
+                    [i as f64 / count as f64, (i + 1) as f64 / count as f64],
+                    [j as f64 / count as f64, (j + 1) as f64 / count as f64],
+                ];
+                let restricted = surface.restricted(ranges)?;
+                let bounded =
+                    restricted.tessellate_bounded(chord_error * 0.75 - mismatch - arithmetic, 1)?;
+                if bounded.error_bounds.len() != 1
+                    || bounded.error_bounds[0] + mismatch + arithmetic > chord_error
+                {
+                    return Err(failure());
+                }
+                let a = i * (count + 1) + j;
+                let b = (i + 1) * (count + 1) + j;
+                let c = b + 1;
+                let d = a + 1;
+                for indices in [[a, b, c], [a, c, d]] {
+                    emit(
+                        &mut mesh,
+                        indices.map(|k| points[k]),
+                        indices.map(|k| normals[k]),
+                        q + 2,
+                        body.shell.faces[q + 2].orientation,
+                    )?;
+                }
+            }
+        }
     }
+    for cap in 0..2 {
+        let face = &body.shell.faces[cap];
+        let center = match face.surface {
+            Surface::Plane { origin, .. } => origin,
+            _ => return Err(failure()),
+        };
+        let normal = face.surface.normal_at(0., 0.)?;
+        for q in 0..4 {
+            for i in 0..count {
+                let curve = rims[cap * 4 + q];
+                let bound = rim_bound(
+                    curve,
+                    i as f64 / count as f64,
+                    (i + 1) as f64 / count as f64,
+                    arithmetic,
+                )?;
+                let a = i as f64 / count as f64;
+                let b = (i + 1) as f64 / count as f64;
+                let replacement = norm(edge_points[cap * 4 + q].1[i] - curve.evaluate(a)?)
+                    .max(norm(edge_points[cap * 4 + q].1[i + 1] - curve.evaluate(b)?));
+                if !replacement.is_finite() || bound + replacement > chord_error {
+                    return Err(failure());
+                }
+                emit(
+                    &mut mesh,
+                    [
+                        center,
+                        edge_points[cap * 4 + q].1[i],
+                        edge_points[cap * 4 + q].1[i + 1],
+                    ],
+                    [normal; 3],
+                    cap,
+                    face.orientation,
+                )?;
+            }
+        }
+    }
+    if mesh.signed_volume() <= 0. || !mesh.signed_volume().is_finite() {
+        return Err(failure());
+    }
+    Ok(mesh)
 }

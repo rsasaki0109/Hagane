@@ -60,7 +60,7 @@ fn same_surface(a: &Surface, b: &Surface) -> bool {
         _ => false,
     }
 }
-fn same_body(a: &Solid, b: &Solid) -> bool {
+pub(crate) fn same_body(a: &Solid, b: &Solid) -> bool {
     a.vertices.len() == b.vertices.len()
         && a.edges.len() == b.edges.len()
         && a.shell.faces.len() == b.shell.faces.len()

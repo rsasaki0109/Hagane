@@ -368,5 +368,13 @@ pub use nurbs_frustum_line_intersection::*;
 mod nurbs_frustum_plane_section_demo;
 pub use nurbs_frustum_plane_section_demo::*;
 
+mod nurbs_frustum_oblique_display;
+
+mod nurbs_frustum_plane_split_demo;
+pub use nurbs_frustum_plane_split_demo::*;
+
 mod nurbs_frustum_plane_section;
 pub use nurbs_frustum_plane_section::*;
+
+mod nurbs_frustum_oblique_split;
+pub use nurbs_frustum_oblique_split::*;

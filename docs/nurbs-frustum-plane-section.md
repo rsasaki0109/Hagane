@@ -5,7 +5,9 @@ four-edge section where a plane crosses every retained lateral quarter strictly
 between the two caps. It returns actual rational quadratic spatial edges,
 shared cyclic vertices and same-parameter rational cubic UV curves referencing
 the original B-rep faces. The source remains unchanged. This operation creates
-a section curve, **not a split solid or new cap face**.
+a section curve, **not a split solid or new cap face**. The separate
+[oblique split API](nurbs-frustum-plane-split.md) uses this section to construct
+two actual closed children under the same cap-clearance restrictions.
 
 ```rust
 use hagane::*;

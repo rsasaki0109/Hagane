@@ -1226,3 +1226,13 @@ coefficient cancellation identity bounds correspondence to the source patch.
 These use the existing public NURBS mathematics references. Original code is
 MIT OR Apache-2.0 with no new dependencies or OCCT source. See
 [closed section scope](nurbs-frustum-plane-section.md).
+
+Oblique frustum splitting joins the original and section homogeneous curves by
+a rational linear ruling. The generator UV inverse follows directly from its
+endpoint weights. Planar cut pcurves use affine projections of actual controls;
+equal positive weights bound the complete projection residual. Analytic volume
+uses ellipse area and cone volume `area*height/3`; rationalizing the difference
+of supporting cone volumes gives the stable zero-taper limit documented in
+[oblique split scope](nurbs-frustum-plane-split.md). Conforming display reuses
+the established rational Bernstein cell/rim bounds with weighted generator
+parameters. Original MIT OR Apache-2.0 code adds no dependencies or OCCT source.

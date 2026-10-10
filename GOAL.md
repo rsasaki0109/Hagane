@@ -1,5 +1,12 @@
 # Development goal
 
+[Oblique frustum splits](docs/nurbs-frustum-plane-split.md) produce two actual
+closed rational B-rep children with new planar cut caps, analytic volumes,
+conforming bounded display and per-child STEP export. The initial domain keeps
+the complete cut strictly between the original caps; centroid/inertia of these
+children and further cuts remain unsupported. This extends actual curved 3D
+partition infrastructure without claiming general NURBS Booleans.
+
 [Closed oblique frustum sections](docs/nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.
 The closed section has shared vertices and bounded display; it is not a solid
@@ -35,7 +42,9 @@ coaxial domain does not claim arbitrary lofts, apex shapes or general NURBS Bool
 Mesh-free world-point classification now checks Euclidean distances to finite
 side/cap/rim boundaries; unresolved precision is explicitly refused.
 [Axial frustum partitions](docs/nurbs-frustum-split.md) return two validated closed children,
-actual rational section curves and per-child STEP. General oblique splits remain unsupported.
+actual rational section curves and per-child STEP. A separate
+[oblique split API](docs/nurbs-frustum-plane-split.md) now admits closed cuts
+strictly between the source caps; general oblique partitions remain unsupported.
 The batch axial API accepts 1–16 ordered cuts, certifies every part against
 the original source and refuses unresolved intervals atomically. Its native
 example exports all parts. The [batch demo](docs/nurbs-frustum-partitions.md)
