@@ -1,8 +1,10 @@
-//! Strict exact-representation recognition of an unplaced millimetre frustum.
+//! Strict exact-representation recognition of an identity-axis millimetre frustum.
 use crate::*;
 use std::collections::BTreeSet;
 fn unsupported() -> Error {
-    Error::Unsupported("STEP is not an exact unplaced millimetre canonical rational frustum")
+    Error::Unsupported(
+        "STEP is not an exact supported identity-axis millimetre canonical rational frustum",
+    )
 }
 fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
     match (a, b) {
@@ -48,6 +50,24 @@ pub fn import_step_nurbs_frustum_mm(
     input: &str,
     policy: GeometryTolerance,
 ) -> Result<NurbsFrustumSolid> {
+    import_frustum(input, policy, false)
+}
+
+/// Import an exact identity-axis frustum with a representable translation.
+/// Rotation and unit conversion remain unsupported. Every actual coefficient
+/// must exactly reproduce the inferred translated canonical representation.
+pub fn import_step_nurbs_frustum_translated_mm(
+    input: &str,
+    policy: GeometryTolerance,
+) -> Result<NurbsFrustumSolid> {
+    import_frustum(input, policy, true)
+}
+
+fn import_frustum(
+    input: &str,
+    policy: GeometryTolerance,
+    translated: bool,
+) -> Result<NurbsFrustumSolid> {
     let parsed = crate::nurbs_frustum_step_read::read_frustum_solid(input, policy.absolute())?;
     let actual = &parsed.solid;
     let bottom = actual
@@ -55,20 +75,34 @@ pub fn import_step_nurbs_frustum_mm(
         .faces
         .iter()
         .find(|f| {
-            matches!(f.surface,Surface::Plane{origin,..} if origin==Point3::new(0.,0.,0.))
+            matches!(f.surface,Surface::Plane{origin,..} if translated || origin==Point3::new(0.,0.,0.))
                 && f.orientation == -1
         })
         .ok_or_else(unsupported)?;
+    let Surface::Plane {
+        origin: bottom_origin,
+        ..
+    } = bottom.surface
+    else {
+        return Err(unsupported());
+    };
     let top = actual
         .shell
         .faces
         .iter()
         .find(|f| {
-            matches!(f.surface,Surface::Plane{origin,..} if origin.x==0.&&origin.y==0.&&origin.z>0.)
+            matches!(f.surface,Surface::Plane{origin,..} if origin.x==bottom_origin.x&&origin.y==bottom_origin.y&&origin.z>bottom_origin.z)
                 && f.orientation == 1
         })
         .ok_or_else(unsupported)?;
     let radius = |f: &Face| -> Result<f64> {
+        if translated {
+            let PCurve::Nurbs(c) = &f.wires[0].coedges[0].pcurve else {
+                return Err(unsupported());
+            };
+            let p = c.control_points()[0];
+            return Ok(p.x.abs().max(p.y.abs()));
+        }
         let edge = &actual.edges[f.wires[0].coedges[0].edge];
         let Curve::Nurbs(c) = &edge.curve else {
             return Err(unsupported());
@@ -80,8 +114,9 @@ pub fn import_step_nurbs_frustum_mm(
     let Surface::Plane { origin, .. } = top.surface else {
         return Err(unsupported());
     };
-    let height = origin.z;
-    let candidate = NurbsFrustumSolid::new(Frame3::IDENTITY, radii, height, policy)?;
+    let height = origin.z - bottom_origin.z;
+    let frame = Frame3::new(bottom_origin, Frame3::IDENTITY.axes(), policy.absolute())?;
+    let candidate = NurbsFrustumSolid::new(frame, radii, height, policy)?;
     let expected = candidate.solid();
     let mut vertex_map = Vec::new();
     let mut seen = BTreeSet::new();
@@ -188,7 +223,7 @@ pub fn import_step_nurbs_frustum_mm(
     for (i, f) in restored.shell.faces.into_iter().enumerate() {
         solid.shell.faces[face_map[i]] = f;
     }
-    NurbsFrustumSolid::from_brep(solid, Frame3::IDENTITY, radii, height, policy)
+    NurbsFrustumSolid::from_brep(solid, frame, radii, height, policy)
 }
 
 #[cfg(test)]

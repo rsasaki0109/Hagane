@@ -96,7 +96,9 @@ pcurves, `LINE` generators, `PLANE` caps and a closed AP214 solid in mm. The
 existing all-NURBS writer paths and public analytic import/export scopes remain
 unchanged. The dedicated [STEP reader](nurbs-frustum-step-import.md) now accepts
 strict unplaced canonical mm frusta while retaining their actual geometry.
-Placed frustum STEP import, general STEP recognition, arbitrary-profile
+The separate [translated importer](nurbs-frustum-translated-step-import.md) also
+accepts identity-axis translations. Rotated frustum STEP import, general STEP
+recognition, arbitrary-profile
 lofts, apex degeneracies, holes, twists, skew lofts, fillets and Booleans on these
 frusta remain unsupported.
 

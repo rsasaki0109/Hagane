@@ -14,7 +14,9 @@ The [batch demo](nurbs-frustum-partitions.md) connects actual parts to
 native/WASM reports and browser selection/STEP export.
 The dedicated [frustum STEP reader](nurbs-frustum-step-import.md) recognizes
 strict unplaced mm representations with actual rational geometry and shared
-topology retained; placed frusta and general rational imports remain unsupported.
+topology retained. A separate [translated importer](nurbs-frustum-translated-step-import.md)
+accepts identity-axis translations and axial upper children. Rotations and
+general rational imports remain unsupported.
 
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

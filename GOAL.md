@@ -15,7 +15,9 @@ connects actual parts to native/WASM reports and browser selection/STEP export.
 The dedicated [frustum STEP reader](docs/nurbs-frustum-step-import.md) now
 recognizes strict unplaced mm bodies, retains actual rational geometry and UV
 boundaries, and checks exact serialized LINE/affine preimages before admission.
-Placed frusta and general rational STEP imports remain unsupported.
+The separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
+accepts identity-axis translations and axial upper children with exact retained
+geometry. Rotated frusta and general rational STEP remain unsupported.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

@@ -1172,3 +1172,9 @@ writer's scalar operation order before canonical parameter restoration. This
 is a representation certificate, not curve fitting or repair. The decoder and
 recognizer are original MIT OR Apache-2.0 Rust code; no OCCT source or new
 dependency is used.
+
+The separate translated recognizer obtains radii from retained local rational
+UV coefficients and height from represented cap separation. Its exact full-body
+certificate avoids subtractive world-coordinate radius fitting; it does not
+claim to recover unobservable source construction parameters. This extension
+uses original MIT OR Apache-2.0 code and adds no dependencies.

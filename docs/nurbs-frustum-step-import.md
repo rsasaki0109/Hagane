@@ -55,7 +55,11 @@ the uncertainty value changes while the retained geometry remains the same.
 The demo uses `GeometryTolerance::default()`; the Rust import/export API accepts
 an explicit policy.
 
-Other unit systems, placements, apex bodies, arbitrary rational shells, general
+A separate [translated importer](nurbs-frustum-translated-step-import.md) accepts
+identity-axis translations and upper axial children. This API and browser page
+retain their origin-zero restriction.
+
+Other unit systems, placements through this API, apex bodies, arbitrary rational shells, general
 STEP products/assemblies and differently parameterized representations remain
 unsupported. The generic analytic and graph STEP importer domains remain
 unchanged. Unresolved arithmetic and invalid geometry return explicit errors.
