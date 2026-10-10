@@ -6,6 +6,8 @@ mass/inertia, bounded display and exact STEP export. This typed positive-radius
 coaxial domain does not claim arbitrary lofts, apex shapes or general NURBS Booleans.
 Mesh-free world-point classification now checks Euclidean distances to finite
 side/cap/rim boundaries; unresolved precision is explicitly refused.
+[Axial frustum partitions](nurbs-frustum-split.md) return two validated closed children,
+actual rational section curves and per-child STEP. General oblique splits remain unsupported.
 
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

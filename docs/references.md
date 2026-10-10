@@ -1152,3 +1152,13 @@ meridian and compute distance to the finite cap disks. Matching query azimuth
 minimizes rotational-surface distance; segment endpoints and disk boundaries
 include the circular rims. This elementary Euclidean construction is original
 MIT OR Apache-2.0 Rust code, without a mesh query or new dependency.
+
+### Axial restriction of rational frusta
+
+A degree-one direction with equal homogeneous weights restricts by affine
+interpolation of its control rows. Matching positive rational basis functions
+bound the entire physical surface difference by the largest control difference;
+finite samples alone are not used as a restriction certificate. Axial partition
+uses this published rational/Bernstein basis property with the conic references
+above and polynomial disk moments for conservation. Original code remains
+MIT OR Apache-2.0; no new dependency or OCCT source is used.
