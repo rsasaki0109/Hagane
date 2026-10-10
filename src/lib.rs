@@ -315,3 +315,8 @@ mod normal_prism_arc_line_boolean;
 pub use normal_prism_arc_line_boolean::*;
 mod normal_prism_arc_boolean_demo;
 pub use normal_prism_arc_boolean_demo::*;
+
+mod normal_prism_region_boolean;
+pub use normal_prism_region_boolean::*;
+mod normal_prism_region_boolean_demo;
+pub use normal_prism_region_boolean_demo::*;

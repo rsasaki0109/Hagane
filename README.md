@@ -19,6 +19,12 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Holed-tool prism Booleans](docs/prism-region-booleans.md) now classify
+material regions in both operands, returning exact difference, intersection and
+union components including retained central islands. The finite line/quarter-arc,
+same-axis/same-cap-interval domain keeps contact overlays and general 3D Boolean
+operations unsupported. Earlier no-tool-holes APIs retain their restrictions.
+
 [Exact line/arc prism Booleans](docs/prism-arc-line-booleans.md) now return
 all difference, intersection and union components when circular-arc tools cross
 line/arc stock boundaries. Analytic circle/circle roots extend the actual B-rep

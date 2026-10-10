@@ -499,6 +499,7 @@ fn extrude_cycles(
     axis: Vec3,
     tol: Tolerance,
     effective: Tolerance,
+    allow_nested_components: bool,
 ) -> Result<Vec<Solid>> {
     let mut outers = Vec::new();
     let mut holes = Vec::new();
@@ -512,12 +513,34 @@ fn extrude_cycles(
     let mut assignments = vec![Vec::new(); outers.len()];
     for hole in holes {
         let point = hole[0].evaluate(0.);
-        let mut parent = None;
+        let mut parent: Option<usize> = None;
         for (i, outer) in outers.iter().enumerate() {
-            if crate::mixed::point_location(point, outer, effective)? == PointLocation::Inside
-                && parent.replace(i).is_some()
-            {
-                return Err(DOMAIN);
+            match crate::mixed::point_location(point, outer, effective)? {
+                PointLocation::Boundary => return Err(DOMAIN),
+                PointLocation::Outside => continue,
+                PointLocation::Inside => {}
+            }
+            if let Some(previous) = parent {
+                if !allow_nested_components {
+                    return Err(DOMAIN);
+                }
+                let candidate_inside = crate::mixed::point_location(
+                    outer[0].evaluate(0.),
+                    &outers[previous],
+                    effective,
+                )?;
+                let previous_inside = crate::mixed::point_location(
+                    outers[previous][0].evaluate(0.),
+                    outer,
+                    effective,
+                )?;
+                match (candidate_inside, previous_inside) {
+                    (PointLocation::Inside, PointLocation::Outside) => parent = Some(i),
+                    (PointLocation::Outside, PointLocation::Inside) => {}
+                    _ => return Err(DOMAIN),
+                }
+            } else {
+                parent = Some(i);
             }
         }
         assignments[parent.ok_or(DOMAIN)?].push(hole);
@@ -592,6 +615,16 @@ pub(crate) fn partition_engine(
     tolerance: GeometryTolerance,
     curved_tool: bool,
 ) -> Result<BooleanBodies> {
+    region_partition_engine(source, tool, axis, tolerance, curved_tool, false)
+}
+pub(crate) fn region_partition_engine(
+    source: &Solid,
+    tool: &Solid,
+    axis: Vec3,
+    tolerance: GeometryTolerance,
+    curved_tool: bool,
+    allow_tool_holes: bool,
+) -> Result<BooleanBodies> {
     let tol = tolerance.absolute();
     source.validate(tol)?;
     tool.validate(tol)?;
@@ -599,7 +632,7 @@ pub(crate) fn partition_engine(
         crate::arc_line_prism_validation::recognize_validated_normal_prism(source, axis, tol)?;
     let cutter =
         crate::arc_line_prism_validation::recognize_validated_normal_prism(tool, axis, tol)?;
-    if !cutter.region.holes.is_empty()
+    if (!allow_tool_holes && !cutter.region.holes.is_empty())
         || (!curved_tool
             && tool
                 .edges
@@ -614,13 +647,15 @@ pub(crate) fn partition_engine(
         crate::booleans::convex_planes(tool, tolerance)?;
     }
     if curved_tool
-        && cutter.region.outer.iter().any(
+        && std::iter::once(&cutter.region.outer).chain(&cutter.region.holes).flatten().any(
             |s| matches!(s,PlanarSegment::Arc{sweep,..}if sweep.abs()>FRAC_PI_2+64.*f64::EPSILON),
         )
     {
-        return Err(Error::Unsupported(
-            "arc-line Boolean tool requires quarter or smaller arcs without holes",
-        ));
+        return Err(Error::Unsupported(if allow_tool_holes {
+            "region Boolean tool requires quarter or smaller arcs"
+        } else {
+            "arc-line Boolean tool requires quarter or smaller arcs without holes"
+        }));
     }
     let mut stock_rings = vec![orient(&stock.region.outer, true)?];
     for hole in &stock.region.holes {
@@ -635,7 +670,12 @@ pub(crate) fn partition_engine(
             "partition source requires at most sixteen holes and quarter or smaller arcs",
         ));
     }
-    let total = stock_rings.iter().map(Vec::len).sum::<usize>() + cutter.region.outer.len();
+    if cutter.region.holes.len() > 16 {
+        return Err(Error::Unsupported("partition tool hole limit exceeded"));
+    }
+    let total = stock_rings.iter().map(Vec::len).sum::<usize>()
+        + cutter.region.outer.len()
+        + cutter.region.holes.iter().map(Vec::len).sum::<usize>();
     if total > 128 {
         return Err(Error::Unsupported("partition input profile limit exceeded"));
     }
@@ -689,75 +729,88 @@ pub(crate) fn partition_engine(
         length(stock.frame.axes()[2].cross(cutter.frame.axes()[2])) * scale,
         reserve,
     )?;
-    let mut transformed = Vec::new();
-    for segment in &cutter.region.outer {
-        let (a, b) = match *segment {
-            PlanarSegment::Line { a, b } => (a, b),
-            PlanarSegment::Arc {
-                center,
-                radius,
-                start_angle,
-                sweep,
-            } => {
-                let actual = cutter.frame.point(Vec3::new(center[0], center[1], 0.));
-                let local = stock.frame.local_point(actual);
-                checked(
-                    (local.z - cb.z).abs()
-                        + length(actual - stock.frame.point(Vec3::new(local.x, local.y, cb.z))),
-                    reserve,
-                )?;
-                let x = stock.frame.local_vector(cutter.frame.axes()[0]);
-                let y = stock.frame.local_vector(cutter.frame.axes()[1]);
-                let phase = x.y.atan2(x.x);
-                let orientation = if x.x * y.y - x.y * y.x > 0. { 1. } else { -1. };
-                let cosine = stock.frame.vector(Vec3::new(phase.cos(), phase.sin(), 0.));
-                let sine = stock.frame.vector(Vec3::new(
-                    -phase.sin() * orientation,
-                    phase.cos() * orientation,
-                    0.,
-                ));
-                checked(
-                    radius
-                        * (length(cosine - cutter.frame.axes()[0])
-                            + length(sine - cutter.frame.axes()[1])),
-                    reserve,
-                )?;
-                let start = phase + orientation * start_angle;
-                let wrapped = start.rem_euclid(TAU);
-                checked(
-                    radius
-                        * ((start.cos() - wrapped.cos()).abs()
-                            + (start.sin() - wrapped.sin()).abs()),
-                    reserve,
-                )?;
-                transformed.push(PlanarSegment::Arc {
-                    center: [local.x, local.y],
+    let mut tool_rings = Vec::new();
+    for (ring_index, ring) in std::iter::once(&cutter.region.outer)
+        .chain(&cutter.region.holes)
+        .enumerate()
+    {
+        let mut transformed = Vec::new();
+        for segment in ring {
+            let (a, b) = match *segment {
+                PlanarSegment::Line { a, b } => (a, b),
+                PlanarSegment::Arc {
+                    center,
                     radius,
-                    start_angle: wrapped,
-                    sweep: orientation * sweep,
-                });
-                continue;
+                    start_angle,
+                    sweep,
+                } => {
+                    let actual = cutter.frame.point(Vec3::new(center[0], center[1], 0.));
+                    let local = stock.frame.local_point(actual);
+                    checked(
+                        (local.z - cb.z).abs()
+                            + length(actual - stock.frame.point(Vec3::new(local.x, local.y, cb.z))),
+                        reserve,
+                    )?;
+                    let x = stock.frame.local_vector(cutter.frame.axes()[0]);
+                    let y = stock.frame.local_vector(cutter.frame.axes()[1]);
+                    let phase = x.y.atan2(x.x);
+                    let orientation = if x.x * y.y - x.y * y.x > 0. { 1. } else { -1. };
+                    let cosine = stock.frame.vector(Vec3::new(phase.cos(), phase.sin(), 0.));
+                    let sine = stock.frame.vector(Vec3::new(
+                        -phase.sin() * orientation,
+                        phase.cos() * orientation,
+                        0.,
+                    ));
+                    checked(
+                        radius
+                            * (length(cosine - cutter.frame.axes()[0])
+                                + length(sine - cutter.frame.axes()[1])),
+                        reserve,
+                    )?;
+                    let start = phase + orientation * start_angle;
+                    let wrapped = start.rem_euclid(TAU);
+                    checked(
+                        radius
+                            * ((start.cos() - wrapped.cos()).abs()
+                                + (start.sin() - wrapped.sin()).abs()),
+                        reserve,
+                    )?;
+                    transformed.push(PlanarSegment::Arc {
+                        center: [local.x, local.y],
+                        radius,
+                        start_angle: wrapped,
+                        sweep: orientation * sweep,
+                    });
+                    continue;
+                }
+            };
+            let mut points = Vec::new();
+            for p in [a, b] {
+                let actual = cutter.frame.point(Vec3::new(p[0], p[1], 0.));
+                let local = stock.frame.local_point(actual);
+                checked((local.z - cb.z).abs(), reserve)?;
+                let represented = stock.frame.point(Vec3::new(local.x, local.y, cb.z));
+                checked(length(actual - represented), reserve)?;
+                points.push([local.x, local.y]);
             }
-        };
-        let mut points = Vec::new();
-        for p in [a, b] {
-            let actual = cutter.frame.point(Vec3::new(p[0], p[1], 0.));
-            let local = stock.frame.local_point(actual);
-            checked((local.z - cb.z).abs(), reserve)?;
-            let represented = stock.frame.point(Vec3::new(local.x, local.y, cb.z));
-            checked(length(actual - represented), reserve)?;
-            points.push([local.x, local.y]);
+            transformed.push(PlanarSegment::Line {
+                a: points[0],
+                b: points[1],
+            });
         }
-        transformed.push(PlanarSegment::Line {
-            a: points[0],
-            b: points[1],
-        });
+        let transformed = orient(&transformed, ring_index == 0)?;
+        crate::mixed::validate_mixed(&transformed, tol)?;
+        tool_rings.push(transformed);
     }
-    let tool_ring = orient(&transformed, true)?;
-    crate::mixed::validate_mixed(&tool_ring, tol)?;
+    if allow_tool_holes {
+        crate::mixed::validate_mixed_region_trim(
+            &tool_rings,
+            Tolerance::new(tolerance.length_at_scale(scale)?)?,
+        )?;
+    }
     let mut nodes = Vec::new();
     let mut first = inputs(&stock_rings, &mut nodes);
-    let mut second = inputs(std::slice::from_ref(&tool_ring), &mut nodes);
+    let mut second = inputs(&tool_rings, &mut nodes);
     let mut crossings = 0;
     for a in &mut first {
         for b in &mut second {
@@ -806,7 +859,7 @@ pub(crate) fn partition_engine(
     let mut common = Vec::new();
     let mut union = Vec::new();
     for f in source_fragments {
-        match crate::mixed::point_location(f.geometry.evaluate(0.5), &tool_ring, classify_tol)? {
+        match material_location(f.geometry.evaluate(0.5), &tool_rings, classify_tol)? {
             PointLocation::Outside => {
                 difference.push(f);
                 if curved_tool {
@@ -848,6 +901,7 @@ pub(crate) fn partition_engine(
         axis,
         tol,
         effective,
+        allow_tool_holes,
     )?;
     let intersection = extrude_cycles(
         cycles(&common)?,
@@ -856,6 +910,7 @@ pub(crate) fn partition_engine(
         axis,
         tol,
         effective,
+        allow_tool_holes,
     )?;
     let union = if curved_tool {
         extrude_cycles(
@@ -865,6 +920,7 @@ pub(crate) fn partition_engine(
             axis,
             tol,
             effective,
+            allow_tool_holes,
         )?
     } else {
         Vec::new()

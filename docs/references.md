@@ -1122,3 +1122,14 @@ the center triangle, with Heron’s factored area formula. Directed outside
 boundaries give the union, inside boundaries the common material, and reversed
 tool-inside boundaries the difference. The implementation is original
 MIT OR Apache-2.0 Rust code; no dependency or OCCT source was added.
+
+### Holed material regions and containment forests
+
+The normal-prism region Boolean extends the directed planar arrangements above
+to both operands’ outer and inner rings. Clockwise inner boundaries exclude
+material; classifying fragments against the complete region preserves central
+islands and annular tools. Nested output cycles assign each hole to its immediate
+containing material boundary, using analytic point-location witnesses rather
+than a possibly exterior centroid. References remain the published planar
+arrangement and Green-theorem sources above. Original code is MIT OR Apache-2.0;
+no library dependency or OCCT source was added.
