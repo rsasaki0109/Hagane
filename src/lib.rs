@@ -354,3 +354,8 @@ mod nurbs_frustum_workflow_demo;
 pub use nurbs_frustum_workflow_demo::*;
 mod nurbs_frustum_workflow;
 pub use nurbs_frustum_workflow::*;
+
+mod nurbs_frustum_intersection;
+pub use nurbs_frustum_intersection::*;
+mod nurbs_frustum_segment_demo;
+pub use nurbs_frustum_segment_demo::*;

@@ -19,6 +19,11 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Finite frustum segment queries](docs/nurbs-frustum-segment.md) return mesh-free boundary hits with
+actual face UV witnesses and a checked material interval. Native/WASM/browser
+demos retain the original B-rep; contacts and insufficient precision are explicit
+errors. This supplies intersection infrastructure without claiming a Boolean cut.
+
 [Editable rational frustum workflows](docs/nurbs-frustum-workflow.md) connect actual cardinal-frame
 stock or STEP input to axial partitions and explicit component selection.
 Native and WASM sessions reuse unchanged B-reps, validate outputs before commit

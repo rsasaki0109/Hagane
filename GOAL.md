@@ -1,5 +1,10 @@
 # Development goal
 
+[Finite frustum segment queries](docs/nurbs-frustum-segment.md) return mesh-free boundary hits with
+actual face UV witnesses and a checked material interval. Native/WASM/browser
+demos retain the original B-rep; contacts and insufficient precision are explicit
+errors. This supplies intersection infrastructure without claiming a Boolean cut.
+
 [Editable rational frustum workflows](docs/nurbs-frustum-workflow.md) connect actual cardinal-frame
 stock or STEP input to axial partitions and explicit component selection.
 Native and WASM sessions reuse unchanged B-reps, validate outputs before commit

@@ -1198,3 +1198,13 @@ retain the original typed rational B-rep and source-local partition algorithms;
 world inertia uses the standard tensor transformation `R I Rᵀ` and parallel-axis
 theorem. Original code is MIT OR Apache-2.0 with no new dependencies or OCCT
 source. See [pose scope](nurbs-frustum-workflow.md#axis-angle-stock-placement).
+
+Finite frustum segment intersection derives the implicit conical side equation
+and finite disk cap intersections directly. Stable quadratic roots use Vieta's
+formulas and algebraic rationalization to avoid subtractive cancellation.
+Floating-point allowance design follows standard error analysis concepts in
+N. J. Higham, *Accuracy and Stability of Numerical Algorithms*, second edition,
+SIAM, 2002; these are engineering guards, not formal interval certification.
+The convexity of the Euclidean norm proves the positive affine-radius shortcut.
+Original MIT OR Apache-2.0 code retains actual B-rep face UV witnesses and adds
+no dependencies or OCCT source. See [query domain](nurbs-frustum-segment.md).
