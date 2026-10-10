@@ -108,8 +108,8 @@ The [editable workflow](nurbs-frustum-workflow.md) adds `coaxial_bore` to schema
 It retains the actual bored component for radius edits, selection, Undo/Redo,
 bounded display and exact STEP output. A canonical single component is required;
 axial partitions and complete interior plane cuts retain the actual hole
-in every child. Repeated bores and further cuts of oblique children remain
-explicit errors.
+in every child. Further parallel cuts retain actual typed slabs. Repeated bores
+and skew further cuts of oblique children remain explicit errors.
 
 ## Exact finite segment intersections
 

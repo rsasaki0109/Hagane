@@ -59,14 +59,24 @@ fn retained_parallel_children_have_analytic_volumes_and_atomic_guards() {
                 .len(),
             1
         );
-        for query in [
-            json!({"command":"line","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),
-            json!({"command":"ray","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),
-        ] {
-            let rejected = command(&mut session, query);
-            assert_eq!(rejected["ok"], false);
-            assert_eq!(rejected["accepted_document"], doc);
+        for (kind, key) in [("line", "line"), ("ray", "line")] {
+            let queried = command(
+                &mut session,
+                json!({"command":kind,"component":1,"origin":[5.,0.,-5.],"direction":[2.,0.,35.]}),
+            );
+            assert_eq!(queried["ok"], true, "{queried}");
+            assert_eq!(queried[key]["hits"].as_array().unwrap().len(), 2);
+            assert_eq!(
+                queried[key]["material_intervals"].as_array().unwrap().len(),
+                1
+            );
         }
+        let rejected_query = command(
+            &mut session,
+            json!({"command":"ray","component":1,"origin":[6.,0.,10.],"direction":[0.,0.,0.]}),
+        );
+        assert_eq!(rejected_query["ok"], false);
+        assert_eq!(rejected_query["accepted_document"], doc);
         let mut skew = doc.clone();
         let n = skew["operations"].as_array().unwrap().len();
         skew["operations"][n - 1]["normal"] = json!([0., 0., 1.]);

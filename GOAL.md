@@ -1802,3 +1802,26 @@ an explicit test and documented limit. The entire browser suite passed on its
 first run; all exact PNG/raw-frame rollback guards remained. The inspected
 actual middle-slab screenshot shows four hits and material intervals
 `[0.25,0.4]` and `[0.6,0.833333…]`, alongside its Inside point and mass properties.
+
+## Original-parameter line and ray queries of retained slabs
+
+Plain and bored slabs now dispatch into the existing checked retained-body
+line/ray engine, using their actual B-rep, point classification and finite
+segment intersection. Original canonical sources provide conservative line
+enclosures and full-source precision budgets; original nonunit line parameters
+are retained. All material intervals are mapped and forward-ray clipped, with
+actual ray-origin membership and face witnesses verified. Existing numerical
+crop and parameter algorithms are unchanged; tangent, boundary-origin, rim,
+remote-anchor and unresolved precision cases remain explicit errors.
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: fmt, strict all-target Clippy, ten relevant native suites (22 tests)
+and WASM build passed. Independent actual cap/wall queries, all annular ray
+intervals, original nonunit/reversed parameters, pose/scales, UV/normals and
+original-anchor/contact failures passed. The combined entire new line/ray and
+all previous slab/ordinary/bored workflows passed with native reports and
+unchanged accepted STEP/cache/history. The entire browser suite passed on its
+first run with all strict PNG/raw-frame rollback guards. The inspected actual
+middle-slab screenshot shows its Inside point, cap-clipped finite segment and
+hole-origin forward-ray interval `[2,20/3]`. Stale blanket recut limitations
+were corrected to distinguish supported parallel cuts from unsupported skew.

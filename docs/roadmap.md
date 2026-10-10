@@ -24,7 +24,8 @@ also preserve original parameters on these children.
 slab boundaries and holes, with checked analytic centroids and inertia when
 conditioning permits. Conservative finite-face point queries preserve the hole.
 Finite slab segments retain actual face UVs and up to two material intervals.
-Slab line/ray queries, skew repeated cuts and repeated bores
+Slab line/ray queries preserve original nonunit parameters and all forward ray
+intervals. Skew repeated cuts and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
@@ -39,7 +40,7 @@ and general curved Booleans remain future work; the estimate remains 15–25%.
 [Editable oblique frustum workflows](nurbs-frustum-workflow.md) retain actual
 closed curved children through plane edits, explicit selection, cache reuse,
 Undo/Redo and STEP export. Typed components prevent substituting the source body.
-Repeated oblique cuts and general curved Booleans remain unsupported; the
+Skew repeated cuts and general curved Booleans remain unsupported; the
 long-term completion estimate remains 15–25%.
 
 [Mesh-free oblique-child point queries](nurbs-frustum-oblique-classify.md)

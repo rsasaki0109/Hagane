@@ -10,6 +10,8 @@ enum Retained<'a> {
     Bored(&'a NurbsBoredFrustumSolid),
     Oblique(&'a NurbsObliqueFrustumSolid),
     BoredOblique(&'a NurbsBoredObliqueFrustumSolid),
+    Slab(&'a NurbsFrustumSlabSolid),
+    BoredSlab(&'a NurbsBoredFrustumSlabSolid),
 }
 struct Segment {
     hits: Vec<NurbsFrustumSegmentHit>,
@@ -21,6 +23,8 @@ impl Retained<'_> {
             Self::Bored(v) => v.source(),
             Self::Oblique(v) => v.source(),
             Self::BoredOblique(v) => v.source().source(),
+            Self::Slab(v) => v.source(),
+            Self::BoredSlab(v) => v.source().source(),
         }
     }
     fn solid(&self) -> &Solid {
@@ -28,6 +32,8 @@ impl Retained<'_> {
             Self::Bored(v) => v.solid(),
             Self::Oblique(v) => v.solid(),
             Self::BoredOblique(v) => v.solid(),
+            Self::Slab(v) => v.solid(),
+            Self::BoredSlab(v) => v.solid(),
         }
     }
     fn validate(&self, p: GeometryTolerance) -> Result<()> {
@@ -35,6 +41,8 @@ impl Retained<'_> {
             Self::Bored(v) => v.validate(p),
             Self::Oblique(v) => v.validate(p),
             Self::BoredOblique(v) => v.validate(p),
+            Self::Slab(v) => v.validate(p),
+            Self::BoredSlab(v) => v.validate(p),
         }
     }
     fn classify_point(&self, q: Point3, p: GeometryTolerance) -> Result<PointLocation> {
@@ -42,6 +50,8 @@ impl Retained<'_> {
             Self::Bored(v) => v.classify_point(q, p),
             Self::Oblique(v) => v.classify_point(q, p),
             Self::BoredOblique(v) => v.classify_point(q, p),
+            Self::Slab(v) => v.classify_point(q, p),
+            Self::BoredSlab(v) => v.classify_point(q, p),
         }
     }
     fn intersect_segment(&self, a: Point3, b: Point3, p: GeometryTolerance) -> Result<Segment> {
@@ -58,6 +68,20 @@ impl Retained<'_> {
                 Ok(Segment {
                     hits: s.hits,
                     material_intervals: s.material_intervals,
+                })
+            }
+            Self::BoredSlab(v) => {
+                let s = v.intersect_segment(a, b, p)?;
+                Ok(Segment {
+                    hits: s.hits,
+                    material_intervals: s.material_intervals,
+                })
+            }
+            Self::Slab(v) => {
+                let s = v.intersect_segment(a, b, p)?;
+                Ok(Segment {
+                    hits: s.hits,
+                    material_intervals: s.material_interval.into_iter().collect(),
                 })
             }
             Self::Oblique(v) => {
@@ -373,5 +397,47 @@ impl NurbsBoredObliqueFrustumSolid {
         policy: GeometryTolerance,
     ) -> Result<NurbsFrustumMaterialLineIntersection> {
         Retained::BoredOblique(self).intersect_ray(origin, direction, policy)
+    }
+}
+
+impl NurbsFrustumSlabSolid {
+    /// Intersect an infinite world line using its original nonunit parameter.
+    pub fn intersect_line(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::Slab(self).intersect_line(origin, direction, policy)
+    }
+    /// Intersect a world ray. Boundary origins and unresolved contacts refuse.
+    pub fn intersect_ray(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::Slab(self).intersect_ray(origin, direction, policy)
+    }
+}
+
+impl NurbsBoredFrustumSlabSolid {
+    /// Intersect an infinite world line using its original nonunit parameter.
+    pub fn intersect_line(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::BoredSlab(self).intersect_line(origin, direction, policy)
+    }
+    /// Intersect a world ray. Boundary origins and unresolved contacts refuse.
+    pub fn intersect_ray(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::BoredSlab(self).intersect_ray(origin, direction, policy)
     }
 }

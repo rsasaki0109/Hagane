@@ -1373,3 +1373,11 @@ surface evaluation, finite boundary classification and signed outward-normal
 crossings check each hit. Strict root-order, separation and arithmetic reserves
 reject unresolved contacts; no display mesh supplies the intersection. No new
 external source, dependency or license is introduced.
+
+Slab line and ray queries reuse the checked original-source enclosure and actual
+finite slab segment solver. Cropped parameters are mapped back to the original
+nonunit direction with world-point correspondence checks; rays retain every
+forward material interval and verify the origin's finite-body classification.
+Original-anchor arithmetic reservations precede enclosure shortcuts. Boundary
+ray origins and unresolved contacts refuse explicitly. No display mesh, external
+source, new dependency or license change supplies this operation.

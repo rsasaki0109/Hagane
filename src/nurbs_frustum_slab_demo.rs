@@ -18,7 +18,7 @@ fn report(
         Err(error) => return Err(error),
     };
     Ok(
-        serde_json::json!({"volume":volume,"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},"bounds_kind":"conservative rational control hull","mesh":{"positions":mesh.positions.into_iter().map(xyz).collect::<Vec<_>>(),"normals":mesh.normals.into_iter().map(xyz).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},"brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(solid)?,"step":step,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","closed":true,"genus":if bored{1}else{0},"mass_properties":mass_properties,"scope":"actual closed rational slab with parallel planar caps and optional analytic mass properties; actual point and finite segment queries; line and ray queries and generic STEP import unsupported"}),
+        serde_json::json!({"volume":volume,"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},"bounds_kind":"conservative rational control hull","mesh":{"positions":mesh.positions.into_iter().map(xyz).collect::<Vec<_>>(),"normals":mesh.normals.into_iter().map(xyz).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},"brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(solid)?,"step":step,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","closed":true,"genus":if bored{1}else{0},"mass_properties":mass_properties,"scope":"actual closed rational slab with parallel planar caps and optional analytic mass properties; actual point, finite segment, line and ray queries; generic STEP import unsupported"}),
     )
 }
 pub(crate) fn serialize_frustum_slab(

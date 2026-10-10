@@ -89,8 +89,22 @@ the reported witnesses independently of display triangles.
 Boundary-band endpoints, tangencies, shared-rim contacts, unresolved cut-plane
 paths, tiny intervals and inadequate world precision return explicit errors.
 Workflow segment probes are read-only and retain accepted mesh, mass, STEP,
-cache and history on success or refusal. Infinite line and ray queries on slabs
-remain explicitly unavailable.
+cache and history on success or refusal. Both slab types also provide `intersect_line(origin, direction, policy)` and
+`intersect_ray(origin, direction, policy)`. A checked enclosure of the original
+finite source crops the infinite path to a finite segment, then the actual slab
+segment solver supplies its retained intervals and face UV witnesses. Returned
+parameters remain on `origin + t * direction`, including nonunit directions.
+Lines retain negative and positive parameters; rays clip every material interval
+to `t >= 0`, including an interval starting at zero when the origin is inside
+material. An origin in the through-hole void does not create an interval starting at zero;
+forward crossings can still enter retained material.
+
+The original world anchor is checked before cropping, so a distant ill-conditioned
+origin cannot be hidden by a smaller display or query segment. Boundary-band ray
+origins, tangencies, coplanar contacts, shared rims and unresolved parameter or
+world precision return explicit errors. Valid misses return empty intervals.
+These mesh-free queries leave accepted geometry, metrics, STEP and session
+history unchanged; they do not perform a modeling cut or general Boolean.
 Skew repeated cuts, general curved Booleans, continued boring and slab STEP
 re-import remain unsupported. Existing canonical, bored and single-cut query
 APIs keep their previous domains.
