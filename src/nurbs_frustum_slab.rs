@@ -18,7 +18,7 @@ fn unresolved() -> Error {
 fn norm(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
 }
-fn build_between(
+pub(crate) fn build_between(
     source: &NurbsFrustumSolid,
     lower: Option<&NurbsFrustumPlaneSection>,
     upper: Option<&NurbsFrustumPlaneSection>,

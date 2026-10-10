@@ -21,7 +21,9 @@ hole and certify actual annular cut-cap witnesses.
 retain both material intervals and actual restricted-face UVs. Line/ray queries
 also preserve original parameters on these children.
 [Repeated parallel cuts](docs/nurbs-frustum-parallel-slabs.md) retain actual
-slab boundaries and holes. Skew repeated cuts and repeated bores
+slab boundaries and holes. [Strictly interior skew cuts](docs/nurbs-frustum-interior-plane-splits.md)
+now retain differently oriented, uniformly ordered plane boundaries and holes
+in separate plane-bounded types. Intersecting boundary cuts, repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
@@ -1836,3 +1838,29 @@ all new repeated parallel slab geometry, optional mass and point/segment/line/ra
 blocks. Source stayed unchanged throughout both checks. This confirms regression
 coverage without claiming generic curved Booleans or general STEP support.
 The standing broad CAD estimate remains 15–25% toward the 80% target.
+
+## Ordered nonparallel interior cuts of retained frusta
+
+Separate plane-bounded plain and bored types now admit complete interior
+sections with different normals. Whole-generator clearance uses a guarded
+degree-four Bernstein product and an interior-minimum argument; crossing,
+contact and unresolved precision remain explicit errors. Original rational
+rims, actual two-row ruled walls, oriented annular caps and shared B-rep
+incidence are retained. The existing parallel-cut API remains unchanged.
+Actual-body display, checked optional mass, point/segment/line/ray queries and
+STEP export are connected through the explicit `interior_plane_split` workflow
+operation and an editable browser preset. No new dependency or OCCT code is used.
+
+Validation: fmt, strict all-target Clippy, six relevant native suites (12 tests),
+six existing slab regression suites (14 tests) and WASM build passed. The
+combined entire new interior-plane workflow and all prior slab/ordinary/bored
+workflow blocks passed on the final artifact, including independent disk and
+annulus volume, all nine inertia components, dense actual pcurves, manifold
+meshes, all query kinds, native STEP parity and tapered child conservation.
+The entire browser workflow suite passed on its first run with all prior exact
+PNG/raw-frame guards retained. The inspected actual middle-skew screenshot shows
+volume `2882.687`, checked mass, an Inside point, four finite-segment hits across
+two material intervals and the hole-origin forward-ray interval `[2,20/3]`.
+This extends the bounded domain; general crossing-plane cuts, repeated bores,
+generic curved Booleans and generic STEP import remain unsupported.
+The broad estimate remains 15–25% toward the standing 80% target.

@@ -41,12 +41,12 @@ finite cut-cap witnesses, diagonal rim ambiguity, rotations, scale changes,
 relative policy, nonfinite input and coordinate precision. Native, WASM and
 browser probes share the Rust kernel implementation. Line/ray queries now use
 these actual finite witnesses.
-Skew repeated cuts of bored-oblique children remain unsupported.
+Skew planes remain unsupported in the parallel-cut API; the separate interior-cut API checks ordered nonparallel boundaries.
 
 Original code is MIT OR Apache-2.0. This uses finite annular boundary distances,
 halfspace distance lower bounds and an orthogonal finite-face witness. No OCCT
 source or new dependency is used.
 
 [Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
-produce separate typed slab children. Skew recuts remain unsupported; slab
+produce separate typed slab children. Skew planes remain unsupported in the parallel-cut API; slab
 metrics and queries have separate explicit unsupported status.

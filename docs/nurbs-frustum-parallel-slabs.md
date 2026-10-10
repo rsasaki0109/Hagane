@@ -105,7 +105,7 @@ origins, tangencies, coplanar contacts, shared rims and unresolved parameter or
 world precision return explicit errors. Valid misses return empty intervals.
 These mesh-free queries leave accepted geometry, metrics, STEP and session
 history unchanged; they do not perform a modeling cut or general Boolean.
-Skew repeated cuts, general curved Booleans, continued boring and slab STEP
+Skew planes in this parallel-cut API, general curved Booleans, continued boring and slab STEP
 re-import remain unsupported. Existing canonical, bored and single-cut query
 APIs keep their previous domains.
 
@@ -118,3 +118,7 @@ boundary band. The inherited source intersection conservatively refuses an
 endpoint on an original cap even when that cap was removed from the slab.
 Move such endpoints strictly beyond the source, or into resolved source
 interior, before querying; clipping does not bypass this source guard.
+
+A separate [strictly interior plane split](nurbs-frustum-interior-plane-splits.md)
+can retain ordered nonparallel cap boundaries. It does not relax this API's
+represented-parallel-plane requirement.

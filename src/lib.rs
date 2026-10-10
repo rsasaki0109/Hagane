@@ -428,8 +428,17 @@ mod nurbs_frustum_slab;
 pub use nurbs_frustum_slab::*;
 mod nurbs_frustum_bored_slab;
 pub use nurbs_frustum_bored_slab::*;
+mod nurbs_frustum_plane_bounded_demo;
+mod nurbs_frustum_plane_bounded_display;
+mod nurbs_frustum_plane_bounded_mass;
+mod nurbs_frustum_plane_bounded_queries;
 mod nurbs_frustum_slab_classification;
 mod nurbs_frustum_slab_demo;
 mod nurbs_frustum_slab_display;
 mod nurbs_frustum_slab_intersection;
 mod nurbs_frustum_slab_mass;
+
+mod nurbs_frustum_plane_bounded;
+pub use nurbs_frustum_plane_bounded::*;
+mod nurbs_frustum_bored_plane_bounded;
+pub use nurbs_frustum_bored_plane_bounded::*;

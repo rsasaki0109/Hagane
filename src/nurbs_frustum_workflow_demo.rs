@@ -102,6 +102,20 @@ fn body_report(
                     document.display_chord_tolerance,
                 )?
             }
+            NurbsFrustumWorkflowComponent::PlaneBounded(body) => {
+                crate::nurbs_frustum_plane_bounded_demo::serialize_plane_bounded_frustum(
+                    body,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
+            NurbsFrustumWorkflowComponent::BoredPlaneBounded(body) => {
+                crate::nurbs_frustum_plane_bounded_demo::serialize_bored_plane_bounded_frustum(
+                    body,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
         };
         let count = data["mesh"]["triangles"]
             .as_array()
@@ -124,6 +138,10 @@ fn body_report(
             NurbsFrustumWorkflowComponent::BoredOblique(body) => body.source().source().frame(),
             NurbsFrustumWorkflowComponent::Slab(body) => body.source().frame(),
             NurbsFrustumWorkflowComponent::BoredSlab(body) => body.source().source().frame(),
+            NurbsFrustumWorkflowComponent::PlaneBounded(body) => body.source().frame(),
+            NurbsFrustumWorkflowComponent::BoredPlaneBounded(body) => {
+                body.source().source().frame()
+            }
         };
         let xyz = |v: Vec3| [v.x, v.y, v.z];
         data["placement"] = json!({"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)});
@@ -151,6 +169,14 @@ fn body_report(
                 data["component_kind"] = json!("bored_frustum_slab");
                 data["placement_reference"] = json!("source frame");
             }
+            NurbsFrustumWorkflowComponent::PlaneBounded(_) => {
+                data["component_kind"] = json!("plane_bounded_frustum");
+                data["placement_reference"] = json!("source frame");
+            }
+            NurbsFrustumWorkflowComponent::BoredPlaneBounded(_) => {
+                data["component_kind"] = json!("bored_plane_bounded_frustum");
+                data["placement_reference"] = json!("source frame");
+            }
         }
         components.push(data);
     }
@@ -173,6 +199,14 @@ fn body_report(
         ));
     }
     let scope = if shape.components().iter().any(|body| {
+        matches!(
+            body,
+            NurbsFrustumWorkflowComponent::PlaneBounded(_)
+                | NurbsFrustumWorkflowComponent::BoredPlaneBounded(_)
+        )
+    }) {
+        "versioned typed rational frustum graph; actual retained bodies bounded by ordered interior planes; optional analytic metrics and actual point/segment/line/ray queries; separate actual STEP exports"
+    } else if shape.components().iter().any(|body| {
         matches!(
             body,
             NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_)
@@ -288,6 +322,17 @@ fn segment_report(
                 ))
             }
             NurbsFrustumWorkflowComponent::BoredSlab(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((result.hits, result.material_intervals))
+            }
+            NurbsFrustumWorkflowComponent::PlaneBounded(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((
+                    result.hits,
+                    result.material_interval.into_iter().collect::<Vec<_>>(),
+                ))
+            }
+            NurbsFrustumWorkflowComponent::BoredPlaneBounded(v) => {
                 let result = v.intersect_segment(point(start), point(end), policy)?;
                 Ok((result.hits, result.material_intervals))
             }
@@ -412,6 +457,22 @@ fn line_report(
                 Ok((result.hits, result.material_intervals))
             }
             NurbsFrustumWorkflowComponent::BoredSlab(v) => {
+                let result = if ray {
+                    v.intersect_ray(point(origin), point(direction), policy)?
+                } else {
+                    v.intersect_line(point(origin), point(direction), policy)?
+                };
+                Ok((result.hits, result.material_intervals))
+            }
+            NurbsFrustumWorkflowComponent::PlaneBounded(v) => {
+                let result = if ray {
+                    v.intersect_ray(point(origin), point(direction), policy)?
+                } else {
+                    v.intersect_line(point(origin), point(direction), policy)?
+                };
+                Ok((result.hits, result.material_intervals))
+            }
+            NurbsFrustumWorkflowComponent::BoredPlaneBounded(v) => {
                 let result = if ray {
                     v.intersect_ray(point(origin), point(direction), policy)?
                 } else {

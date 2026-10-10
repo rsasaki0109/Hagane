@@ -1381,3 +1381,12 @@ forward material interval and verify the origin's finite-body classification.
 Original-anchor arithmetic reservations precede enclosure shortcuts. Boundary
 ray origins and unresolved contacts refuse explicitly. No display mesh, external
 source, new dependency or license change supplies this operation.
+
+Strictly interior frustum plane bounds use a positive-denominator rational height
+representation and a degree-four Bernstein product of two quadratic rim rows.
+The strict rim clearance extends across the generator disk by the plane-height
+gradient argument; the same disk result covers coaxial annuli. Proof-only weight
+scaling leaves actual coefficients unchanged. Actual shared-edge display and
+checked common-local centered moment composition reuse the existing original
+implementations. These engineering arithmetic checks introduce no external code,
+dependency or license change.

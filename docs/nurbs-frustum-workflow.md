@@ -70,7 +70,7 @@ begin/finish resets the transport latch without silently resetting the session.
 
 The native and WASM command paths share the kernel, actual-body serializer and
 transaction rules. Arbitrary-angle STEP import, apex shapes, general lofts,
-skew repeated cuts of oblique children and general frustum Booleans are unsupported.
+skew planes in the parallel-cut API and general frustum Booleans are unsupported.
 Axial `partition` on an oblique child is also explicitly unsupported.
 Canonical and bored components support checked axial partitions.
 

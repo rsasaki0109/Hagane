@@ -36,9 +36,9 @@ kernel metrics, and browser history edits recompute the actual selected body.
 Original code is MIT OR Apache-2.0. This uses the existing independent analytic
 cone/cylinder integrals, covariance identity and parallel-axis theorem. No OCCT
 source or new dependency is used. [Mesh-free point queries](nurbs-frustum-bored-oblique-classify.md) are supported;
-Skew repeated cuts remain unsupported; line/ray queries and finite segments now have
+Skew planes remain unsupported in the parallel-cut API; line/ray queries and finite segments now have
 checked actual-face witnesses.
 
 [Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
-produce separate typed slab children. Skew recuts remain unsupported; slab
+produce separate typed slab children. Skew planes remain unsupported in the parallel-cut API; slab
 metrics and queries have separate explicit unsupported status.

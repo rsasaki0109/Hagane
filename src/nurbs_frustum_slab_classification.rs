@@ -12,7 +12,7 @@ struct Cut {
     outward: Vec3,
     gap: f64,
 }
-fn classify(
+pub(crate) fn classify(
     query: Point3,
     policy: GeometryTolerance,
     source: &NurbsFrustumSolid,

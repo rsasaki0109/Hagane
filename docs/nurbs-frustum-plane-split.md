@@ -141,5 +141,5 @@ and the original AP214 writer are reused. This is original MIT OR Apache-2.0
 Rust code with no new dependencies or OCCT source. See [references](references.md).
 
 [Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
-produce separate typed slab children. Skew recuts remain unsupported; slab
+produce separate typed slab children. Skew planes remain unsupported in the parallel-cut API; slab
 metrics and queries have separate explicit unsupported status.

@@ -44,10 +44,13 @@ slab boundaries and holes, with checked analytic centroids and inertia when
 conditioning permits. Conservative finite-face point queries preserve the hole.
 Finite slab segments retain actual face UVs and up to two material intervals.
 Slab line/ray queries preserve original nonunit parameters and all forward ray
-intervals. Skew repeated cuts and repeated bores
+intervals. Skew planes in parallel-cut APIs and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
+[Strictly interior plane splits](docs/nurbs-frustum-interior-plane-splits.md) add actual ordered nonparallel
+plane-bounded children through a separate operation. Existing parallel-cut APIs
+keep their previous restrictions.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
@@ -59,7 +62,7 @@ general bored-frustum import and general curved Booleans remain unsupported.
 [Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
 world-plane cuts to actual typed child selection, incremental rebuilding,
 Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;
-skew further cuts of oblique children remain explicit errors. Rust components now
+skew planes in parallel-cut APIs remain explicit errors. Rust components now
 use canonical, oblique, bored and bored-oblique variants; existing JSON documents remain supported.
 
 [Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
@@ -73,7 +76,7 @@ conforming bounded display and per-child STEP export. The initial domain keeps
 the complete cut strictly between the original caps.
 [Analytic child mass properties](docs/nurbs-frustum-oblique-mass.md) provide
 checked world centroids and centroidal inertia; unresolved metrics fail explicitly
-while geometry remains available. Skew further cuts remain unsupported.
+while geometry remains available. The parallel-cut API still rejects skew planes.
 
 [Closed oblique frustum sections](docs/nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.

@@ -8,23 +8,38 @@ fn slab_moments(
     policy: GeometryTolerance,
 ) -> Result<CheckedCenteredMoments> {
     body.validate(policy)?;
-    let moments = match (body.lower_section(), body.upper_section()) {
+    section_moments(
+        body.source(),
+        body.lower_section(),
+        body.upper_section(),
+        policy,
+        || body.volume(policy),
+    )
+}
+pub(crate) fn section_moments(
+    source: &NurbsFrustumSolid,
+    lower: Option<&NurbsFrustumPlaneSection>,
+    upper: Option<&NurbsFrustumPlaneSection>,
+    policy: GeometryTolerance,
+    volume: impl Fn() -> Result<f64>,
+) -> Result<CheckedCenteredMoments> {
+    let moments = match (lower, upper) {
         (None, Some(upper)) => {
-            let pieces = body.source().split_by_plane(upper.plane(), policy)?;
+            let pieces = source.split_by_plane(upper.plane(), policy)?;
             checked_centered_moments(&pieces.lower, policy)?
         }
         (Some(lower), None) => {
-            let pieces = body.source().split_by_plane(lower.plane(), policy)?;
+            let pieces = source.split_by_plane(lower.plane(), policy)?;
             checked_centered_moments(&pieces.upper, policy)?
         }
         (Some(lower), Some(upper)) => {
-            let upper_pieces = body.source().split_by_plane(upper.plane(), policy)?;
-            let lower_pieces = body.source().split_by_plane(lower.plane(), policy)?;
+            let upper_pieces = source.split_by_plane(upper.plane(), policy)?;
+            let lower_pieces = source.split_by_plane(lower.plane(), policy)?;
             subtract_centered(
                 checked_centered_moments(&upper_pieces.lower, policy)?,
                 checked_centered_moments(&lower_pieces.lower, policy)?,
-                body.volume(policy)?,
-                body.source().frame(),
+                volume()?,
+                source.frame(),
                 policy,
             )?
         }
@@ -35,7 +50,7 @@ fn slab_moments(
         }
     };
     // The geometry's independently checked stable volume remains authoritative.
-    let volume = body.volume(policy)?;
+    let volume = volume()?;
     if (moments.volume / volume - 1.).abs() > 32768. * f64::EPSILON {
         return Err(Error::Unsupported(
             "slab cumulative moment volume correspondence is unresolved",

@@ -32,12 +32,12 @@ struct Cut {
     gaps: [f64; 2],
     slope: f64,
 }
-struct Geometry<'a> {
-    canonical: &'a NurbsFrustumSolid,
-    solid: &'a Solid,
-    present: [bool; 2],
+pub(crate) struct Geometry<'a> {
+    pub(crate) canonical: &'a NurbsFrustumSolid,
+    pub(crate) solid: &'a Solid,
+    pub(crate) present: [bool; 2],
 }
-fn intersect(
+pub(crate) fn intersect(
     start: Point3,
     end: Point3,
     policy: GeometryTolerance,

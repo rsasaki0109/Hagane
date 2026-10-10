@@ -50,6 +50,12 @@ pub enum NurbsFrustumWorkflowOperation {
         origin: [f64; 3],
         normal: [f64; 3],
     },
+    InteriorPlaneSplit {
+        id: String,
+        input: String,
+        origin: [f64; 3],
+        normal: [f64; 3],
+    },
     CoaxialBore {
         id: String,
         input: String,
@@ -70,6 +76,8 @@ pub enum NurbsFrustumWorkflowComponent {
     BoredOblique(Arc<NurbsBoredObliqueFrustumSolid>),
     Slab(Arc<NurbsFrustumSlabSolid>),
     BoredSlab(Arc<NurbsBoredFrustumSlabSolid>),
+    PlaneBounded(Arc<NurbsFrustumPlaneBoundedSolid>),
+    BoredPlaneBounded(Arc<NurbsBoredFrustumPlaneBoundedSolid>),
 }
 impl NurbsFrustumWorkflowComponent {
     pub fn canonical(&self) -> Option<&Arc<NurbsFrustumSolid>> {
@@ -105,6 +113,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.classify_point(query, policy),
             Self::Slab(v) => v.classify_point(query, policy),
             Self::BoredSlab(v) => v.classify_point(query, policy),
+            Self::PlaneBounded(v) => v.classify_point(query, policy),
+            Self::BoredPlaneBounded(v) => v.classify_point(query, policy),
         }
     }
     pub fn solid(&self) -> &Solid {
@@ -115,6 +125,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.solid(),
             Self::Slab(v) => v.solid(),
             Self::BoredSlab(v) => v.solid(),
+            Self::PlaneBounded(v) => v.solid(),
+            Self::BoredPlaneBounded(v) => v.solid(),
         }
     }
     pub fn validate(&self, policy: GeometryTolerance) -> Result<()> {
@@ -125,6 +137,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.validate(policy),
             Self::Slab(v) => v.validate(policy),
             Self::BoredSlab(v) => v.validate(policy),
+            Self::PlaneBounded(v) => v.validate(policy),
+            Self::BoredPlaneBounded(v) => v.validate(policy),
         }
     }
     pub fn volume(&self, policy: GeometryTolerance) -> Result<f64> {
@@ -135,6 +149,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.volume(policy),
             Self::Slab(v) => v.volume(policy),
             Self::BoredSlab(v) => v.volume(policy),
+            Self::PlaneBounded(v) => v.volume(policy),
+            Self::BoredPlaneBounded(v) => v.volume(policy),
         }
     }
     pub fn mass_properties(&self, policy: GeometryTolerance) -> Result<NurbsGraphMassProperties> {
@@ -143,6 +159,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::Oblique(v) => v.mass_properties(policy),
             Self::Bored(v) => v.mass_properties(policy),
             Self::BoredOblique(v) => v.mass_properties(policy),
+            Self::PlaneBounded(v) => v.mass_properties(policy),
+            Self::BoredPlaneBounded(v) => v.mass_properties(policy),
             Self::Slab(_) | Self::BoredSlab(_) => Err(Error::Unsupported(
                 "parallel frustum slab mass_properties is not implemented",
             )),
@@ -157,6 +175,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::Oblique(v) => v.inertia_properties(policy),
             Self::Bored(v) => v.inertia_properties(policy),
             Self::BoredOblique(v) => v.inertia_properties(policy),
+            Self::PlaneBounded(v) => v.inertia_properties(policy),
+            Self::BoredPlaneBounded(v) => v.inertia_properties(policy),
             Self::Slab(_) | Self::BoredSlab(_) => Err(Error::Unsupported(
                 "parallel frustum slab inertia_properties is not implemented",
             )),
@@ -170,6 +190,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.export_step_mm(policy),
             Self::Slab(v) => v.export_step_mm(policy),
             Self::BoredSlab(v) => v.export_step_mm(policy),
+            Self::PlaneBounded(v) => v.export_step_mm(policy),
+            Self::BoredPlaneBounded(v) => v.export_step_mm(policy),
         }
     }
     pub fn tessellate(&self, chord: f64, policy: GeometryTolerance) -> Result<Mesh> {
@@ -180,6 +202,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::BoredOblique(v) => v.tessellate(chord, policy),
             Self::Slab(v) => v.tessellate(chord, policy),
             Self::BoredSlab(v) => v.tessellate(chord, policy),
+            Self::PlaneBounded(v) => v.tessellate(chord, policy),
+            Self::BoredPlaneBounded(v) => v.tessellate(chord, policy),
         }
     }
 }
@@ -237,6 +261,7 @@ impl NurbsFrustumWorkflowOperation {
             | Self::StepStock { id, .. }
             | Self::Partition { id, .. }
             | Self::PlaneSplit { id, .. }
+            | Self::InteriorPlaneSplit { id, .. }
             | Self::CoaxialBore { id, .. }
             | Self::Select { id, .. } => id,
         }
@@ -245,6 +270,7 @@ impl NurbsFrustumWorkflowOperation {
         match self {
             Self::Partition { input, .. }
             | Self::PlaneSplit { input, .. }
+            | Self::InteriorPlaneSplit { input, .. }
             | Self::CoaxialBore { input, .. }
             | Self::Select { input, .. } => Some(input),
             _ => None,
@@ -393,6 +419,7 @@ impl NurbsFrustumWorkflowDocument {
                     ));
                 }
                 NurbsFrustumWorkflowOperation::PlaneSplit { origin, normal, .. }
+                | NurbsFrustumWorkflowOperation::InteriorPlaneSplit { origin, normal, .. }
                     if origin.iter().chain(normal).any(|x| !x.is_finite())
                         || Vec3::new(normal[0], normal[1], normal[2])
                             .normalized()
@@ -534,7 +561,15 @@ impl NurbsFrustumWorkflowDocument {
                 origin,
                 normal,
                 ..
+            }
+            | NurbsFrustumWorkflowOperation::InteriorPlaneSplit {
+                input,
+                origin,
+                normal,
+                ..
             } => {
+                let interior =
+                    matches!(op, NurbsFrustumWorkflowOperation::InteriorPlaneSplit { .. });
                 let shape = inputs[input.as_str()];
                 if shape.components().len() != 1 {
                     return Err(diagnostic(
@@ -582,39 +617,121 @@ impl NurbsFrustumWorkflowDocument {
                         ]
                     }
                     NurbsFrustumWorkflowComponent::Oblique(source) => {
-                        let split = source
-                            .split_by_parallel_plane(&plane, tol)
-                            .map_err(|e| geometry(e, id))?;
-                        vec![
-                            NurbsFrustumWorkflowComponent::Slab(Arc::new(split.lower)),
-                            NurbsFrustumWorkflowComponent::Slab(Arc::new(split.upper)),
-                        ]
+                        if interior {
+                            let split = source
+                                .split_by_interior_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.upper)),
+                            ]
+                        } else {
+                            let split = source
+                                .split_by_parallel_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::Slab(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::Slab(Arc::new(split.upper)),
+                            ]
+                        }
                     }
                     NurbsFrustumWorkflowComponent::Slab(source) => {
-                        let split = source
-                            .split_by_parallel_plane(&plane, tol)
-                            .map_err(|e| geometry(e, id))?;
-                        vec![
-                            NurbsFrustumWorkflowComponent::Slab(Arc::new(split.lower)),
-                            NurbsFrustumWorkflowComponent::Slab(Arc::new(split.upper)),
-                        ]
+                        if interior {
+                            let split = source
+                                .split_by_interior_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.upper)),
+                            ]
+                        } else {
+                            let split = source
+                                .split_by_parallel_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::Slab(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::Slab(Arc::new(split.upper)),
+                            ]
+                        }
                     }
                     NurbsFrustumWorkflowComponent::BoredOblique(source) => {
-                        let split = source
-                            .split_by_parallel_plane(&plane, tol)
-                            .map_err(|e| geometry(e, id))?;
-                        vec![
-                            NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.lower)),
-                            NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.upper)),
-                        ]
+                        if interior {
+                            let split = source
+                                .split_by_interior_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                                    split.lower,
+                                )),
+                                NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                                    split.upper,
+                                )),
+                            ]
+                        } else {
+                            let split = source
+                                .split_by_parallel_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.upper)),
+                            ]
+                        }
                     }
                     NurbsFrustumWorkflowComponent::BoredSlab(source) => {
+                        if interior {
+                            let split = source
+                                .split_by_interior_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                                    split.lower,
+                                )),
+                                NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                                    split.upper,
+                                )),
+                            ]
+                        } else {
+                            let split = source
+                                .split_by_parallel_plane(&plane, tol)
+                                .map_err(|e| geometry(e, id))?;
+                            vec![
+                                NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.lower)),
+                                NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.upper)),
+                            ]
+                        }
+                    }
+                    NurbsFrustumWorkflowComponent::PlaneBounded(source) => {
+                        if !interior {
+                            return Err(diagnostic(
+                                "unsupported",
+                                "interior_plane_split_required",
+                                Some(id),
+                                "Plane-bounded components require InteriorPlaneSplit.",
+                            ));
+                        }
                         let split = source
-                            .split_by_parallel_plane(&plane, tol)
+                            .split_by_interior_plane(&plane, tol)
                             .map_err(|e| geometry(e, id))?;
                         vec![
-                            NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.lower)),
-                            NurbsFrustumWorkflowComponent::BoredSlab(Arc::new(split.upper)),
+                            NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.lower)),
+                            NurbsFrustumWorkflowComponent::PlaneBounded(Arc::new(split.upper)),
+                        ]
+                    }
+                    NurbsFrustumWorkflowComponent::BoredPlaneBounded(source) => {
+                        if !interior {
+                            return Err(diagnostic(
+                                "unsupported",
+                                "interior_plane_split_required",
+                                Some(id),
+                                "Plane-bounded components require InteriorPlaneSplit.",
+                            ));
+                        }
+                        let split = source
+                            .split_by_interior_plane(&plane, tol)
+                            .map_err(|e| geometry(e, id))?;
+                        vec![
+                            NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(split.lower)),
+                            NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(split.upper)),
                         ]
                     }
                 }
@@ -636,7 +753,7 @@ impl NurbsFrustumWorkflowDocument {
                     NurbsFrustumWorkflowComponent::Bored(body) => body.split_axial_many(cuts,tol)
                         .map_err(|e| geometry(e,id))?.parts.into_iter()
                         .map(|v| NurbsFrustumWorkflowComponent::Bored(Arc::new(v))).collect(),
-                    NurbsFrustumWorkflowComponent::Oblique(_) | NurbsFrustumWorkflowComponent::BoredOblique(_) | NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_) => return Err(diagnostic(
+                    NurbsFrustumWorkflowComponent::Oblique(_) | NurbsFrustumWorkflowComponent::BoredOblique(_) | NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_) | NurbsFrustumWorkflowComponent::PlaneBounded(_) | NurbsFrustumWorkflowComponent::BoredPlaneBounded(_) => return Err(diagnostic(
                         "unsupported", "canonical_required", Some(id),
                         "Partition requires a canonical or bored frustum; oblique components cannot be repartitioned.")),
                 }

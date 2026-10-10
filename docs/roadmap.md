@@ -25,10 +25,13 @@ slab boundaries and holes, with checked analytic centroids and inertia when
 conditioning permits. Conservative finite-face point queries preserve the hole.
 Finite slab segments retain actual face UVs and up to two material intervals.
 Slab line/ray queries preserve original nonunit parameters and all forward ray
-intervals. Skew repeated cuts and repeated bores
+intervals. Skew planes in parallel-cut APIs and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
+[Strictly interior plane splits](nurbs-frustum-interior-plane-splits.md) add actual ordered nonparallel
+plane-bounded children through a separate operation. Existing parallel-cut APIs
+keep their previous restrictions.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](nurbs-frustum-bore.md) add a supported curved
@@ -40,7 +43,7 @@ and general curved Booleans remain future work; the estimate remains 15–25%.
 [Editable oblique frustum workflows](nurbs-frustum-workflow.md) retain actual
 closed curved children through plane edits, explicit selection, cache reuse,
 Undo/Redo and STEP export. Typed components prevent substituting the source body.
-Skew repeated cuts and general curved Booleans remain unsupported; the
+Skew planes in parallel-cut APIs and general curved Booleans remain unsupported; the
 long-term completion estimate remains 15–25%.
 
 [Mesh-free oblique-child point queries](nurbs-frustum-oblique-classify.md)
@@ -53,7 +56,7 @@ rational B-rep children with new planar cut caps, analytic volumes, conforming
 bounded display and per-child STEP export. The complete cut stays strictly
 between the original caps. [Analytic child mass properties](nurbs-frustum-oblique-mass.md)
 provide checked world centroids and centroidal inertia, with explicit conditioning
-failures. Skew further cuts and general NURBS Booleans remain unsupported. The estimate remains 15–25%.
+failures. Skew planes in parallel-cut APIs and general NURBS Booleans remain unsupported. The estimate remains 15–25%.
 
 [Closed oblique frustum sections](nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.

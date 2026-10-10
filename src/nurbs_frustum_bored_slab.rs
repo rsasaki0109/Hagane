@@ -49,21 +49,20 @@ fn cap_curve(surface: &Surface, curve: &Curve) -> Result<PCurve> {
     )?)
 }
 fn assemble(outer: &NurbsFrustumSlabSolid, inner: &NurbsFrustumSlabSolid) -> Result<Solid> {
-    let mut body = outer.solid().clone();
-    body.vertices.extend(inner.solid().vertices.iter().cloned());
-    body.edges
-        .extend(inner.solid().edges.iter().cloned().map(|mut e| {
-            e.vertices = e.vertices.map(|v| v + 8);
-            e
-        }));
+    assemble_solids(outer.solid(), inner.solid())
+}
+pub(crate) fn assemble_solids(outer: &Solid, inner: &Solid) -> Result<Solid> {
+    let mut body = outer.clone();
+    body.vertices.extend(inner.vertices.iter().cloned());
+    body.edges.extend(inner.edges.iter().cloned().map(|mut e| {
+        e.vertices = e.vertices.map(|v| v + 8);
+        e
+    }));
     for i in 0..2 {
-        let mut wire = inner.solid().shell.faces[i].wires[0].clone();
+        let mut wire = inner.shell.faces[i].wires[0].clone();
         wire.coedges.reverse();
         for c in &mut wire.coedges {
-            c.pcurve = cap_curve(
-                &body.shell.faces[i].surface,
-                &inner.solid().edges[c.edge].curve,
-            )?;
+            c.pcurve = cap_curve(&body.shell.faces[i].surface, &inner.edges[c.edge].curve)?;
             c.edge += 12;
             c.forward = !c.forward;
         }
@@ -71,7 +70,7 @@ fn assemble(outer: &NurbsFrustumSlabSolid, inner: &NurbsFrustumSlabSolid) -> Res
     }
     body.shell
         .faces
-        .extend(inner.solid().shell.faces[2..].iter().cloned().map(|mut f| {
+        .extend(inner.shell.faces[2..].iter().cloned().map(|mut f| {
             f.orientation = -f.orientation;
             for w in &mut f.wires {
                 for c in &mut w.coedges {
