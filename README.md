@@ -29,6 +29,8 @@ side/cap/rim boundaries; unresolved precision is explicitly refused.
 actual rational section curves and per-child STEP. General oblique splits remain unsupported.
 The shared Rust API also supports 1–16 ordered axial cuts; run
 `cargo run --example nurbs_frustum_partitions` for the multi-part native demo.
+The [batch browser demo](docs/nurbs-frustum-partitions.md) displays each actual
+part and exports its exact STEP.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

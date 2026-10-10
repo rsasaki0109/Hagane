@@ -10,7 +10,8 @@ side/cap/rim boundaries; unresolved precision is explicitly refused.
 actual rational section curves and per-child STEP. General oblique splits remain unsupported.
 Batch axial partitions support 1–16 ordered cuts with full-source interval
 guards, original-surface certificates and per-part STEP in the native example.
-The browser and numeric ABI continue to expose one cut.
+The [batch demo](nurbs-frustum-partitions.md) connects actual parts to
+native/WASM reports and browser selection/STEP export.
 
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

@@ -332,6 +332,8 @@ pub use nurbs_frustum::*;
 mod nurbs_frustum_classification;
 mod nurbs_frustum_split;
 pub use nurbs_frustum_split::*;
+mod nurbs_frustum_partitions_demo;
+pub use nurbs_frustum_partitions_demo::*;
 mod nurbs_frustum_split_demo;
 pub use nurbs_frustum_split_demo::*;
 mod nurbs_frustum_demo;

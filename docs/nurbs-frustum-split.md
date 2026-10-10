@@ -22,7 +22,8 @@ actual top rim curves of `parts[i]`, adjacent to `parts[i + 1]`.
 Run `cargo run --example nurbs_frustum_partitions` for the four-part native
 demo. Supply an existing output directory as its argument to save each part's
 exact STEP. The API is shared Rust code compiled for native and WASM; the
-current browser page and numeric ABI still expose the single-cut operation.
+single-cut page remains available; the separate [batch demo](nurbs-frustum-partitions.md)
+provides the multiple-cut browser and numeric ABI.
 
 ```rust
 use hagane::*;
