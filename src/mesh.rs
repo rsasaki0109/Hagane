@@ -306,25 +306,73 @@ impl Solid {
                             .collect();
                         crate::planar::validate_sampled_region(&boundaries,tol).map_err(|_|Error::Tessellation("sampled curved trims are unresolved or intersecting; adjust chord error or model tolerance"))?;
                     }
-                    let triangles = earcutr::earcut(&coords, &holes, 2)
-                        .map_err(|_| Error::Tessellation("planar trim triangulation failed"))?;
-                    if triangles.is_empty() {
-                        return Err(Error::Tessellation("no planar triangles"));
-                    }
+                    let points: Vec<_> = coords
+                        .as_chunks::<2>()
+                        .0
+                        .iter()
+                        .map(|uv| f.surface.evaluate(uv[0], uv[1]))
+                        .collect();
+                    let normal = f.surface.normal(0.0);
                     let candidates = if mixed {
                         (0..coords.len() / 2).collect::<Vec<_>>()
                     } else {
                         line_vertices
                     };
-                    let triangles = if candidates.is_empty() {
-                        triangles
-                    } else {
-                        conforming_triangles(&coords, &triangles, &candidates)?
+                    let triangulate = |coordinates: &[f64]| -> Result<Vec<usize>> {
+                        let indices = earcutr::earcut(coordinates, &holes, 2)
+                            .map_err(|_| Error::Tessellation("planar trim triangulation failed"))?;
+                        if indices.is_empty() {
+                            return Err(Error::Tessellation("no planar triangles"));
+                        }
+                        conforming_triangles(coordinates, &indices, &candidates, &holes)
                     };
+                    // Preserve exact straight partitions in the source UV frame.
+                    // Only retry if evaluation actually collapses a UV ear in
+                    // world coordinates; unconditional projection can instead
+                    // introduce tiny sliver ears along tilted straight edges.
+                    let mut triangles = triangulate(&coords)?;
+                    if triangles.as_chunks::<3>().0.iter().any(|tri| {
+                        let p = tri.map(|i| points[i]);
+                        (p[1] - p[0]).cross(p[2] - p[0]).dot(normal) == 0.
+                    }) {
+                        // Projection changes only connectivity, never the UV
+                        // samples or their already-evaluated world positions.
+                        let axis = if normal.x.abs() >= normal.y.abs()
+                            && normal.x.abs() >= normal.z.abs()
+                        {
+                            0
+                        } else if normal.y.abs() >= normal.z.abs() {
+                            1
+                        } else {
+                            2
+                        };
+                        let reference = points[0];
+                        let projected: Vec<_> = points
+                            .iter()
+                            .flat_map(|p| {
+                                let d = *p - reference;
+                                match axis {
+                                    0 => [d.y, d.z],
+                                    1 => [d.x, d.z],
+                                    _ => [d.x, d.y],
+                                }
+                            })
+                            .collect();
+                        if projected.iter().any(|x| !x.is_finite()) {
+                            return Err(Error::Tessellation(
+                                "planar display projection exceeds finite arithmetic",
+                            ));
+                        }
+                        triangles = triangulate(&projected)?;
+                    }
                     for tri in triangles.as_chunks::<3>().0 {
-                        let p = [tri[0], tri[1], tri[2]]
-                            .map(|i| f.surface.evaluate(coords[i * 2], coords[i * 2 + 1]));
-                        let normal = f.surface.normal(0.0);
+                        let p = tri.map(|i| points[i]);
+                        let orientation = (p[1] - p[0]).cross(p[2] - p[0]).dot(normal);
+                        if !orientation.is_finite() || orientation == 0. {
+                            return Err(Error::Tessellation(
+                                "planar display triangle has unresolved world area",
+                            ));
+                        }
                         let mut p = p;
                         if (p[1] - p[0]).cross(p[2] - p[0]).dot(normal) < 0.0 {
                             p.swap(1, 2);
@@ -700,12 +748,19 @@ fn conforming_triangles(
     coords: &[f64],
     indices: &[usize],
     candidates: &[usize],
+    holes: &[usize],
 ) -> Result<Vec<usize>> {
     use crate::predicates::{orient2d, Orientation};
     let point = |i: usize| [coords[2 * i], coords[2 * i + 1]];
     let mut pending: Vec<[usize; 3]> = indices.as_chunks::<3>().0.to_vec();
     let mut result = Vec::new();
     while let Some(tri) = pending.pop() {
+        if orient2d(point(tri[0]), point(tri[1]), point(tri[2]))? == Orientation::Collinear {
+            // Earcut may emit a zero-area bridge ear. It can be removed only
+            // if the final edge-incidence check proves the entire sampled
+            // boundary is still present and every interior edge is paired.
+            continue;
+        }
         let mut split = None;
         'edges: for e in 0..3 {
             let a = point(tri[e]);
@@ -734,8 +789,50 @@ fn conforming_triangles(
             pending.push([tri[e], i, tri[(e + 2) % 3]]);
             pending.push([i, tri[(e + 1) % 3], tri[(e + 2) % 3]]);
         } else {
+            let mut tri = tri;
+            if orient2d(point(tri[0]), point(tri[1]), point(tri[2]))? == Orientation::Clockwise {
+                tri.swap(1, 2);
+            }
             result.extend(tri);
         }
+    }
+    use std::collections::{BTreeMap, BTreeSet};
+    let mut boundary = BTreeSet::new();
+    let ends: Vec<_> = std::iter::once(0)
+        .chain(holes.iter().copied())
+        .chain(std::iter::once(coords.len() / 2))
+        .collect();
+    for ring in ends.windows(2) {
+        for a in ring[0]..ring[1] {
+            let b = if a + 1 == ring[1] { ring[0] } else { a + 1 };
+            if point(a) == point(b) || !boundary.insert((a.min(b), a.max(b))) {
+                return Err(Error::Tessellation("planar display boundary is unresolved"));
+            }
+        }
+    }
+    let mut uses: BTreeMap<(usize, usize), (usize, i32)> = BTreeMap::new();
+    for tri in result.as_chunks::<3>().0 {
+        for i in 0..3 {
+            let (a, b) = (tri[i], tri[(i + 1) % 3]);
+            let entry = uses.entry((a.min(b), a.max(b))).or_default();
+            entry.0 += 1;
+            entry.1 += if a < b { 1 } else { -1 };
+        }
+    }
+    if boundary
+        .iter()
+        .any(|edge| uses.get(edge).is_none_or(|u| u.0 != 1))
+        || uses.iter().any(|(edge, u)| {
+            if boundary.contains(edge) {
+                u.0 != 1
+            } else {
+                u.0 != 2 || u.1 != 0
+            }
+        })
+    {
+        return Err(Error::Tessellation(
+            "planar display triangulation does not preserve its conforming boundary",
+        ));
     }
     Ok(result)
 }

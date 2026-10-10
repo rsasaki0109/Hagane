@@ -82,7 +82,9 @@ Repeated blind machining remains unsupported.
 [Multiple disjoint blind pockets](docs/normal-prism-blind-bores.md) can now be
 specified together on certified normal stock, with individual removed solids,
 exact retained floors and per-body STEP exports. Sources already containing
-blind floors and multiple-pocket STEP import remain unsupported.
+blind floors remain unsupported. [Multiple-pocket STEP re-import](docs/normal-prism-blind-bores-step.md)
+verifies up to 16 disjoint cavities against the actual restored source and
+a strict construction witness, preserving imported geometry.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

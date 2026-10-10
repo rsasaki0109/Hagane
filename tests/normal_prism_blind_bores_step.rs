@@ -145,22 +145,6 @@ fn plane(x: f64) -> Surface {
         v: Vec3::new(0., 0., 1.),
     }
 }
-fn blind(source: &Solid, x: f64, scale: f64, top: bool) -> NormalPrismBlindBore {
-    blind_bore_normal_prism(
-        source,
-        Point3::new(x, 0., if top { 5. * scale } else { 0. }),
-        scale,
-        2. * scale,
-        Vec3::new(0., 0., 1.),
-        if top {
-            NormalPrismBoreEntry::Positive
-        } else {
-            NormalPrismBoreEntry::Negative
-        },
-        policy(scale),
-    )
-    .unwrap()
-}
 fn equivalent(expected: &Solid, actual: &Solid, scale: f64) {
     let world = expected.vertices.iter().fold(30. * scale, |w, v| {
         w.max(v.point.x.abs())
@@ -196,146 +180,6 @@ fn roundtrip(s: &Solid, scale: f64) {
     let text2 = export_step_bounded_analytic_mm(&parsed, policy(scale).linear()).unwrap();
     let second = import_step_bounded_analytic_mm(&text2, policy(scale).absolute()).unwrap();
     equivalent(&parsed, &second, scale);
-}
-#[test]
-fn actual_blind_boxes_curved_and_cut_sources_top_bottom_pose_scales_roundtrip() {
-    for scale in [1e-4, 1., 10.] {
-        let plain = block(scale);
-        let p = rounded_rectangle_profile(
-            Point3::new(0., 0., 0.),
-            20. * scale,
-            16. * scale,
-            2. * scale,
-            policy(scale).absolute(),
-        )
-        .unwrap();
-        let rounded = extrude_arc_line(&p, 5. * scale, policy(scale).absolute()).unwrap();
-        let through = bore_normal_prism(
-            &rounded,
-            Point3::new(4. * scale, 0., 0.),
-            scale,
-            Vec3::new(0., 0., 1.),
-            policy(scale),
-        )
-        .unwrap();
-        let split = split_normal_prism_by_plane_components(
-            &plain,
-            &plane(0.),
-            Vec3::new(0., 0., 1.),
-            policy(scale),
-        )
-        .unwrap();
-        for (source, volume, genus) in [
-            (&plain, 1600. * scale.powi(3), 0),
-            (through.kept(), (1520. + 15. * PI) * scale.powi(3), 1),
-            (&split.negative()[0], 800. * scale.powi(3), 0),
-        ] {
-            for top in [true, false] {
-                let r = blind(source, -4. * scale, scale, top);
-                assert!(
-                    (r.kept().volume().unwrap() - (volume - 2. * PI * scale.powi(3))).abs()
-                        < 1e-8 * scale.powi(3)
-                );
-                assert_eq!(euler(r.kept()), 2 - 2 * genus);
-                roundtrip(r.kept(), scale);
-            }
-        }
-    }
-    let transform = Transform::translation(Vec3::new(12., -3., 5.))
-        .unwrap()
-        .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.31).unwrap())
-        .unwrap();
-    let source = block(1.)
-        .transformed(transform, policy(1.).absolute())
-        .unwrap();
-    for (sign, entry) in [
-        (1., NormalPrismBoreEntry::Positive),
-        (-1., NormalPrismBoreEntry::Negative),
-    ] {
-        let r = blind_bore_normal_prism(
-            &source,
-            transform.point(Point3::new(-4., 0., 5.)),
-            1.,
-            2.,
-            transform.vector(Vec3::new(0., 0., sign)),
-            entry,
-            policy(1.),
-        )
-        .unwrap();
-        roundtrip(r.kept(), 1.);
-    }
-    let meter = blind(&block(0.001), -0.004, 0.001, true);
-    let text = export_step_bounded_analytic_mm(meter.kept(), 1e-9)
-        .unwrap()
-        .replace("SI_UNIT(.MILLI.,.METRE.)", "SI_UNIT($,.METRE.)");
-    let mm = blind(&block(1.), -4., 1., true);
-    equivalent(
-        mm.kept(),
-        &import_step_bounded_analytic_mm(&text, policy(1.).absolute()).unwrap(),
-        1.,
-    );
-}
-fn two_pockets() -> Solid {
-    let source = block(1.);
-    let first = blind(&source, -4., 1., true);
-    let second = blind(&source, 4., 1., true);
-    let mut both = first.kept().clone();
-    let vertex_shift = both.vertices.len() - source.vertices.len();
-    let edge_shift = both.edges.len() - source.edges.len();
-    both.vertices.extend(
-        second.kept().vertices[source.vertices.len()..]
-            .iter()
-            .cloned(),
-    );
-    both.edges.extend(
-        second.kept().edges[source.edges.len()..]
-            .iter()
-            .cloned()
-            .map(|mut e| {
-                e.vertices = e.vertices.map(|i| i + vertex_shift);
-                e
-            }),
-    );
-    for (index, face) in source.shell.faces.iter().enumerate() {
-        let extra = &second.kept().shell.faces[index].wires[face.wires.len()..];
-        for wire in extra {
-            let mut wire = wire.clone();
-            for c in &mut wire.coedges {
-                c.edge += edge_shift;
-            }
-            both.shell.faces[index].wires.push(wire);
-        }
-    }
-    both.shell.faces.extend(
-        second.kept().shell.faces[source.shell.faces.len()..]
-            .iter()
-            .cloned()
-            .map(|mut f| {
-                for c in f.wires.iter_mut().flat_map(|w| &mut w.coedges) {
-                    c.edge += edge_shift;
-                }
-                f
-            }),
-    );
-    both
-}
-#[test]
-fn two_trusted_closed_quarter_pockets_roundtrip_in_bounded_reader() {
-    let both = two_pockets();
-    both.validate(policy(1.).absolute()).unwrap();
-    assert_eq!(euler(&both), 2);
-    assert!((both.volume().unwrap() - (1600. - 4. * PI)).abs() < 1e-8);
-    check_closed(&both, 1., 200.);
-    let text = export_step_bounded_analytic_mm(&both, 1e-6).unwrap();
-    if let Ok(directory) = std::env::var("HAGANE_BLIND_STEP_FIXTURE_DIR") {
-        std::fs::write(
-            std::path::Path::new(&directory).join("step-two-quarter-blind-pockets.step"),
-            &text,
-        )
-        .unwrap();
-    }
-    let imported = import_step_bounded_analytic_mm(&text, policy(1.).absolute()).unwrap();
-    equivalent(&both, &imported, 1.);
 }
 fn fields(text: &str) -> Vec<String> {
     let mut depth = 0;
@@ -424,9 +268,158 @@ fn permute(step: &str) -> String {
     }
     out
 }
+fn spec(x: f64, y: f64, r: f64, d: f64, top: bool, scale: f64) -> NormalPrismBlindBoreSpec {
+    NormalPrismBlindBoreSpec {
+        center: Point3::new(x * scale, y * scale, if top { 5. * scale } else { 0. }),
+        radius: r * scale,
+        depth: d * scale,
+        entry: if top {
+            NormalPrismBoreEntry::Positive
+        } else {
+            NormalPrismBoreEntry::Negative
+        },
+    }
+}
+fn make(source: &Solid, specs: &[NormalPrismBlindBoreSpec], scale: f64) -> Solid {
+    blind_bores_normal_prism(source, specs, Vec3::new(0., 0., 1.), policy(scale))
+        .unwrap()
+        .kept()
+        .clone()
+}
 #[test]
-fn equivalent_records_face_order_floor_start_and_shifted_planar_uv_origin() {
-    let result = blind(&block(1.), -4., 1., true);
+fn multi_pocket_roundtrips_preserve_two_three_sixteen_mixed_entry_actual_breps() {
+    for scale in [1e-4, 1., 10.] {
+        let source = block(scale);
+        let specs = [
+            spec(-4., -2., 1., 2., true, scale),
+            spec(4., 2., 0.75, 1.5, false, scale),
+            spec(0., 3., 0.5, 3., true, scale),
+        ];
+        for count in [2, 3] {
+            let body = make(&source, &specs[..count], scale);
+            let cut: f64 = specs[..count]
+                .iter()
+                .map(|s| PI * s.radius * s.radius * s.depth)
+                .sum();
+            assert!(
+                (body.volume().unwrap() - (1600. * scale.powi(3) - cut)).abs()
+                    < 1e-8 * scale.powi(3)
+            );
+            roundtrip(&body, scale);
+        }
+    }
+    let source = block(1.);
+    let sixteen: Vec<_> = (0..16)
+        .map(|i| {
+            spec(
+                -7.5 + 5. * (i % 4) as f64,
+                -6. + 4. * (i / 4) as f64,
+                0.6,
+                1. + 0.5 * (i % 3) as f64,
+                i % 2 == 0,
+                1.,
+            )
+        })
+        .collect();
+    roundtrip(&make(&source, &sixteen, 1.), 1.);
+    let profile =
+        rounded_rectangle_profile(Point3::new(0., 0., 0.), 20., 16., 2., policy(1.).absolute())
+            .unwrap();
+    let rounded = extrude_arc_line(&profile, 5., policy(1.).absolute()).unwrap();
+    let through = bore_normal_prism(
+        &rounded,
+        Point3::new(4., 0., 0.),
+        1.,
+        Vec3::new(0., 0., 1.),
+        policy(1.),
+    )
+    .unwrap();
+    let body = make(
+        through.kept(),
+        &[
+            spec(-4., 0., 1., 2., true, 1.),
+            spec(0., 3., 0.5, 1., false, 1.),
+        ],
+        1.,
+    );
+    assert_eq!(euler(&body), 0);
+    roundtrip(&body, 1.);
+    let split = split_normal_prism_by_plane_components(
+        &source,
+        &plane(0.),
+        Vec3::new(0., 0., 1.),
+        policy(1.),
+    )
+    .unwrap();
+    roundtrip(
+        &make(
+            &split.negative()[0],
+            &[
+                spec(-4., -3., 1., 2., true, 1.),
+                spec(-4., 3., 1., 1., false, 1.),
+            ],
+            1.,
+        ),
+        1.,
+    );
+    let transform = Transform::translation(Vec3::new(12., -3., 5.))
+        .unwrap()
+        .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.31).unwrap())
+        .unwrap();
+    let posed = source
+        .transformed(transform, policy(1.).absolute())
+        .unwrap();
+    let specs = [
+        spec(-4., -2., 1., 2., true, 1.),
+        spec(4., 2., 0.75, 1.5, false, 1.),
+    ]
+    .map(|mut s| {
+        s.center = transform.point(s.center);
+        s
+    });
+    let result = blind_bores_normal_prism(
+        &posed,
+        &specs,
+        transform.vector(Vec3::new(0., 0., 1.)),
+        policy(1.),
+    )
+    .unwrap();
+    roundtrip(result.kept(), 1.);
+    let small = make(
+        &block(0.001),
+        &[
+            spec(-4., -2., 1., 2., true, 0.001),
+            spec(4., 2., 0.75, 1.5, false, 0.001),
+        ],
+        0.001,
+    );
+    let text = export_step_bounded_analytic_mm(&small, 1e-9)
+        .unwrap()
+        .replace("SI_UNIT(.MILLI.,.METRE.)", "SI_UNIT($,.METRE.)");
+    let mm = make(
+        &source,
+        &[
+            spec(-4., -2., 1., 2., true, 1.),
+            spec(4., 2., 0.75, 1.5, false, 1.),
+        ],
+        1.,
+    );
+    equivalent(
+        &mm,
+        &import_step_bounded_analytic_mm(&text, policy(1.).absolute()).unwrap(),
+        1.,
+    );
+}
+#[test]
+fn entity_order_floor_loops_face_order_and_geometric_uv_origins_are_equivalent() {
+    let source = block(1.);
+    let specs = [
+        spec(-4., -2., 1., 2., true, 1.),
+        spec(4., 2., 0.75, 1.5, false, 1.),
+        spec(0., 3., 0.5, 3., true, 1.),
+    ];
+    let result =
+        blind_bores_normal_prism(&source, &specs, Vec3::new(0., 0., 1.), policy(1.)).unwrap();
     let text = export_step_bounded_analytic_mm(result.kept(), 1e-6).unwrap();
     equivalent(
         result.kept(),
@@ -434,38 +427,181 @@ fn equivalent_records_face_order_floor_start_and_shifted_planar_uv_origin() {
         1.,
     );
     let mut reordered = result.kept().clone();
-    reordered.shell.faces[result.floor_face()].wires[0]
-        .coedges
-        .rotate_left(1);
+    for &fi in result.floor_faces() {
+        reordered.shell.faces[fi].wires[0].coedges.rotate_left(1);
+    }
     reordered.shell.faces.rotate_left(4);
     roundtrip(&reordered, 1.);
     let mut shifted = result.kept().clone();
-    let floor = &mut shifted.shell.faces[result.floor_face()];
-    let Surface::Plane { origin, u, v } = &mut floor.surface else {
-        unreachable!()
-    };
-    *origin = *origin + *u * 3. + *v * 2.;
-    for c in &mut floor.wires[0].coedges {
-        match &mut c.pcurve {
-            PCurve::Arc { center, .. } | PCurve::Circle { center, .. } => {
-                center[0] -= 3.;
-                center[1] -= 2.;
+    for &fi in result.floor_faces() {
+        let floor = &mut shifted.shell.faces[fi];
+        let Surface::Plane { origin, u, v } = &mut floor.surface else {
+            unreachable!()
+        };
+        *origin = *origin + *u * 3. + *v * 2.;
+        for c in &mut floor.wires[0].coedges {
+            match &mut c.pcurve {
+                PCurve::Arc { center, .. } => {
+                    center[0] -= 3.;
+                    center[1] -= 2.;
+                }
+                _ => panic!("actual quarter floor UV"),
             }
-            _ => panic!("analytic circular floor pcurve"),
         }
     }
     roundtrip(&shifted, 1.);
+    let legacy = include_str!("../docs/step-two-quarter-blind-pockets.step");
+    let expected = make(
+        &source,
+        &[
+            spec(-4., 0., 1., 2., true, 1.),
+            spec(4., 0., 1., 2., true, 1.),
+        ],
+        1.,
+    );
+    equivalent(
+        &expected,
+        &import_step_bounded_analytic_mm(legacy, policy(1.).absolute()).unwrap(),
+        1.,
+    );
+}
+fn trusted_graft(source: &Solid, specs: &[NormalPrismBlindBoreSpec]) -> Solid {
+    let mut body = source.clone();
+    for s in specs {
+        let single = blind_bore_normal_prism(
+            source,
+            s.center,
+            s.radius,
+            s.depth,
+            Vec3::new(0., 0., 1.),
+            s.entry,
+            policy(1.),
+        )
+        .unwrap();
+        let other = single.kept();
+        let vs = body.vertices.len() - source.vertices.len();
+        let es = body.edges.len() - source.edges.len();
+        body.vertices
+            .extend(other.vertices[source.vertices.len()..].iter().cloned());
+        body.edges.extend(
+            other.edges[source.edges.len()..]
+                .iter()
+                .cloned()
+                .map(|mut e| {
+                    e.vertices = e.vertices.map(|i| i + vs);
+                    e
+                }),
+        );
+        for (i, f) in source.shell.faces.iter().enumerate() {
+            for wire in &other.shell.faces[i].wires[f.wires.len()..] {
+                let mut w = wire.clone();
+                for c in &mut w.coedges {
+                    c.edge += es;
+                }
+                body.shell.faces[i].wires.push(w);
+            }
+        }
+        body.shell.faces.extend(
+            other.shell.faces[source.shell.faces.len()..]
+                .iter()
+                .cloned()
+                .map(|mut f| {
+                    for c in f.wires.iter_mut().flat_map(|w| &mut w.coedges) {
+                        c.edge += es;
+                    }
+                    f
+                }),
+        );
+    }
+    body
 }
 #[test]
-fn serialized_floor_sense_pcurve_radius_and_cylinder_mismatches_reject() {
-    let result = blind(&block(1.), -4., 1., true);
+fn valid_opposing_pockets_with_axial_web_and_seventeen_pockets_are_unsupported() {
+    let source = block(1.);
+    let before = format!("{source:?}");
+    let specs = [
+        spec(0., 0., 1., 2., true, 1.),
+        spec(0., 0., 1., 2., false, 1.),
+    ];
+    let opposing = trusted_graft(&source, &specs);
+    opposing.validate(policy(1.).absolute()).unwrap();
+    assert_eq!(euler(&opposing), 2);
+    assert!((opposing.volume().unwrap() - (1600. - 4. * PI)).abs() < 1e-8);
+    check_closed(&opposing, 1., 200.);
+    assert_eq!(
+        classify_point_in_solid(&opposing, Point3::new(0., 0., 2.5), policy(1.)).unwrap(),
+        PointLocation::Inside
+    );
+    let text = export_step_bounded_analytic_mm(&opposing, 1e-6).unwrap();
+    if let Ok(dir) = std::env::var("HAGANE_BLIND_STEP_FIXTURE_DIR") {
+        std::fs::write(
+            std::path::Path::new(&dir).join("step-opposing-quarter-blind-pockets.step"),
+            &text,
+        )
+        .unwrap();
+    }
+    let rejection = import_step_bounded_analytic_mm(&text, policy(1.).absolute());
+    assert!(
+        matches!(rejection, Err(Error::Unsupported(_))),
+        "{rejection:?}"
+    );
+    let many: Vec<_> = (0..17)
+        .map(|i| {
+            spec(
+                -8. + 4. * (i % 5) as f64,
+                -6. + 4. * (i / 5) as f64,
+                0.4,
+                1.,
+                true,
+                1.,
+            )
+        })
+        .collect();
+    let body = trusted_graft(&source, &many);
+    body.validate(policy(1.).absolute()).unwrap();
+    assert_eq!(euler(&body), 2);
+    assert!((body.volume().unwrap() - (1600. - 17. * 0.16 * PI)).abs() < 1e-8);
+    check_closed(&body, 1., 200.);
+    let text = export_step_bounded_analytic_mm(&body, 1e-6).unwrap();
+    let rejection = import_step_bounded_analytic_mm(&text, policy(1.).absolute());
+    assert!(
+        matches!(rejection, Err(Error::Unsupported(_))),
+        "{rejection:?}"
+    );
+    assert_eq!(before, format!("{source:?}"));
+}
+#[test]
+fn actual_multi_floor_sense_pcurve_and_cylinder_tampering_rejects_and_operations_remain_scoped() {
+    let source = block(1.);
+    let specs = [
+        spec(-4., 0., 1., 2., true, 1.),
+        spec(4., 0., 0.75, 1., false, 1.),
+    ];
+    let result =
+        blind_bores_normal_prism(&source, &specs, Vec3::new(0., 0., 1.), policy(1.)).unwrap();
     let step = export_step_bounded_analytic_mm(result.kept(), 1e-6).unwrap();
+    let parsed = import_step_bounded_analytic_mm(&step, policy(1.).absolute()).unwrap();
+    assert!(bore_normal_prism(
+        &parsed,
+        Point3::new(0., 0., 0.),
+        0.5,
+        Vec3::new(0., 0., 1.),
+        policy(1.)
+    )
+    .is_err());
+    assert!(split_normal_prism_by_plane_components(
+        &parsed,
+        &plane(0.),
+        Vec3::new(0., 0., 1.),
+        policy(1.)
+    )
+    .is_err());
     let faces: Vec<_> = step
         .lines()
         .filter(|l| l.contains("=ADVANCED_FACE("))
         .map(|l| l.split_once('=').unwrap().0.to_owned())
         .collect();
-    let floor = &faces[result.floor_face()];
+    let floor = &faces[result.floor_faces()[1]];
     let (_, mut sense) = entity(&step, floor);
     sense[3] = if sense[3] == ".T." { ".F." } else { ".T." }.into();
     let cylinder = first(&step, "CYLINDRICAL_SURFACE");
@@ -480,12 +616,12 @@ fn serialized_floor_sense_pcurve_radius_and_cylinder_mismatches_reject() {
             entity(&step, &a[1]).0 == "AXIS2_PLACEMENT_2D"
         })
         .unwrap();
-    let (_, mut pcurve) = entity(&step, circle2);
-    pcurve[2] = "1.25".into();
+    let (_, mut uv) = entity(&step, circle2);
+    uv[2] = "1.25".into();
     for bad in [
         replace(&step, floor, &sense),
         replace(&step, &cylinder, &radius),
-        replace(&step, circle2, &pcurve),
+        replace(&step, circle2, &uv),
     ] {
         assert!(import_step_bounded_analytic_mm(&bad, policy(1.).absolute()).is_err());
     }

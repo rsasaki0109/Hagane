@@ -203,8 +203,8 @@ fn source_prefix(source: &Solid, single: &Solid) -> Result<usize> {
 /// unsupported. Projected disk footprints must remain strictly disjoint even
 /// for opposite entry sides; overlapping pockets with a remaining web are not
 /// admitted. All source geometry is retained, and removed tools follow input order.
-/// The result is outside normal-prism operations. Two or more cavities are
-/// outside the single-blind STEP reader's domain.
+/// The result is outside uniform normal-prism operations. The opt-in bounded
+/// analytic STEP reader separately certifies supported batch results.
 pub fn blind_bores_normal_prism(
     source: &Solid,
     specs: &[NormalPrismBlindBoreSpec],

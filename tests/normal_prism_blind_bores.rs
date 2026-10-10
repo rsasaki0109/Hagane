@@ -271,12 +271,13 @@ fn exercise(
     }
     check_closed(result.kept(), scale, world);
     let text = export_step_bounded_analytic_mm(result.kept(), policy(scale).linear()).unwrap();
-    if specs.len() > 1 {
-        assert!(matches!(
-            import_step_bounded_analytic_mm(&text, policy(scale).absolute()),
-            Err(Error::Unsupported(_))
-        ));
-    }
+    let parsed_kept = import_step_bounded_analytic_mm(&text, policy(scale).absolute()).unwrap();
+    assert!(
+        (parsed_kept.volume().unwrap() - (expected_source - total)).abs() < expected_source * 1e-11
+    );
+    assert_eq!(euler(&parsed_kept), euler(result.kept()));
+    check_retained_curves(result.kept(), &parsed_kept, guard);
+    check_closed(&parsed_kept, scale, world);
     assert!(blind_bores_normal_prism(result.kept(), specs, axis, policy(scale)).is_err());
     result.kept().clone()
 }

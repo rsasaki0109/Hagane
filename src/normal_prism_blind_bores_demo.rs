@@ -65,7 +65,7 @@ pub fn normal_prism_blind_bores_demo_json(x: &[f64]) -> Result<String> {
             "hole_faces":result.hole_faces()[i],"floor_face":result.floor_faces()[i]})
     }).collect();
     Ok(serde_json::json!({
-        "units":"mm","scope":"1..16 strictly projection-disjoint flat-bottom pockets on certified normal stock; source already containing blind floors, overlapping projected tools, workflow nodes and multiple-pocket STEP import remain unsupported",
+        "units":"mm","scope":"1..16 strictly projection-disjoint flat-bottom pockets on certified normal stock; source already containing blind floors, overlapping projected tools, and workflow nodes remain unsupported; bounded analytic STEP import certifies supported batch results",
         "source":crate::edge_fillet_demo::solid_json(&source,x[9],tol)?,
         "kept":crate::edge_fillet_demo::solid_json(result.kept(),x[9],tol)?,
         "removed":removed,"removed_volume":result.direct_removed_volume(),

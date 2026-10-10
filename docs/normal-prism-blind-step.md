@@ -1,5 +1,11 @@
 # Verified single-cavity analytic STEP import
 
+This records the original single-cavity milestone. The subsequent
+[multiple-pocket certificate](normal-prism-blind-bores-step.md) broadens the
+reader to 1–16 projection-disjoint cavities. Its positive regression corpus
+includes the previously unsupported two-quarter-pocket fixture below; other
+restrictions and original verification results remain documented here.
+
 ![Actual blind-pocket STEP imported and rendered by the Rust/WASM reader](normal-prism-blind-step.png)
 
 The opt-in bounded analytic STEP reader now accepts the supported single

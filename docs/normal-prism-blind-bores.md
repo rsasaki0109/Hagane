@@ -78,9 +78,9 @@ The default rounded 80 x 60 x 20 mm stock with 8 mm corners has volume
 `90880 + 552*pi` mm³.
 
 The operation does not activate workflow nodes or machining of a source already
-containing blind floors. The existing [single-cavity STEP reader](normal-prism-blind-step.md) admits the count-one result and individual removed
-cylinders; two or more retained cavities still return Unsupported on import.
-Export preserves actual analytic geometry regardless of this reader limitation.
+containing blind floors. The [bounded multiple-pocket STEP reader](normal-prism-blind-bores-step.md)
+admits the supported 1–16-cavity result and individual removed cylinders,
+preserving actual imported analytic geometry.
 
 Provenance: elementary circular parameterization, rigid frames, oriented shared
 boundaries, cylinder volume and the divergence theorem; compensated floating
@@ -117,5 +117,6 @@ three-pocket top/mixed/placed cases and a valid 90-value, 16-pocket model.
 Native numerical report and per-body STEP parity, per-pocket floor/wall
 geometry, all owning pcurves and closed chordal meshes are checked. Contact,
 depth, precision and transport errors recover. Individual removed cylinders
-re-import; the unchanged multiple-cavity retained-body import guard still
-returns Unsupported.
+re-import. Multiple-cavity import was unsupported in that construction
+milestone; the subsequent [STEP certificate](normal-prism-blind-bores-step.md)
+adds tested retained-body re-import.

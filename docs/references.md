@@ -1085,3 +1085,18 @@ Dividing display coordinates by a common finite scale is a similarity transform;
 this changes no CAD coordinates or mathematical modeling algorithm. The
 implementation and independent projection tests are original MIT OR Apache-2.0
 code, with no new dependencies and no OCCT source.
+
+## Multiple-pocket STEP certification
+
+The [batch blind-pocket reader](normal-prism-blind-bores-step.md) uses the same
+elementary affine/trigonometric whole-interval identities and oriented B-rep
+incidences as the single-pocket certificate. It restores actual source topology
+only in a proof clone and replays the existing disjoint-pocket constructor,
+using a bijective geometry/topology witness while retaining imported geometry.
+Original MIT OR Apache-2.0 Rust; no OCCT source and no new dependencies.
+
+Planar display repair uses dominant-axis projection of already evaluated world
+points, existing filtered exact orientation predicates and oriented boundary
+incidence. It changes connectivity only when a UV triangle collapses in world
+coordinates; original samples, pcurves and chord sampling remain unchanged.
+Existing Earcut dependency and license notices are unchanged.

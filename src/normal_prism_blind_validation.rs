@@ -1,4 +1,4 @@
-//! Read-only certificate for one quarter-arc blind cavity in a normal prism.
+//! Read-only certificate for disjoint quarter-arc blind cavities in a normal prism.
 use crate::*;
 use std::collections::BTreeSet;
 
@@ -173,10 +173,10 @@ fn curve_identity(a: &Curve, b: &Curve, reverse: bool, budget: f64) -> Result<()
 pub(crate) fn certify_validated_normal_prism_blind(s: &Solid, tol: Tolerance) -> Result<()> {
     Tolerance::new(tol.linear)?;
     s.validate(tol)?;
-    if s.shell.faces.len() > 135 || s.edges.len() > 396 || s.vertices.len() > 264 {
+    if s.shell.faces.len() > 210 || s.edges.len() > 576 || s.vertices.len() > 384 {
         return Err(DOMAIN);
     }
-    let mut admitted = 0;
+    let mut cavities = Vec::new();
     for (floor, face) in s.shell.faces.iter().enumerate() {
         if !matches!(face.surface, Surface::Plane { .. })
             || face.wires.len() != 1
@@ -191,17 +191,27 @@ pub(crate) fn certify_validated_normal_prism_blind(s: &Solid, tol: Tolerance) ->
         {
             continue;
         }
-        if certify_candidate(s, tol, floor).is_ok() {
-            admitted += 1;
+        if let Ok(cavity) = extract_candidate(s, floor) {
+            cavities.push(cavity);
+            if cavities.len() > 16 {
+                return Err(DOMAIN);
+            }
         }
     }
-    if admitted == 1 {
-        Ok(())
-    } else {
-        Err(DOMAIN)
+    if cavities.is_empty() {
+        return Err(DOMAIN);
     }
+    certify_candidates(s, tol, &cavities)
 }
-fn certify_candidate(s: &Solid, tol: Tolerance, floor: usize) -> Result<()> {
+struct Cavity {
+    floor: usize,
+    entry: usize,
+    wire: usize,
+    faces: BTreeSet<usize>,
+    edges: BTreeSet<usize>,
+    vertices: BTreeSet<usize>,
+}
+fn extract_candidate(s: &Solid, floor: usize) -> Result<Cavity> {
     let floor_edges = face_edges(&s.shell.faces[floor]);
     if floor_edges.len() != 4 {
         return Err(DOMAIN);
@@ -280,6 +290,35 @@ fn certify_candidate(s: &Solid, tol: Tolerance, floor: usize) -> Result<()> {
             return Err(DOMAIN);
         }
     }
+    Ok(Cavity {
+        floor,
+        entry,
+        wire,
+        faces: deleted_faces,
+        edges: deleted_edges,
+        vertices: deleted_vertices,
+    })
+}
+fn certify_candidates(s: &Solid, tol: Tolerance, cavities: &[Cavity]) -> Result<()> {
+    let mut deleted_faces = BTreeSet::new();
+    let mut deleted_edges = BTreeSet::new();
+    let mut deleted_vertices = BTreeSet::new();
+    let mut entries = BTreeSet::new();
+    for cavity in cavities {
+        if !deleted_faces.is_disjoint(&cavity.faces)
+            || !deleted_edges.is_disjoint(&cavity.edges)
+            || !deleted_vertices.is_disjoint(&cavity.vertices)
+            || !entries.insert((cavity.entry, cavity.wire))
+        {
+            return Err(DOMAIN);
+        }
+        deleted_faces.extend(&cavity.faces);
+        deleted_edges.extend(&cavity.edges);
+        deleted_vertices.extend(&cavity.vertices);
+    }
+    if cavities.iter().any(|c| deleted_faces.contains(&c.entry)) {
+        return Err(DOMAIN);
+    }
     let mut restored = s.clone();
     let mut vertex_map = vec![usize::MAX; s.vertices.len()];
     restored.vertices = s
@@ -321,9 +360,13 @@ fn certify_candidate(s: &Solid, tol: Tolerance, floor: usize) -> Result<()> {
         .filter(|(i, _)| !deleted_faces.contains(i))
         .map(|(i, f)| {
             let mut f = f.clone();
-            if i == entry {
-                f.wires.remove(wire);
-            }
+            f.wires = f
+                .wires
+                .into_iter()
+                .enumerate()
+                .filter(|(w, _)| !entries.contains(&(i, *w)))
+                .map(|(_, w)| w)
+                .collect();
             for w in &mut f.wires {
                 for c in &mut w.coedges {
                     c.edge = edge_map[c.edge];
@@ -333,24 +376,42 @@ fn certify_candidate(s: &Solid, tol: Tolerance, floor: usize) -> Result<()> {
         })
         .collect();
     restored.validate(tol)?;
+    let entry = cavities[0].entry;
     let Surface::Plane { u, v, .. } = s.shell.faces[entry].surface else {
         return Err(DOMAIN);
     };
     let axis = u.cross(v).normalized()? * f64::from(s.shell.faces[entry].orientation);
     crate::arc_line_prism_validation::recognize_validated_normal_prism(&restored, axis, tol)?;
-    let first = s.shell.faces[entry].wires[wire].coedges[0].edge;
-    let (entry_frame, radius, _) = circle(&s.edges[first])?;
-    let (floor_frame, _, _) = circle(&s.edges[*floor_edges.first().ok_or(DOMAIN)?])?;
-    let depth = (entry_frame.origin() - floor_frame.origin()).dot(axis);
-    let witness = blind_bore_normal_prism(
+    let mut specs = Vec::with_capacity(cavities.len());
+    for cavity in cavities {
+        let face = &s.shell.faces[cavity.entry];
+        let Surface::Plane { u, v, .. } = face.surface else {
+            return Err(DOMAIN);
+        };
+        let outward = u.cross(v).normalized()? * f64::from(face.orientation);
+        let first = face.wires[cavity.wire].coedges[0].edge;
+        let (entry_frame, radius, _) = circle(&s.edges[first])?;
+        let floor_edges = face_edges(&s.shell.faces[cavity.floor]);
+        let (floor_frame, _, _) = circle(&s.edges[*floor_edges.first().ok_or(DOMAIN)?])?;
+        let depth = (entry_frame.origin() - floor_frame.origin()).dot(outward);
+        specs.push(NormalPrismBlindBoreSpec {
+            center: entry_frame.origin(),
+            radius,
+            depth,
+            entry: if outward.dot(axis) > 0. {
+                NormalPrismBoreEntry::Positive
+            } else {
+                NormalPrismBoreEntry::Negative
+            },
+        });
+    }
+    let witness = blind_bores_normal_prism(
         &restored,
-        entry_frame.origin(),
-        radius,
-        depth,
+        &specs,
         axis,
-        NormalPrismBoreEntry::Positive,
         GeometryTolerance::new(tol.linear, 1e-10, 0.)?,
-    )?;
+    )
+    .map_err(|_| DOMAIN)?;
     let body = witness.kept();
     let mut world = length(s.bounds().max - s.bounds().min);
     for e in &s.edges {
@@ -517,13 +578,15 @@ fn certify_candidate(s: &Solid, tol: Tolerance, floor: usize) -> Result<()> {
             }
         }
     }
-    for c in &s.shell.faces[entry].wires[wire].coedges {
-        pcurve_identity(
-            &s.shell.faces[entry].surface,
-            &s.edges[c.edge].curve,
-            &c.pcurve,
-            budget,
-        )?;
+    for cavity in cavities {
+        for c in &s.shell.faces[cavity.entry].wires[cavity.wire].coedges {
+            pcurve_identity(
+                &s.shell.faces[cavity.entry].surface,
+                &s.edges[c.edge].curve,
+                &c.pcurve,
+                budget,
+            )?;
+        }
     }
     let actual_volume = s.volume()?;
     let witness_volume = body.volume()?;
