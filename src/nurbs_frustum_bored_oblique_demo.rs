@@ -24,6 +24,6 @@ pub(crate) fn serialize_bored_oblique_frustum(
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN",
         "mass_properties":mass_properties,
-        "scope":"actual closed genus-one bored oblique frustum; optional analytic mass properties; actual point and finite segment queries; line/ray queries, repeated cuts and generic import unsupported"
+        "scope":"actual closed genus-one bored oblique frustum; optional analytic mass properties; actual point, finite segment, line and ray queries; repeated cuts and generic import unsupported"
     }))
 }

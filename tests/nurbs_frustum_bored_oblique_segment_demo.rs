@@ -129,8 +129,8 @@ fn selected_child_refusals_leave_accepted_geometry_metrics_and_history_intact() 
             call(
                 &mut session,
                 json!({"command":kind,"component":0,"origin":[0.,0.,18.],"direction":[2.,0.,0.]})
-            )["diagnostic"]["category"],
-            "unsupported"
+            )["ok"],
+            true
         );
     }
     assert_eq!(

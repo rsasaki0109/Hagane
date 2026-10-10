@@ -67,10 +67,13 @@ fn actual_annular_children_and_atomic_unsupported_queries() {
         json!({"command":"line","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
         json!({"command":"ray","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
     ] {
-        let rejected = command(&mut session, query);
-        assert_eq!(rejected["ok"], false);
-        assert_eq!(rejected["diagnostic"]["category"], "unsupported");
-        assert_eq!(rejected["accepted_document"], doc);
+        let queried = command(&mut session, query);
+        assert_eq!(queried["ok"], true);
+        assert_eq!(queried["line"]["mesh_free"], true);
+        assert!(!queried["line"]["material_intervals"]
+            .as_array()
+            .unwrap()
+            .is_empty());
     }
     let again = command(&mut session, json!({"command":"rebuild","document":doc}));
     assert_eq!(

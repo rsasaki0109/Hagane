@@ -1,9 +1,11 @@
 # Lines and rays through retained frustum material
 
-Actual `NurbsBoredFrustumSolid` and `NurbsObliqueFrustumSolid` support
+Actual `NurbsBoredFrustumSolid`, `NurbsObliqueFrustumSolid` and
+`NurbsBoredObliqueFrustumSolid` support
 `intersect_line(origin, direction, policy)` and `intersect_ray(...)`.
 Both return `NurbsFrustumMaterialLineIntersection`, containing actual kept-face
-hits and `material_intervals`. Bored material may have two separated intervals;
+hits and `material_intervals`. Bored and bored-oblique material may have two
+separated intervals;
 oblique material is convex and has at most one.
 
 Parameters always refer to the original world input `origin + t*direction`.
@@ -16,6 +18,11 @@ For source `[16,8]`, height 24 and coaxial hole radius 4, origin `[-20,0,12]`
 and direction `[2,0,0]` give line hits `4,8,12,16` and material intervals
 `[4,8]`, `[12,16]`. Origin `[0,0,12]` with that direction gives the ray interval
 `[2,6]`; origin `[6,0,12]` gives `[0,3]`.
+
+For the bored-oblique example, lower-child origin `[-20,0,6]` and direction
+`[2,0,0]` give intervals `[3,8]`, `[12,17]`. The same line anchored at
+`[0,0,6]` has intervals `[-7,-2]`, `[2,7]`; its forward ray keeps only
+`[2,7]`. These intervals preserve the actual hole and cut halfspace.
 
 The implementation validates the actual body and guards the original anchor,
 world coordinates and frame metric before cropping or an empty-result shortcut.

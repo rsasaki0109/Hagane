@@ -9,6 +9,7 @@ pub struct NurbsFrustumMaterialLineIntersection {
 enum Retained<'a> {
     Bored(&'a NurbsBoredFrustumSolid),
     Oblique(&'a NurbsObliqueFrustumSolid),
+    BoredOblique(&'a NurbsBoredObliqueFrustumSolid),
 }
 struct Segment {
     hits: Vec<NurbsFrustumSegmentHit>,
@@ -19,29 +20,40 @@ impl Retained<'_> {
         match self {
             Self::Bored(v) => v.source(),
             Self::Oblique(v) => v.source(),
+            Self::BoredOblique(v) => v.source().source(),
         }
     }
     fn solid(&self) -> &Solid {
         match self {
             Self::Bored(v) => v.solid(),
             Self::Oblique(v) => v.solid(),
+            Self::BoredOblique(v) => v.solid(),
         }
     }
     fn validate(&self, p: GeometryTolerance) -> Result<()> {
         match self {
             Self::Bored(v) => v.validate(p),
             Self::Oblique(v) => v.validate(p),
+            Self::BoredOblique(v) => v.validate(p),
         }
     }
     fn classify_point(&self, q: Point3, p: GeometryTolerance) -> Result<PointLocation> {
         match self {
             Self::Bored(v) => v.classify_point(q, p),
             Self::Oblique(v) => v.classify_point(q, p),
+            Self::BoredOblique(v) => v.classify_point(q, p),
         }
     }
     fn intersect_segment(&self, a: Point3, b: Point3, p: GeometryTolerance) -> Result<Segment> {
         match self {
             Self::Bored(v) => {
+                let s = v.intersect_segment(a, b, p)?;
+                Ok(Segment {
+                    hits: s.hits,
+                    material_intervals: s.material_intervals,
+                })
+            }
+            Self::BoredOblique(v) => {
                 let s = v.intersect_segment(a, b, p)?;
                 Ok(Segment {
                     hits: s.hits,
@@ -342,5 +354,24 @@ impl NurbsObliqueFrustumSolid {
         policy: GeometryTolerance,
     ) -> Result<NurbsFrustumMaterialLineIntersection> {
         Retained::Oblique(self).intersect_ray(origin, direction, policy)
+    }
+}
+
+impl NurbsBoredObliqueFrustumSolid {
+    pub fn intersect_line(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::BoredOblique(self).intersect_line(origin, direction, policy)
+    }
+    pub fn intersect_ray(
+        &self,
+        origin: Point3,
+        direction: Vec3,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumMaterialLineIntersection> {
+        Retained::BoredOblique(self).intersect_ray(origin, direction, policy)
     }
 }

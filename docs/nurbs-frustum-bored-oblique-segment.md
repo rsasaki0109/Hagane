@@ -31,7 +31,8 @@ Tangency, boundary endpoints, close shared rims, unresolved near-parallel plane
 crossings, tiny material intervals and insufficient coordinate precision return
 explicit errors. Precision bands use the original complete source extent.
 Inherited source intersection restrictions apply even on a removed side.
-Infinite line/ray queries and repeated cuts remain unsupported for this type.
+[Infinite line/ray queries](nurbs-frustum-retained-line.md) reuse these checked
+material intervals. Repeated cuts remain unsupported for this type.
 
 Tests cover independent analytic interval oracles, both children, cut roots in
 material and void, rotations, multiple scales, parameter reversal, actual UV

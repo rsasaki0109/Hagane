@@ -115,7 +115,7 @@ including the canonical bored solid's actual inner wall and annular cap distance
 [Bored-oblique point queries](nurbs-frustum-bored-oblique-classify.md) use finite
 annular cut-cap witnesses;
 [finite segment queries](nurbs-frustum-bored-oblique-segment.md) retain both
-material intervals. Their line/ray queries remain unsupported.
+material intervals. Their line/ray queries also preserve original parameters.
 The source's filled cap disks are not substituted for annular boundaries.
 
 ## Read-only point queries

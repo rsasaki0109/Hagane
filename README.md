@@ -37,7 +37,8 @@ child centroids and inertia with explicit conditioning errors.
 [Finite point queries](docs/nurbs-frustum-bored-oblique-classify.md) retain the
 hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](docs/nurbs-frustum-bored-oblique-segment.md)
-retain both material intervals and actual restricted-face UVs. Further cuts, repeated bores
+retain both material intervals and actual restricted-face UVs. Line/ray queries
+also preserve original parameters on these children. Further cuts, repeated bores
 and bored-frustum STEP import remain unsupported.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 

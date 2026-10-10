@@ -1330,3 +1330,7 @@ Bored-oblique finite segments combine checked annular source intervals with
 independent halfspace clipping. Rational generator parameter inversion and
 affine Gram coordinates supply actual surface witnesses; both endpoint gaps
 certify empty intervals. No external source or dependency is added.
+
+Bored-oblique line/ray queries reuse the independently implemented expanded
+source slab enclosure, actual retained finite segment intervals and checked
+original-parameter reconstruction. No external source or dependency is added.

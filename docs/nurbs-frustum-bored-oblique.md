@@ -49,7 +49,7 @@ unresolved very thin material can be unsupported even when the parent exists.
 checked availability. Unresolved metrics preserve geometry and export.
 [Mesh-free point classification](nurbs-frustum-bored-oblique-classify.md) now
 uses finite annular witnesses. [Finite segment queries](nurbs-frustum-bored-oblique-segment.md)
-retain both material intervals and actual face UVs. Line/ray queries remain unsupported.
+retain both material intervals and actual face UVs. [Line/ray queries](nurbs-frustum-retained-line.md) preserve original parameters.
 Geometry, volume, bounded display and exact STEP export remain usable. Repeated cuts, general curved Booleans and generic
 bored-frustum STEP import are also unsupported.
 

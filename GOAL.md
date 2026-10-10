@@ -16,7 +16,10 @@ children through a complete interior plane section.
 [Checked analytic mass](docs/nurbs-frustum-bored-oblique-mass.md) gives actual
 child centroids and inertia with explicit conditioning errors.
 [Finite point queries](docs/nurbs-frustum-bored-oblique-classify.md) retain the
-hole and certify actual annular cut-cap witnesses. Further cuts, repeated bores
+hole and certify actual annular cut-cap witnesses.
+[Finite bored-oblique segments](docs/nurbs-frustum-bored-oblique-segment.md)
+retain both material intervals and actual restricted-face UVs. Line/ray queries
+also preserve original parameters on these children. Further cuts, repeated bores
 and bored-frustum STEP import remain unsupported.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
@@ -1657,3 +1660,18 @@ failed an existing line-probe exact PNG comparison before the new block.
 A targeted raw-buffer/camera/PNG diagnostic passed without reproducing the
 cause; the original equality guard remains intact and no fix is claimed.
 The actual final model screenshot was inspected.
+
+## Original-parameter lines and rays through bored oblique children
+
+Actual retained annular children now share checked finite cropping and original
+nonunit parameter mapping with other retained frusta. All material intervals
+are preserved; rays classify the actual origin and clip every interval without
+a synthetic boundary hit at zero. Existing source/world precision and contact
+guards remain unchanged. Repeated cuts and general curved Booleans remain
+unsupported. See [retained line/ray scope](docs/nurbs-frustum-retained-line.md).
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: fmt, strict all-target Clippy, 18 relevant native tests and WASM
+build passed. The entire new line/ray block plus prior segment/workflow/mass/point
+native/WASM checks passed. The entire browser suite passed on its first run;
+actual ray interval `[2,7]` and retained annular model screenshot were inspected.
