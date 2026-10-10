@@ -9,6 +9,21 @@ curves and planar caps. Their frame axes are retained; the upper origin moves
 to the cut plane. The four `section` curves are the actual lower top-cap rims.
 No mesh cut or fitted surface is used.
 
+`split_axial_many(&[6., 12., 18.], policy)` partitions the same source into
+four ordered closed parts. It accepts 1–16 finite, strictly increasing local
+heights. Every interval, including the last, must exceed ten full-source
+tolerance bands plus arithmetic reserve. Duplicate, unordered, endpoint and
+unresolved cuts fail without modifying the source or returning partial parts.
+Each resulting patch is certified against the original source, each adjoining
+rim pair is checked, and total volume and first moments are checked again;
+unchecked repeated-frame drift is not accumulated. `sections[i]` contains the
+actual top rim curves of `parts[i]`, adjacent to `parts[i + 1]`.
+
+Run `cargo run --example nurbs_frustum_partitions` for the four-part native
+demo. Supply an existing output directory as its argument to save each part's
+exact STEP. The API is shared Rust code compiled for native and WASM; the
+current browser page and numeric ABI still expose the single-cut operation.
+
 ```rust
 use hagane::*;
 # fn example() -> Result<()> {

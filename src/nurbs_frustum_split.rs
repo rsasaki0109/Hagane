@@ -11,6 +11,15 @@ pub struct NurbsFrustumSplit {
     pub cut_height: f64,
     pub radius: f64,
 }
+
+/// Ordered, closed parts of one source, with actual section curves between them.
+#[derive(Clone, Debug)]
+pub struct NurbsFrustumPartitions {
+    pub parts: Vec<NurbsFrustumSolid>,
+    pub sections: Vec<Vec<Curve>>,
+    /// Strictly increasing source-local axial distances.
+    pub cut_heights: Vec<f64>,
+}
 fn unresolved() -> Error {
     Error::Unsupported("frustum axial partition geometry or arithmetic is unresolved")
 }
@@ -98,6 +107,100 @@ fn centroid_fraction(radii: [f64; 2]) -> f64 {
     (a * a + 2. * a * b + 3. * b * b) / (4. * (a * a + a * b + b * b))
 }
 impl NurbsFrustumSolid {
+    /// Partition at 1–16 strictly increasing source-local axial heights.
+    /// Every interval must exceed ten times the FULL source tolerance band.
+    /// Returns no partial result on failure and never modifies the source.
+    pub fn split_axial_many(
+        &self,
+        cuts: &[f64],
+        policy: GeometryTolerance,
+    ) -> Result<NurbsFrustumPartitions> {
+        self.validate(policy)?;
+        if cuts.is_empty() || cuts.len() > 16 {
+            return Err(Error::InvalidInput("frustum partition requires 1–16 cuts"));
+        }
+        let height = self.height();
+        let frame = self.frame();
+        let scale = (2. * self.radii()[0].max(self.radii()[1])).hypot(height);
+        let world = scale
+            .max(frame.origin().x.abs())
+            .max(frame.origin().y.abs())
+            .max(frame.origin().z.abs());
+        let arithmetic = 32768. * f64::EPSILON * world;
+        let minimum = 10. * policy.length_at_scale(scale)? + arithmetic;
+        let budget = policy.linear() / 32. - arithmetic;
+        if budget <= 0. || !budget.is_finite() {
+            return Err(unresolved());
+        }
+        let mut previous = 0.;
+        for &cut in cuts {
+            if !cut.is_finite() || cut <= previous || cut >= height {
+                return Err(Error::InvalidInput(
+                    "cuts must be finite, increasing and strictly interior",
+                ));
+            }
+            if cut - previous <= minimum {
+                return Err(Error::Unsupported(
+                    "frustum partition interval is unresolved at source tolerance",
+                ));
+            }
+            previous = cut;
+        }
+        if height - previous <= minimum {
+            return Err(Error::Unsupported(
+                "frustum final partition interval is unresolved at source tolerance",
+            ));
+        }
+        let mut remaining = self.clone();
+        let mut parts = Vec::with_capacity(cuts.len() + 1);
+        previous = 0.;
+        for &cut in cuts {
+            let split = remaining.split_axial(cut - previous, policy)?;
+            parts.push(split.lower);
+            remaining = split.upper;
+            previous = cut;
+        }
+        parts.push(remaining);
+        // Repeated frame arithmetic must still certify EVERY returned patch
+        // against the original source, rather than accumulate unchecked drift.
+        let mut start = 0.;
+        for (i, part) in parts.iter().enumerate() {
+            let end = cuts.get(i).copied().unwrap_or(height);
+            check_restriction(
+                self.solid(),
+                part.solid(),
+                [start / height, end / height],
+                budget,
+            )?;
+            start = end;
+        }
+        let sections = parts
+            .windows(2)
+            .map(|pair| check_section(pair[0].solid(), pair[1].solid(), budget, scale))
+            .collect::<Result<Vec<_>>>()?;
+        let source_volume = self.volume(policy)?;
+        let mut fraction = 0.;
+        let mut moment = 0.;
+        start = 0.;
+        for (i, part) in parts.iter().enumerate() {
+            let end = cuts.get(i).copied().unwrap_or(height);
+            let weight = part.volume(policy)? / source_volume;
+            fraction += weight;
+            moment += weight
+                * (start / height + (end - start) / height * centroid_fraction(part.radii()));
+            start = end;
+        }
+        check((fraction - 1.).abs(), 32768. * f64::EPSILON)?;
+        check(
+            (moment - centroid_fraction(self.radii())).abs(),
+            32768. * f64::EPSILON,
+        )?;
+        Ok(NurbsFrustumPartitions {
+            parts,
+            sections,
+            cut_heights: cuts.to_vec(),
+        })
+    }
     /// Split by the source-local plane Z=`cut_height`, returning both closed
     /// canonical rational bodies and their actual circular section curves.
     /// The source remains unchanged. Oblique cuts and general NURBS solids are

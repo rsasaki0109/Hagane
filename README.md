@@ -27,6 +27,8 @@ Mesh-free world-point classification now checks Euclidean distances to finite
 side/cap/rim boundaries; unresolved precision is explicitly refused.
 [Axial frustum partitions](docs/nurbs-frustum-split.md) return two validated closed children,
 actual rational section curves and per-child STEP. General oblique splits remain unsupported.
+The shared Rust API also supports 1–16 ordered axial cuts; run
+`cargo run --example nurbs_frustum_partitions` for the multi-part native demo.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,
