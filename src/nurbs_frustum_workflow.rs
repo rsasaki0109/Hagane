@@ -1,4 +1,4 @@
-//! Versioned branching replay of certified cardinal-frame rational frusta.
+//! Versioned branching replay of checked cardinal and axis-angle rational frusta.
 use crate::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,6 +26,14 @@ pub enum NurbsFrustumWorkflowOperation {
         height: f64,
         origin: [f64; 3],
         axes: [[f64; 3]; 3],
+    },
+    PosedFrustum {
+        id: String,
+        radii: [f64; 2],
+        height: f64,
+        origin: [f64; 3],
+        rotation_axis: [f64; 3],
+        angle: f64,
     },
     StepStock {
         id: String,
@@ -92,6 +100,7 @@ impl NurbsFrustumWorkflowOperation {
     pub fn id(&self) -> &str {
         match self {
             Self::Frustum { id, .. }
+            | Self::PosedFrustum { id, .. }
             | Self::StepStock { id, .. }
             | Self::Partition { id, .. }
             | Self::Select { id, .. } => id,
@@ -196,6 +205,27 @@ impl NurbsFrustumWorkflowDocument {
                         return Err(diagnostic("invalid_input","invalid_frustum",Some(id),"Frustum requires positive finite dimensions and an exact right-handed cardinal frame."));
                     }
                 }
+                NurbsFrustumWorkflowOperation::PosedFrustum {
+                    radii,
+                    height,
+                    origin,
+                    rotation_axis,
+                    angle,
+                    ..
+                } => {
+                    let axis = Vec3::new(rotation_axis[0], rotation_axis[1], rotation_axis[2]);
+                    if !origin.iter().all(|x| x.is_finite())
+                        || !radii.iter().all(|x| x.is_finite() && *x > 0.)
+                        || !height.is_finite()
+                        || *height <= 0.
+                        || !angle.is_finite()
+                        || angle.abs() > std::f64::consts::PI
+                        || axis.normalized().is_err()
+                    {
+                        return Err(diagnostic("invalid_input","invalid_posed_frustum",Some(id),"Posed frustum requires positive finite dimensions, finite origin, nonzero finite rotation axis and angle in [-pi,pi] radians."));
+                    }
+                    Transform::rotation(axis, *angle).map_err(|e| geometry(e, id))?;
+                }
                 NurbsFrustumWorkflowOperation::StepStock { step, .. } => {
                     bytes = bytes.checked_add(step.len()).ok_or_else(|| {
                         diagnostic(
@@ -266,6 +296,32 @@ impl NurbsFrustumWorkflowDocument {
                 let frame = Frame3::new_with_tolerance(
                     Point3::new(origin[0], origin[1], origin[2]),
                     axes,
+                    tol,
+                )
+                .map_err(|e| geometry(e, id))?;
+                vec![Arc::new(
+                    NurbsFrustumSolid::new(frame, *radii, *height, tol)
+                        .map_err(|e| geometry(e, id))?,
+                )]
+            }
+            NurbsFrustumWorkflowOperation::PosedFrustum {
+                radii,
+                height,
+                origin,
+                rotation_axis,
+                angle,
+                ..
+            } => {
+                // Rotate the local axes about the world direction, then place
+                // the local origin at the supplied world point (R*p + origin).
+                let rotation = Transform::rotation(
+                    Vec3::new(rotation_axis[0], rotation_axis[1], rotation_axis[2]),
+                    *angle,
+                )
+                .map_err(|e| geometry(e, id))?;
+                let frame = Frame3::new_with_tolerance(
+                    Point3::new(origin[0], origin[1], origin[2]),
+                    rotation.axes(),
                     tol,
                 )
                 .map_err(|e| geometry(e, id))?;

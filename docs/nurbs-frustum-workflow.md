@@ -1,7 +1,7 @@
 # Editable rational frustum workflow
 
 The versioned Rust workflow connects exact cardinal-frame frustum construction,
-actual STEP input, axial partitions and explicit component selection. A session
+axis-angle poses, actual STEP input, axial partitions and explicit component selection. A session
 retains unchanged B-rep prefixes, reports real node evaluation counts and
 supports bounded Undo/Redo. It is a scoped modeling graph, not a general CAD
 history or Boolean engine.
@@ -33,6 +33,7 @@ outputs and forward references are rejected.
 | Kind | Result and restrictions |
 | --- | --- |
 | `frustum` | One exact positive-radius frustum from radii, height, origin and three axes. Axes must be one of the 24 exact right-handed signed coordinate bases. |
+| `posed_frustum` | One actual frustum from positive radii/height, origin, a nonzero finite `rotation_axis` and `angle` in [-π, π] radians. Uses checked rigid rotation; no scale, shear or reflection. |
 | `step_stock` | One actual body from the checked [cardinal STEP importer](nurbs-frustum-cardinal-step-import.md), retaining rational geometry and UV boundaries. |
 | `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one component. |
 | `select` | The explicitly indexed component of an earlier node, shared as the actual typed body. |
@@ -65,8 +66,8 @@ complete output; custom `rebuild_with` callbacks control output validation. STEP
 begin/finish resets the transport latch without silently resetting the session.
 
 The native and WASM command paths share the kernel, actual-body serializer and
-transaction rules. Arbitrary-angle frames, apex shapes, general lofts, oblique
-partitions and frustum Booleans are unsupported.
+transaction rules. Arbitrary-angle STEP import, apex shapes, general lofts,
+oblique partitions and frustum Booleans are unsupported.
 
 ## Browser editing
 
@@ -99,3 +100,31 @@ bounds and Redo invalidation. Demo checks compare complete actual component
 reports and reject display work beyond the aggregate budget before committing.
 The workflow reuses this repository's original kernel and transaction design;
 no dependencies or OCCT source were added. Code is MIT OR Apache-2.0.
+
+## Axis-angle stock placement
+
+Run `cargo run --example nurbs_frustum_workflow_pose` for the actual posed
+workflow report. Its [document](nurbs-frustum-workflow-pose-example.json) uses
+axis `[1, 2, 3]`, angle `0.37` radians and world origin `[12, -5, 8]` mm.
+The axis direction is normalized with overflow-safe vector normalization. The
+frame is a checked right-handed orthonormal basis; reports retain its actual
+three axes rather than a guessed Euler angle. Local points map to `R*p + origin`:
+the origin is placed after rotation and remains the supplied world point.
+
+In the browser, **Use posed stock** explicitly replaces the cardinal stock axes
+with the new axis-angle recipe and preserves dimensions, origin and node IDs.
+The pose controls display degrees; the document stores radians. Dimension and
+cut edits preserve an unchanged accepted angle without a unit-conversion
+round trip. Advanced histories still use the JSON editor.
+
+Partitions use physical source-local axial distances in this frame. Their
+closed children retain actual posed rational curves, ruled surfaces and pcurves.
+Native/WASM tests independently check Rodrigues rotation, world centroids and
+full matrix inertia; rejected pose edits preserve the accepted graph/history.
+
+This new node preserves the old `frustum` node's 24 exact signed coordinate bases.
+STEP export remains actual B-rep; the cardinal STEP importer still rejects
+general oblique frames. A posed document can be saved and rebuilt without
+claiming general rotated STEP import.
+
+![Actual general-axis stock and selected partition rendered by WASM](nurbs-frustum-workflow-posed.png)

@@ -1191,3 +1191,10 @@ axial partition algorithms, cardinal STEP reader and immutable Rust `Arc` snapsh
 Volume accumulation uses the compensated summation reference above. This
 MIT OR Apache-2.0 workflow adds no dependencies or OCCT source. See the
 [document and validation scope](nurbs-frustum-workflow.md).
+
+Axis-angle frustum workflow placement uses the existing independently
+implemented Rodrigues rigid rotation and checked orthonormal frames. Components
+retain the original typed rational B-rep and source-local partition algorithms;
+world inertia uses the standard tensor transformation `R I Rᵀ` and parallel-axis
+theorem. Original code is MIT OR Apache-2.0 with no new dependencies or OCCT
+source. See [pose scope](nurbs-frustum-workflow.md#axis-angle-stock-placement).

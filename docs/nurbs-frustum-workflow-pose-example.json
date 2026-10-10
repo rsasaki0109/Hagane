@@ -1,0 +1,50 @@
+{
+  "display_chord_tolerance": 0.1,
+  "document_type": "nurbs_frustum_workflow",
+  "operations": [
+    {
+      "angle": 0.37,
+      "height": 24.0,
+      "id": "stock",
+      "kind": "posed_frustum",
+      "origin": [
+        12.0,
+        -5.0,
+        8.0
+      ],
+      "radii": [
+        16.0,
+        8.0
+      ],
+      "rotation_axis": [
+        1.0,
+        2.0,
+        3.0
+      ]
+    },
+    {
+      "cuts": [
+        6.0,
+        12.0,
+        18.0
+      ],
+      "id": "parts",
+      "input": "stock",
+      "kind": "partition"
+    },
+    {
+      "component": 1,
+      "id": "selected",
+      "input": "parts",
+      "kind": "select"
+    }
+  ],
+  "output": "selected",
+  "schema_version": 1,
+  "tolerance": {
+    "angular": 1e-10,
+    "linear": 1e-08,
+    "relative": 1e-10
+  },
+  "units": "mm"
+}

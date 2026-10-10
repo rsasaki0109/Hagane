@@ -6,6 +6,8 @@ Native and WASM sessions reuse unchanged B-reps, validate outputs before commit
 and support bounded Undo/Redo. General curved Booleans remain unsupported.
 The dedicated browser editor supports JSON documents, physical preset controls,
 explicit selection, Undo/Redo and per-component STEP download.
+A separate axis-angle stock node supports checked arbitrary rigid orientation;
+STEP input retains its documented cardinal-frame restriction.
 
 [Exact rational NURBS frustum lofts](nurbs-frustum.md) add closed ruled
 surfaces beyond height graphs, with same-parameter rational boundaries, validated
