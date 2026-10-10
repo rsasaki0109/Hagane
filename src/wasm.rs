@@ -3,6 +3,7 @@
 #[cfg(target_arch = "wasm32")]
 mod exports {
     use std::sync::Mutex;
+    static EDGE_FILLET_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_CONTACT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_MULTI_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
@@ -364,6 +365,35 @@ mod exports {
         } else {
             generate(crate::nurbs_graph_polygon_hole_demo_json(&values))
         }
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_edge_fillet_begin() {
+        let mut input = EDGE_FILLET_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_edge_fillet_push(value: f64) -> i32 {
+        let mut input = EDGE_FILLET_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 18 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_edge_fillet_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = EDGE_FILLET_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "edge fillet transport needs at most 18 finite values",
+            )));
+        }
+        generate(crate::edge_fillet_demo_json(&values))
     }
     #[no_mangle]
     pub extern "C" fn hagane_edge_chamfer_contact_begin() {

@@ -39,8 +39,11 @@ solids for one isolated equal-setback edge of a convex planar solid, with a
 Web demo and exact STEP export. [Multiple planar chamfers](docs/edge-chamfer-multi.md)
 add resolved unequal adjacent intersections and final trimmed bevel faces.
 [Contact-capable chamfers](docs/edge-chamfer-contact.md) additionally support
-resolved vertex contacts and all twelve equal-setback box edges. Curved chamfers
-and fillets remain planned.
+resolved vertex contacts and all twelve equal-setback box edges.
+[Parallel box-edge fillets](docs/edge-fillet.md) round one to four edges of
+one axis family with exact circular arcs and cylindrical faces, an actual
+Web demo and bounded-analytic STEP export. Curved/general chamfers and fillets
+remain planned; bounded circular STEP import remains unsupported.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

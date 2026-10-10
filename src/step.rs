@@ -34,6 +34,51 @@ impl Writer {
             "AXIS2_PLACEMENT_3D('',#{point},#{axis},#{reference})"
         ))
     }
+    fn analytic_pcurve(
+        &mut self,
+        surface: usize,
+        pcurve: &PCurve,
+        context: usize,
+    ) -> Result<usize> {
+        let (center, radius, phase) = match *pcurve {
+            PCurve::Affine { .. } => return self.seam_pcurve(surface, pcurve, context),
+            PCurve::Circle { center, radius } => (center, radius, 0.),
+            PCurve::Arc {
+                center,
+                radius,
+                start_angle,
+                ..
+            } => (center, radius, start_angle),
+            _ => {
+                return Err(Error::Unsupported(
+                    "STEP bounded analytic pcurve is unsupported",
+                ))
+            }
+        };
+        if !center.iter().all(|v| v.is_finite())
+            || !radius.is_finite()
+            || radius <= 0.
+            || !phase.is_finite()
+        {
+            return Err(Error::InvalidTopology("STEP UV circle is invalid"));
+        }
+        let point = self.entity(format!(
+            "CARTESIAN_POINT('',({},{}))",
+            number(center[0]),
+            number(center[1])
+        ));
+        let direction = self.entity(format!(
+            "DIRECTION('',({},{}))",
+            number(phase.cos()),
+            number(phase.sin())
+        ));
+        let placement = self.entity(format!("AXIS2_PLACEMENT_2D('',#{point},#{direction})"));
+        let circle = self.entity(format!("CIRCLE('',#{placement},{})", number(radius)));
+        let representation = self.entity(format!(
+            "DEFINITIONAL_REPRESENTATION('',(#{circle}),#{context})"
+        ));
+        Ok(self.entity(format!("PCURVE('',#{surface},#{representation})")))
+    }
     fn seam_pcurve(&mut self, surface: usize, pcurve: &PCurve, context: usize) -> Result<usize> {
         let PCurve::Affine { origin, direction } = *pcurve else {
             return Err(Error::Unsupported(
@@ -88,7 +133,7 @@ fn logical(value: bool) -> &'static str {
 /// and surface orientation. Curved edges/surfaces are explicitly unsupported.
 /// Coordinates and tolerance are interpreted as mm; no implicit unit conversion.
 pub fn export_step_planar_mm(solid: &Solid, tolerance: Tolerance) -> Result<String> {
-    write_step(solid, tolerance, true)
+    write_step(solid, tolerance, true, false)
 }
 /// Export one validated planar/full cylindrical B-rep in millimetres.
 /// Supports lines and complete circles, planar faces and rectangular 2π cylinder
@@ -96,9 +141,20 @@ pub fn export_step_planar_mm(solid: &Solid, tolerance: Tolerance) -> Result<Stri
 /// Bounded arcs, ellipses, skew circular surfaces and height-graph trims are
 /// explicitly unsupported; there is no mesh or tolerance-offset approximation.
 pub fn export_step_mm(solid: &Solid, tolerance: Tolerance) -> Result<String> {
-    write_step(solid, tolerance, false)
+    write_step(solid, tolerance, false, false)
 }
-fn write_step(solid: &Solid, tolerance: Tolerance, planar_only: bool) -> Result<String> {
+/// Opt-in bounded analytic export, retaining both actual UV uses of each edge.
+/// Supports canonical positive circular arcs with sweep at most pi, and
+/// rectangular cylinder trims. Negative and long arcs remain unsupported.
+pub fn export_step_bounded_analytic_mm(solid: &Solid, linear_tolerance: f64) -> Result<String> {
+    write_step(solid, Tolerance::new(linear_tolerance)?, false, true)
+}
+fn write_step(
+    solid: &Solid,
+    tolerance: Tolerance,
+    planar_only: bool,
+    bounded: bool,
+) -> Result<String> {
     solid.validate(tolerance)?;
     if solid.vertices.len() > 4096 || solid.edges.len() > 4096 || solid.shell.faces.len() > 512 {
         return Err(Error::Unsupported(
@@ -124,26 +180,133 @@ fn write_step(solid: &Solid, tolerance: Tolerance, planar_only: bool) -> Result<
         if !matches!(
             edge.curve,
             Curve::Line { .. } | Curve::Circle { .. } | Curve::FramedCircle { .. }
-        ) {
+        ) && !(bounded && matches!(edge.curve, Curve::Arc { .. }))
+        {
+            return Err(Error::Unsupported(if bounded {
+                "bounded STEP supports lines, complete circles and canonical bounded arcs only"
+            } else {
+                "STEP export supports lines and complete circles only"
+            }));
+        }
+    }
+    let mut bounded_arithmetic = 0.;
+    if bounded {
+        let mut world = solid.vertices.iter().fold(0_f64, |m, v| {
+            m.max(v.point.x.abs())
+                .max(v.point.y.abs())
+                .max(v.point.z.abs())
+        });
+        for edge in &solid.edges {
+            if let Curve::Arc { frame, .. } | Curve::FramedCircle { frame, .. } = edge.curve {
+                let p = frame.origin();
+                world = world.max(p.x.abs()).max(p.y.abs()).max(p.z.abs());
+            }
+        }
+        for face in &solid.shell.faces {
+            let origin = match face.surface {
+                Surface::Plane { origin, .. } => origin,
+                Surface::Cylinder { center, .. } => center,
+                Surface::FramedCylinder { frame, .. } => frame.origin(),
+                _ => {
+                    return Err(Error::Unsupported(
+                        "bounded STEP supports planes and rectangular cylinders only",
+                    ))
+                }
+            };
+            world = world
+                .max(origin.x.abs())
+                .max(origin.y.abs())
+                .max(origin.z.abs());
+        }
+        let arithmetic = 4096. * f64::EPSILON * world;
+        bounded_arithmetic = arithmetic;
+        if !arithmetic.is_finite() || arithmetic >= tolerance.linear / 4. {
             return Err(Error::Unsupported(
-                "STEP export supports lines and complete circles only",
+                "bounded STEP coordinate precision is unresolved",
             ));
+        }
+        for edge in &solid.edges {
+            if let Curve::Arc { sweep, .. } = edge.curve {
+                let a = solid.vertices[edge.vertices[0]].point;
+                let b = solid.vertices[edge.vertices[1]].point;
+                if !sweep.is_finite()
+                    || sweep <= 0.
+                    || sweep > std::f64::consts::PI
+                    || edge.vertices[0] == edge.vertices[1]
+                    || (a - b).norm() <= 10. * tolerance.linear + 8. * arithmetic
+                {
+                    return Err(Error::Unsupported(
+                        "STEP bounded arc endpoints or sweep are unresolved",
+                    ));
+                }
+            }
+        }
+        for face in &solid.shell.faces {
+            for coedge in face.wires.iter().flat_map(|w| &w.coedges) {
+                if let PCurve::Arc {
+                    start_angle,
+                    radius,
+                    ..
+                } = coedge.pcurve
+                {
+                    if 128. * f64::EPSILON * start_angle.abs().max(1.) * radius
+                        >= tolerance.linear / 4.
+                    {
+                        return Err(Error::Unsupported(
+                            "bounded STEP UV circle phase is unresolved",
+                        ));
+                    }
+                }
+                if !matches!(
+                    coedge.pcurve,
+                    PCurve::Affine { .. } | PCurve::Circle { .. } | PCurve::Arc { .. }
+                ) {
+                    return Err(Error::Unsupported(
+                        "STEP bounded analytic pcurve is unsupported",
+                    ));
+                }
+            }
         }
     }
     for face in &solid.shell.faces {
         match face.surface {
             Surface::Plane { .. } => {}
             Surface::Cylinder { .. } | Surface::FramedCylinder { .. } => {
-                if face.cylinder_span()? != std::f64::consts::TAU {
+                let span = face.cylinder_span()?;
+                if bounded && (!span.is_finite() || span <= 0. || span > std::f64::consts::TAU) {
+                    return Err(Error::Unsupported(
+                        "bounded STEP requires a resolved rectangular cylinder trim",
+                    ));
+                }
+                if bounded {
+                    let radius = match face.surface {
+                        Surface::Cylinder { radius, .. }
+                        | Surface::FramedCylinder { radius, .. } => radius,
+                        _ => unreachable!(),
+                    };
+                    let gap = 10. * tolerance.linear + 8. * bounded_arithmetic;
+                    if !(radius * span).is_finite()
+                        || radius * span <= gap
+                        || (span < std::f64::consts::TAU
+                            && radius * (std::f64::consts::TAU - span) <= gap)
+                    {
+                        return Err(Error::Unsupported(
+                            "bounded STEP cylinder angular endpoints are unresolved",
+                        ));
+                    }
+                }
+                if !bounded && span != std::f64::consts::TAU {
                     return Err(Error::Unsupported(
                         "STEP export requires a full rectangular cylinder trim",
                     ));
                 }
             }
             _ => {
-                return Err(Error::Unsupported(
-                    "STEP export supports planes and full rectangular cylinders only",
-                ))
+                return Err(Error::Unsupported(if bounded {
+                    "bounded STEP supports planes and rectangular cylinders only"
+                } else {
+                    "STEP export supports planes and full rectangular cylinders only"
+                }))
             }
         }
     }
@@ -187,7 +350,7 @@ fn write_step(solid: &Solid, tolerance: Tolerance, planar_only: bool) -> Result<
             }
         }
     }
-    let seam_context = if uses.iter().any(|u| u.len() == 2 && u[0].0 == u[1].0) {
+    let seam_context = if bounded || uses.iter().any(|u| u.len() == 2 && u[0].0 == u[1].0) {
         Some(w.entity("(GEOMETRIC_REPRESENTATION_CONTEXT(2) REPRESENTATION_CONTEXT('',''))".into()))
     } else {
         None
@@ -210,14 +373,14 @@ fn write_step(solid: &Solid, tolerance: Tolerance, planar_only: bool) -> Result<
                 let placement = w.placement(center, Vec3::new(0., 0., 1.), Vec3::new(1., 0., 0.));
                 w.entity(format!("CIRCLE('',#{placement},{})", number(radius)))
             }
-            Curve::FramedCircle { frame, radius } => {
+            Curve::FramedCircle { frame, radius } | Curve::Arc { frame, radius, .. } => {
                 let placement = w.placement(frame.origin(), frame.axes()[2], frame.axes()[0]);
                 w.entity(format!("CIRCLE('',#{placement},{})", number(radius)))
             }
             _ => unreachable!(),
         };
         let edge_uses = &uses[ei];
-        if edge_uses.len() == 2 && edge_uses[0].0 == edge_uses[1].0 {
+        if !bounded && edge_uses.len() == 2 && edge_uses[0].0 == edge_uses[1].0 {
             let fi = edge_uses[0].0;
             if !matches!(
                 solid.shell.faces[fi].surface,
@@ -237,8 +400,28 @@ fn write_step(solid: &Solid, tolerance: Tolerance, planar_only: bool) -> Result<
                 refs(&pcurves)
             ));
         }
+        if bounded {
+            let pcurves = edge_uses
+                .iter()
+                .map(|(fi, c)| w.analytic_pcurve(surfaces[*fi], &c.pcurve, seam_context.unwrap()))
+                .collect::<Result<Vec<_>>>()?;
+            let kind = if edge_uses.len() == 2 && edge_uses[0].0 == edge_uses[1].0 {
+                "SEAM_CURVE"
+            } else {
+                "SURFACE_CURVE"
+            };
+            geometry = w.entity(format!(
+                "{kind}('',#{geometry},({}),.CURVE_3D.)",
+                refs(&pcurves)
+            ));
+        }
+        let sense = if bounded {
+            logical(!matches!(e.curve, Curve::Arc { sweep, .. } if sweep < 0.))
+        } else {
+            ".T."
+        };
         edges.push(w.entity(format!(
-            "EDGE_CURVE('',#{},#{},#{geometry},.T.)",
+            "EDGE_CURVE('',#{},#{},#{geometry},{sense})",
             vertices[e.vertices[0]], vertices[e.vertices[1]]
         )));
     }

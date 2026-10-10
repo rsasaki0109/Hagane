@@ -946,3 +946,24 @@ uses inclusion-exclusion: each corner's three pair overlaps sum to d³ and its
 triple overlap is d³/4, producing the 6d³ total correction over eight corners.
 No external CAD source or new dependency is introduced. Original code remains
 MIT OR Apache-2.0; engineering guards are not interval certification.
+
+### Parallel box-edge fillets and bounded analytic STEP
+
+The implementation is original code using elementary circle tangency, the
+quarter-disk area pi*r²/4, rectangle extrusion and the circular chord sagitta
+r*(1-cos(a/2)). Recognition uses actual cube incidence and a checked rigid
+frame; it does not borrow another CAD kernel's box or fillet code. The existing
+original mixed-profile extrusion supplies shared analytic B-rep boundaries.
+
+The opt-in writer follows the public ISO 10303-21/AP214 entity model already
+referenced above: CIRCLE, EDGE_CURVE, SURFACE_CURVE, PCURVE, SEAM_CURVE and
+CYLINDRICAL_SURFACE. Bounded edge endpoints and oriented circle geometry retain
+the supported circular span. Invalid negative/long canonical arcs and unsupported
+imports are not advertised as implemented. No new dependency or OCCT source is
+introduced. Original code remains MIT OR Apache-2.0; existing licenses remain
+unchanged.
+
+Optional bounded-fillet STEP interoperability checks use the already recorded
+cached `occt-import-js`/OCCT reader as an external test oracle. Its existing
+license conditions apply; it is neither linked into Hagane nor a source for
+the original fillet or writer implementation.

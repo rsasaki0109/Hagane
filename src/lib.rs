@@ -274,3 +274,7 @@ mod edge_chamfer_multi_demo;
 pub use edge_chamfer_multi_demo::*;
 mod edge_chamfer_contact_demo;
 pub use edge_chamfer_contact_demo::*;
+mod edge_fillet;
+pub use edge_fillet::*;
+mod edge_fillet_demo;
+pub use edge_fillet_demo::*;

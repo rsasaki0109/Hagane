@@ -1349,3 +1349,14 @@ intersection conditioning guards reject unresolved cases. The original
 transverse APIs retain their narrower domain. Curved/general chamfers and
 fillets remain future work. The estimate remains **15–25%**, toward **80%**.
 See [contact-capable chamfers](docs/edge-chamfer-contact.md).
+
+## Parallel box-edge circular fillets
+
+A scoped fillet operation now recognizes actual orthogonal box B-reps and
+rounds one to four parallel original edges with tangent circular arcs and
+cylindrical faces. The retained closed solid and direct analytic removed
+volume are available; cusp-bearing removed solids are not returned. Separate
+bounded-analytic STEP export retains shared analytic geometry and pcurves.
+General fillets, mixed-axis blends and bounded circular STEP import remain
+future work. The estimate remains **15–25%**, toward **80%**.
+See [parallel box-edge fillets](docs/edge-fillet.md).
