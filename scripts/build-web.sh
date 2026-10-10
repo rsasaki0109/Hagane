@@ -8,3 +8,4 @@ cp docs/step-prism-example.step web/step-prism-example.step
 cp docs/step-tube-example.step web/step-tube-example.step
 cp docs/step-bored-prism-example.step web/step-bored-prism-example.step
 cp docs/step-blind-prism-example.step web/step-blind-prism-example.step
+cp docs/nurbs-frustum-cardinal-example.step web/nurbs-frustum-cardinal-example.step

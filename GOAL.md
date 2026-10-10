@@ -20,6 +20,8 @@ accepts identity-axis translations and axial upper children with exact retained
 geometry. The separate [cardinal importer](docs/nurbs-frustum-cardinal-step-import.md)
 accepts 24 exact signed X/Y/Z bases. Arbitrary-angle placements and general
 rational STEP remain unsupported.
+The cardinal demo now connects actual X/Y/Z-oriented STEP to full-frame
+native/WASM reports and browser import, display and exact re-export.
 The separate translated demo now shares native/WASM reports and browser
 file/text import, actual B-rep display and exact re-export.
 

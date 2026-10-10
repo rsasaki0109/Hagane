@@ -330,6 +330,8 @@ pub use prism_workflow_demo::*;
 mod nurbs_frustum_step_import;
 mod nurbs_frustum_step_read;
 pub use nurbs_frustum_step_import::*;
+mod nurbs_frustum_cardinal_step_import_demo;
+pub use nurbs_frustum_cardinal_step_import_demo::*;
 mod nurbs_frustum_translated_step_import_demo;
 pub use nurbs_frustum_translated_step_import_demo::*;
 mod nurbs_frustum_step_import_demo;

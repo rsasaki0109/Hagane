@@ -19,6 +19,8 @@ accepts identity-axis translations and axial upper children. The separate
 [cardinal-frame importer](nurbs-frustum-cardinal-step-import.md) accepts all 24
 right-handed signed coordinate bases. Arbitrary-angle rotations and general
 rational imports remain unsupported.
+The cardinal browser workflow retains actual frame axes in shared native/WASM
+reports and reads an actual exported X-oriented sample before display.
 The translated browser workflow imports actual source and upper-child STEP,
 with shared native/WASM reports and rejected-input state retention.
 

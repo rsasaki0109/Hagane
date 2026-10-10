@@ -39,6 +39,8 @@ STEP remains unsupported.
 A separate [cardinal-frame importer](docs/nurbs-frustum-cardinal-step-import.md)
 accepts 24 exact signed X/Y/Z bases through the Rust API; arbitrary-angle
 rotations remain unsupported.
+Its separate browser demo reads actual X/Y/Z-oriented STEP with the full frame
+axes retained in the native/WASM report.
 Its separate browser demo imports actual translated STEP geometry and supports
 file/text input, bounded display and exact re-export.
 
