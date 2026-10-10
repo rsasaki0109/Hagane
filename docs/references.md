@@ -1,5 +1,13 @@
 # Provenance, references, and licenses
 
+Single-cavity analytic STEP certification restores a proof clone of actual
+normal stock, validates strict circular-pocket construction, and compares full
+affine/trigonometric boundary coefficients and oriented cylinder/plane geometry.
+It retains the original imported B-rep. The two-quarter-pocket negative fixture
+is generated from two independently constructed disjoint exact cavity boundaries
+and validated as a closed solid. Original MIT OR Apache-2.0 code, no OCCT source
+or dependencies added. See [certificate domain](normal-prism-blind-step.md).
+
 Normal-prism blind-bore construction uses elementary circle parameterization,
 rigid frame coordinate projection, opposite boundary orientations, the
 divergence theorem and the analytic cylinder volume `pi*r^2*depth`.

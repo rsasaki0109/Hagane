@@ -76,8 +76,9 @@ the actual mesh extent, with relative zoom and unchanged CAD/STEP coordinates.
 [Normal-prism blind bores](docs/normal-prism-blind-bore.md) add an exact flat
 floor and four inward cylinder walls while preserving certified curved or
 all-line source stock, with native/WASM inspection and analytic STEP export.
-This standalone operation does not yet enable repeated blind machining or
-blind-body STEP re-import.
+[Single-cavity STEP re-import](docs/normal-prism-blind-step.md) now verifies
+the actual pocket and restored source stock without replacing imported geometry.
+Repeated blind machining remains unsupported.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

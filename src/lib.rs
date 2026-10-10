@@ -284,6 +284,7 @@ mod arc_line_prism_bore;
 mod normal_prism_blind_bore;
 pub use normal_prism_blind_bore::*;
 mod normal_prism_blind_bore_demo;
+mod normal_prism_blind_validation;
 pub use normal_prism_blind_bore_demo::*;
 mod arc_line_prism_validation;
 pub use arc_line_prism_bore::*;

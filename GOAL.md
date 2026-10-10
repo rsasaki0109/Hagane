@@ -1494,6 +1494,19 @@ negative cap entry follows an explicit signed normal axis; disjoint source
 through openings, rigid placement and all-line cut children remain admissible.
 Actual kept/removed B-reps, direct removed volume, browser inspection and
 analytic STEP export accompany the operation. Continued machining of blind
-bodies, workflow activation and blind-body STEP import remain future work.
+bodies and workflow activation remain future work. A later single-cavity STEP
+certificate adds verified re-import below.
 See [normal blind bores](docs/normal-prism-blind-bore.md). The long-term
 estimate remains 15–25% toward the standing 80% target.
+
+## Verified single-cavity STEP re-import
+
+The opt-in bounded analytic reader now admits one resolved four-quarter blind
+pocket in certified normal stock. Exclusive cavity topology is removed only
+in a proof clone; the actual restored source and strict blind-construction
+witness certify the imported cavity, including analytic whole-curve/pcurve
+identity and shared orientation. Original imported geometry remains unchanged.
+Both entry caps, rigid placement and existing disjoint through openings are
+covered; multiple blind pockets, general STEP and continued blind machining
+remain unsupported. See [single-cavity STEP](docs/normal-prism-blind-step.md).
+The long-term estimate remains 15–25% toward the standing 80% target.

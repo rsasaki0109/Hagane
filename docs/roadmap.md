@@ -4,8 +4,8 @@ The latest [normal-prism blind-bore API](normal-prism-blind-bore.md) adds one
 exact flat-bottom pocket to certified normal curved or all-line stock,
 preserving source boundaries and returning actual kept/removed solids.
 It supports signed cap entry, disjoint prior through openings, rigid placement,
-bounded display and analytic STEP export. Repeated blind machining, blind-body
-STEP import and integration into cut histories remain future work.
+bounded display and analytic STEP export. [Single-cavity STEP re-import](normal-prism-blind-step.md) adds a separate actual-shape certificate. Repeated
+blind machining and integration into cut histories remain future work.
 
 This roadmap implements the standing [development goal](../GOAL.md): a usable
 end-to-end pure Rust CAD workflow. Feature-specific supported domains and

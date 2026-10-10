@@ -240,7 +240,13 @@ fn exercise(
             .is_err()
     );
     let text = export_step_bounded_analytic_mm(result.kept(), policy(scale).linear()).unwrap();
-    assert!(import_step_bounded_analytic_mm(&text, policy(scale).absolute()).is_err());
+    let imported_kept = import_step_bounded_analytic_mm(&text, policy(scale).absolute()).unwrap();
+    assert!(
+        (imported_kept.volume().unwrap() - (source_volume - removed)).abs() < source_volume * 1e-11
+    );
+    assert_eq!(euler(&imported_kept), euler(result.kept()));
+    check_retained_curves(result.kept(), &imported_kept, guard);
+    check_closed(&imported_kept, scale, world);
     let text = export_step_bounded_analytic_mm(result.removed(), policy(scale).linear()).unwrap();
     let imported = import_step_bounded_analytic_mm(&text, policy(scale).absolute()).unwrap();
     assert!((imported.volume().unwrap() - removed).abs() < removed * 1e-11);

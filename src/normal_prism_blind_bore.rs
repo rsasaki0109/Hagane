@@ -55,7 +55,7 @@ fn axis_direction(axis: Vec3) -> Result<Vec3> {
 /// signed supplied axis. `center` must lie on that cap within the reserved
 /// physical precision budget. Existing disjoint through openings are preserved.
 /// Full-circle edges are outside the certified line/quarter-arc source domain.
-/// The result is deliberately outside the normal-prism operation/import domain.
+/// The result is deliberately outside the normal-prism operation domain.
 pub fn blind_bore_normal_prism(
     source: &Solid,
     center: Point3,

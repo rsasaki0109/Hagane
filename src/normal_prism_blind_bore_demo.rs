@@ -35,7 +35,7 @@ pub fn normal_prism_blind_bore_demo_json(x: &[f64]) -> Result<String> {
     let axis = pose.vector(Vec3::new(0., 0., 1.));
     let result = blind_bore_normal_prism(&source, center, x[6], x[7], axis, entry, tolerance)?;
     Ok(serde_json::json!({
-        "units":"mm", "scope":"one disjoint flat-bottom normal circular blind bore on certified normal prism stock; general booleans, repeated blind machining, blind-body STEP import and workflow nodes remain unsupported",
+        "units":"mm", "scope":"one disjoint flat-bottom normal circular blind bore on certified normal prism stock; general booleans, repeated blind machining and workflow nodes remain unsupported; bounded STEP re-import admits the separately certified single-cavity subset",
         "source":crate::edge_fillet_demo::solid_json(&source,x[14],tol)?,
         "kept":crate::edge_fillet_demo::solid_json(result.kept(),x[14],tol)?,
         "removed":crate::edge_fillet_demo::solid_json(result.removed(),x[14],tol)?,

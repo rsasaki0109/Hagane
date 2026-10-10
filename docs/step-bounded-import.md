@@ -43,6 +43,13 @@ cap translations, entire boundaries, wall geometry and shared incidences must
 agree within reserved error budgets. Quarter-circle box fillets are supported
 in all three axis families and at resolved rigid placements.
 
+The additional [single blind-cavity certificate](normal-prism-blind-step.md)
+admits one resolved flat-bottom quarter-circle pocket in certified normal
+stock, including disjoint prior through openings. A proof clone restores
+the actual source for recognition and strict pocket construction; whole-cavity
+geometry/orientation checks retain the original imported body. Multiple blind
+pockets and general nonuniform curved bodies remain unsupported in this domain.
+
 Canonical circular arcs start at their circle placement's zero-angle vertex
 and have positive sweep at most pi. Negative master edge sense, long arcs,
 arbitrary phase rebasing, freeform curves/surfaces and general STEP assemblies

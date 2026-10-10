@@ -49,10 +49,11 @@ the provided demo and STEP export interpret them as millimetres.
 
 This first API accepts normal-prism source stock, rather than a source already
 containing blind floors. The result is no longer a uniform extrusion:
-subsequent normal-prism bore/plane-partition calls and bounded analytic STEP
-re-import reject it. Editable workflow blind nodes retain their existing
-domains; this API does not silently broaden them. A general blind-feature
-certificate and continued machining are future work.
+subsequent normal-prism bore/plane-partition calls reject it. The later
+[single-cavity STEP certificate](normal-prism-blind-step.md) admits a separately
+verified re-import subset. Editable workflow blind nodes retain their existing
+domains; this API does not silently broaden them. General blind-feature
+coverage and continued machining are future work.
 
 The result exposes `kept()`, `removed()`, `hole_faces()`, `floor_face()` and
 `direct_removed_volume()`. The latter evaluates `pi * radius^2 * depth`
@@ -69,7 +70,8 @@ python3 -m http.server 8080 --directory web
 Open `normal-blind-bore.html` to edit rounded stock dimensions, pocket center,
 radius, depth, entry and rigid placement; inspect retained/removed/source
 solids; and download their actual analytic STEP exports. Rejected edits retain
-the last accepted shape and export. Blind-body STEP import remains unsupported.
+the last accepted shape and export. The bounded analytic reader supports the
+separately certified single-cavity subset.
 
 The default stock is 80 x 60 x 20 mm with 8 mm corner radii. A central
 8 mm-radius pocket of depth 12 mm removes `768*pi` mm³. Source volume is
@@ -99,8 +101,8 @@ stock and actual all-line plane-cut children are exercised. They check analytic
 volume, exact original geometry/pcurve retention, opposed shared edge uses,
 dense same-parameter curve/surface agreement, inward cavity walls, the actual
 entry-facing floor, mesh closure and explicit immutable rejection paths.
-The removed cylinder survives bounded STEP round-trip; importing the retained
-blind body remains explicitly unsupported.
+The removed cylinder survives bounded STEP round-trip. The later single-cavity
+certificate also verifies the retained-body import.
 
 The new browser route passed on the actual release WASM binary: top depth
 12 mm and rigidly placed bottom depth 7 mm, independent volumes, floor normals,

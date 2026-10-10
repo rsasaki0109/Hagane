@@ -1591,10 +1591,19 @@ fn import_mode(
             .iter()
             .any(|e| matches!(e.curve, Curve::Arc { .. }))
     {
-        crate::arc_line_prism_validation::certify_validated_arc_line_prism(
+        match crate::arc_line_prism_validation::certify_validated_arc_line_prism(
             &builder.solid,
             tolerance,
-        )?;
+        ) {
+            Ok(()) => {}
+            Err(Error::Unsupported(_)) => {
+                crate::normal_prism_blind_validation::certify_validated_normal_prism_blind(
+                    &builder.solid,
+                    tolerance,
+                )?;
+            }
+            Err(error) => return Err(error),
+        }
     } else if analytic
         && builder
             .solid
