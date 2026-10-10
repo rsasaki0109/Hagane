@@ -68,6 +68,9 @@ also accept these cuts when the selected side contains exactly one component.
 [Normal-prism continuation](docs/workflow-plain-continuation.md) now keeps
 through bores and cuts usable after a retained child has only straight stock
 boundaries; public normal-prism APIs explicitly select the extrusion axis.
+[Box and polygon cut histories](docs/workflow-planar-cuts.md) now also connect
+normal stock, cuts and through bores, including hole-crossing cuts and explicit
+cache invalidation when the exact bore construction domain changes.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

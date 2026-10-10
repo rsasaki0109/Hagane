@@ -69,8 +69,8 @@ full-circle single-edge rim representations and general curved Booleans
 remain unsupported. Component partitions have their existing 64-component,
 128-section and 1024-total-segment bounds.
 
-Editable workflow roots remain `rounded_box` or `arc_line_extrusion` for
-plane cuts; this milestone does not add cut nodes to Box/Polygon root histories.
+The subsequent [box and normal polygon cut milestone](workflow-planar-cuts.md)
+extends editable plane-cut roots beyond rounded/line-arc stock.
 The workflow passes its known Z axis to the generic APIs. Selected sides must
 contain one body. Blind bores remain unsupported in these histories.
 

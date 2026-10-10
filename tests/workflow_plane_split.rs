@@ -159,9 +159,9 @@ fn holes_contacts_bad_roots_and_nonfinite_nodes_reject_with_operation_identity()
         id: "stock".into(),
         size: [80., 60., 20.],
     };
-    let error = d.rebuild().unwrap_err();
-    assert_eq!(error.code, "plane_split_root_unsupported");
-    assert_eq!(error.operation_id.as_deref(), Some("split-1"));
+    let solid = d.rebuild().unwrap();
+    solid.validate(Tolerance::new(1e-6).unwrap()).unwrap();
+    assert!((solid.volume().unwrap() - (88800. - 320. * std::f64::consts::PI)).abs() < 1e-8);
     let mut d = document("negative");
     if let WorkflowOperation::Bore { mode, depth, .. } = &mut d.operations[2] {
         *mode = WorkflowBoreMode::Blind;

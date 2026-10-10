@@ -1344,7 +1344,8 @@ nodes, followed by additional cuts/normal bores on the retained B-rep. Shared
 resource admission counts operation types; real prefix reuse and transactional
 rejection preserve accepted geometry and editing intent. Browser cut controls,
 removal/relinking, Undo/Redo, saved documents and STEP export use the existing
-workflow. General graphs and Box/Polygon cut nodes remain future work. Resolved
+workflow. General graphs remain future work; Box/normal Polygon cut nodes are
+implemented in the later milestone below. Resolved
 opening crossings and all-line continuation are implemented below. See
 [editable plane cuts](workflow-plane-split.md). The estimate remains 15–25%
 toward the standing 80% target.
@@ -1372,4 +1373,17 @@ proofs, original curve coverage and existing precision guards accompany the
 construction; skew and ambiguous cap families reject. Existing Arc-specific
 APIs retain their stricter domains. See [normal-prism continuation](workflow-plain-continuation.md).
 General curved Booleans and blind machining on these histories remain future
+work. The estimate remains 15–25% toward the standing 80% target.
+
+## Box and normal polygon cut histories
+
+Actual selected-side plane cuts now extend to Box and normal-Z Polygon
+roots, with through bores before and after cuts. Initial polygon holes,
+concavity, resolved hole crossings and uniquely connected selection share
+the normal-prism certificates. First/last-cut transitions reuse only the
+actual stock prefix because prior bores switch between legacy full circles
+and certified quarter arcs. Exact native/WASM histories and STEP export
+remain reproducible. No-cut through/blind behavior is preserved; skew and
+blind machining in cut histories explicitly reject. See [normal stock cut
+histories](workflow-planar-cuts.md). General curved Booleans remain future
 work. The estimate remains 15–25% toward the standing 80% target.

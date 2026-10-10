@@ -1432,8 +1432,8 @@ Plane partition is now an actual selected-side node in rounded/line-arc
 operation history, with subsequent cuts and through bores evaluated on the
 retained body. Cut offset/angle/side edits, operation removal/relinking, prefix
 reuse, atomic rejection, Undo/Redo, saved intent and accepted STEP export share
-the existing native/WASM workflow. General operation graphs, Box/Polygon cut
-nodes remain unsupported. Resolved hole crossings and all-line child
+the existing native/WASM workflow. General operation graphs remain unsupported. Box/normal Polygon cut
+nodes are implemented in the later milestone below. Resolved hole crossings and all-line child
 continuation are implemented in the later milestones below. See [editable plane cuts](docs/workflow-plane-split.md).
 The long-term estimate remains 15–25% toward the standing 80% target.
 
@@ -1460,4 +1460,17 @@ proofs, original curve coverage and existing precision guards accompany the
 construction; skew and ambiguous cap families reject. Existing Arc-specific
 APIs retain their stricter domains. See [normal-prism continuation](docs/workflow-plain-continuation.md).
 General curved Booleans and blind machining on these histories remain future
+work. The estimate remains 15–25% toward the standing 80% target.
+
+## Box and normal polygon cut histories
+
+Actual selected-side plane cuts now extend to Box and normal-Z Polygon
+roots, with through bores before and after cuts. Initial polygon holes,
+concavity, resolved hole crossings and uniquely connected selection share
+the normal-prism certificates. First/last-cut transitions reuse only the
+actual stock prefix because prior bores switch between legacy full circles
+and certified quarter arcs. Exact native/WASM histories and STEP export
+remain reproducible. No-cut through/blind behavior is preserved; skew and
+blind machining in cut histories explicitly reject. See [normal stock cut
+histories](docs/workflow-planar-cuts.md). General curved Booleans remain future
 work. The estimate remains 15–25% toward the standing 80% target.

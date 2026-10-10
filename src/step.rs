@@ -506,7 +506,11 @@ pub fn export_workflow_step_mm_json(input: &str) -> Result<String> {
     let step = if matches!(
         doc.operations.first(),
         Some(WorkflowOperation::RoundedBox { .. } | WorkflowOperation::ArcLineExtrusion { .. })
-    ) {
+    ) || doc
+        .operations
+        .iter()
+        .any(|op| matches!(op, WorkflowOperation::PlaneSplit { .. }))
+    {
         export_step_bounded_analytic_mm(&solid, tolerance.linear)?
     } else {
         export_step_mm(&solid, tolerance)?

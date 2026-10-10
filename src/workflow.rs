@@ -193,6 +193,15 @@ impl WorkflowDocument {
             | WorkflowOperation::PlaneSplit { id, .. } => id,
         }
     }
+    fn normal_prism_operations(&self) -> bool {
+        matches!(
+            self.operations.first(),
+            Some(WorkflowOperation::RoundedBox { .. } | WorkflowOperation::ArcLineExtrusion { .. })
+        ) || self
+            .operations
+            .iter()
+            .any(|op| matches!(op, WorkflowOperation::PlaneSplit { .. }))
+    }
     fn checked_plan(&self) -> std::result::Result<WorkflowPlan, Box<WorkflowDiagnostic>> {
         if self.schema_version != 1 {
             let mut d = diagnostic(
@@ -473,18 +482,37 @@ impl WorkflowDocument {
             _ => Vec3::new(0., 0., size.z),
         };
         if split_count > 0 {
-            if !curved {
+            if direction.x != 0. || direction.y != 0. {
                 let mut d = diagnostic(
-                    "plane_split_root_unsupported",
+                    "plane_split_normal_stock_required",
                     self.operations.iter().find_map(|op| match op {
                         WorkflowOperation::PlaneSplit { id, .. } => Some(id.as_str()),
                         _ => None,
                     }),
-                    Some("operations"),
-                    "Plane split nodes require rounded-box or arc-line extrusion stock.",
+                    Some("offset"),
+                    "Plane-cut histories require normal Z extrusion with zero XY offset.",
                 );
                 d.category = "unsupported";
                 return Err(d);
+            }
+            if !curved {
+                let (segments, holes) = profile.as_ref().map_or((4, 0), |profile| {
+                    (
+                        profile.outer.len() + profile.holes.iter().map(Vec::len).sum::<usize>(),
+                        profile.holes.len(),
+                    )
+                });
+                if holes + bore_count > 16
+                    || segments + 2 > 128
+                    || segments + 4 * bore_count + 3 * split_count > 128
+                {
+                    let mut d = diagnostic(
+                        "unsupported_history", None, Some("operations"),
+                        "Normal plane-cut histories support 16 initial openings plus bores, 128 source faces and 128 reserved profile segments.",
+                    );
+                    d.category = "unsupported";
+                    return Err(d);
+                }
             }
             let mut ids = vec![box_id.as_str()];
             let mut steps = Vec::new();
@@ -492,14 +520,12 @@ impl WorkflowDocument {
                 let (id, input) = match op {
                     WorkflowOperation::Bore { id, input, .. }
                     | WorkflowOperation::PlaneSplit { id, input, .. } => (id, input),
-                    _ => {
-                        return Err(diagnostic(
-                            "unsupported_history",
-                            None,
-                            Some("operations"),
-                            "Only through bores and plane splits may follow curved stock.",
-                        ))
-                    }
+                    _ => return Err(diagnostic(
+                        "unsupported_history",
+                        None,
+                        Some("operations"),
+                        "Only through bores and plane splits may appear in a plane-cut history.",
+                    )),
                 };
                 if ids.contains(&id.as_str()) || Some(input.as_str()) != ids.last().copied() {
                     return Err(diagnostic("invalid_reference",Some(id),Some("input"),"Operation ID must be unique and input must reference the immediately preceding operation."));
@@ -539,12 +565,14 @@ impl WorkflowDocument {
                             let mut d = diagnostic(
                                 if rounded_radius.is_some() {
                                     "rounded_blind_bore_unsupported"
-                                } else {
+                                } else if arc_profile.is_some() {
                                     "arc_line_blind_bore_unsupported"
+                                } else {
+                                    "normal_split_blind_bore_unsupported"
                                 },
                                 Some(id),
                                 Some("mode"),
-                                "Curved line/arc stock supports through bores only.",
+                                "Normal plane-cut histories support through bores only.",
                             );
                             d.category = "unsupported";
                             return Err(d);
@@ -981,7 +1009,12 @@ struct WorkflowPlan {
 }
 impl WorkflowPlan {
     fn apply_step(&self, solid: &mut Solid, step: &WorkflowStep) -> Result<()> {
-        let curved = self.rounded_radius.is_some() || self.arc_profile.is_some();
+        let normal = self.rounded_radius.is_some()
+            || self.arc_profile.is_some()
+            || self
+                .steps
+                .iter()
+                .any(|s| matches!(s, WorkflowStep::PlaneSplit { .. }));
         match step {
             WorkflowStep::PlaneSplit { plane, side } => {
                 let (negative, positive) = split_normal_prism_by_plane_components(
@@ -1006,7 +1039,7 @@ impl WorkflowPlan {
                 Ok(())
             }
             WorkflowStep::Bore { bore, entry, tool } => {
-                if curved {
+                if normal {
                     *solid = bore_normal_prism(
                         solid,
                         Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
@@ -1114,11 +1147,20 @@ impl WorkflowSession {
                     && old.tolerance == document.tolerance
             })
             .map(|old| {
-                old.operations
+                let prefix = old
+                    .operations
                     .iter()
                     .zip(&document.operations)
                     .take_while(|(a, b)| a == b)
-                    .count()
+                    .count();
+                // A first/last cut switches legacy full-circle bore construction
+                // to/from certified quarter arcs. Only the stock is shared
+                // across these operation domains, despite identical bore intent.
+                if old.normal_prism_operations() != document.normal_prism_operations() {
+                    prefix.min(1)
+                } else {
+                    prefix
+                }
             })
             .unwrap_or(0);
         let stats = WorkflowRebuildStats {

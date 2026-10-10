@@ -251,9 +251,11 @@ fn rejected_cuts_schema_blind_and_display_failures_preserve_real_accepted_geomet
     bad.push(unknown);
     let mut box_root = value.clone();
     box_root["operations"][0] = json!({"kind":"box","id":"stock","size":[80.,60.,20.]});
-    bad.push(box_root);
+    check(&typed(&box_root).rebuild().unwrap(), 88800. - 80. * PI, 1);
     let mut polygon = value.clone();
     polygon["operations"][0] = json!({"kind":"extrusion","id":"stock","outer":[[-40.,-30.],[40.,-30.],[40.,30.],[-40.,30.]],"height":20.});
+    check(&typed(&polygon).rebuild().unwrap(), 88800. - 80. * PI, 1);
+    polygon["operations"][0]["offset"] = json!([0.1, 0.]);
     bad.push(polygon);
     let mut display = value.clone();
     display["operations"][0]["size"] = json!([1e8, 1e8, 1e8]);

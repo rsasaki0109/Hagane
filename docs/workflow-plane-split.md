@@ -63,8 +63,9 @@ supported when every actual cut satisfies its geometric domain. An initial
 opening wholly on one side follows that side; discarded openings are removed
 with discarded material.
 
-Only `rounded_box` and `arc_line_extrusion` roots admit these nodes. Existing
-box/polygon histories retain their separate supported operations. Each cut
+`rounded_box` and `arc_line_extrusion` roots admit these nodes.
+[Box and normal polygon roots](workflow-planar-cuts.md) now also admit cuts,
+with through-only machining and an explicit cache-domain transition. Each cut
 uses the [component partition](arc-line-prism-split-components.md), including
 resolved opening crossings and multiple material intervals. The selected side
 must contain exactly one connected component; the other side may contain more.

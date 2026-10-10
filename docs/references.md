@@ -1042,3 +1042,12 @@ translation physically; no axis is inferred from a box's face ordering. Bore
 volume uses pi times radius squared times actual axis height. Cap partition
 uses the same published analytic line/circle intersection and Green-theorem
 methods recorded above. No OCCT source or new dependency is used.
+
+## Normal stock cuts in editable history
+
+Box/polygon cut histories compose the existing normal-prism bore and analytic
+component partition algorithms. Axis selection and actual cap/wall/whole-curve
+certificates are unchanged. Incremental reuse includes the construction-domain
+identity because full circles and four quarter arcs have different exact
+topologies even when modeling intent is equal. STEP dispatch follows the same
+identity. No new mathematical method, dependency or OCCT source is introduced.
