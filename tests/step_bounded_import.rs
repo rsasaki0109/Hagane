@@ -216,3 +216,152 @@ fn cyclic_edge_loop_start_preserves_partial_cylinder_parameters() {
         }
     }
 }
+
+fn innerwire_fixture(count: usize, scale: f64) -> Solid {
+    let t = Tolerance::new(1e-9 * scale).unwrap();
+    let rounded = |width, depth, radius| {
+        rounded_rectangle_profile(
+            Point3::new(0., 0., 0.),
+            width * scale,
+            depth * scale,
+            radius * scale,
+            t,
+        )
+        .unwrap()
+        .segments
+    };
+    let mut holes = Vec::new();
+    for i in 0..count {
+        let offset = (i as f64 - (count as f64 - 1.) / 2.) * 6. * scale;
+        let segments = if i == 1 {
+            vec![
+                PlanarSegment::Line {
+                    a: [-scale, -scale],
+                    b: [scale, -scale],
+                },
+                PlanarSegment::Line {
+                    a: [scale, -scale],
+                    b: [scale, scale],
+                },
+                PlanarSegment::Line {
+                    a: [scale, scale],
+                    b: [-scale, scale],
+                },
+                PlanarSegment::Line {
+                    a: [-scale, scale],
+                    b: [-scale, -scale],
+                },
+            ]
+        } else {
+            rounded(3., 4., 0.4)
+        };
+        holes.push(
+            segments
+                .into_iter()
+                .map(|s| match s {
+                    PlanarSegment::Line { mut a, mut b } => {
+                        a[0] += offset;
+                        b[0] += offset;
+                        PlanarSegment::Line { a, b }
+                    }
+                    PlanarSegment::Arc {
+                        mut center,
+                        radius,
+                        start_angle,
+                        sweep,
+                    } => {
+                        center[0] += offset;
+                        PlanarSegment::Arc {
+                            center,
+                            radius,
+                            start_angle,
+                            sweep,
+                        }
+                    }
+                })
+                .collect(),
+        );
+    }
+    extrude_arc_line_region(
+        &ArcLineRegion {
+            origin: Point3::new(0., 0., 0.),
+            outer: rounded(24., 14., 1.2),
+            holes,
+        },
+        5. * scale,
+        t,
+    )
+    .unwrap()
+}
+
+#[test]
+fn actual_multiple_inner_wires_preserve_caps_and_normal_walls() {
+    for count in 1..=3 {
+        let source = innerwire_fixture(count, 1.);
+        roundtrip(&source);
+        let placed = source
+            .transformed(
+                Transform::translation(Vec3::new(7., -4., 11.))
+                    .unwrap()
+                    .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.61).unwrap())
+                    .unwrap(),
+                Tolerance::default(),
+            )
+            .unwrap();
+        roundtrip(&placed);
+        let text = export_step_bounded_analytic_mm(&source, 1e-7).unwrap();
+        let body = import_step_bounded_analytic_mm(&text, Tolerance::default()).unwrap();
+        assert_eq!(
+            body.shell
+                .faces
+                .iter()
+                .filter(|f| f.wires.len() == count + 1)
+                .count(),
+            2
+        );
+        assert!(import_step_mm(&text, Tolerance::default()).is_err());
+    }
+}
+
+#[test]
+fn inner_wire_boundary_order_loop_start_and_metre_units_are_semantic() {
+    let source = innerwire_fixture(3, 1.);
+    let text = export_step_bounded_analytic_mm(&source, 1e-7).unwrap();
+    let shuffled = text
+        .lines()
+        .map(|line| {
+            let bounds = line.contains("=ADVANCED_FACE(");
+            if !bounds && !line.contains("=EDGE_LOOP(") {
+                return line.to_owned();
+            }
+            let start = line.find(",(").unwrap() + 2;
+            let end = if bounds {
+                start + line[start..].find(')').unwrap()
+            } else {
+                line.rfind("));").unwrap()
+            };
+            let mut refs: Vec<_> = line[start..end].split(',').collect();
+            refs.rotate_left(1);
+            format!("{}{}{}", &line[..start], refs.join(","), &line[end..])
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let imported = import_step_bounded_analytic_mm(&shuffled, Tolerance::default()).unwrap();
+    assert!((imported.volume().unwrap() - source.volume().unwrap()).abs() < 1e-8);
+    let metres = export_step_bounded_analytic_mm(&innerwire_fixture(3, 0.001), 1e-10)
+        .unwrap()
+        .replace(".MILLI.,.METRE.", "$,.METRE.");
+    let imported = import_step_bounded_analytic_mm(&metres, Tolerance::default()).unwrap();
+    assert!((imported.volume().unwrap() - source.volume().unwrap()).abs() < 1e-8);
+    assert_eq!(
+        imported
+            .shell
+            .faces
+            .iter()
+            .filter(|f| f.wires.len() == 4)
+            .count(),
+        2
+    );
+    let malformed = text.replacen("=FACE_BOUND(", "=FACE_OUTER_BOUND(", 1);
+    assert!(import_step_bounded_analytic_mm(&malformed, Tolerance::default()).is_err());
+}

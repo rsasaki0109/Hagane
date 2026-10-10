@@ -70,12 +70,23 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
     }
     let base = &s.shell.faces[caps[0]];
     let top = &s.shell.faces[caps[1]];
-    if base.wires.len() != 1 || top.wires.len() != 1 {
+    if !(1..=17).contains(&base.wires.len()) || top.wires.len() != base.wires.len() {
         return Err(DOMAIN);
     }
-    let count = base.wires[0].coedges.len();
+    if base.wires.iter().chain(&top.wires).any(|w| {
+        w.coedges.len() < 2
+            || w.coedges.iter().any(|c| {
+                !matches!(
+                    s.edges[c.edge].curve,
+                    Curve::Line { .. } | Curve::Arc { .. }
+                ) || !matches!(c.pcurve, PCurve::Affine { .. } | PCurve::Arc { .. })
+            })
+    }) {
+        return Err(DOMAIN);
+    }
+    let count = base.wires.iter().map(|w| w.coedges.len()).sum::<usize>();
     if !(2..=128).contains(&count)
-        || top.wires[0].coedges.len() != count
+        || top.wires.iter().map(|w| w.coedges.len()).sum::<usize>() != count
         || s.vertices.len() != 2 * count
         || s.edges.len() != 3 * count
         || s.shell.faces.len() != count + 2
@@ -144,11 +155,9 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
         ));
     }
     let delta = frame.axes()[2] * height;
-    let mut profile = crate::face_intersections::rings(base)?
-        .pop()
-        .ok_or(DOMAIN)?;
+    let mut profiles = crate::face_intersections::rings(base)?;
     if base.orientation == 1 {
-        for segment in &mut profile {
+        for segment in profiles.iter_mut().flatten() {
             match segment {
                 PlanarSegment::Line { a, b } => {
                     a[1] = -a[1];
@@ -169,17 +178,29 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
     }
     // This trusted constructor validates the actual cap's simple region. It is a
     // check only: no imported vertex, curve, surface or pcurve is replaced.
-    let expected = extrude_arc_line_in_frame(
-        &ArcLineProfile {
+    let outer = profiles.remove(0);
+    let expected = extrude_arc_line_region_in_frame(
+        &ArcLineRegion {
             origin: Point3::new(0., 0., 0.),
-            segments: profile,
+            outer,
+            holes: profiles,
         },
         delta,
         frame,
         tol,
     )?;
-    let bottom_edges: BTreeSet<_> = base.wires[0].coedges.iter().map(|c| c.edge).collect();
-    let top_edges: BTreeSet<_> = top.wires[0].coedges.iter().map(|c| c.edge).collect();
+    let bottom_edges: BTreeSet<_> = base
+        .wires
+        .iter()
+        .flat_map(|w| &w.coedges)
+        .map(|c| c.edge)
+        .collect();
+    let top_edges: BTreeSet<_> = top
+        .wires
+        .iter()
+        .flat_map(|w| &w.coedges)
+        .map(|c| c.edge)
+        .collect();
     if bottom_edges.len() != count
         || top_edges.len() != count
         || !bottom_edges.is_disjoint(&top_edges)
@@ -242,10 +263,11 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
         }
         vertex_map.insert(i, hits[0]);
     }
+    let mut edge_map = BTreeMap::new();
     let mut top_used = BTreeSet::new();
     let mut wall_used = BTreeSet::new();
     let mut vertical_used = BTreeSet::new();
-    for coedge in &base.wires[0].coedges {
+    for coedge in base.wires.iter().flat_map(|w| &w.coedges) {
         let edge = &s.edges[coedge.edge];
         let [a, b] = edge.vertices;
         let [ta, tb] = [vertex_map[&a], vertex_map[&b]];
@@ -269,6 +291,7 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
             return Err(DOMAIN);
         }
         let top_edge = candidates[0];
+        edge_map.insert(coedge.edge, top_edge);
         if !top_used.insert(top_edge) {
             return Err(DOMAIN);
         }
@@ -402,6 +425,23 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
     }
     if top_used.len() != count || wall_used.len() != count || vertical_used.len() != count {
         return Err(DOMAIN);
+    }
+    let mut matched_wires = BTreeSet::new();
+    for (index, wire) in base.wires.iter().enumerate() {
+        let edges: BTreeSet<_> = wire.coedges.iter().map(|c| edge_map[&c.edge]).collect();
+        let matches: Vec<_> = top
+            .wires
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| w.coedges.iter().map(|c| c.edge).collect::<BTreeSet<_>>() == edges)
+            .map(|(i, _)| i)
+            .collect();
+        if matches.len() != 1
+            || !matched_wires.insert(matches[0])
+            || ((index == 0) != (matches[0] == 0))
+        {
+            return Err(DOMAIN);
+        }
     }
     let volume = s.volume()?;
     let expected_volume = expected.volume()?;

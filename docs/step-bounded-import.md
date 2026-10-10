@@ -36,8 +36,9 @@ fn read_part() -> Result<hagane::Solid, Box<dyn std::error::Error>> {
 
 The reader supports admitted planar/full-circular bodies with explicit
 SURFACE_CURVE/SEAM_CURVE associations and adds
-a simple line/circular-arc profile extruded normally between parallel planar
-caps. Arc-bearing caps must have one outer wire and no inner wires. Actual
+a line/circular-arc region extruded normally between parallel planar
+caps. Arc-bearing caps support one outer wire and up to sixteen disjoint inner
+line/arc wires, with at most 128 total segments. Actual
 cap translations, entire boundaries, wall geometry and shared incidences must
 agree within reserved error budgets. Quarter-circle box fillets are supported
 in all three axis families and at resolved rigid placements.
@@ -67,8 +68,8 @@ Hausdorff certificate for arbitrary trimmed solids.
 
 Native tests cover actual fillet round trips, placements, units, full circular
 bodies, short and near-half-circle arcs, coherent geometry tampering, precision
-limits, cyclic boundary-loop start rotations and explicit rejection of inner-wire
-arc prisms. WASM and browser checks
+limits, cyclic boundary-loop start rotations, multiple inner-wire arc prisms
+and rejection of outside, nested, touching or unresolved openings. WASM and browser checks
 exercise actual input, shared topology, display bounds, export and error recovery.
 
 Native/WASM parity compares structure, topology and nonnumeric STEP tokens
@@ -83,7 +84,7 @@ retained three faces, three edges and closed topology. Its volume was
 display's maximum reported surface error was about 0.094624 mm at 0.1 mm.
 
 The final source passes `cargo fmt --check`, strict all-target clippy, all
-840 native tests, the wasm32 release build and the complete WASM regression
+847 native tests, the wasm32 release build and the complete WASM regression
 suite. Its importer checks include twenty actual fillet documents and their
 canonical re-exports, independent geometry/closure/chord checks, metre units,
 record and cyclic-loop reordering, and malformed-input transport recovery.
@@ -92,3 +93,45 @@ The complete browser regression suite also passes on this final build,
 including file/text upload, native numerical parity, canonical download,
 accepted-body/export/pixel preservation after rejection, recovery, orbit
 and mobile layout. The image above was captured from the actual tested demo.
+
+## Through openings in line/arc prisms
+
+![Actual STEP import with rectangular and circular openings](step-bounded-openings.png)
+
+The region certificate now checks every outer and inner cap boundary against
+a trusted line/arc-region extrusion without replacing imported geometry.
+Containment, disjointness and nesting checks precede whole-curve identity,
+cap translation, unique wall/vertical-edge incidence and corresponding
+outer/inner wire checks on the opposite cap. Inner walls face the voids.
+
+```sh
+cargo run --example step_bounded_import -- --sample-openings
+```
+
+The browser's openings sample creates actual rounded 80 x 60 x 20 mm stock
+with an 8 x 12 mm rectangular opening and a radius-6 mm circular opening.
+The circle consists of four exact circular arcs; this is an analytic profile
+extrusion, not a general Boolean cut operation. The sample is exported,
+imported and displayed through the same reader used for uploaded files.
+Its genus-two B-rep has 32 vertices, 48 edges, 18 faces and volume
+`20 * (4800 - (4-pi)*64 - 96 - pi*36)`, approximately 90,719.29 mm³.
+
+Circular trim chords can enter shallow void-boundary slivers within the
+requested chord tolerance. Rectangle opening exclusion and circular intrusion
+bounds are independently checked, alongside supporting-surface error bounds.
+Contacting, nested, outside and precision-unresolved openings reject.
+Full-circle single-edge boundaries mixed with arc-bearing cap regions remain
+unsupported by this certificate; use the supported quarter-arc representation.
+General swept solids, blind cavities and arbitrary curved Boolean results are
+not admitted by this normal-prism extension.
+
+The complete WASM suite additionally verifies actual genus-two direct/re-export
+cases, inward walls,
+whole-triangle rectangular exclusion, circular chord intrusion bounds and
+coherent outside/nested/contact STEP refusal followed by valid recovery.
+
+The full browser suite passes on the same final build. It exercises the real
+openings STEP sample, native numerical parity, genus-two closure, inward walls,
+cap exclusion, canonical export and preservation/recovery after all three
+coherent invalid fixtures. These fixtures are generated reproducibly from the
+native review test, with no dependency on pre-existing temporary files.

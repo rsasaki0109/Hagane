@@ -5,7 +5,9 @@ fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     if args.len() > 1 {
         return Err("usage: step_bounded_import [PATH]".into());
     }
-    let input = if let Some(path) = args.first() {
+    let input = if args.first().is_some_and(|s| s == "--sample-openings") {
+        bounded_analytic_openings_sample_step()?
+    } else if let Some(path) = args.first() {
         let mut text = String::new();
         std::fs::File::open(path)?
             .take(STEP_IMPORT_MAX_BYTES as u64 + 1)

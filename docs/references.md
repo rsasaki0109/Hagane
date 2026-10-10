@@ -979,3 +979,9 @@ a length. Conservative floating-point reserves are engineering guards, not
 interval arithmetic certification. No OCCT source or new dependency is used.
 Optional interoperability checks reuse the previously recorded external OCCT
 reader and its license conditions, solely as a test oracle.
+
+The multi-wire analytic prism extension reuses the original line/arc-region
+containment and segment-intersection algorithms described above. It checks
+whole imported boundaries and corresponding outer/inner wires against that
+validated region; no STEP source shape is regenerated as the imported result.
+This extends the same public entity model and introduces no new dependency.

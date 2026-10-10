@@ -368,6 +368,10 @@ mod exports {
         }
     }
     #[no_mangle]
+    pub extern "C" fn hagane_step_bounded_openings_sample() -> i32 {
+        generate(crate::bounded_analytic_openings_sample_json())
+    }
+    #[no_mangle]
     pub extern "C" fn hagane_step_bounded_begin() {
         let mut input = STEP_BOUNDED_INPUT.lock().unwrap();
         input.0.clear();

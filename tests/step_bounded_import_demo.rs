@@ -117,3 +117,70 @@ fn metre_documents_convert_actual_geometry_to_millimetres() {
     ));
     assert!(import_step_bounded_analytic_json(&input).is_ok());
 }
+
+#[test]
+fn actual_two_openings_have_shared_opposing_edges_inward_walls_and_roundtrip() {
+    let input = bounded_analytic_openings_sample_step().unwrap();
+    let report: Value =
+        serde_json::from_str(&import_step_bounded_analytic_json(&input).unwrap()).unwrap();
+    let solid = &report["solid"];
+    let b = &solid["brep"];
+    let expected =
+        20. * (4800. - (4. - std::f64::consts::PI) * 64. - 96. - std::f64::consts::PI * 36.);
+    assert!((solid["volume"].as_f64().unwrap() - expected).abs() < 1e-7);
+    assert_eq!(b["vertices"].as_array().unwrap().len(), 32);
+    assert_eq!(b["edges"], 48);
+    assert_eq!(b["faces"], 18);
+    let mut incidence = vec![Vec::new(); 48];
+    let mut holes = 0;
+    for face in b["wires"].as_array().unwrap() {
+        holes += face.as_array().unwrap().len() - 1;
+        for wire in face.as_array().unwrap() {
+            for c in wire.as_array().unwrap() {
+                incidence[c["edge"].as_u64().unwrap() as usize]
+                    .push(c["forward"].as_bool().unwrap());
+            }
+        }
+    }
+    assert_eq!(holes, 4);
+    assert_eq!(32_i64 - 48 + 18 - holes as i64, -2);
+    for uses in incidence {
+        assert_eq!(uses.len(), 2);
+        assert_ne!(uses[0], uses[1]);
+    }
+    let mesh = &solid["mesh"];
+    let mut inward = 0;
+    for (i, face) in mesh["face_ids"].as_array().unwrap().iter().enumerate() {
+        let surface = &b["surfaces"][face.as_u64().unwrap() as usize];
+        if surface["kind"] == "framed_cylinder"
+            && (surface["frame"]["origin"][0].as_f64().unwrap() - 20.).abs() < 1e-8
+            && surface["radius"] == 6.
+        {
+            for id in mesh["triangles"][i].as_array().unwrap() {
+                let id = id.as_u64().unwrap() as usize;
+                let p = &mesh["positions"][id];
+                let n = &mesh["normals"][id];
+                assert!(
+                    (p[0].as_f64().unwrap() - 20.) * n[0].as_f64().unwrap()
+                        + p[1].as_f64().unwrap() * n[1].as_f64().unwrap()
+                        < 0.
+                );
+                inward += 1;
+            }
+        }
+    }
+    assert!(inward > 0);
+    for bound in solid["error_bounds"].as_array().unwrap() {
+        assert!(bound.as_f64().unwrap() <= 0.1);
+    }
+    let imported = import_step_bounded_analytic_mm(
+        report["step"].as_str().unwrap(),
+        Tolerance::new(1e-6).unwrap(),
+    )
+    .unwrap();
+    assert!((imported.volume().unwrap() - expected).abs() < 1e-7);
+    let sample: Value =
+        serde_json::from_str(&bounded_analytic_openings_sample_json().unwrap()).unwrap();
+    assert_eq!(sample["input_step"], input);
+    assert_eq!(sample["report"], report);
+}

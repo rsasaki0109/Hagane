@@ -96,8 +96,334 @@ fn check_geometry(expected: &Solid, actual: &Solid) {
             }; // Full-cylinder seam.
             let uv = coedge.pcurve.try_evaluate(0.5).unwrap();
             let a = face.surface.normal(uv[0]) * f64::from(face.orientation);
-            let b = other.surface.normal(0.) * f64::from(other.orientation);
+            let point = actual.edges[coedge.edge].curve.try_evaluate(0.5).unwrap();
+            let other_uv = other.surface.try_parameters(point).unwrap();
+            let b = other.surface.normal(other_uv[0]) * f64::from(other.orientation);
             assert!(a.dot(b) > 1. - 1e-12, "import preserves physical tangency");
+        }
+    }
+}
+
+fn holed_region(scale: f64) -> ArcLineRegion {
+    let t = Tolerance::new(1e-6 * scale).unwrap();
+    let outer = rounded_rectangle_profile(
+        Point3::new(0., 0., 0.),
+        20. * scale,
+        16. * scale,
+        2. * scale,
+        t,
+    )
+    .unwrap();
+    let points = [[-5., -1.], [-3., -1.], [-3., 1.], [-5., 1.]];
+    let rectangle = (0..4)
+        .map(|i| PlanarSegment::Line {
+            a: points[i].map(|x| x * scale),
+            b: points[(i + 1) % 4].map(|x| x * scale),
+        })
+        .collect();
+    let circle = (0..4)
+        .map(|i| PlanarSegment::Arc {
+            center: [4. * scale, 0.],
+            radius: 1.5 * scale,
+            start_angle: i as f64 * PI / 2.,
+            sweep: PI / 2.,
+        })
+        .collect();
+    ArcLineRegion {
+        origin: outer.origin,
+        outer: outer.segments,
+        holes: vec![rectangle, circle],
+    }
+}
+
+fn review_holed_mesh(body: &Solid, frame: Transform) {
+    let error = 0.02;
+    let mesh = body
+        .tessellate(error, Tolerance::new(1e-6).unwrap())
+        .unwrap();
+    let guard = 4096.
+        * f64::EPSILON
+        * mesh
+            .positions
+            .iter()
+            .fold(1_f64, |w, p| w.max(p.x.abs()).max(p.y.abs()).max(p.z.abs()));
+    let mut nodes: Vec<_> = body.vertices.iter().map(|v| v.point).collect();
+    for (ei, edge) in body.edges.iter().enumerate() {
+        if let Curve::Arc { radius, sweep, .. } = edge.curve {
+            let fi = body
+                .shell
+                .faces
+                .iter()
+                .enumerate()
+                .find(|(_, f)| {
+                    matches!(f.surface, Surface::FramedCylinder { .. })
+                        && f.wires[0].coedges.iter().any(|c| c.edge == ei)
+                })
+                .unwrap()
+                .0;
+            let n = mesh.face_ids.iter().filter(|&&id| id == fi).count() / 2;
+            assert!(radius * (1. - (sweep / (2. * n as f64)).cos()) <= error);
+            let range = edge.curve.range();
+            for k in 1..n {
+                nodes.push(
+                    edge.curve
+                        .try_evaluate(range[0] + (range[1] - range[0]) * k as f64 / n as f64)
+                        .unwrap(),
+                );
+            }
+        }
+    }
+    let ids: Vec<_> = mesh
+        .positions
+        .iter()
+        .map(|p| {
+            let matches: Vec<_> = nodes
+                .iter()
+                .enumerate()
+                .filter(|(_, q)| (**q - *p).norm() <= guard)
+                .map(|(i, _)| i)
+                .collect();
+            assert_eq!(matches.len(), 1);
+            matches[0]
+        })
+        .collect();
+    let mut uses = std::collections::BTreeMap::new();
+    for (tri, &fi) in mesh.triangles.iter().zip(&mesh.face_ids) {
+        let points = tri.map(|i| mesh.positions[i]);
+        assert!(
+            (points[1] - points[0])
+                .cross(points[2] - points[0])
+                .dot(mesh.normals[tri[0]])
+                > 0.
+        );
+        for i in 0..3 {
+            let a = ids[tri[i]];
+            let b = ids[tri[(i + 1) % 3]];
+            assert_ne!(a, b);
+            let (key, sign) = if a < b { ((a, b), 1) } else { ((b, a), -1) };
+            let u = uses.entry(key).or_insert((0, 0));
+            u.0 += 1;
+            u.1 += sign;
+        }
+        let surface = &body.shell.faces[fi].surface;
+        for weights in [[1. / 3.; 3], [0.2, 0.3, 0.5], [0.7, 0.2, 0.1]] {
+            let p = points[0] * weights[0] + points[1] * weights[1] + points[2] * weights[2];
+            match surface {
+                Surface::FramedCylinder { frame, radius, .. } => {
+                    let q = frame.local_point(p);
+                    assert!((q.x.hypot(q.y) - radius).abs() <= error + guard);
+                }
+                Surface::Plane { origin, u, v } => {
+                    assert!((p - *origin).dot(u.cross(*v)).abs() <= guard);
+                    let local = frame.local_point(p);
+                    assert!(
+                        !(local.x > -5. + guard
+                            && local.x < -3. - guard
+                            && local.y > -1. + guard
+                            && local.y < 1. - guard)
+                    );
+                    // Circular trim chords may enter the analytic hole only
+                    // within the explicitly bounded display chord tolerance.
+                    assert!((local.x - 4.).hypot(local.y) >= 1.5 - error - guard);
+                }
+                _ => panic!("bounded actual surface"),
+            }
+        }
+    }
+    assert!(uses.values().all(|&(n, sign)| n == 2 && sign == 0));
+    assert_eq!(
+        nodes.len() as isize - uses.len() as isize + mesh.triangles.len() as isize,
+        -2
+    );
+}
+
+#[test]
+fn rectangular_and_circular_inner_wires_retain_genus_volume_units_and_closed_display() {
+    let t = Tolerance::new(1e-6).unwrap();
+    let source = extrude_arc_line_region(&holed_region(1.), 5., t).unwrap();
+    let expected = (320. - 4. * 4. * (1. - PI / 4.) - 4. - PI * 1.5_f64.powi(2)) * 5.;
+    assert!((source.volume().unwrap() - expected).abs() < 1e-9);
+    assert_eq!(
+        source.vertices.len() as isize - source.edges.len() as isize
+            + source
+                .shell
+                .faces
+                .iter()
+                .map(|f| 2 - f.wires.len() as isize)
+                .sum::<isize>(),
+        -2
+    );
+    let frame = Transform::translation(Vec3::new(12., -3., 5.))
+        .unwrap()
+        .compose(Transform::rotation(Vec3::new(1., 2., 3.), 0.31).unwrap())
+        .unwrap();
+    for pose in [Transform::IDENTITY, frame] {
+        let placed = source.transformed(pose, t).unwrap();
+        let imported = roundtrip(&placed);
+        review_holed_mesh(&imported, pose);
+        assert_eq!(
+            imported
+                .shell
+                .faces
+                .iter()
+                .filter(|f| matches!(f.surface, Surface::Plane { .. }) && f.wires.len() == 3)
+                .count(),
+            2
+        );
+        for (p, location) in [
+            (Point3::new(0., 0., 2.), PointLocation::Inside),
+            (Point3::new(-4., 0., 2.), PointLocation::Outside),
+            (Point3::new(4., 0., 2.), PointLocation::Outside),
+        ] {
+            assert_eq!(
+                classify_point_in_solid(
+                    &imported,
+                    pose.point(p),
+                    GeometryTolerance::new(1e-6, 1e-10, 0.).unwrap()
+                )
+                .unwrap(),
+                location
+            );
+        }
+    }
+    let small = extrude_arc_line_region(&holed_region(0.001), 0.005, Tolerance::new(1e-9).unwrap())
+        .unwrap();
+    let metre = export_step_bounded_analytic_mm(&small, 1e-9)
+        .unwrap()
+        .replace("SI_UNIT(.MILLI.,.METRE.)", "SI_UNIT($,.METRE.)");
+    check_geometry(
+        &source,
+        &import_step_bounded_analytic_mm(&metre, t).unwrap(),
+    );
+}
+
+// Move all actual geometry belonging to the rectangular opening, including its
+// cap pcurves. This preserves local same-parameter relationships while making
+// the complete planar material region invalid.
+fn shifted_rectangle_hole(mut body: Solid, offset: Vec3) -> Solid {
+    let ids: std::collections::BTreeSet<_> = body
+        .vertices
+        .iter()
+        .enumerate()
+        .filter(|(_, v)| v.point.x >= -5. && v.point.x <= -3. && v.point.y.abs() <= 1.)
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(ids.len(), 8);
+    let edges: std::collections::BTreeSet<_> = body
+        .edges
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| e.vertices.iter().all(|i| ids.contains(i)))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(edges.len(), 12);
+    for i in ids {
+        body.vertices[i].point = body.vertices[i].point + offset;
+    }
+    for &i in &edges {
+        let Curve::Line {
+            ref mut a,
+            ref mut b,
+        } = body.edges[i].curve
+        else {
+            unreachable!()
+        };
+        *a = *a + offset;
+        *b = *b + offset;
+    }
+    for face in &mut body.shell.faces {
+        let Surface::Plane {
+            ref mut origin,
+            u,
+            v,
+        } = face.surface
+        else {
+            continue;
+        };
+        if face.wires.len() == 1
+            && face.wires[0]
+                .coedges
+                .iter()
+                .all(|c| edges.contains(&c.edge))
+        {
+            *origin = *origin + offset;
+        } else {
+            for coedge in face
+                .wires
+                .iter_mut()
+                .flat_map(|w| &mut w.coedges)
+                .filter(|c| edges.contains(&c.edge))
+            {
+                let PCurve::Affine { ref mut origin, .. } = coedge.pcurve else {
+                    unreachable!()
+                };
+                origin[0] += offset.dot(u);
+                origin[1] += offset.dot(v);
+            }
+        }
+    }
+    body
+}
+
+#[test]
+fn coherent_outside_nested_and_touching_inner_boundaries_fail_import_certificate() {
+    let t = Tolerance::new(1e-6).unwrap();
+    let source = extrude_arc_line_region(&holed_region(1.), 5., t).unwrap();
+    let original = export_step_bounded_analytic_mm(&source, t.linear).unwrap();
+    for (label, offset) in [
+        ("outside", Vec3::new(20., 0., 0.)),
+        ("nested", Vec3::new(8., 0., 0.)),
+        ("contact", Vec3::new(-5., 0., 0.)),
+    ] {
+        let invalid = shifted_rectangle_hole(source.clone(), offset);
+        assert!(invalid.validate(t).is_err());
+        // Mutate the encoded actual 3D coordinates and corresponding cap UV
+        // points coherently, bypassing the writer's authoritative validation.
+        let mut text = original.clone();
+        for record in original
+            .lines()
+            .filter(|line| line.contains("=CARTESIAN_POINT("))
+        {
+            let id = record.split_once('=').unwrap().0;
+            let (_, mut args) = entity(&original, id);
+            let coordinates: Vec<f64> = fields(
+                args[1]
+                    .strip_prefix('(')
+                    .unwrap()
+                    .strip_suffix(')')
+                    .unwrap(),
+            )
+            .iter()
+            .map(|s| s.parse().unwrap())
+            .collect();
+            let is_hole =
+                coordinates[0] >= -5. && coordinates[0] <= -3. && coordinates[1].abs() <= 1.;
+            if !is_hole {
+                continue;
+            }
+            let mut shifted = coordinates;
+            shifted[0] += offset.x;
+            shifted[1] += offset.y;
+            if shifted.len() == 3 {
+                shifted[2] += offset.z;
+            }
+            args[1] = format!(
+                "({})",
+                shifted
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+            text = replace(&text, id, &args);
+        }
+        assert!(import_step_bounded_analytic_mm(&text, t).is_err());
+        if let Ok(directory) = std::env::var("HAGANE_REVIEW_FIXTURE_DIR") {
+            std::fs::write(
+                std::path::Path::new(&directory).join(format!("bounded-inner-{label}.step")),
+                text,
+            )
+            .unwrap();
         }
     }
 }

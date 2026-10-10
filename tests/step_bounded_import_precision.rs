@@ -208,9 +208,7 @@ fn coherent_sub_tolerance_cap_uv_translation_cannot_replace_actual_boundary() {
         "a translated pcurve profile must not certify different actual 3D rims"
     );
 }
-#[test]
-fn genuine_valid_prism_with_inner_opening_remains_outside_initial_certificate_scope() {
-    let t = Tolerance::new(1e-6).unwrap();
+fn holed_source(t: Tolerance) -> Solid {
     let outer = rounded_rectangle_profile(Point3::new(0., 0., 0.), 8., 6., 1., t).unwrap();
     let points = [[-1., -1.], [1., -1.], [1., 1.], [-1., 1.]];
     let hole = (0..4)
@@ -219,7 +217,7 @@ fn genuine_valid_prism_with_inner_opening_remains_outside_initial_certificate_sc
             b: points[(i + 1) % 4],
         })
         .collect();
-    let source = extrude_arc_line_region(
+    extrude_arc_line_region(
         &ArcLineRegion {
             origin: outer.origin,
             outer: outer.segments,
@@ -228,16 +226,89 @@ fn genuine_valid_prism_with_inner_opening_remains_outside_initial_certificate_sc
         3.,
         t,
     )
-    .unwrap();
+    .unwrap()
+}
+#[test]
+fn genuine_valid_prism_with_inner_opening_has_actual_certified_boundary() {
+    let t = Tolerance::new(1e-6).unwrap();
+    let source = holed_source(t);
+    let text = export_step_bounded_analytic_mm(&source, t.linear).unwrap();
+    let imported = import_step_bounded_analytic_mm(&text, t).unwrap();
+    imported.validate(t).unwrap();
+    assert_eq!(
+        (
+            imported.vertices.len(),
+            imported.edges.len(),
+            imported.shell.faces.len()
+        ),
+        (24, 36, 14)
+    );
+    assert_eq!(
+        imported
+            .shell
+            .faces
+            .iter()
+            .filter(|f| f.wires.len() == 2)
+            .count(),
+        2
+    );
+    assert!((imported.volume().unwrap() - (120. + 3. * PI)).abs() < 1e-9);
+    let roundtrip = export_step_bounded_analytic_mm(&imported, t.linear).unwrap();
+    assert!(
+        (import_step_bounded_analytic_mm(&roundtrip, t)
+            .unwrap()
+            .volume()
+            .unwrap()
+            - source.volume().unwrap())
+        .abs()
+            < 1e-9
+    );
+}
+#[test]
+fn inner_wire_sub_tolerance_shift_is_not_a_geometry_preimage() {
+    let t = Tolerance::new(1e-6).unwrap();
+    let mut source = holed_source(t);
+    for face in &mut source.shell.faces {
+        if face.wires.len() == 2 {
+            for c in &mut face.wires[1].coedges {
+                if let PCurve::Affine { origin, .. } = &mut c.pcurve {
+                    origin[0] += 0.5 * t.linear;
+                }
+            }
+        }
+    }
     source.validate(t).unwrap();
     let text = export_step_bounded_analytic_mm(&source, t.linear).unwrap();
-    assert!(
-        matches!(
-            import_step_bounded_analytic_mm(&text, t),
-            Err(Error::Unsupported(_))
-        ),
-        "actual valid multiwire caps require a separate extrusion certificate"
-    );
+    assert!(import_step_bounded_analytic_mm(&text, t).is_err());
+}
+#[test]
+fn nesting_and_contact_are_refused_by_actual_region_simplicity_proof() {
+    let t = Tolerance::new(1e-6).unwrap();
+    let outer = rounded_rectangle_profile(Point3::new(0., 0., 0.), 8., 6., 1., t).unwrap();
+    let square = |a: f64, b: f64| {
+        let points = [[a, a], [b, a], [b, b], [a, b]];
+        (0..4)
+            .map(|i| PlanarSegment::Line {
+                a: points[i],
+                b: points[(i + 1) % 4],
+            })
+            .collect::<Vec<_>>()
+    };
+    for holes in [
+        vec![square(-1., 1.), square(-0.5, 0.5)],
+        vec![square(-1., 1.), square(1., 2.)],
+    ] {
+        assert!(extrude_arc_line_region(
+            &ArcLineRegion {
+                origin: outer.origin,
+                outer: outer.segments.clone(),
+                holes
+            },
+            3.,
+            t
+        )
+        .is_err());
+    }
 }
 
 #[test]

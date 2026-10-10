@@ -1371,3 +1371,14 @@ WASM browser import/export workflow accompany the reader. General STEP,
 freeform surfaces and arbitrary curved solids remain future work.
 The estimate remains **15–25%**, toward **80%**.
 See [bounded analytic STEP import](docs/step-bounded-import.md).
+
+## Analytic STEP prisms with through openings
+
+The bounded analytic reader now retains actual line/arc normal prisms with
+one outer and up to sixteen disjoint inner cap wires. All translated cap
+boundaries, shared walls and wire roles are checked without replacing geometry.
+A rectangular-plus-circular openings sample demonstrates actual STEP
+export/import, inward walls, genus-two closure and bounded display.
+Contact, nesting, outside and unresolved precision reject; general curved
+Booleans and arbitrary STEP solids remain future work. The estimate remains
+**15–25%**, toward **80%**. See [analytic STEP openings](docs/step-bounded-import.md).

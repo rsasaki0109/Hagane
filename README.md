@@ -45,7 +45,8 @@ one axis family with exact circular arcs and cylindrical faces, an actual
 Web demo and bounded-analytic STEP export. Curved/general chamfers and fillets
 remain planned. A dedicated [bounded analytic STEP reader](docs/step-bounded-import.md)
 now imports checked line/arc normal extrusions, including these fillets,
-with actual shared geometry and pcurves; general STEP remains unsupported.
+with actual shared geometry and pcurves, including disjoint rectangular and
+circular-arc through openings; general STEP remains unsupported.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
