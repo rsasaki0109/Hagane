@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 1e-12
+  },
+  "operations": [
+    {
+      "kind": "arc_line_extrusion",
+      "id": "capsule-stock",
+      "outer": [
+        {
+          "kind": "line",
+          "start": [
+            -20,
+            -10
+          ],
+          "end": [
+            20,
+            -10
+          ]
+        },
+        {
+          "kind": "arc",
+          "center": [
+            20,
+            0
+          ],
+          "radius": 10,
+          "start_angle": -1.5707963267948966,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            20,
+            0
+          ],
+          "radius": 10,
+          "start_angle": 0,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "line",
+          "start": [
+            20,
+            10
+          ],
+          "end": [
+            -20,
+            10
+          ]
+        },
+        {
+          "kind": "arc",
+          "center": [
+            -20,
+            0
+          ],
+          "radius": 10,
+          "start_angle": 1.5707963267948966,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            -20,
+            0
+          ],
+          "radius": 10,
+          "start_angle": 3.141592653589793,
+          "sweep": 1.5707963267948966
+        }
+      ],
+      "height": 20
+    },
+    {
+      "kind": "bore",
+      "id": "left-hole",
+      "input": "capsule-stock",
+      "mode": "through",
+      "center": [
+        -12,
+        0
+      ],
+      "radius": 4
+    },
+    {
+      "kind": "bore",
+      "id": "right-hole",
+      "input": "left-hole",
+      "mode": "through",
+      "center": [
+        12,
+        0
+      ],
+      "radius": 4
+    }
+  ]
+}

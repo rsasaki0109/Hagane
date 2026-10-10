@@ -1000,3 +1000,9 @@ edge fillet and normal arc-line prism bore operations. Its volume check uses
 rounded-rectangle area `WD − (4 − π)r²` and cylinder volume `πR²H`; no new
 dependency or OCCT source is introduced. Operation documents and prefix caches
 are original Rust/JavaScript code under MIT OR Apache-2.0.
+
+The line/arc workflow reuses the existing mixed-profile Green-area integration,
+normal-prism certification and analytic normal-bore operations. The independent
+capsule check uses rectangle area `2R * center_distance` plus disk area `πR²`,
+then subtracts actual cylinder volumes. Its serde document and cache integration
+are original MIT OR Apache-2.0 code; no new dependency or OCCT source is used.

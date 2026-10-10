@@ -40,9 +40,9 @@ near contacts; blind floor thickness is independently checked. Blind nodes now
 select top/bottom entry with exact floor normals and depth-interval checks,
 incremental editing and validated browser restoration. Opposing blind cuts
 now accept overlapping XY footprints when their depth intervals retain a
-resolved web, with measured axial/pair diagnostics and atomic rejection. Arbitrary mixed curved profiles and arbitrary-plane extrusion frames
-remain outside the document scope; the new rounded-box root is a specifically
-certified exception. Other operation types,
+resolved web, with measured axial/pair diagnostics and atomic rejection. General spline profiles and arbitrary-plane extrusion frames remain outside
+the document scope. Certified line/quarter-arc normal profiles and rounded-box
+stock now provide specifically supported curved-profile roots. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.
@@ -1314,3 +1314,14 @@ and bounded analytic STEP export in the existing editor. Blind rounded-stock
 cuts and general curved Booleans remain unsupported. See [rounded workflow](workflow-rounded.md).
 This integrates existing verified analytic operations; the long-term estimate
 remains 15–25% toward the standing 80% target.
+
+## Editable line/arc normal profiles
+
+The existing operation document now accepts custom normal line/signed-quarter-arc
+profiles, including noncentered XY coordinates and initial disjoint openings.
+Additional through bores share the actual source region and combined
+16-opening/128-segment budget. Native/WASM sessions, prefix caching, Undo/Redo,
+saved documents and analytic STEP exports use the existing workflow.
+Blind/skew/arbitrary-plane stock and general curved Booleans remain outside
+this document operation. See [line/arc workflow](workflow-arc-line.md).
+The long-term estimate remains 15–25% toward the standing 80% target.

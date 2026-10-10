@@ -505,7 +505,7 @@ pub fn export_workflow_step_mm_json(input: &str) -> Result<String> {
     let tolerance = Tolerance::new(doc.tolerance.linear)?;
     let step = if matches!(
         doc.operations.first(),
-        Some(WorkflowOperation::RoundedBox { .. })
+        Some(WorkflowOperation::RoundedBox { .. } | WorkflowOperation::ArcLineExtrusion { .. })
     ) {
         export_step_bounded_analytic_mm(&solid, tolerance.linear)?
     } else {

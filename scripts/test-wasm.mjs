@@ -1179,3 +1179,37 @@ try{
  assert.deepEqual([incrementalWorkflow(roundedStock).rebuild.reused_operations,incrementalWorkflow(roundedStock).rebuild.rebuilt_operations],[3,0]);
 }finally{roundedFiles.forEach(file=>unlinkSync(file));rmdirSync(roundedDir);}
 console.log('Rounded workflow: actual bounded STEP geometry, analytic volumes, closed genus/pcurves/chord bounds, native session parity, suffix/stock cache invalidation and rejected-history preservation passed.');
+
+// Explicit arc/line source profiles preserve their world-XY placement.
+function capsuleWorkflow(radius=10,offset=[0,0]){const line=(start,end)=>({kind:'line',start:start.map((x,i)=>x+offset[i]),end:end.map((x,i)=>x+offset[i])}),arc=(center,start_angle)=>({kind:'arc',center:center.map((x,i)=>x+offset[i]),radius,start_angle,sweep:Math.PI/2});return {schema_version:1,units:'mm',tolerance:{linear:1e-6,angular:1e-10,relative:1e-12},operations:[{kind:'arc_line_extrusion',id:'capsule',outer:[line([-20,-radius],[20,-radius]),arc([20,0],-Math.PI/2),arc([20,0],0),line([20,radius],[-20,radius]),arc([-20,0],Math.PI/2),arc([-20,0],Math.PI)],holes:[],height:20},{kind:'bore',id:'left',input:'capsule',mode:'through',center:[-12+offset[0],offset[1]],radius:4},{kind:'bore',id:'right',input:'left',mode:'through',center:[12+offset[0],offset[1]],radius:4}]};}
+const capsuleBase=capsuleWorkflow(),capsuleLate=roundedCopy(capsuleBase);capsuleLate.operations[2].radius=5;
+const capsuleProfile=capsuleWorkflow(11);capsuleProfile.operations[2].radius=5;
+const capsuleInvalid=roundedCopy(capsuleProfile);capsuleInvalid.operations[0].outer[0].end[0]+=1;
+const capsuleBlind=roundedCopy(capsuleProfile);capsuleBlind.operations[2].mode='blind';capsuleBlind.operations[2].depth=4;
+const capsuleContact=roundedCopy(capsuleProfile);capsuleContact.operations[2].center=[12,6];
+const capsulePrecision=roundedCopy(capsuleProfile);capsulePrecision.tolerance.linear=1e-14;
+const capsuleOnly=roundedCopy(capsuleProfile);capsuleOnly.operations.length=1;
+const capsuleTranslated=capsuleWorkflow(10,[7,-9]);
+const capsuleHistory=[capsuleBase,capsuleBase,capsuleLate,capsuleProfile,capsuleInvalid,capsuleProfile,capsuleBlind,capsuleProfile,capsuleContact,capsuleProfile,capsulePrecision,capsuleProfile,capsuleOnly];
+const capsuleReuse=[[0,3],[3,0],[2,1],[0,3],null,[3,0],null,[3,0],null,[3,0],null,[3,0],[1,0]];
+const capsuleDir=mkdtempSync('/tmp/hagane-capsule-workflow-'),capsuleFiles=[];
+try{
+ k.hagane_workflow_reset_session();
+ const reports=capsuleHistory.map((doc,index)=>{const file=capsuleDir+'/'+index+'.json';writeFileSync(file,JSON.stringify(doc));capsuleFiles.push(file);const report=incrementalWorkflow(doc),reuse=capsuleReuse[index];if(!reuse){assert.equal(report.ok,false);assert.equal(report.mesh,undefined);assert.equal(report.rebuild,undefined);}else{assert.equal(report.ok,true);assert.deepEqual([report.rebuild.reused_operations,report.rebuild.rebuilt_operations],reuse);assert.deepEqual(report.mesh,workflow(doc).mesh);}return report;});
+ const native=execFileSync('cargo',['run','--quiet','--locked','--example','workflow_session','--',...capsuleFiles],{encoding:'utf8',cwd:new URL('../',import.meta.url)}).trim().split('\n').map(JSON.parse);assert.equal(native.length,reports.length);reports.forEach((report,i)=>compareBoundedImport(report,native[i]));
+ for(const doc of [capsuleBase,capsuleProfile,capsuleOnly,capsuleTranslated]){
+  const stock=doc.operations[0],radius=stock.outer[1].radius,offset=[stock.outer[1].center[0]-20,stock.outer[1].center[1]],holes=doc.operations.slice(1),count=holes.length,expected=stock.height*(80*radius+Math.PI*radius**2-Math.PI*holes.reduce((sum,h)=>sum+h.radius**2,0));
+  const report=workflow(doc);assert.equal(report.ok,true);assert.ok(Math.abs(report.mesh.volume-expected)<=512*Number.EPSILON*expected);
+  const exported=stepExport(doc);assert.equal(exported.status,0);const imported=boundedStepImport(exported.result.step);assert.equal(imported.status,0);const body=imported.result.solid;
+  checkFilletBody(body,4+4*count,.1,[12+8*count,18+12*count,8+4*count],4);assert.ok(Math.abs(body.volume-expected)<=512*Number.EPSILON*expected);
+  for(const cx of [-20+offset[0],20+offset[0]])assert.equal(body.brep.surfaces.filter(surface=>surface.kind==='framed_cylinder'&&Math.abs(surface.radius-radius)<1e-10&&Math.hypot(surface.frame.origin[0]-cx,surface.frame.origin[1]-offset[1])<1e-10).length,2);
+  for(const hole of holes)assert.equal(body.brep.surfaces.filter(surface=>surface.kind==='framed_cylinder'&&Math.abs(surface.radius-hole.radius)<1e-10&&Math.hypot(surface.frame.origin[0]-hole.center[0],surface.frame.origin[1]-hole.center[1])<1e-10).length,4);
+  compareIntersection(body.bounds.min,[-20-radius+offset[0],-radius+offset[1],-stock.height/2]);compareIntersection(body.bounds.max,[20+radius+offset[0],radius+offset[1],stock.height/2]);
+  assert.equal(body.brep.vertices.length-body.brep.edges+body.brep.wires.reduce((sum,wires)=>sum+2-wires.length,0),2-2*count);
+  const caps=body.brep.surfaces.map((s,i)=>s.kind==='plane'&&Math.abs(s.u[0]*s.v[1]-s.u[1]*s.v[0])>0?i:-1).filter(i=>i>=0);assert.equal(caps.length,2);caps.forEach(i=>assert.equal(body.brep.wires[i].length,1+count));
+  body.mesh.triangles.forEach((tri,i)=>{if(caps.includes(body.mesh.face_ids[i]))for(const hole of holes)assert.ok(trianglePointDistanceXY(tri.map(v=>body.mesh.positions[v]),hole.center)>=hole.radius-.1-1e-10);});
+  const path=capsuleDir+'/export.json';writeFileSync(path,JSON.stringify(doc));if(!capsuleFiles.includes(path))capsuleFiles.push(path);compareBoundedStep(exported.result.step,execFileSync('cargo',['run','--quiet','--locked','--example','step_export','--',path],{encoding:'utf8',cwd:new URL('../',import.meta.url)}));
+ }
+ assert.equal(incrementalWorkflow(capsuleOnly).rebuild.rebuilt_operations,0);
+}finally{capsuleFiles.forEach(file=>unlinkSync(file));rmdirSync(capsuleDir);}
+console.log('Arc-line workflow: capsule and translated source profiles, independent analytic volumes, actual bounded STEP/pcurves/genus/chord closure, native session parity, suffix/profile cache invalidation and atomic profile/blind/contact/precision rejection passed.');

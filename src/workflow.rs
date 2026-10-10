@@ -39,6 +39,13 @@ pub enum WorkflowOperation {
         id: String,
         size: [f64; 3],
     },
+    ArcLineExtrusion {
+        id: String,
+        outer: Vec<WorkflowProfileSegment>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        holes: Vec<Vec<WorkflowProfileSegment>>,
+        height: f64,
+    },
     RoundedBox {
         id: String,
         size: [f64; 3],
@@ -55,6 +62,30 @@ pub enum WorkflowOperation {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         depth: Option<f64>,
     },
+}
+/// Exact profile intent in millimetres and radians. Signed arcs retain direction.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum WorkflowProfileSegment {
+    Line {
+        start: [f64; 2],
+        end: [f64; 2],
+    },
+    Arc {
+        center: [f64; 2],
+        radius: f64,
+        start_angle: f64,
+        sweep: f64,
+    },
+}
+impl WorkflowProfileSegment {
+    fn segment(&self, tol: Tolerance) -> Result<PlanarSegment> {
+        match self {
+            Self::Line { start, end } if start.iter().chain(end).all(|v| v.is_finite()) => Ok(PlanarSegment::Line { a: *start, b: *end }),
+            Self::Arc { center, radius, start_angle, sweep } if center.iter().all(|v| v.is_finite()) && radius.is_finite() && *radius > 10.*tol.linear && start_angle.is_finite() && sweep.is_finite() && sweep.abs()>0. && sweep.abs()<=std::f64::consts::FRAC_PI_2 => Ok(PlanarSegment::Arc { center:*center,radius:*radius,start_angle:*start_angle,sweep:*sweep }),
+            _ => Err(Error::InvalidInput("line/arc profile needs finite coordinates and positive resolved radii, with nonzero signed sweeps of at most pi/2")),
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -143,6 +174,7 @@ impl WorkflowDocument {
         match &self.operations[index] {
             WorkflowOperation::Box { id, .. }
             | WorkflowOperation::RoundedBox { id, .. }
+            | WorkflowOperation::ArcLineExtrusion { id, .. }
             | WorkflowOperation::Extrusion { id, .. }
             | WorkflowOperation::Bore { id, .. } => id,
         }
@@ -189,6 +221,7 @@ impl WorkflowDocument {
             let id = match op {
                 WorkflowOperation::Box { id, .. }
                 | WorkflowOperation::RoundedBox { id, .. }
+                | WorkflowOperation::ArcLineExtrusion { id, .. }
                 | WorkflowOperation::Extrusion { id, .. }
                 | WorkflowOperation::Bore { id, .. } => id,
             };
@@ -215,6 +248,65 @@ impl WorkflowDocument {
             d.category = "unsupported";
             return Err(d);
         }
+        let arc_profile = if let WorkflowOperation::ArcLineExtrusion {
+            id,
+            outer,
+            holes,
+            height,
+        } = &self.operations[0]
+        {
+            let total = outer.len() + holes.iter().map(Vec::len).sum::<usize>();
+            let bores = self.operations.len() - 1;
+            if holes.len() > 16
+                || total > 128
+                || holes.len() + bores > 16
+                || total + 4 * bores > 128
+            {
+                let mut d=diagnostic("unsupported_history",Some(id),Some("outer_or_holes_or_operations"),"Line/arc stock and through bores support at most 16 holes and 128 total profile segments.");
+                d.category = "unsupported";
+                return Err(d);
+            }
+            if !height.is_finite()
+                || *height <= 10. * t.linear
+                || outer.is_empty()
+                || holes.iter().any(Vec::is_empty)
+            {
+                return Err(diagnostic(
+                    "profile_rejected",
+                    Some(id),
+                    Some("outer_or_holes_or_height"),
+                    "Line/arc extrusion needs nonempty rings and finite resolved positive height.",
+                ));
+            }
+            let convert = |ring: &Vec<WorkflowProfileSegment>| {
+                ring.iter()
+                    .map(|s| s.segment(t))
+                    .collect::<Result<Vec<_>>>()
+            };
+            let outer = convert(outer).map_err(|e| geometry_error(e, id))?;
+            let holes = holes
+                .iter()
+                .map(convert)
+                .collect::<Result<Vec<_>>>()
+                .map_err(|e| geometry_error(e, id))?;
+            if !outer
+                .iter()
+                .chain(holes.iter().flatten())
+                .any(|s| matches!(s, PlanarSegment::Arc { .. }))
+            {
+                let mut d=diagnostic("profile_rejected",Some(id),Some("outer_or_holes"),"Arc-line extrusion requires at least one circular arc; use extrusion for line-only profiles.");
+                d.category = "unsupported";
+                return Err(d);
+            }
+            Some(ArcLineRegion {
+                origin: Point3::new(0., 0., -*height / 2.),
+                outer,
+                holes,
+            })
+        } else {
+            None
+        };
+        let curved = rounded_radius.is_some() || arc_profile.is_some();
         let (box_id, b, profile) = match &self.operations[0] {
             WorkflowOperation::Box { id, size }
             | WorkflowOperation::RoundedBox { id, size, .. } => {
@@ -250,6 +342,54 @@ impl WorkflowDocument {
                     id,
                     BoxSpec {
                         min: size * (-0.5),
+                        size,
+                    },
+                    None,
+                )
+            }
+            WorkflowOperation::ArcLineExtrusion { id, height, .. } => {
+                let region = arc_profile.as_ref().ok_or_else(|| {
+                    diagnostic(
+                        "profile_rejected",
+                        Some(id),
+                        None,
+                        "Missing line/arc profile.",
+                    )
+                })?;
+                let mut min = [f64::INFINITY; 2];
+                let mut max = [f64::NEG_INFINITY; 2];
+                for segment in region.outer.iter().chain(region.holes.iter().flatten()) {
+                    let bounds = match segment {
+                        PlanarSegment::Line { a, b } => [*a, *b],
+                        PlanarSegment::Arc { center, radius, .. } => [
+                            [center[0] - radius, center[1] - radius],
+                            [center[0] + radius, center[1] + radius],
+                        ],
+                    };
+                    for p in bounds {
+                        for axis in 0..2 {
+                            min[axis] = min[axis].min(p[axis]);
+                            max[axis] = max[axis].max(p[axis]);
+                        }
+                    }
+                }
+                let size = Vec3::new(max[0] - min[0], max[1] - min[1], *height);
+                if !size.finite()
+                    || !min.iter().all(|v| v.is_finite())
+                    || size.x <= 0.
+                    || size.y <= 0.
+                {
+                    return Err(diagnostic(
+                        "profile_rejected",
+                        Some(id),
+                        Some("outer_or_holes"),
+                        "Profile bounds exceed finite resolved arithmetic.",
+                    ));
+                }
+                (
+                    id,
+                    BoxSpec {
+                        min: Point3::new(min[0], min[1], -*height / 2.),
                         size,
                     },
                     None,
@@ -356,12 +496,16 @@ impl WorkflowDocument {
                     "Through bores must omit entry or use top; entry only selects blind cuts.",
                 ));
             }
-            if rounded_radius.is_some() && *mode == WorkflowBoreMode::Blind {
+            if curved && *mode == WorkflowBoreMode::Blind {
                 let mut d = diagnostic(
-                    "rounded_blind_bore_unsupported",
+                    if rounded_radius.is_some() {
+                        "rounded_blind_bore_unsupported"
+                    } else {
+                        "arc_line_blind_bore_unsupported"
+                    },
                     Some(id),
                     Some("mode"),
-                    "Rounded-box stock currently supports through bores only.",
+                    "Curved line/arc stock currently supports through bores only.",
                 );
                 d.category = "unsupported";
                 return Err(d);
@@ -389,63 +533,66 @@ impl WorkflowDocument {
                     return Err(d);
                 }
             }
-            let (clearance, profile_hole) = if let Some(profile) = &profile {
-                swept_polygon_region_bore_clearance(
-                    &profile.outer,
-                    &profile.holes,
-                    *center,
-                    *radius,
-                    [direction.x, direction.y],
-                    size.z,
-                    if *mode == WorkflowBoreMode::Blind {
-                        let fraction = depth.unwrap() / size.z;
-                        if *entry == WorkflowBoreEntry::Bottom {
-                            [0., fraction]
+            if arc_profile.is_none() {
+                let (clearance, profile_hole) = if let Some(profile) = &profile {
+                    swept_polygon_region_bore_clearance(
+                        &profile.outer,
+                        &profile.holes,
+                        *center,
+                        *radius,
+                        [direction.x, direction.y],
+                        size.z,
+                        if *mode == WorkflowBoreMode::Blind {
+                            let fraction = depth.unwrap() / size.z;
+                            if *entry == WorkflowBoreEntry::Bottom {
+                                [0., fraction]
+                            } else {
+                                [1. - fraction, 1.]
+                            }
                         } else {
-                            [1. - fraction, 1.]
-                        }
-                    } else {
-                        [0., 1.]
-                    },
-                )
-                .map_err(|e| geometry_error(e, id))?
-            } else {
-                (
-                    (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius,
-                    None,
-                )
-            };
-            let required = 10. * t.linear;
-            if !clearance.is_finite() {
-                let mut d = diagnostic(
-                    "finite_clearance",
-                    Some(id),
-                    Some("center_or_radius"),
-                    "Clearance cannot be represented with finite binary64 arithmetic.",
-                );
-                d.category = "numerically_unresolved";
-                return Err(d);
-            }
-            if clearance <= required {
-                let mut d = diagnostic(
+                            [0., 1.]
+                        },
+                    )
+                    .map_err(|e| geometry_error(e, id))?
+                } else {
+                    (
+                        (size.x / 2. - center[0].abs()).min(size.y / 2. - center[1].abs()) - radius,
+                        None,
+                    )
+                };
+                let required = 10. * t.linear;
+                if !clearance.is_finite() {
+                    let mut d = diagnostic(
+                        "finite_clearance",
+                        Some(id),
+                        Some("center_or_radius"),
+                        "Clearance cannot be represented with finite binary64 arithmetic.",
+                    );
+                    d.category = "numerically_unresolved";
+                    return Err(d);
+                }
+                if clearance <= required {
+                    let mut d = diagnostic(
                     "side_clearance",
                     Some(id),
                     Some("center_or_radius"),
                     "The circular tool lies outside, reaches or nearly touches a stock boundary.",
                 );
-                if let Some(index) = profile_hole {
-                    d.code = "profile_hole_clearance";
-                    d.message=format!("Circular tool reaches or lies inside profile hole {index} (zero-based index).");
+                    if let Some(index) = profile_hole {
+                        d.code = "profile_hole_clearance";
+                        d.message=format!("Circular tool reaches or lies inside profile hole {index} (zero-based index).");
+                    }
+                    d.category = "unsupported";
+                    d.measured_clearance = Some(clearance);
+                    d.required_clearance = Some(required);
+                    d.suggestion=Some("Reduce the radius, move the center inward, or enlarge the stock until clearance exceeds the required margin.".into());
+                    if profile_hole.is_some() {
+                        d.suggestion=Some("Move the center away from the profile opening, reduce radius, or edit the opening until clearance exceeds the required margin.".into());
+                    }
+                    return Err(d);
                 }
-                d.category = "unsupported";
-                d.measured_clearance = Some(clearance);
-                d.required_clearance = Some(required);
-                d.suggestion=Some("Reduce the radius, move the center inward, or enlarge the stock until clearance exceeds the required margin.".into());
-                if profile_hole.is_some() {
-                    d.suggestion=Some("Move the center away from the profile opening, reduce radius, or edit the opening until clearance exceeds the required margin.".into());
-                }
-                return Err(d);
             }
+            let required = 10. * t.linear;
             for ((previous, previous_id), previous_entry) in
                 bores.iter().zip(&ids[1..]).zip(&entries)
             {
@@ -522,16 +669,19 @@ impl WorkflowDocument {
         }
         // Pair separation was certified using the actual entry/depth intervals.
         // Reuse single-tool checks without imposing the old XY-only pair rule.
-        let tools = bores
-            .iter()
-            .zip(&ids[1..])
-            .map(|bore_and_id| {
-                let (bore, id) = bore_and_id;
-                checked_skew_prism_bore_tools(b, [direction.x, direction.y], &[*bore], t)
-                    .map(|tools| tools[0])
-                    .map_err(|e| geometry_error(e, id))
-            })
-            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let tools = if curved {
+            vec![None; bores.len()]
+        } else {
+            bores
+                .iter()
+                .zip(&ids[1..])
+                .map(|(bore, id)| {
+                    checked_skew_prism_bore_tools(b, [direction.x, direction.y], &[*bore], t)
+                        .map(|tools| Some(tools[0]))
+                        .map_err(|e| geometry_error(e, id))
+                })
+                .collect::<std::result::Result<Vec<_>, _>>()?
+        };
         Ok(WorkflowPlan {
             stock: b,
             direction,
@@ -541,6 +691,7 @@ impl WorkflowDocument {
             tools,
             tolerance: t,
             rounded_radius,
+            arc_profile,
             policy,
         })
     }
@@ -549,7 +700,10 @@ impl WorkflowDocument {
             Some(
                 WorkflowOperation::Box { size, .. } | WorkflowOperation::RoundedBox { size, .. },
             ) => size[2],
-            Some(WorkflowOperation::Extrusion { height, .. }) => *height,
+            Some(
+                WorkflowOperation::Extrusion { height, .. }
+                | WorkflowOperation::ArcLineExtrusion { height, .. },
+            ) => *height,
             _ => return vec![],
         };
         let size = [height; 3];
@@ -643,9 +797,10 @@ struct WorkflowPlan {
     profile: Option<PolygonProfile>,
     entries: Vec<WorkflowBoreEntry>,
     bores: Vec<BoxBore>,
-    tools: Vec<CylinderSpec>,
+    tools: Vec<Option<CylinderSpec>>,
     tolerance: Tolerance,
     rounded_radius: Option<f64>,
+    arc_profile: Option<ArcLineRegion>,
     policy: GeometryTolerance,
 }
 impl WorkflowPlan {
@@ -654,9 +809,9 @@ impl WorkflowPlan {
         solid: &mut Solid,
         index: usize,
         bore: BoxBore,
-        tool: CylinderSpec,
+        tool: Option<CylinderSpec>,
     ) -> Result<()> {
-        if self.rounded_radius.is_some() {
+        if self.rounded_radius.is_some() || self.arc_profile.is_some() {
             *solid = bore_normal_arc_line_prism(
                 solid,
                 Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
@@ -670,7 +825,13 @@ impl WorkflowPlan {
             crate::operations::append_bottom_blind_bore(solid, self.stock, bore);
             Ok(())
         } else {
-            apply_checked_prism_bore(solid, self.stock, bore, tool, self.tolerance)
+            apply_checked_prism_bore(
+                solid,
+                self.stock,
+                bore,
+                tool.ok_or(Error::InvalidTopology("missing checked prism tool"))?,
+                self.tolerance,
+            )
         }
     }
     fn make_stock(&self) -> Result<Solid> {
@@ -682,6 +843,27 @@ impl WorkflowPlan {
                 self.policy,
             )?
             .into_solid())
+        } else if let Some(region) = &self.arc_profile {
+            let stock = extrude_arc_line_region(region, self.direction.z, self.tolerance)?;
+            let extent = stock.bounds().max - stock.bounds().min;
+            let band = self
+                .policy
+                .length_at_scale(extent.x.hypot(extent.y).hypot(extent.z))?;
+            if self.direction.z <= 10. * band {
+                return Err(Error::InvalidInput(
+                    "arc-line height is unresolved at effective tolerance",
+                ));
+            }
+            let loops: Vec<_> = std::iter::once(&region.outer)
+                .chain(&region.holes)
+                .cloned()
+                .collect();
+            crate::mixed::validate_mixed_region(&loops, Tolerance::new(band)?)?;
+            crate::arc_line_prism_validation::certify_validated_arc_line_prism(
+                &stock,
+                self.tolerance,
+            )?;
+            Ok(stock)
         } else if let Some(profile) = &self.profile {
             extrude_polygon(profile, self.direction, self.tolerance)
         } else {

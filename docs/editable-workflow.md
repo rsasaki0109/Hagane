@@ -49,9 +49,10 @@ and normal bores additionally enforce the stored angular/relative policy.
 
 - Explicit `schema_version: 1` and `units: "mm"` are required. Other versions
   or units are rejected; values are not silently converted.
-- History has one centered axis-aligned `box`, `rounded_box`, or world-XY
-  `extrusion` operation. Box/polygon histories support at most 256 `bore` nodes;
-  rounded-box histories support at most 16 disjoint through bores. Each input references the immediately preceding operation
+- History has one centered axis-aligned `box` or `rounded_box`, or world-XY
+  `extrusion` or `arc_line_extrusion` operation. Box/polygon histories support
+  at most 256 `bore` nodes; rounded boxes support at most 16 through bores.
+  Line/arc profiles share a combined 16-opening/128-segment budget with bores. Each input references the immediately preceding operation
   ID (the stock operation for the first bore); IDs are unique and
   contain 1–64 ASCII letters, digits, hyphens or underscores.
 - Box size is `[width, length, height]`. Rounded boxes additionally require
@@ -580,3 +581,12 @@ A `rounded_box` root now connects actual four-edge fillets and disjoint normal
 through bores to this same session, editor and saved format. See
 [rounded workflow](workflow-rounded.md) for the example, limits and validation.
 Blind bores on rounded stock reject explicitly.
+
+## Line/arc profile extension
+
+`arc_line_extrusion` now stores authored lines and signed quarter arcs, including
+noncentered world-XY stock and initial profile openings, followed by normal
+through bores. See [line/arc workflow](workflow-arc-line.md) for the actual
+example, geometry/tolerance limits and validation. Blind cuts on this stock
+reject explicitly. The display centers accepted positions while reports,
+JSON and STEP retain original world coordinates.

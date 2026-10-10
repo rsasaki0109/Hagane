@@ -1403,3 +1403,14 @@ and bounded analytic STEP export in the existing editor. Blind rounded-stock
 cuts and general curved Booleans remain unsupported. See [rounded workflow](docs/workflow-rounded.md).
 This integrates existing verified analytic operations; the long-term estimate
 remains 15–25% toward the standing 80% target.
+
+## Editable line/arc normal profiles
+
+The existing operation document now accepts custom normal line/signed-quarter-arc
+profiles, including noncentered XY coordinates and initial disjoint openings.
+Additional through bores share the actual source region and combined
+16-opening/128-segment budget. Native/WASM sessions, prefix caching, Undo/Redo,
+saved documents and analytic STEP exports use the existing workflow.
+Blind/skew/arbitrary-plane stock and general curved Booleans remain outside
+this document operation. See [line/arc workflow](docs/workflow-arc-line.md).
+The long-term estimate remains 15–25% toward the standing 80% target.
