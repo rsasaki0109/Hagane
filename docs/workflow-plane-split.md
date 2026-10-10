@@ -70,8 +70,9 @@ resolved opening crossings and multiple material intervals. The selected side
 must contain exactly one connected component; the other side may contain more.
 Tangent/vertex contact and meaningful skew remain unsupported. Blind bores
 remain unsupported on these curved-stock
-histories. A genuinely all-line child may be a terminal displayed/exported
-result; another curved-source bore or plane split rejects explicitly.
+histories. All-line children now support subsequent normal through bores and
+plane cuts through the [normal-prism continuation](workflow-plain-continuation.md)
+APIs.
 A line outer boundary with retained curved openings still has curved geometry.
 
 Resource admission counts bores and cuts by type. There may be at most 16
@@ -104,8 +105,8 @@ pcurves, shared opposing edges, closed display and actual STEP round trips.
 Real prefix pointer reuse, side/offset edits, append/truncate/removal and fresh
 replay equality are checked. A genuine display failure after successful
 geometry rebuilding preserves the accepted cache and STEP export. Bad roots,
-contact/hole crossing, blind input, unknown fields and subsequent operations
-on a plain terminal child reject atomically. Signed-zero cache equivalence
+unresolved contact, blind input and unknown fields reject atomically. All-line
+continuation now has positive volume/topology/cache regression coverage. Signed-zero cache equivalence
 and legacy box/polygon bore histories are covered.
 
 The focused browser run passes actual volume/topology, cache/intent retention,

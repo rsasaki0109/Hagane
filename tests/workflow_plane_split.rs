@@ -210,9 +210,16 @@ fn terminal_line_child_and_appended_second_split_use_the_actual_selected_body() 
         radius: 0.5,
         depth: None,
     });
-    let error = session.rebuild(&d).unwrap_err();
-    assert_eq!(error.category, "unsupported");
-    assert_eq!(error.operation_id.as_deref(), Some("next"));
+    let continued = session.rebuild(&d).unwrap();
+    assert_eq!(continued.stats.reused_operations, 2);
+    assert!(
+        (continued.solid.volume().unwrap() - (400. - 5. * std::f64::consts::PI * 0.25)).abs()
+            < 1e-8
+    );
+    assert_eq!(
+        format!("{:?}", continued.solid),
+        format!("{:?}", d.rebuild().unwrap())
+    );
     d.operations.pop();
     assert!(Arc::ptr_eq(
         &session.rebuild(&d).unwrap().solid,

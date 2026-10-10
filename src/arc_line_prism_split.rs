@@ -60,7 +60,7 @@ pub fn split_normal_arc_line_prism_by_plane_components(
     plane: &Surface,
     tolerance: GeometryTolerance,
 ) -> Result<NormalArcLinePrismPlaneSplitComponents> {
-    split_prism(source, plane, tolerance, true)
+    split_prism(source, plane, tolerance, true, None)
 }
 fn length(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
@@ -285,7 +285,7 @@ pub fn split_normal_arc_line_prism_by_plane(
     plane: &Surface,
     tolerance: GeometryTolerance,
 ) -> Result<NormalArcLinePrismPlaneSplit> {
-    let result = split_prism(source, plane, tolerance, false)?;
+    let result = split_prism(source, plane, tolerance, false, None)?;
     if result.negative.len() != 1 || result.positive.len() != 1 || result.sections.len() != 1 {
         return Err(Error::Unsupported(
             "single-interval prism partition requires one child on each side",
@@ -307,17 +307,37 @@ pub fn split_normal_arc_line_prism_by_plane(
         plane: result.plane,
     })
 }
+/// Partition all material intervals of a normal line/arc or all-line prism.
+/// The explicit unoriented extrusion axis selects the source cap family;
+/// meaningful skew, contacts and unresolved precision remain unsupported.
+pub fn split_normal_prism_by_plane_components(
+    source: &Solid,
+    plane: &Surface,
+    extrusion_axis: Vec3,
+    tolerance: GeometryTolerance,
+) -> Result<NormalArcLinePrismPlaneSplitComponents> {
+    split_prism(source, plane, tolerance, true, Some(extrusion_axis))
+}
 fn split_prism(
     source: &Solid,
     plane: &Surface,
     tolerance: GeometryTolerance,
     components: bool,
+    axis: Option<Vec3>,
 ) -> Result<NormalArcLinePrismPlaneSplitComponents> {
     source.validate(tolerance.absolute())?;
-    let certified = crate::arc_line_prism_validation::recognize_validated_arc_line_prism(
-        source,
-        tolerance.absolute(),
-    )?;
+    let certified = if let Some(axis) = axis {
+        crate::arc_line_prism_validation::recognize_validated_normal_prism(
+            source,
+            axis,
+            tolerance.absolute(),
+        )?
+    } else {
+        crate::arc_line_prism_validation::recognize_validated_arc_line_prism(
+            source,
+            tolerance.absolute(),
+        )?
+    };
     let Surface::Plane { origin, u, v } = *plane else {
         return Err(Error::InvalidInput("prism partition requires a plane"));
     };

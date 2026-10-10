@@ -1344,8 +1344,8 @@ nodes, followed by additional cuts/normal bores on the retained B-rep. Shared
 resource admission counts operation types; real prefix reuse and transactional
 rejection preserve accepted geometry and editing intent. Browser cut controls,
 removal/relinking, Undo/Redo, saved documents and STEP export use the existing
-workflow. General graphs, Box/Polygon cut nodes, crossed openings and curved
-operations after an all-line terminal child remain future work. See
+workflow. General graphs and Box/Polygon cut nodes remain future work. Resolved
+opening crossings and all-line continuation are implemented below. See
 [editable plane cuts](workflow-plane-split.md). The estimate remains 15–25%
 toward the standing 80% target.
 
@@ -1361,3 +1361,15 @@ this extension. General curved Booleans, contact/vertex/tangent cases and
 meaningful skew remain future work. See
 [partitions across openings](arc-line-prism-split-components.md). The estimate
 remains 15–25% toward the standing 80% target.
+
+## Continued machining of all-line cut children
+
+Explicit-axis normal-prism bore and component-partition APIs now accept actual
+all-line prisms as well as certified line/arc prisms. Editable rounded/line-arc
+stock histories can continue cutting and drilling after all curved stock
+boundaries have been removed. Actual cap-family selection, normal-translation
+proofs, original curve coverage and existing precision guards accompany the
+construction; skew and ambiguous cap families reject. Existing Arc-specific
+APIs retain their stricter domains. See [normal-prism continuation](workflow-plain-continuation.md).
+General curved Booleans and blind machining on these histories remain future
+work. The estimate remains 15–25% toward the standing 80% target.

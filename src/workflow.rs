@@ -982,19 +982,15 @@ struct WorkflowPlan {
 impl WorkflowPlan {
     fn apply_step(&self, solid: &mut Solid, step: &WorkflowStep) -> Result<()> {
         let curved = self.rounded_radius.is_some() || self.arc_profile.is_some();
-        if curved
-            && !solid
-                .edges
-                .iter()
-                .any(|e| matches!(e.curve, Curve::Arc { .. }))
-        {
-            return Err(Error::Unsupported("a line-only partition child supports terminal display/export, but subsequent curved-source operations are unsupported"));
-        }
         match step {
             WorkflowStep::PlaneSplit { plane, side } => {
-                let (negative, positive) =
-                    split_normal_arc_line_prism_by_plane_components(solid, plane, self.policy)?
-                        .into_solids();
+                let (negative, positive) = split_normal_prism_by_plane_components(
+                    solid,
+                    plane,
+                    Vec3::new(0., 0., 1.),
+                    self.policy,
+                )?
+                .into_solids();
                 let mut selected = match side {
                     WorkflowSplitSide::Negative => negative,
                     WorkflowSplitSide::Positive => positive,
@@ -1011,10 +1007,11 @@ impl WorkflowPlan {
             }
             WorkflowStep::Bore { bore, entry, tool } => {
                 if curved {
-                    *solid = bore_normal_arc_line_prism(
+                    *solid = bore_normal_prism(
                         solid,
                         Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
                         bore.radius,
+                        Vec3::new(0., 0., 1.),
                         self.policy,
                     )?
                     .into_solids()

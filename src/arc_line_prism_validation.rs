@@ -83,6 +83,14 @@ pub(crate) fn recognize_validated_arc_line_prism(
     if caps.len() != 2 {
         return Err(DOMAIN);
     }
+    recognize_caps(s, tol, [caps[0], caps[1]], None)
+}
+fn recognize_caps(
+    s: &Solid,
+    tol: Tolerance,
+    caps: [usize; 2],
+    translation: Option<Vec3>,
+) -> Result<CertifiedArcLinePrism> {
     let base = &s.shell.faces[caps[0]];
     let top = &s.shell.faces[caps[1]];
     if !(1..=17).contains(&base.wires.len()) || top.wires.len() != base.wires.len() {
@@ -150,6 +158,20 @@ pub(crate) fn recognize_validated_arc_line_prism(
         return Err(Error::Unsupported(
             "bounded line/arc prism coordinate precision is unresolved at caller tolerance",
         ));
+    }
+    if let Some(translation) = translation {
+        let projected = translation.dot(frame.axes()[2]);
+        let transverse = length(translation - frame.axes()[2] * projected);
+        if !translation.finite()
+            || !projected.is_finite()
+            || projected <= 0.
+            || !transverse.is_finite()
+            || transverse + arithmetic >= tol.linear / 256.
+        {
+            return Err(Error::Unsupported(
+                "normal prism translation is skew or numerically unresolved",
+            ));
+        }
     }
     if !height.is_finite()
         || height <= 10. * tol.linear
@@ -468,4 +490,140 @@ pub(crate) fn recognize_validated_arc_line_prism(
         region,
         height,
     })
+}
+
+fn requested_axis(axis: Vec3) -> Result<Vec3> {
+    if !axis.finite() {
+        return Err(Error::InvalidInput(
+            "normal prism extrusion axis must be finite and nonzero",
+        ));
+    }
+    let scale = axis.x.abs().max(axis.y.abs()).max(axis.z.abs());
+    if scale <= 0. {
+        return Err(Error::InvalidInput(
+            "normal prism extrusion axis must be finite and nonzero",
+        ));
+    }
+    let mut unit = Vec3::new(axis.x / scale, axis.y / scale, axis.z / scale).normalized()?;
+    let largest = if unit.x.abs() >= unit.y.abs() && unit.x.abs() >= unit.z.abs() {
+        unit.x
+    } else if unit.y.abs() >= unit.z.abs() {
+        unit.y
+    } else {
+        unit.z
+    };
+    if largest < 0. {
+        unit = unit * (-1.);
+    }
+    Ok(unit)
+}
+fn check_axis(s: &Solid, actual: Vec3, requested: Vec3, tol: Tolerance) -> Result<()> {
+    let extent = s.bounds().max - s.bounds().min;
+    let scale = length(extent);
+    let alignment = length(actual.cross(requested)) * scale;
+    let mut world = s.vertices.iter().fold(scale, |w, p| {
+        w.max(p.point.x.abs())
+            .max(p.point.y.abs())
+            .max(p.point.z.abs())
+    });
+    for face in &s.shell.faces {
+        let origin = match face.surface {
+            Surface::Plane { origin, .. } => origin,
+            Surface::Cylinder { center, .. } => center,
+            Surface::FramedCylinder { frame, .. } => frame.origin(),
+            _ => return Err(DOMAIN),
+        };
+        world = world
+            .max(origin.x.abs())
+            .max(origin.y.abs())
+            .max(origin.z.abs());
+    }
+    for edge in &s.edges {
+        if let Curve::Arc { frame, .. } = edge.curve {
+            let origin = frame.origin();
+            world = world
+                .max(origin.x.abs())
+                .max(origin.y.abs())
+                .max(origin.z.abs());
+        }
+    }
+    let arithmetic = 4096. * f64::EPSILON * world;
+    if !alignment.is_finite()
+        || !arithmetic.is_finite()
+        || alignment + arithmetic >= tol.linear / 256.
+    {
+        return Err(Error::Unsupported(
+            "requested extrusion axis does not resolve the actual normal prism",
+        ));
+    }
+    Ok(())
+}
+/// Recover a normal line/arc or all-line prism along an explicitly requested
+/// unoriented axis. Existing line/arc admission remains unchanged.
+pub(crate) fn recognize_validated_normal_prism(
+    s: &Solid,
+    axis: Vec3,
+    tol: Tolerance,
+) -> Result<CertifiedArcLinePrism> {
+    Tolerance::new(tol.linear)?;
+    let axis = requested_axis(axis)?;
+    if s.edges.iter().any(|e| matches!(e.curve, Curve::Arc { .. })) {
+        let result = recognize_validated_arc_line_prism(s, tol)?;
+        check_axis(s, result.frame.axes()[2], axis, tol)?;
+        return Ok(result);
+    }
+    if s.shell.faces.len() > 128
+        || s.edges.len() > 384
+        || s.vertices.len() > 256
+        || s.edges
+            .iter()
+            .any(|e| !matches!(e.curve, Curve::Line { .. }))
+        || s.shell
+            .faces
+            .iter()
+            .any(|f| !matches!(f.surface, Surface::Plane { .. }))
+    {
+        return Err(DOMAIN);
+    }
+    let scale = length(s.bounds().max - s.bounds().min);
+    let mut lower = Vec::new();
+    let mut upper = Vec::new();
+    for (i, face) in s.shell.faces.iter().enumerate() {
+        let outward = face.surface.normal(0.).normalized()? * f64::from(face.orientation);
+        if length(outward.cross(axis)) * scale < tol.linear / 256. {
+            if outward.dot(axis) < 0. {
+                lower.push(i);
+            } else {
+                upper.push(i);
+            }
+        }
+    }
+    if lower.len() != 1 || upper.len() != 1 {
+        return Err(Error::Unsupported(
+            "requested normal prism requires exactly two unsubdivided cap planes",
+        ));
+    }
+    let base = lower[0];
+    let top = upper[0];
+    // Select the actual cap family in a read-only clone for the established
+    // planar-prism proof; retain original geometry and source indices below.
+    let mut candidate = s.clone();
+    candidate.shell.faces = std::iter::once(s.shell.faces[base].clone())
+        .chain(std::iter::once(s.shell.faces[top].clone()))
+        .chain(
+            s.shell
+                .faces
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| *i != base && *i != top)
+                .map(|(_, f)| f.clone()),
+        )
+        .collect();
+    let planar = crate::prism_validation::certify_validated_planar_prism(&candidate, tol)?;
+    if planar.cap_faces != [0, 1] {
+        return Err(DOMAIN);
+    }
+    let result = recognize_caps(s, tol, [base, top], Some(planar.translation))?;
+    check_axis(s, result.frame.axes()[2], axis, tol)?;
+    Ok(result)
 }

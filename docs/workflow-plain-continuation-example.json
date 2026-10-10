@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 0
+  },
+  "operations": [
+    {
+      "kind": "arc_line_extrusion",
+      "id": "stock",
+      "height": 5,
+      "outer": [
+        {
+          "kind": "line",
+          "start": [
+            0,
+            -4
+          ],
+          "end": [
+            20,
+            -4
+          ]
+        },
+        {
+          "kind": "line",
+          "start": [
+            20,
+            -4
+          ],
+          "end": [
+            20,
+            4
+          ]
+        },
+        {
+          "kind": "line",
+          "start": [
+            20,
+            4
+          ],
+          "end": [
+            0,
+            4
+          ]
+        },
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 4,
+          "start_angle": 1.5707963267948966,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 4,
+          "start_angle": 3.141592653589793,
+          "sweep": 1.5707963267948966
+        }
+      ]
+    },
+    {
+      "kind": "plane_split",
+      "id": "plain",
+      "input": "stock",
+      "offset": 10,
+      "normal_angle": 0,
+      "side": "positive"
+    },
+    {
+      "kind": "bore",
+      "id": "drill",
+      "input": "plain",
+      "mode": "through",
+      "center": [
+        15,
+        0
+      ],
+      "radius": 1
+    }
+  ]
+}

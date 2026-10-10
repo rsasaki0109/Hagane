@@ -292,7 +292,7 @@ fn rejected_cuts_schema_blind_and_display_failures_preserve_real_accepted_geomet
 }
 
 #[test]
-fn terminal_line_child_and_zero_sign_are_valid_but_plain_child_curved_edits_reject() {
+fn line_child_continues_actual_operations_and_signed_zero_reuses_prefixes() {
     let mut value = document("positive");
     value["operations"][0] = json!({"kind":"arc_line_extrusion","id":"stock","height":5.,"outer":[{"kind":"line","start":[0.,-4.],"end":[20.,-4.]},{"kind":"line","start":[20.,-4.],"end":[20.,4.]},{"kind":"line","start":[20.,4.],"end":[0.,4.]},{"kind":"arc","center":[0.,0.],"radius":4.,"start_angle":PI/2.,"sweep":PI/2.},{"kind":"arc","center":[0.,0.],"radius":4.,"start_angle":PI,"sweep":PI/2.}]});
     value["operations"][1]["offset"] = json!(10.);
@@ -310,17 +310,32 @@ fn terminal_line_child_and_zero_sign_are_valid_but_plain_child_curved_edits_reje
     let report: Value =
         serde_json::from_str(&session.evaluate_json(&value.to_string()).unwrap()).unwrap();
     assert_eq!(report["ok"], true);
-    for operation in [
-        json!({"kind":"bore","id":"later","input":"cut","mode":"through","center":[15.,0.],"radius":1.}),
-        json!({"kind":"plane_split","id":"later","input":"cut","offset":15.,"normal_angle":0.,"side":"negative"}),
+    for (operation, volume, holes) in [
+        (
+            json!({"kind":"bore","id":"later","input":"cut","mode":"through","center":[15.,0.],"radius":1.}),
+            400. - 5. * PI,
+            1,
+        ),
+        (
+            json!({"kind":"plane_split","id":"later","input":"cut","offset":15.,"normal_angle":0.,"side":"negative"}),
+            200.,
+            0,
+        ),
     ] {
-        let mut invalid = value.clone();
-        invalid["operations"]
+        let mut continued = value.clone();
+        continued["operations"]
             .as_array_mut()
             .unwrap()
             .push(operation);
-        let failure = session.rebuild(&typed(&invalid)).unwrap_err();
-        assert_eq!(failure.category, "unsupported");
+        let result = session.rebuild(&typed(&continued)).unwrap();
+        check(&result.solid, volume, holes);
+        assert_eq!(
+            (
+                result.stats.reused_operations,
+                result.stats.rebuilt_operations
+            ),
+            (2, 1)
+        );
         assert!(Arc::ptr_eq(
             &accepted.solid,
             &session.rebuild(&good).unwrap().solid

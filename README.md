@@ -65,6 +65,9 @@ normal bores and cuts, with prefix reuse, Undo/Redo and accepted-model exports.
 [Partitions across openings](docs/arc-line-prism-split-components.md) now return
 every actual closed component and material-interval section. Editable histories
 also accept these cuts when the selected side contains exactly one component.
+[Normal-prism continuation](docs/workflow-plain-continuation.md) now keeps
+through bores and cuts usable after a retained child has only straight stock
+boundaries; public normal-prism APIs explicitly select the extrusion axis.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

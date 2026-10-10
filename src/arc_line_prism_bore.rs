@@ -95,16 +95,45 @@ pub fn bore_normal_arc_line_prism(
     radius: f64,
     tolerance: GeometryTolerance,
 ) -> Result<NormalArcLinePrismBore> {
+    bore_prism(source, center, radius, tolerance, None)
+}
+/// Normal circular through bore in a certified line/arc or all-line prism.
+/// `extrusion_axis` selects the physical cap family and is unoriented: its
+/// magnitude and sign do not change the bore. Skew translations reject.
+pub fn bore_normal_prism(
+    source: &Solid,
+    center: Point3,
+    radius: f64,
+    extrusion_axis: Vec3,
+    tolerance: GeometryTolerance,
+) -> Result<NormalArcLinePrismBore> {
+    bore_prism(source, center, radius, tolerance, Some(extrusion_axis))
+}
+fn bore_prism(
+    source: &Solid,
+    center: Point3,
+    radius: f64,
+    tolerance: GeometryTolerance,
+    axis: Option<Vec3>,
+) -> Result<NormalArcLinePrismBore> {
     source.validate(tolerance.absolute())?;
     if !center.finite() || !radius.is_finite() || radius <= 0. {
         return Err(Error::InvalidInput(
             "bore center and radius must be finite with positive radius",
         ));
     }
-    let certified = crate::arc_line_prism_validation::recognize_validated_arc_line_prism(
-        source,
-        tolerance.absolute(),
-    )?;
+    let certified = if let Some(axis) = axis {
+        crate::arc_line_prism_validation::recognize_validated_normal_prism(
+            source,
+            axis,
+            tolerance.absolute(),
+        )?
+    } else {
+        crate::arc_line_prism_validation::recognize_validated_arc_line_prism(
+            source,
+            tolerance.absolute(),
+        )?
+    };
     let extent = source.bounds().max - source.bounds().min;
     let scale = length(extent);
     let band = tolerance.length_at_scale(scale)?;

@@ -1032,3 +1032,13 @@ topology. Complete source-curve coverage, paired opposing actual cut walls,
 per-child area conditioning and compensated total volume summation supplement
 construction. This original code adds no dependencies and remains
 MIT OR Apache-2.0; no OCCT source was copied or translated.
+
+## Explicit-axis normal-prism continuation
+
+The additive all-line domain reuses the existing actual planar-prism
+correspondence certificate and normal line/arc cap, wall and curve-coverage
+proofs. Explicit axis selection uses vector projection and bounds transverse
+translation physically; no axis is inferred from a box's face ordering. Bore
+volume uses pi times radius squared times actual axis height. Cap partition
+uses the same published analytic line/circle intersection and Green-theorem
+methods recorded above. No OCCT source or new dependency is used.
