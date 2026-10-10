@@ -53,6 +53,10 @@ are documented in the [original importer](nurbs-frustum-step-import.md).
 Native and WASM use the same importer and report serializer. The byte ABI limits
 transport to 2 MiB; the demo CLI and shared parser limit documents to 1 MiB.
 
+A separate [cardinal-frame importer](nurbs-frustum-cardinal-step-import.md)
+accepts 24 signed coordinate bases through Rust. This translation-only API,
+byte ABI and browser page retain their identity-axis restriction.
+
 ## Verification
 
 The default example reads the actual upper child at `(12, -5, 18)` with height

@@ -1,10 +1,9 @@
-//! Strict exact-representation recognition of an identity-axis millimetre frustum.
+//! Strict exact-representation recognition of millimetre rational frusta.
+//! Separate APIs admit unplaced, translated identity-axis, and cardinal placements.
 use crate::*;
 use std::collections::BTreeSet;
 fn unsupported() -> Error {
-    Error::Unsupported(
-        "STEP is not an exact supported identity-axis millimetre canonical rational frustum",
-    )
+    Error::Unsupported("STEP is not an exact supported millimetre canonical rational frustum")
 }
 fn same_surface(a: &Surface, b: &Surface) -> Result<bool> {
     match (a, b) {
@@ -50,7 +49,7 @@ pub fn import_step_nurbs_frustum_mm(
     input: &str,
     policy: GeometryTolerance,
 ) -> Result<NurbsFrustumSolid> {
-    import_frustum(input, policy, false)
+    import_frustum(input, policy, PlacementScope::Unplaced)
 }
 
 /// Import an exact identity-axis frustum with a representable translation.
@@ -60,15 +59,36 @@ pub fn import_step_nurbs_frustum_translated_mm(
     input: &str,
     policy: GeometryTolerance,
 ) -> Result<NurbsFrustumSolid> {
-    import_frustum(input, policy, true)
+    import_frustum(input, policy, PlacementScope::Translated)
+}
+
+/// Import an exact translated frustum with a right-handed signed cardinal basis.
+/// Arbitrary rotations, unit conversion and coefficient fitting are unsupported.
+pub fn import_step_nurbs_frustum_cardinal_mm(
+    input: &str,
+    policy: GeometryTolerance,
+) -> Result<NurbsFrustumSolid> {
+    import_frustum(input, policy, PlacementScope::Cardinal)
+}
+#[derive(Clone, Copy)]
+enum PlacementScope {
+    Unplaced,
+    Translated,
+    Cardinal,
 }
 
 fn import_frustum(
     input: &str,
     policy: GeometryTolerance,
-    translated: bool,
+    scope: PlacementScope,
 ) -> Result<NurbsFrustumSolid> {
-    let parsed = crate::nurbs_frustum_step_read::read_frustum_solid(input, policy.absolute())?;
+    let translated = !matches!(scope, PlacementScope::Unplaced);
+    let cardinal = matches!(scope, PlacementScope::Cardinal);
+    let parsed = if cardinal {
+        crate::nurbs_frustum_step_read::read_frustum_cardinal_solid(input, policy.absolute())?
+    } else {
+        crate::nurbs_frustum_step_read::read_frustum_solid(input, policy.absolute())?
+    };
     let actual = &parsed.solid;
     let bottom = actual
         .shell
@@ -81,17 +101,19 @@ fn import_frustum(
         .ok_or_else(unsupported)?;
     let Surface::Plane {
         origin: bottom_origin,
-        ..
+        u,
+        v,
     } = bottom.surface
     else {
         return Err(unsupported());
     };
+    let axis = u.cross(v);
     let top = actual
         .shell
         .faces
         .iter()
         .find(|f| {
-            matches!(f.surface,Surface::Plane{origin,..} if origin.x==bottom_origin.x&&origin.y==bottom_origin.y&&origin.z>bottom_origin.z)
+            matches!(f.surface,Surface::Plane{origin,u:top_u,v:top_v} if top_u==u&&top_v==v && (if cardinal { let d=origin-bottom_origin; let h=d.dot(axis); h>0.&&d==axis*h } else {origin.x==bottom_origin.x&&origin.y==bottom_origin.y&&origin.z>bottom_origin.z}))
                 && f.orientation == 1
         })
         .ok_or_else(unsupported)?;
@@ -114,8 +136,12 @@ fn import_frustum(
     let Surface::Plane { origin, .. } = top.surface else {
         return Err(unsupported());
     };
-    let height = origin.z - bottom_origin.z;
-    let frame = Frame3::new(bottom_origin, Frame3::IDENTITY.axes(), policy.absolute())?;
+    let height = if cardinal {
+        (origin - bottom_origin).dot(axis)
+    } else {
+        origin.z - bottom_origin.z
+    };
+    let frame = Frame3::new(bottom_origin, [u, v, axis], policy.absolute())?;
     let candidate = NurbsFrustumSolid::new(frame, radii, height, policy)?;
     let expected = candidate.solid();
     let mut vertex_map = Vec::new();

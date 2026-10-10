@@ -17,7 +17,9 @@ recognizes strict unplaced mm bodies, retains actual rational geometry and UV
 boundaries, and checks exact serialized LINE/affine preimages before admission.
 The separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
 accepts identity-axis translations and axial upper children with exact retained
-geometry. Rotated frusta and general rational STEP remain unsupported.
+geometry. The separate [cardinal importer](docs/nurbs-frustum-cardinal-step-import.md)
+accepts 24 exact signed X/Y/Z bases. Arbitrary-angle placements and general
+rational STEP remain unsupported.
 The separate translated demo now shares native/WASM reports and browser
 file/text import, actual B-rep display and exact re-export.
 

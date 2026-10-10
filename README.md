@@ -34,8 +34,11 @@ part and exports its exact STEP.
 The dedicated [frustum STEP reader](docs/nurbs-frustum-step-import.md) imports
 the strict unplaced mm representation while retaining actual rational geometry
 and shared topology. A separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
-accepts identity-axis translations and axial upper children; rotated frusta and
-general rational STEP remain unsupported.
+accepts identity-axis translations and axial upper children; general rational
+STEP remains unsupported.
+A separate [cardinal-frame importer](docs/nurbs-frustum-cardinal-step-import.md)
+accepts 24 exact signed X/Y/Z bases through the Rust API; arbitrary-angle
+rotations remain unsupported.
 Its separate browser demo imports actual translated STEP geometry and supports
 file/text input, bounded display and exact re-export.
 

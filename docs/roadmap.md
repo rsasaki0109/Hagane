@@ -15,8 +15,10 @@ native/WASM reports and browser selection/STEP export.
 The dedicated [frustum STEP reader](nurbs-frustum-step-import.md) recognizes
 strict unplaced mm representations with actual rational geometry and shared
 topology retained. A separate [translated importer](nurbs-frustum-translated-step-import.md)
-accepts identity-axis translations and axial upper children. Rotations and
-general rational imports remain unsupported.
+accepts identity-axis translations and axial upper children. The separate
+[cardinal-frame importer](nurbs-frustum-cardinal-step-import.md) accepts all 24
+right-handed signed coordinate bases. Arbitrary-angle rotations and general
+rational imports remain unsupported.
 The translated browser workflow imports actual source and upper-child STEP,
 with shared native/WASM reports and rejected-input state retention.
 

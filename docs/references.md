@@ -1178,3 +1178,10 @@ UV coefficients and height from represented cap separation. Its exact full-body
 certificate avoids subtractive world-coordinate radius fitting; it does not
 claim to recover unobservable source construction parameters. This extension
 uses original MIT OR Apache-2.0 code and adds no dependencies.
+
+The separate cardinal-frame recognizer restricts cap placement directions to
+right-handed signed coordinate bases. The 24 bases are the signed permutation
+matrices with determinant +1; cross products reconstruct the omitted plane
+axis exactly in this domain. This avoids assuming a floating-point round-trip
+for arbitrary rotations. Complete representation certificates remain required.
+The extension is original MIT OR Apache-2.0 Rust code with no new dependencies.

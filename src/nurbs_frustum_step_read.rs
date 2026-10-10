@@ -1,4 +1,5 @@
-//! Isolated bounded raw decoding for canonical unplaced rational frusta.
+//! Isolated bounded raw decoding for canonical rational frusta.
+//! Identity-axis and signed-cardinal placement modes have separate admission.
 use crate::step_read::{boolean, list, number, reference, Database, Parser, Value};
 use crate::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -301,6 +302,7 @@ fn pcurve(db: &Database, id: u32) -> Result<(u32, PCurve, Option<SerializedAffin
 type Association = (u32, PCurve, Option<SerializedAffine>);
 struct Builder<'a> {
     db: &'a Database,
+    cardinal: bool,
     scale: f64,
     solid: Solid,
     vertices: BTreeMap<u32, usize>,
@@ -416,14 +418,23 @@ impl Builder<'_> {
             let origin = self.db.point(reference(&placement[1])?, self.scale)?;
             let axis = coordinates3(self.db, reference(&placement[2])?, "DIRECTION")?;
             let u = coordinates3(self.db, reference(&placement[3])?, "DIRECTION")?;
-            if axis != Vec3::new(0., 0., 1.) || u != Vec3::new(1., 0., 0.) {
-                return Err(unsupported());
-            }
-            Surface::Plane {
-                origin,
-                u,
-                v: Vec3::new(0., 1., 0.),
-            }
+            let v = if self.cardinal {
+                let cardinal = |a: Vec3| {
+                    let c = [a.x, a.y, a.z];
+                    c.iter().filter(|&&v| v == 1. || v == -1.).count() == 1
+                        && c.iter().all(|&v| v == 0. || v == 1. || v == -1.)
+                };
+                if !cardinal(axis) || !cardinal(u) || axis.dot(u) != 0. {
+                    return Err(unsupported());
+                }
+                axis.cross(u)
+            } else {
+                if axis != Vec3::new(0., 0., 1.) || u != Vec3::new(1., 0., 0.) {
+                    return Err(unsupported());
+                }
+                Vec3::new(0., 1., 0.)
+            };
+            Surface::Plane { origin, u, v }
         } else {
             Surface::Nurbs(Box::new(surface(self.db, surface_id, self.scale)?))
         };
@@ -497,6 +508,19 @@ impl Builder<'_> {
 }
 /// Decode bounded actual geometry; canonical frustum recognition is separate.
 pub(crate) fn read_frustum_solid(input: &str, tol: Tolerance) -> Result<ParsedFrustumStep> {
+    read_frustum_solid_mode(input, tol, false)
+}
+pub(crate) fn read_frustum_cardinal_solid(
+    input: &str,
+    tol: Tolerance,
+) -> Result<ParsedFrustumStep> {
+    read_frustum_solid_mode(input, tol, true)
+}
+fn read_frustum_solid_mode(
+    input: &str,
+    tol: Tolerance,
+    cardinal: bool,
+) -> Result<ParsedFrustumStep> {
     Tolerance::new(tol.linear)?;
     let db = Parser::new(input)?.document_polygon_graph()?;
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
@@ -523,6 +547,7 @@ pub(crate) fn read_frustum_solid(input: &str, tol: Tolerance) -> Result<ParsedFr
     }
     let mut builder = Builder {
         db: &db,
+        cardinal,
         scale,
         solid: Solid {
             vertices: vec![],

@@ -97,7 +97,9 @@ existing all-NURBS writer paths and public analytic import/export scopes remain
 unchanged. The dedicated [STEP reader](nurbs-frustum-step-import.md) now accepts
 strict unplaced canonical mm frusta while retaining their actual geometry.
 The separate [translated importer](nurbs-frustum-translated-step-import.md) also
-accepts identity-axis translations. Rotated frustum STEP import, general STEP
+accepts identity-axis translations. A separate
+[cardinal importer](nurbs-frustum-cardinal-step-import.md) reads 24 signed
+coordinate bases. Arbitrary-angle frustum STEP import, general STEP
 recognition, arbitrary-profile
 lofts, apex degeneracies, holes, twists, skew lofts, fillets and Booleans on these
 frusta remain unsupported.

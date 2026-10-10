@@ -94,6 +94,8 @@ entity IDs, split by oblique/world-coordinate planes, admit cap contacts, perfor
 general Booleans. The separate [STEP reader](nurbs-frustum-step-import.md)
 accepts strict unplaced canonical mm bodies. The separate
 [translated importer](nurbs-frustum-translated-step-import.md) accepts identity-axis
-upper children and translated parts; rotated children remain unsupported imports. The original generic solid and analytic
+upper children and translated parts. The separate
+[cardinal importer](nurbs-frustum-cardinal-step-import.md) reads children in 24
+signed coordinate frames; arbitrary-angle imports remain unsupported. The original generic solid and analytic
 split domains remain unchanged. Sources and original MIT OR Apache-2.0 code are
 recorded in [references](references.md); no new dependency was added.
