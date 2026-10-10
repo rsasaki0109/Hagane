@@ -1,5 +1,12 @@
 # Provenance, references, and licenses
 
+Normal-prism blind-bore construction uses elementary circle parameterization,
+rigid frame coordinate projection, opposite boundary orientations, the
+divergence theorem and the analytic cylinder volume `pi*r^2*depth`.
+Four-quarter cavity walls and the planar floor retain same-parameter pcurves.
+This original MIT OR Apache-2.0 implementation adds no dependencies and uses
+no OCCT source. See [scope and validation](normal-prism-blind-bore.md).
+
 The kernel geometry, B-rep construction/validation, restricted difference,
 analytic metrics, WASM interface, WebGL viewer, and tests were written
 independently for Hagane. No OCCT source was read, copied, translated, linked,

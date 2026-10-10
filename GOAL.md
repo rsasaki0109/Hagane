@@ -1485,3 +1485,15 @@ accepted mesh scale. Independent projection tests accompany actual browser
 inspection. See [scale-aware display](docs/viewer-scale.md). This
 addresses end-to-end inspection usability; broad CAD coverage remains
 15–25% toward the standing 80% target.
+
+## Flat-bottom pockets in certified normal stock
+
+A standalone exact blind-bore API now retains actual curved/all-line source
+stock and adds shared quarter-cylinder walls and a planar floor. Positive or
+negative cap entry follows an explicit signed normal axis; disjoint source
+through openings, rigid placement and all-line cut children remain admissible.
+Actual kept/removed B-reps, direct removed volume, browser inspection and
+analytic STEP export accompany the operation. Continued machining of blind
+bodies, workflow activation and blind-body STEP import remain future work.
+See [normal blind bores](docs/normal-prism-blind-bore.md). The long-term
+estimate remains 15–25% toward the standing 80% target.

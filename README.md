@@ -73,6 +73,11 @@ normal stock, cuts and through bores, including hole-crossing cuts and explicit
 cache invalidation when the exact bore construction domain changes.
 [Scale-aware display](docs/viewer-scale.md) fits small and large parts using
 the actual mesh extent, with relative zoom and unchanged CAD/STEP coordinates.
+[Normal-prism blind bores](docs/normal-prism-blind-bore.md) add an exact flat
+floor and four inward cylinder walls while preserving certified curved or
+all-line source stock, with native/WASM inspection and analytic STEP export.
+This standalone operation does not yet enable repeated blind machining or
+blind-body STEP re-import.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
