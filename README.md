@@ -36,6 +36,8 @@ the strict unplaced mm representation while retaining actual rational geometry
 and shared topology. A separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
 accepts identity-axis translations and axial upper children; rotated frusta and
 general rational STEP remain unsupported.
+Its separate browser demo imports actual translated STEP geometry and supports
+file/text input, bounded display and exact re-export.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

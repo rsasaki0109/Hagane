@@ -18,6 +18,8 @@ boundaries, and checks exact serialized LINE/affine preimages before admission.
 The separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
 accepts identity-axis translations and axial upper children with exact retained
 geometry. Rotated frusta and general rational STEP remain unsupported.
+The separate translated demo now shares native/WASM reports and browser
+file/text import, actual B-rep display and exact re-export.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,
