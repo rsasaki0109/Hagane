@@ -4,6 +4,8 @@
 stock or STEP input to axial partitions and explicit component selection.
 Native and WASM sessions reuse unchanged B-reps, validate outputs before commit
 and support bounded Undo/Redo. General curved Booleans remain unsupported.
+The dedicated browser editor supports JSON documents, physical preset controls,
+explicit selection, Undo/Redo and per-component STEP download.
 
 [Exact rational NURBS frustum lofts](docs/nurbs-frustum.md) add closed ruled
 surfaces beyond height graphs, with same-parameter rational boundaries, validated

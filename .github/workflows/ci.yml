@@ -36,3 +36,4 @@ jobs:
       - run: node scripts/test-frustum-step-import-browser.mjs
       - run: node scripts/test-frustum-translated-step-import-browser.mjs
       - run: node scripts/test-frustum-cardinal-step-import-browser.mjs
+      - run: node scripts/test-frustum-workflow-browser.mjs

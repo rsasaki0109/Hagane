@@ -23,6 +23,8 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 stock or STEP input to axial partitions and explicit component selection.
 Native and WASM sessions reuse unchanged B-reps, validate outputs before commit
 and support bounded Undo/Redo. General curved Booleans remain unsupported.
+The dedicated browser editor supports JSON documents, physical preset controls,
+explicit selection, Undo/Redo and per-component STEP download.
 
 [Exact rational NURBS frustum lofts](docs/nurbs-frustum.md) add closed ruled
 surfaces beyond height graphs, with same-parameter rational boundaries, validated
@@ -41,13 +43,13 @@ the strict unplaced mm representation while retaining actual rational geometry
 and shared topology. A separate [translated importer](docs/nurbs-frustum-translated-step-import.md)
 accepts identity-axis translations and axial upper children; general rational
 STEP remains unsupported.
+Its separate browser demo imports actual translated STEP geometry and supports
+file/text input, bounded display and exact re-export.
 A separate [cardinal-frame importer](docs/nurbs-frustum-cardinal-step-import.md)
 accepts 24 exact signed X/Y/Z bases through the Rust API; arbitrary-angle
 rotations remain unsupported.
 Its separate browser demo reads actual X/Y/Z-oriented STEP with the full frame
 axes retained in the native/WASM report.
-Its separate browser demo imports actual translated STEP geometry and supports
-file/text input, bounded display and exact re-export.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

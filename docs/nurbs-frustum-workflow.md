@@ -65,10 +65,29 @@ complete output; custom `rebuild_with` callbacks control output validation. STEP
 begin/finish resets the transport latch without silently resetting the session.
 
 The native and WASM command paths share the kernel, actual-body serializer and
-transaction rules. A browser history editor for this document type is a later
-step; the existing standalone frustum pages remain available. Arbitrary-angle
-frames, apex shapes, general lofts, oblique partitions and frustum Booleans are
-unsupported.
+transaction rules. Arbitrary-angle frames, apex shapes, general lofts, oblique
+partitions and frustum Booleans are unsupported.
+
+## Browser editing
+
+Run `./scripts/build-web.sh`, then `python3 -m http.server 8000 --directory web`
+and open `/nurbs-frustum-workflow.html`. The dedicated page edits the same
+versioned document and supports Undo/Redo, JSON upload/download and exact STEP
+export for each accepted output component.
+
+The default three-node graph has radius, height, cut-height and component-index
+controls. These preserve node IDs and the exact stock frame. Other histories,
+including STEP stocks and additional nodes, use the JSON editor; simplified
+controls are disabled. Choosing a displayed component does not change the graph.
+The explicit Select button appends a real operation. Setting another output
+node reuses the accepted geometric prefixes.
+
+A rejected edit leaves the accepted report, rendering, camera, export and kernel
+history intact; the JSON editor retains the attempted document. Reset clears
+the session, display and exports. A downloaded JSON document can be reloaded
+and rebuilt in a new session; Undo/Redo history is session-local.
+
+![Actual rational-frustum workflow rendered by the WASM kernel](nurbs-frustum-workflow.png)
 
 ## Verification and provenance
 

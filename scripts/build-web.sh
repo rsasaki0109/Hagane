@@ -9,3 +9,4 @@ cp docs/step-tube-example.step web/step-tube-example.step
 cp docs/step-bored-prism-example.step web/step-bored-prism-example.step
 cp docs/step-blind-prism-example.step web/step-blind-prism-example.step
 cp docs/nurbs-frustum-cardinal-example.step web/nurbs-frustum-cardinal-example.step
+cp docs/nurbs-frustum-workflow-example.json web/nurbs-frustum-workflow-example.json
