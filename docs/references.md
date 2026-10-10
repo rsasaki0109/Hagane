@@ -1051,3 +1051,14 @@ certificates are unchanged. Incremental reuse includes the construction-domain
 identity because full circles and four quarter arcs have different exact
 topologies even when modeling intent is equal. STEP dispatch follows the same
 identity. No new mathematical method, dependency or OCCT source is introduced.
+
+## Scale-aware perspective display
+
+The display camera uses the elementary right-triangle tangent-sphere relation
+`distance = radius / sin(half_fov)` and the standard perspective frustum
+projection, with an engineering fit margin. WebGL floating-point attributes
+follow the [WebGL specification](https://registry.khronos.org/webgl/specs/latest/1.0/).
+Dividing display coordinates by a common finite scale is a similarity transform;
+this changes no CAD coordinates or mathematical modeling algorithm. The
+implementation and independent projection tests are original MIT OR Apache-2.0
+code, with no new dependencies and no OCCT source.

@@ -1474,3 +1474,14 @@ remain reproducible. No-cut through/blind behavior is preserved; skew and
 blind machining in cut histories explicitly reject. See [normal stock cut
 histories](docs/workflow-planar-cuts.md). General curved Booleans remain future
 work. The estimate remains 15–25% toward the standing 80% target.
+
+## Inspection across model scales
+
+The shared display-only viewer now normalizes actual mesh coordinates and fits
+a bounding sphere for viewport aspect, relative zoom and safe clipping. Small
+cut parts and large models remain inspectable without fixed-unit camera limits.
+CAD geometry/STEP coordinates stay unchanged; marker normalization follows
+accepted mesh scale. Independent projection tests accompany actual browser
+inspection. See [scale-aware display](docs/viewer-scale.md). This
+addresses end-to-end inspection usability; broad CAD coverage remains
+15–25% toward the standing 80% target.

@@ -71,6 +71,8 @@ boundaries; public normal-prism APIs explicitly select the extrusion axis.
 [Box and polygon cut histories](docs/workflow-planar-cuts.md) now also connect
 normal stock, cuts and through bores, including hole-crossing cuts and explicit
 cache invalidation when the exact bore construction domain changes.
+[Scale-aware display](docs/viewer-scale.md) fits small and large parts using
+the actual mesh extent, with relative zoom and unchanged CAD/STEP coordinates.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
