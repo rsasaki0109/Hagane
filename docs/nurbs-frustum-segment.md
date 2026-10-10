@@ -54,8 +54,10 @@ coefficients, ambiguous root/endpoint ordering, very short segments and
 insufficient world-coordinate precision. Coincident or unresolved extended
 surface configurations may be refused even if their contact lies outside the
 finite body. Nonfinite or identical endpoints are invalid. Rejection returns an
-error, never an invented empty interval. Infinite rays, general NURBS line
-intersection, face splitting and Boolean operations are outside this API.
+error, never an invented empty interval. The separate
+[line/ray API](nurbs-frustum-line.md) reduces admitted infinite queries to this
+solver. General NURBS line intersection, face splitting and Boolean operations
+remain unsupported.
 
 ## Actionable rejection reasons
 

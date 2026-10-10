@@ -22,6 +22,7 @@ mod exports {
     static NURBS_FRUSTUM_SPLIT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_CLASSIFY_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_SEGMENT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    static NURBS_FRUSTUM_LINE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_WORKFLOW_SESSION: Mutex<Option<crate::NurbsFrustumWorkflowSession>> =
         Mutex::new(None);
@@ -809,6 +810,36 @@ mod exports {
         let mut input = NURBS_FRUSTUM_CLASSIFY_INPUT.lock().unwrap();
         input.0.clear();
         input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_line_begin() {
+        let mut input = NURBS_FRUSTUM_LINE_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_line_push(value: f64) -> i32 {
+        let mut input = NURBS_FRUSTUM_LINE_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 16 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_line_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = NURBS_FRUSTUM_LINE_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            generate(Err(crate::Error::InvalidInput(
+                "frustum line transport requires at most sixteen finite values",
+            )))
+        } else {
+            generate(crate::nurbs_frustum_line_demo_json(&values))
+        }
     }
     #[no_mangle]
     pub extern "C" fn hagane_nurbs_frustum_segment_begin() {

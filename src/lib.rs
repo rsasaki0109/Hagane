@@ -357,5 +357,10 @@ pub use nurbs_frustum_workflow::*;
 
 mod nurbs_frustum_intersection;
 pub use nurbs_frustum_intersection::*;
+mod nurbs_frustum_line_demo;
+pub use nurbs_frustum_line_demo::*;
 mod nurbs_frustum_segment_demo;
 pub use nurbs_frustum_segment_demo::*;
+
+mod nurbs_frustum_line_intersection;
+pub use nurbs_frustum_line_intersection::*;

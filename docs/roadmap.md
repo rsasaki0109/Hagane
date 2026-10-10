@@ -1,5 +1,11 @@
 # Roadmap
 
+[Frustum line and ray queries](nurbs-frustum-line.md) retain original nonunit
+parameters and actual rational face UV witnesses. A checked finite-body
+enclosure feeds the segment solver; inside rays and resolved misses are explicit.
+The native/WASM/browser demo preserves the actual B-rep and STEP on rejection.
+General curved Booleans remain unsupported; the estimate remains 15–25%.
+
 [Finite frustum segment queries](nurbs-frustum-segment.md) return mesh-free boundary hits with
 actual face UV witnesses and a checked material interval. Native/WASM/browser
 demos retain the original B-rep; contacts and insufficient precision are explicit

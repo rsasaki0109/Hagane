@@ -1208,3 +1208,11 @@ SIAM, 2002; these are engineering guards, not formal interval certification.
 The convexity of the Euclidean norm proves the positive affine-radius shortcut.
 Original MIT OR Apache-2.0 code retains actual B-rep face UV witnesses and adds
 no dependencies or OCCT source. See [query domain](nurbs-frustum-segment.md).
+
+Frustum infinite line/ray queries reduce the domain by a conservative expanded
+local AABB. Slab clipping intersects the three coordinate inequalities of this
+box; a triangle-inequality bound limits unit-speed travel before clipping.
+Original nonunit parameter recovery uses elementary norm scaling. This original
+MIT OR Apache-2.0 extension retains the segment solver's actual rational face
+witnesses and adds no dependencies or OCCT source. See
+[finite-body line/ray scope](nurbs-frustum-line.md).
