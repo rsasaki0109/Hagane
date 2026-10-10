@@ -19,6 +19,12 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Editable multi-component prism workflows](docs/prism-workflow.md) connect
+exact stock and actual STEP import to difference/intersection/union nodes,
+explicit component selection, incremental prefix reuse, Undo/Redo and per-part
+STEP export. Empty and disconnected results remain explicit; general compound
+and 3D operations remain unsupported.
+
 [Holed-tool prism Booleans](docs/prism-region-booleans.md) now classify
 material regions in both operands, returning exact difference, intersection and
 union components including retained central islands. The finite line/quarter-arc,

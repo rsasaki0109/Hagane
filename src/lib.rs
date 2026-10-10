@@ -320,3 +320,9 @@ mod normal_prism_region_boolean;
 pub use normal_prism_region_boolean::*;
 mod normal_prism_region_boolean_demo;
 pub use normal_prism_region_boolean_demo::*;
+
+mod prism_workflow;
+pub use prism_workflow::*;
+
+mod prism_workflow_demo;
+pub use prism_workflow_demo::*;

@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "document_type": "hagane_prism_workflow",
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 0
+  },
+  "output": "cut",
+  "display_chord_tolerance": 0.1,
+  "operations": [
+    {
+      "kind": "rounded_box",
+      "id": "stock",
+      "size": [
+        80,
+        60,
+        20
+      ],
+      "corner_radius": 8
+    },
+    {
+      "kind": "arc_line_extrusion",
+      "id": "annulus",
+      "outer": [
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 12,
+          "start_angle": 0.17,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 12,
+          "start_angle": 1.7407963267948965,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 12,
+          "start_angle": 3.311592653589793,
+          "sweep": 1.5707963267948966
+        },
+        {
+          "kind": "arc",
+          "center": [
+            0,
+            0
+          ],
+          "radius": 12,
+          "start_angle": 4.88238898038469,
+          "sweep": 1.5707963267948966
+        }
+      ],
+      "holes": [
+        [
+          {
+            "kind": "arc",
+            "center": [
+              0,
+              0
+            ],
+            "radius": 6,
+            "start_angle": 0.17,
+            "sweep": -1.5707963267948966
+          },
+          {
+            "kind": "arc",
+            "center": [
+              0,
+              0
+            ],
+            "radius": 6,
+            "start_angle": -1.4007963267948966,
+            "sweep": -1.5707963267948966
+          },
+          {
+            "kind": "arc",
+            "center": [
+              0,
+              0
+            ],
+            "radius": 6,
+            "start_angle": -2.971592653589793,
+            "sweep": -1.5707963267948966
+          },
+          {
+            "kind": "arc",
+            "center": [
+              0,
+              0
+            ],
+            "radius": 6,
+            "start_angle": -4.54238898038469,
+            "sweep": -1.5707963267948966
+          }
+        ]
+      ],
+      "height": 20
+    },
+    {
+      "kind": "boolean",
+      "id": "cut",
+      "left": "stock",
+      "right": "annulus",
+      "operation": "difference",
+      "axis": [
+        0,
+        0,
+        1
+      ]
+    }
+  ]
+}
