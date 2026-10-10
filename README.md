@@ -36,7 +36,9 @@ and exact STEP downloads. It remains a scoped linear modeling history.
 
 [Planar edge chamfer](docs/edge-chamfer.md) creates actual retained and removed
 solids for one isolated equal-setback edge of a convex planar solid, with a
-Web demo and exact STEP export. Curved and interacting chamfers remain planned.
+Web demo and exact STEP export. [Multiple planar chamfers](docs/edge-chamfer-multi.md)
+add resolved unequal adjacent intersections and final trimmed bevel faces.
+Vertex contacts, curved chamfers and fillets remain planned.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

@@ -1240,3 +1240,12 @@ bevel and exact STEP export. The browser displays accepted geometry and
 preserves it after rejected edits. Curved, interacting and general chamfers
 and fillets remain unsupported. The estimate remains **15–25%**, toward
 **80%**. See [planar edge chamfer](edge-chamfer.md).
+
+## Transverse multiple planar chamfers
+
+Several original-edge bevel planes now intersect actual retained convex planar
+B-reps, including resolved unequal adjacent bevels. Removed-piece interiors
+are sequentially disjoint; returned bevels are final trimmed faces. Existing
+vertex contacts, notably equal adjacent/all-edge box bevels, remain explicitly
+unsupported, along with curved/general chamfers and fillets. The estimate
+remains **15–25%**, toward **80%**. See [multiple chamfers](edge-chamfer-multi.md).

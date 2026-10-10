@@ -925,3 +925,12 @@ the inward offset is d*|n1 cross n2|/|n1+n2| for equal face setback d.
 Hagane's existing original planar splitter supplies closed B-reps. No external
 CAD implementation or new dependency is used. Original code remains
 MIT OR Apache-2.0; existing dependency licenses are unchanged.
+
+### Transverse multiple planar chamfers
+
+Successive intersections of convex negative half-spaces produce the retained
+material; each positive split of the current retained body produces removed
+material disjoint in its interior from preceding removals. This uses Hagane's
+original planar splitter and bisector geometry. The independent adjacent-wedge
+overlap oracle integrates `(a-t)*(b-t)` over `0..min(a,b)`. No new dependency
+or external CAD source is introduced; original code remains MIT OR Apache-2.0.

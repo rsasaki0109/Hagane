@@ -267,3 +267,7 @@ mod edge_chamfer;
 pub use edge_chamfer::*;
 mod edge_chamfer_demo;
 pub use edge_chamfer_demo::*;
+mod edge_chamfer_multi;
+pub use edge_chamfer_multi::*;
+mod edge_chamfer_multi_demo;
+pub use edge_chamfer_multi_demo::*;
