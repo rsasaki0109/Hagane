@@ -89,9 +89,9 @@ Use unified geometry/volume/display/export methods, or explicitly inspect
 change: canonical-only callers must unwrap the canonical variant. An oblique
 child is never replaced by its source frustum or silently returned as empty.
 Match `BoredOblique` for the new annular slanted child type. Its analytic mass
-and inertia have checked availability; mesh-free queries remain unsupported.
-Unresolved metrics leave geometry, display and export available. Existing valid JSON documents and canonical
-report fields remain supported.
+and inertia have checked availability; finite mesh-free point queries are supported.
+Unresolved metrics leave geometry, display and export available.
+Existing valid JSON documents and canonical report fields remain supported.
 
 Oblique components report actual `mass_properties` with checked availability.
 A metric-only `Unsupported` result leaves geometry, volume, mesh and STEP usable;
@@ -112,7 +112,8 @@ The stock can still be selected as a separate earlier output node.
 
 Typed components dispatch point queries to the corresponding finite body,
 including the canonical bored solid's actual inner wall and annular cap distances.
-Queries of the new bored-oblique type remain explicitly unsupported.
+[Bored-oblique point queries](nurbs-frustum-bored-oblique-classify.md) use finite
+annular cut-cap witnesses; their segment/line/ray queries remain unsupported.
 The source's filled cap disks are not substituted for annular boundaries.
 
 ## Read-only point queries

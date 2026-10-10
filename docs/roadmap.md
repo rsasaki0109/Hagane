@@ -14,7 +14,9 @@ retain the hole in every child and permit further selected-child partitions.
 [Oblique bore cuts](nurbs-frustum-bored-oblique.md) now retain annular
 children through a complete interior plane section.
 [Checked analytic mass](nurbs-frustum-bored-oblique-mass.md) gives actual
-child centroids and inertia with explicit conditioning errors. Further cuts, repeated bores
+child centroids and inertia with explicit conditioning errors.
+[Finite point queries](nurbs-frustum-bored-oblique-classify.md) retain the
+hole and certify actual annular cut-cap witnesses. Further cuts, repeated bores
 and bored-frustum STEP import remain unsupported.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 

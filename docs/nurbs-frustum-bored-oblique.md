@@ -47,9 +47,9 @@ parent conservation have explicit floating-point conditioning guards;
 unresolved very thin material can be unsupported even when the parent exists.
 [Analytic centroids and inertia](nurbs-frustum-bored-oblique-mass.md) now have
 checked availability. Unresolved metrics preserve geometry and export.
-Mesh-free point/segment/line/ray queries for this new child type remain
-unsupported. Geometry, volume, bounded display and exact STEP export remain
-usable. Repeated cuts, general curved Booleans and generic
+[Mesh-free point classification](nurbs-frustum-bored-oblique-classify.md) now
+uses finite annular witnesses. Segment/line/ray queries remain unsupported.
+Geometry, volume, bounded display and exact STEP export remain usable. Repeated cuts, general curved Booleans and generic
 bored-frustum STEP import are also unsupported.
 
 Display approximates all eight actual rational walls with one topology-keyed

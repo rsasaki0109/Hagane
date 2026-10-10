@@ -1320,3 +1320,8 @@ centered moments in one normalized local frame. Signed parallel-axis
 composition, covariance trace and rigid tensor rotation retain propagated
 metric uncertainty; no mesh integral or world-origin moment subtraction is used.
 No external source or dependency is added.
+
+Bored-oblique point queries combine the independently implemented finite
+annular source classifier with actual retained halfspace distance lower bounds
+and an orthogonal foot strictly inside the actual annular material. Ambiguous
+finite elliptical-rim distances remain unsupported. No new dependency is added.

@@ -41,8 +41,12 @@ fn actual_annular_children_and_atomic_unsupported_queries() {
             );
         }
     }
-    for query in [
+    let classified = command(
+        &mut session,
         json!({"command":"query","component":0,"point":[6.,0.,4.]}),
+    );
+    assert_eq!(classified["query"]["location"], "inside");
+    for query in [
         json!({"command":"segment","component":0,"start":[-20.,0.,6.],"end":[20.,0.,6.]}),
         json!({"command":"line","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
         json!({"command":"ray","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
@@ -79,4 +83,43 @@ fn selected_child_cannot_be_cut_again_and_preserves_history() {
     );
     assert_eq!(rejected["ok"], false);
     assert_eq!(rejected["accepted_document"], doc);
+}
+#[test]
+fn finite_retained_cap_queries_preserve_cache_and_exports() {
+    let mut session = NurbsFrustumWorkflowSession::new();
+    let doc = document();
+    let accepted = command(&mut session, json!({"command":"rebuild","document":doc}));
+    assert_eq!(accepted["ok"], true);
+    for (point, lower, upper) in [
+        ([6., 0., 4.], "inside", "outside"),
+        ([6., 0., 20.], "outside", "inside"),
+        ([0., 0., 6.], "outside", "outside"),
+        ([6., 0., 13.2], "boundary", "boundary"),
+        ([6., 0., 0.], "boundary", "outside"),
+        ([6., 0., 24.], "outside", "boundary"),
+    ] {
+        for (index, expected) in [(0, lower), (1, upper)] {
+            let result = command(
+                &mut session,
+                json!({"command":"query","component":index,"point":point}),
+            );
+            assert_eq!(result["ok"], true);
+            assert_eq!(result["query"]["location"], expected);
+            assert_eq!(result["query"]["mesh_free"], true);
+        }
+    }
+    let rejected = command(
+        &mut session,
+        json!({"command":"query","component":0,"point":[1e100,0.,0.]}),
+    );
+    assert_eq!(rejected["ok"], false);
+    assert_eq!(rejected["accepted_document"], doc);
+    let repeat = command(&mut session, json!({"command":"rebuild","document":doc}));
+    assert_eq!(
+        repeat["cache"],
+        json!({"evaluated_nodes":0,"reused_nodes":3})
+    );
+    assert_eq!(repeat["components"], accepted["components"]);
+    assert_eq!(repeat["component_steps"], accepted["component_steps"]);
+    assert_eq!(repeat["history"], accepted["history"]);
 }

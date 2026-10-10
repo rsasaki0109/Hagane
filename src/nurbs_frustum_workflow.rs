@@ -100,9 +100,7 @@ impl NurbsFrustumWorkflowComponent {
             Self::Canonical(v) => v.classify_point(query, policy),
             Self::Oblique(v) => v.classify_point(query, policy),
             Self::Bored(v) => v.classify_point(query, policy),
-            Self::BoredOblique(_) => Err(Error::Unsupported(
-                "bored oblique frustum classify_point is not implemented",
-            )),
+            Self::BoredOblique(v) => v.classify_point(query, policy),
         }
     }
     pub fn solid(&self) -> &Solid {
