@@ -1692,3 +1692,13 @@ build passed. The entire new importer and all three previous frustum importer
 WASM blocks passed with native report/STEP parity and strict error recovery.
 The entire new browser regression passed on its first run; the actual imported
 annular child screenshot was inspected. CI includes the new browser regression.
+
+## Full regression verification after annular STEP admission
+
+On the exact pushed implementation commit `ab716f4`, the entire locked native
+suite passed: 307 suites, 1,187 tests, zero failures and zero ignored tests,
+including documentation tests. The entire WASM runtime script also completed
+with exit zero, including prior primitive/STEP/workflow/predicate checks and
+all new annular query/import blocks. No source was changed during these checks.
+This validates regression coverage; the standing broad CAD estimate remains
+15–25% and does not imply general curved Booleans or STEP support.
