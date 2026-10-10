@@ -31,7 +31,7 @@ This initial query rejects boundary endpoints, tangencies, cut-rim contacts,
 unresolved near-parallel crossings, tiny or unresolved material intervals,
 near-coincident root ordering and insufficient world-coordinate precision.
 Source-query boundary restrictions can conservatively reject an endpoint on
-a removed original face. General line/ray queries remain future work.
+a removed original face. [Retained line/ray queries](nurbs-frustum-retained-line.md) are supported separately.
 
 The [editable workflow](nurbs-frustum-workflow.md) uses the actual accepted
 canonical, bored or oblique component in its read-only `segment` command.

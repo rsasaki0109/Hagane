@@ -155,6 +155,25 @@ segment result. Accepted geometry or displayed component changes clear it.
 The same explicit contact and arithmetic restrictions as the typed
 [finite bore query](nurbs-frustum-bore.md) apply.
 
+## Read-only line and ray queries
+
+```json
+{"command":"ray","component":0,"origin":[0,0,12],"direction":[2,0,0]}
+```
+
+Use `command: "line"` for the unbounded line. Both accept an explicit output
+component and return a small `line` report with `kind`, `origin`, `direction`,
+`component`, actual `hits`, `material_intervals` and `mesh_free: true`, with mm
+units. Parameters refer to the original nonunit direction. Rays clip to t >= 0;
+canonical/oblique components have at most one interval, bored components at most
+two. These commands use the accepted tolerance and actual typed B-rep, never a
+mesh or the source substitute. The [retained line/ray contracts](nurbs-frustum-retained-line.md)
+document precision, contact, boundary-origin and finite-query restrictions.
+
+The separate browser probe preserves geometry, camera, STEP, history and the
+point/segment results. Failed requests keep the last successful line/ray result;
+accepted model or displayed component changes clear it.
+
 ## Browser editing
 
 Run `./scripts/build-web.sh`, then `python3 -m http.server 8000 --directory web`

@@ -1298,3 +1298,8 @@ Oblique-child finite segment queries use elementary convex halfspace clipping
 and invert the rational interpolation of the actual ruled-wall generator to
 produce kept surface parameters. No external source or dependency is added;
 see [finite oblique queries](nurbs-frustum-oblique-segment.md).
+
+Retained frustum line/ray queries reuse the existing independent checked slab
+enclosure and original-parameter reconstruction with actual finite segment
+queries. Half-line clipping handles all material intervals and uses physical
+travel for contact guards. No new source or dependency is added.

@@ -400,3 +400,6 @@ mod nurbs_frustum_bore_intersection;
 pub use nurbs_frustum_bore_intersection::*;
 
 mod nurbs_frustum_oblique_intersection;
+
+mod nurbs_frustum_retained_line;
+pub use nurbs_frustum_retained_line::*;
