@@ -620,6 +620,44 @@ impl NurbsFrustumWorkflowSession {
         let index = doc.operations.iter().position(|op| op.id() == doc.output)?;
         self.nodes.get(index)
     }
+    /// Query one explicitly indexed accepted output component without replay,
+    /// display generation, cache replacement or history mutation.
+    pub fn classify_point(&self, component: usize, point: Point3) -> WorkflowResult<PointLocation> {
+        let doc = self.accepted.as_ref().ok_or_else(|| {
+            diagnostic(
+                "invalid_input",
+                "no_accepted_document",
+                None,
+                "Accept a frustum workflow before querying a component.",
+            )
+        })?;
+        if !point.finite() {
+            return Err(diagnostic(
+                "invalid_input",
+                "invalid_query",
+                Some(&doc.output),
+                "Point query coordinates must be finite.",
+            ));
+        }
+        let shape = self.accepted_shape().ok_or_else(|| {
+            diagnostic(
+                "validation_failed",
+                "output_unavailable",
+                Some(&doc.output),
+                "Accepted output snapshot is unavailable.",
+            )
+        })?;
+        let body = shape.components().get(component).ok_or_else(|| {
+            diagnostic(
+                "invalid_input",
+                "invalid_component",
+                Some(&doc.output),
+                "Point query component index is unavailable in the accepted output.",
+            )
+        })?;
+        body.classify_point(point, doc.geometry_tol()?)
+            .map_err(|e| geometry(e, &doc.output))
+    }
     fn prepare(
         &self,
         doc: &NurbsFrustumWorkflowDocument,

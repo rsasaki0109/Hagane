@@ -22,8 +22,9 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
 bored solid through hole-radius edits, component selection, incremental rebuilding,
 Undo/Redo and exact STEP export. Mesh-free point classification measures distance
-to finite outer/inner walls and annular caps. Further cuts of bored components
-and bored-frustum STEP import remain unsupported. Overall completion remains
+to finite outer/inner walls and annular caps. A read-only browser probe uses
+the accepted selected component without changing geometry or history. Further
+cuts of bored components and bored-frustum STEP import remain unsupported. Overall completion remains
 an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual

@@ -107,6 +107,33 @@ Typed components dispatch point queries to the corresponding finite body,
 including the bored solid's actual inner wall and annular cap distances.
 The source's filled cap disks are not substituted for annular boundaries.
 
+## Read-only point queries
+
+`session.classify_point(component, point)` classifies one explicitly indexed
+component of the accepted output, using the accepted document's tolerance.
+It reads the retained actual B-rep; it does not replay nodes, create display
+meshes, replace cached shapes or change Undo/Redo history.
+
+The native/WASM JSON command is:
+
+```json
+{"command":"query","component":0,"point":[6,0,12]}
+```
+
+Successful responses contain `query.component`, `query.point`, lowercase
+`query.location` (`inside`, `outside`, `boundary`) and `query.mesh_free: true`,
+with `units: "mm"`. They omit the model report and its mesh/STEP payloads.
+Missing accepted models, unavailable indices, malformed input and unresolved
+arithmetic return explicit errors while preserving the accepted model/history.
+Oblique cut-rim ambiguity keeps the classifier's explicit unsupported
+result; this command does not relax geometric admission.
+
+The browser's separate world-coordinate point probe queries the accepted
+selected component even when the JSON editor contains a rejected draft.
+Successful or failed probes preserve rendering, camera and STEP export.
+A failed probe preserves the last successful result; accepting another model
+or changing displayed components clears it to avoid stale labels.
+
 ## Browser editing
 
 Run `./scripts/build-web.sh`, then `python3 -m http.server 8000 --directory web`

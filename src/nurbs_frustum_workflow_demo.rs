@@ -9,6 +9,10 @@ enum Command {
     Rebuild {
         document: NurbsFrustumWorkflowDocument,
     },
+    Query {
+        component: usize,
+        point: [f64; 3],
+    },
     Undo {},
     Redo {},
     Reset {},
@@ -156,6 +160,15 @@ pub fn nurbs_frustum_workflow_session_command_json(
         Err(error) => return Ok(json!({"ok":false,"diagnostic":{"category":"invalid_input","code":"invalid_request","operation_id":null,"message":error.to_string()},"accepted_document":session.accepted_document()}).to_string()),
     };
     let result = match command {
+        Command::Query { component, point } => {
+            return Ok(match session.classify_point(component, Vec3::new(point[0], point[1], point[2])) {
+                Ok(location) => {
+                    let location = match location { PointLocation::Inside => "inside", PointLocation::Outside => "outside", PointLocation::Boundary => "boundary" };
+                    json!({"ok":true,"units":"mm","query":{"component":component,"point":point,"location":location,"mesh_free":true},"scope":"read-only classification of the actual accepted workflow output component; no geometry, display, export, cache or history mutation"}).to_string()
+                }
+                Err(error) => json!({"ok":false,"diagnostic":error,"accepted_document":session.accepted_document()}).to_string(),
+            });
+        }
         Command::Rebuild { document } => session.rebuild_with(&document, body_report),
         Command::Undo {} => session.undo_with(body_report),
         Command::Redo {} => session.redo_with(body_report),

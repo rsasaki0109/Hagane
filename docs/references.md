@@ -1284,3 +1284,7 @@ radial intervals of annular caps. Editable bore histories retain the actual
 construction-certified body rather than reconstructing a display substitute.
 These additions use elementary Euclidean geometry and the existing independently
 implemented kernel; no external source or dependency is added.
+
+Read-only workflow point queries reuse the retained component's existing
+independent finite-boundary classifier and accepted tolerance policy. The JSON
+and browser adapters add no geometric approximation or external dependency.
