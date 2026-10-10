@@ -94,7 +94,9 @@ Requests exceeding the bounded grid/work/precision budget fail explicitly.
 The STEP writer emits actual rational spline curves/surfaces, same-parameter
 pcurves, `LINE` generators, `PLANE` caps and a closed AP214 solid in mm. The
 existing all-NURBS writer paths and public analytic import/export scopes remain
-unchanged. Frustum STEP import, general STEP recognition, arbitrary-profile
+unchanged. The dedicated [STEP reader](nurbs-frustum-step-import.md) now accepts
+strict unplaced canonical mm frusta while retaining their actual geometry.
+Placed frustum STEP import, general STEP recognition, arbitrary-profile
 lofts, apex degeneracies, holes, twists, skew lofts, fillets and Booleans on these
 frusta remain unsupported.
 

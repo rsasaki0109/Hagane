@@ -91,6 +91,8 @@ cylinder/swapped radii, poses/scales and invalid/source-relative thin cuts.
 This API supports strictly interior axial cuts of the declared positive-radius
 coaxial family. It does not recognize arbitrary NURBS bodies, preserve original
 entity IDs, split by oblique/world-coordinate planes, admit cap contacts, perform
-general Booleans or import frustum STEP. The original generic solid and analytic
+general Booleans. The separate [STEP reader](nurbs-frustum-step-import.md)
+accepts strict unplaced canonical mm bodies; placed children remain unsupported
+imports. The original generic solid and analytic
 split domains remain unchanged. Sources and original MIT OR Apache-2.0 code are
 recorded in [references](references.md); no new dependency was added.

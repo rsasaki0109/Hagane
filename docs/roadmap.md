@@ -12,6 +12,9 @@ Batch axial partitions support 1–16 ordered cuts with full-source interval
 guards, original-surface certificates and per-part STEP in the native example.
 The [batch demo](nurbs-frustum-partitions.md) connects actual parts to
 native/WASM reports and browser selection/STEP export.
+The dedicated [frustum STEP reader](nurbs-frustum-step-import.md) recognizes
+strict unplaced mm representations with actual rational geometry and shared
+topology retained; placed frusta and general rational imports remain unsupported.
 
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

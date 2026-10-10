@@ -59,8 +59,10 @@ No partial result is returned and the source is unchanged on success or failure.
 
 This retains the [single-cut API](nurbs-frustum-split.md)'s positive-radius coaxial
 domain. Arbitrary NURBS solids, oblique cuts, cap contacts, apex bodies, general
-Booleans and frustum STEP import remain unsupported. Original entity IDs and
-bit-identical seam coordinates across independently evaluated part frames are
+Booleans and placed frustum STEP import remain unsupported. The separate
+[strict STEP reader](nurbs-frustum-step-import.md) supports unplaced canonical
+mm bodies, including lower children whose frame remains at the origin.
+Original entity IDs and bit-identical seam coordinates across independently evaluated part frames are
 not promised. Each individual part remains closed with shared display edges.
 Mathematical sources and MIT OR Apache-2.0 provenance are recorded in
 [references](references.md); no new dependency is used.

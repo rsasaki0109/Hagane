@@ -12,6 +12,10 @@ The batch axial API accepts 1–16 ordered cuts, certifies every part against
 the original source and refuses unresolved intervals atomically. Its native
 example exports all parts. The [batch demo](docs/nurbs-frustum-partitions.md)
 connects actual parts to native/WASM reports and browser selection/STEP export.
+The dedicated [frustum STEP reader](docs/nurbs-frustum-step-import.md) now
+recognizes strict unplaced mm bodies, retains actual rational geometry and UV
+boundaries, and checks exact serialized LINE/affine preimages before admission.
+Placed frusta and general rational STEP imports remain unsupported.
 
 [Editable multi-component prism workflows](docs/prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

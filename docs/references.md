@@ -1162,3 +1162,13 @@ finite samples alone are not used as a restriction certificate. Axial partition
 uses this published rational/Bernstein basis property with the conic references
 above and polynomial disk moments for conservation. Original code remains
 MIT OR Apache-2.0; no new dependency or OCCT source is used.
+
+### Exact rational frustum STEP recognition
+
+The scoped reader uses the same ISO 10303-21/AP214 representation conventions
+as the original writer. Parsed rational bases and controls are retained, while
+normalized LINE/VECTOR and affine UV records require exact preimages of the
+writer's scalar operation order before canonical parameter restoration. This
+is a representation certificate, not curve fitting or repair. The decoder and
+recognizer are original MIT OR Apache-2.0 Rust code; no OCCT source or new
+dependency is used.
