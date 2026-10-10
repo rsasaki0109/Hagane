@@ -290,3 +290,6 @@ mod arc_line_prism_split;
 pub use arc_line_prism_split::*;
 mod arc_line_prism_split_demo;
 pub use arc_line_prism_split_demo::*;
+
+mod arc_line_prism_split_components_demo;
+pub use arc_line_prism_split_components_demo::*;

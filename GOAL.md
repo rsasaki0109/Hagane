@@ -1436,3 +1436,16 @@ the existing native/WASM workflow. General operation graphs, Box/Polygon cut
 nodes, hole-crossing partitions and curved operations after an all-line
 terminal child remain unsupported. See [editable plane cuts](docs/workflow-plane-split.md).
 The long-term estimate remains 15–25% toward the standing 80% target.
+
+## Analytic cuts across openings and disconnected components
+
+The additive normal line/arc component partition cuts across resolved openings
+and returns all closed bodies on both sides with every actual material-interval
+section. Original curve coverage, opposed cut-wall pairing, per-child area
+conditioning and child-scale volume checks accompany the construction.
+Editable cut histories accept this result when the selected side contains one
+connected body; multiple selected bodies reject atomically. Native/WASM and
+browser demos use the actual partition and independent STEP exports.
+Contacts, vertex/tangent passage, meaningful skew and general curved Booleans
+remain unsupported. See [component partitions](docs/arc-line-prism-split-components.md).
+The long-term estimate remains 15–25% toward the standing 80% target.

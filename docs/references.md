@@ -1023,3 +1023,12 @@ and the original operation chain; reconstruction uses actual accepted B-rep
 prefixes. Rounded-half and subsequent bore oracles use the existing
 `width*depth - (4-pi)*radius^2` cross-section area and `pi*r^2*height` tool volume.
 No new dependencies or OCCT source are used; licensing is unchanged.
+
+Multi-component normal line/arc partition composes the existing oriented planar
+cut graph, analytic Green-theorem cap integrals and exact normal extrusion.
+Circle-opening subtraction uses the independent circular-segment formula
+`r*r*acos(d/r) - d*sqrt(r*r-d*d)`. All resulting regions retain their own closed
+topology. Complete source-curve coverage, paired opposing actual cut walls,
+per-child area conditioning and compensated total volume summation supplement
+construction. This original code adds no dependencies and remains
+MIT OR Apache-2.0; no OCCT source was copied or translated.

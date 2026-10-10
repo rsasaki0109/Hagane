@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": {"linear": 0.000001, "angular": 0.0000000001, "relative": 0},
+  "operations": [
+    {"kind": "rounded_box", "id": "stock", "size": [80, 60, 20], "corner_radius": 8},
+    {"kind": "bore", "id": "opening", "input": "stock", "mode": "through", "center": [0, 0], "radius": 8},
+    {"kind": "plane_split", "id": "cut", "input": "opening", "offset": 0, "normal_angle": 0.37, "side": "negative"},
+    {"kind": "bore", "id": "later", "input": "cut", "mode": "through", "center": [-20, 0], "radius": 2}
+  ]
+}

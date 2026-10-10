@@ -603,3 +603,12 @@ these nodes explicitly. Shared admission uses initial segments + 4 per bore +
 when a cut discards an opening. Terminal all-line children can be displayed
 and exported, while subsequent curved-source operations reject. See
 [editable plane cuts](workflow-plane-split.md) for the complete domain/example.
+
+Plane cuts additionally cross resolved line/arc openings using the component
+partition. The selected side must contain exactly one closed connected body;
+multiple bodies on that side reject atomically. The unselected side may have
+more than one component. The +3 segment reservation above remains an early
+history check; actual child certificates separately enforce 128 segments,
+including extra segments from crossed openings. See
+[partitions across openings](arc-line-prism-split-components.md) and the
+[cut-through-opening history](workflow-plane-split-components-example.json).

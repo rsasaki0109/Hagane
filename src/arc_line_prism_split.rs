@@ -25,6 +25,43 @@ impl NormalArcLinePrismPlaneSplit {
         (self.negative, self.positive)
     }
 }
+/// All closed connected components on both sides of an axial plane.
+#[derive(Clone, Debug)]
+pub struct NormalArcLinePrismPlaneSplitComponents {
+    negative: Vec<Solid>,
+    positive: Vec<Solid>,
+    sections: Vec<PlanarFacePatch>,
+    plane: Surface,
+}
+impl NormalArcLinePrismPlaneSplitComponents {
+    pub fn negative(&self) -> &[Solid] {
+        &self.negative
+    }
+    pub fn positive(&self) -> &[Solid] {
+        &self.positive
+    }
+    pub fn sections(&self) -> &[PlanarFacePatch] {
+        &self.sections
+    }
+    pub fn plane(&self) -> &Surface {
+        &self.plane
+    }
+    pub fn into_solids(self) -> (Vec<Solid>, Vec<Solid>) {
+        (self.negative, self.positive)
+    }
+}
+/// Partition every transverse material interval of a certified normal line/arc
+/// prism, including crossed holes and disconnected side components. Contacts,
+/// tangent/vertex hits and meaningful skew still reject. Output is limited to
+/// 64 components, 128 sections and 1024 total cap segments; individual children
+/// remain within their structural certificate's 128-segment domain.
+pub fn split_normal_arc_line_prism_by_plane_components(
+    source: &Solid,
+    plane: &Surface,
+    tolerance: GeometryTolerance,
+) -> Result<NormalArcLinePrismPlaneSplitComponents> {
+    split_prism(source, plane, tolerance, true)
+}
 fn length(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
 }
@@ -63,7 +100,7 @@ fn curve_gap(a: &Curve, b: &Curve, reverse: bool) -> Option<f64> {
         _ => None,
     }
 }
-fn line_covered(a: Point3, b: Point3, children: &[Solid; 2], budget: f64) -> Result<bool> {
+fn line_covered(a: Point3, b: Point3, children: &[Solid], budget: f64) -> Result<bool> {
     let extent = b - a;
     let total = length(extent);
     if !total.is_finite() || total <= 0. {
@@ -101,7 +138,7 @@ fn arc_covered(
     frame: Frame3,
     radius: f64,
     sweep: f64,
-    children: &[Solid; 2],
+    children: &[Solid],
     budget: f64,
 ) -> Result<bool> {
     let axes = frame.axes();
@@ -150,7 +187,7 @@ fn arc_covered(
     }
     Ok(covered + budget >= sweep * radius)
 }
-fn retains_original_edges(source: &Solid, children: &[Solid; 2], budget: f64) -> Result<()> {
+fn retains_original_edges(source: &Solid, children: &[Solid], budget: f64) -> Result<()> {
     for edge in &source.edges {
         let covered = match edge.curve {
             Curve::Line { a, b } => line_covered(a, b, children, budget)?,
@@ -169,7 +206,7 @@ fn retains_original_edges(source: &Solid, children: &[Solid; 2], budget: f64) ->
     }
     Ok(())
 }
-fn retains_refined_edges(refined: &Solid, children: &[Solid; 2], budget: f64) -> Result<()> {
+fn retains_refined_edges(refined: &Solid, children: &[Solid], budget: f64) -> Result<()> {
     for edge in &refined.edges {
         if let Curve::Line { a, b } = edge.curve {
             if line_covered(a, b, children, budget)? {
@@ -186,6 +223,47 @@ fn retains_refined_edges(refined: &Solid, children: &[Solid; 2], budget: f64) ->
                 "prism split retained curve reconstruction exceeds tolerance",
             ));
         }
+    }
+    Ok(())
+}
+fn cap_integral_condition(face: &Face, area: f64) -> Result<()> {
+    let mut sum_abs = 0.;
+    for wire in &face.wires {
+        let reference = wire
+            .coedges
+            .first()
+            .ok_or(Error::InvalidTopology("empty partition cap wire"))?
+            .pcurve
+            .try_evaluate(0.)?;
+        for coedge in &wire.coedges {
+            let term = match coedge.pcurve {
+                PCurve::Affine { origin, direction } => {
+                    0.5 * ((origin[0] - reference[0]).abs() * direction[1].abs()
+                        + (origin[1] - reference[1]).abs() * direction[0].abs())
+                }
+                PCurve::Arc {
+                    center,
+                    radius,
+                    start_angle,
+                    sweep,
+                } => {
+                    let end = start_angle + sweep;
+                    0.5 * (radius
+                        * ((center[0] - reference[0]).abs()
+                            * (end.sin().abs() + start_angle.sin().abs())
+                            + (center[1] - reference[1]).abs()
+                                * (end.cos().abs() + start_angle.cos().abs()))
+                        + radius * radius * sweep.abs())
+                }
+                _ => return Err(Error::Unsupported("unsupported partition cap integral")),
+            };
+            sum_abs += term;
+        }
+    }
+    if !sum_abs.is_finite() || !area.is_finite() || area <= 8192. * f64::EPSILON * sum_abs {
+        return Err(Error::Unsupported(
+            "prism partition child area cancellation is unresolved",
+        ));
     }
     Ok(())
 }
@@ -207,6 +285,34 @@ pub fn split_normal_arc_line_prism_by_plane(
     plane: &Surface,
     tolerance: GeometryTolerance,
 ) -> Result<NormalArcLinePrismPlaneSplit> {
+    let result = split_prism(source, plane, tolerance, false)?;
+    if result.negative.len() != 1 || result.positive.len() != 1 || result.sections.len() != 1 {
+        return Err(Error::Unsupported(
+            "single-interval prism partition requires one child on each side",
+        ));
+    }
+    let mut negative = result.negative;
+    let mut positive = result.positive;
+    let mut sections = result.sections;
+    Ok(NormalArcLinePrismPlaneSplit {
+        negative: negative
+            .pop()
+            .ok_or(Error::InvalidTopology("missing negative partition"))?,
+        positive: positive
+            .pop()
+            .ok_or(Error::InvalidTopology("missing positive partition"))?,
+        section: sections
+            .pop()
+            .ok_or(Error::InvalidTopology("missing partition section"))?,
+        plane: result.plane,
+    })
+}
+fn split_prism(
+    source: &Solid,
+    plane: &Surface,
+    tolerance: GeometryTolerance,
+    components: bool,
+) -> Result<NormalArcLinePrismPlaneSplitComponents> {
     source.validate(tolerance.absolute())?;
     let certified = crate::arc_line_prism_validation::recognize_validated_arc_line_prism(
         source,
@@ -285,11 +391,46 @@ pub fn split_normal_arc_line_prism_by_plane(
         ));
     }
     let effective = GeometryTolerance::new(band, tolerance.angular(), 0.)?;
-    let split = split_planar_face(source, bases[0], anchor, direction, effective)?;
+    let use_single = if components {
+        let clip = clip_line_to_planar_face(source, bases[0], anchor, direction, effective)?;
+        clip.events.len() == 2
+            && clip.intervals.len() == 1
+            && clip.events.iter().all(|e| e.wire == 0)
+            && clip.events[0].edge != clip.events[1].edge
+    } else {
+        true
+    };
+    let (refined, faces, cut_edges) = if use_single {
+        let split = split_planar_face(source, bases[0], anchor, direction, effective)?;
+        (split.solid, split.faces.to_vec(), vec![split.cut_edge])
+    } else {
+        let split = subdivide_planar_face(source, bases[0], anchor, direction, effective)?;
+        (split.solid, split.faces, split.cut_edges)
+    };
+    if faces.len() > 64 || cut_edges.len() > 128 || faces.len() < 2 || cut_edges.is_empty() {
+        return Err(Error::Unsupported(
+            "prism partition exceeds bounded component or section limits",
+        ));
+    }
+    let total_segments = faces
+        .iter()
+        .map(|&i| {
+            refined.shell.faces[i]
+                .wires
+                .iter()
+                .map(|w| w.coedges.len())
+                .sum::<usize>()
+        })
+        .sum::<usize>();
+    if total_segments > 1024 {
+        return Err(Error::Unsupported(
+            "prism partition exceeds 1024 output cap segments",
+        ));
+    }
     let delta = axis * certified.height;
     let mut children = Vec::new();
-    for index in split.faces {
-        let face = &split.solid.shell.faces[index];
+    for index in faces {
+        let face = &refined.shell.faces[index];
         let mut rings = crate::face_intersections::rings(face)?;
         // Source cap UV may be reflected relative to the certified right-handed frame.
         if face.orientation == 1 {
@@ -331,6 +472,9 @@ pub fn split_normal_arc_line_prism_by_plane(
             .into_iter()
             .sum::<f64>()
             .abs();
+        if components {
+            cap_integral_condition(face, area)?;
+        }
         let volume = area * certified.height;
         if !volume.is_finite() || volume <= 0. {
             return Err(Error::Unsupported(
@@ -355,34 +499,24 @@ pub fn split_normal_arc_line_prism_by_plane(
         }
         children.push(child);
     }
-    let children: [Solid; 2] = children
-        .try_into()
-        .map_err(|_| Error::InvalidTopology("missing partition child"))?;
-    retains_refined_edges(&split.solid, &children, tolerance.linear() / 64.)?;
+    retains_refined_edges(&refined, &children, tolerance.linear() / 64.)?;
     // Basis mismatch plus interval coverage each reserve half of Tol/32.
     retains_original_edges(source, &children, tolerance.linear() / 64.)?;
     let original = source.volume()?;
-    let combined = children[0].volume()? + children[1].volume()?;
+    let mut combined = 0.;
+    let mut compensation = 0.;
+    for child in &children {
+        let value = child.volume()? - compensation;
+        let next = combined + value;
+        compensation = (next - combined) - value;
+        combined = next;
+    }
     if !original.is_finite()
         || !combined.is_finite()
         || (combined - original).abs() > 8192. * f64::EPSILON * original.abs().max(combined.abs())
     {
         return Err(Error::Unsupported(
             "prism partition volume conservation is unresolved",
-        ));
-    }
-    let a = split.solid.vertices[split.cut_vertices[0]].point;
-    let b = split.solid.vertices[split.cut_vertices[1]].point;
-    let mut points = [a, b, b + delta, a + delta];
-    if (b - a).cross(delta).dot(normal) < 0. {
-        points.reverse();
-    }
-    if points.iter().any(|p| {
-        !p.finite()
-            || ((*p - origin).dot(normal)).abs() + arithmetic + drift >= tolerance.linear() / 32.
-    }) {
-        return Err(Error::Unsupported(
-            "prism partition section plane residual is unresolved",
         ));
     }
     let signs: Vec<_> = children
@@ -404,70 +538,117 @@ pub fn split_normal_arc_line_prism_by_plane(
             }
         })
         .collect::<Result<_>>()?;
-    if signs[0] == signs[1] {
+    if !signs.contains(&-1) || !signs.contains(&1) {
         return Err(Error::InvalidTopology(
-            "prism partition children lie on one side",
+            "prism partition is missing one side",
         ));
     }
-    let [a, b] = children;
-    let (negative, positive) = if signs[0] < 0 { (a, b) } else { (b, a) };
-    let sections: Vec<_> = negative
-        .shell
-        .faces
-        .iter()
-        .filter_map(|face| {
-            let Surface::Plane { u, v, .. } = face.surface else {
-                return None;
-            };
-            if face.wires.len() != 1
-                || face.wires[0].coedges.len() != 4
-                || (u.cross(v) * f64::from(face.orientation)).dot(normal) < 0.99
-            {
-                return None;
-            }
-            let actual: Vec<_> = face.wires[0]
-                .coedges
-                .iter()
-                .map(|c| {
-                    negative.vertices[negative.edges[c.edge].vertices[usize::from(!c.forward)]]
-                        .point
-                })
-                .collect();
-            if !actual.iter().all(|a| {
-                points
+    let mut sections = Vec::new();
+    for index in cut_edges {
+        let edge = &refined.edges[index];
+        let Curve::Line { a, b } = edge.curve else {
+            return Err(Error::InvalidTopology("nonlinear partition section edge"));
+        };
+        let points = [a, b, b + delta, a + delta];
+        if points.iter().any(|p| {
+            !p.finite()
+                || ((*p - origin).dot(normal)).abs() + arithmetic + drift
+                    >= tolerance.linear() / 32.
+        }) {
+            return Err(Error::Unsupported(
+                "prism partition section plane residual is unresolved",
+            ));
+        }
+        let mut negative_matches = Vec::new();
+        let mut positive_matches = Vec::new();
+        for (child, sign) in children.iter().zip(&signs) {
+            for face in &child.shell.faces {
+                let Surface::Plane { u, v, .. } = face.surface else {
+                    continue;
+                };
+                if face.wires.len() != 1
+                    || face.wires[0].coedges.len() != 4
+                    || face.wires[0]
+                        .coedges
+                        .iter()
+                        .any(|c| !matches!(child.edges[c.edge].curve, Curve::Line { .. }))
+                {
+                    continue;
+                }
+                let outward = u.cross(v) * f64::from(face.orientation);
+                if outward.dot(normal) * (-f64::from(*sign)) < 0.99 {
+                    continue;
+                }
+                let actual: Vec<_> = face.wires[0]
+                    .coedges
                     .iter()
-                    .any(|b| length(*a - *b) < tolerance.linear() / 32.)
-            }) {
-                return None;
+                    .map(|c| {
+                        child.vertices[child.edges[c.edge].vertices[usize::from(!c.forward)]].point
+                    })
+                    .collect();
+                if !actual.iter().all(|p| {
+                    points
+                        .iter()
+                        .any(|q| length(*p - *q) < tolerance.linear() / 64.)
+                }) || !points.iter().all(|p| {
+                    actual
+                        .iter()
+                        .any(|q| length(*p - *q) < tolerance.linear() / 64.)
+                }) {
+                    continue;
+                }
+                if actual.iter().any(|p| {
+                    !p.finite()
+                        || ((*p - origin).dot(normal)).abs() + arithmetic + drift
+                            >= tolerance.linear() / 32.
+                }) {
+                    return Err(Error::Unsupported(
+                        "prism partition actual section residual is unresolved",
+                    ));
+                }
+                let patch = PlanarFacePatch {
+                    surface: face.surface.clone(),
+                    orientation: face.orientation,
+                    rings: vec![actual],
+                };
+                if *sign < 0 {
+                    negative_matches.push((patch, outward));
+                } else {
+                    positive_matches.push((patch, outward));
+                }
             }
-            Some(PlanarFacePatch {
-                surface: face.surface.clone(),
-                orientation: face.orientation,
-                rings: vec![actual],
-            })
-        })
-        .collect();
-    if sections.len() != 1 {
-        return Err(Error::Unsupported(
-            "prism partition actual section face is ambiguous",
-        ));
+        }
+        if negative_matches.len() != 1 || positive_matches.len() != 1 {
+            return Err(Error::Unsupported(
+                "prism partition opposed actual section faces are ambiguous",
+            ));
+        }
+        let (negative, n) = negative_matches
+            .pop()
+            .ok_or(Error::InvalidTopology("missing negative section"))?;
+        let (_, p) = positive_matches
+            .pop()
+            .ok_or(Error::InvalidTopology("missing positive section"))?;
+        if length(n + p) * length(b - a).max(certified.height) >= tolerance.linear() / 32. {
+            return Err(Error::Unsupported(
+                "prism partition section normals are not resolved opposites",
+            ));
+        }
+        sections.push(negative);
     }
-    let section = sections
-        .into_iter()
-        .next()
-        .ok_or(Error::InvalidTopology("missing partition section"))?;
-    if section.rings[0].iter().any(|p| {
-        !p.finite()
-            || ((*p - origin).dot(normal)).abs() + arithmetic + drift >= tolerance.linear() / 32.
-    }) {
-        return Err(Error::Unsupported(
-            "prism partition actual section residual is unresolved",
-        ));
+    let mut negative = Vec::new();
+    let mut positive = Vec::new();
+    for (child, sign) in children.into_iter().zip(signs) {
+        if sign < 0 {
+            negative.push(child);
+        } else {
+            positive.push(child);
+        }
     }
-    Ok(NormalArcLinePrismPlaneSplit {
+    Ok(NormalArcLinePrismPlaneSplitComponents {
         negative,
         positive,
-        section,
+        sections,
         plane: plane.clone(),
     })
 }

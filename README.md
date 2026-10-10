@@ -62,6 +62,9 @@ both actual closed sides of a transverse line/arc-stock cut, preserving source
 subarcs and uncut openings. The [editable plane-cut workflow](docs/workflow-plane-split.md)
 now keeps either side in the existing document history, followed by additional
 normal bores and cuts, with prefix reuse, Undo/Redo and accepted-model exports.
+[Partitions across openings](docs/arc-line-prism-split-components.md) now return
+every actual closed component and material-interval section. Editable histories
+also accept these cuts when the selected side contains exactly one component.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

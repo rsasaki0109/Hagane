@@ -65,19 +65,22 @@ with discarded material.
 
 Only `rounded_box` and `arc_line_extrusion` roots admit these nodes. Existing
 box/polygon histories retain their separate supported operations. Each cut
-requires one resolved material interval and two distinct outer-edge crossings;
-hole crossings, tangent/vertex contact, disconnected sections and meaningful
-skew remain unsupported. Blind bores remain unsupported on these curved-stock
+uses the [component partition](arc-line-prism-split-components.md), including
+resolved opening crossings and multiple material intervals. The selected side
+must contain exactly one connected component; the other side may contain more.
+Tangent/vertex contact and meaningful skew remain unsupported. Blind bores
+remain unsupported on these curved-stock
 histories. A genuinely all-line child may be a terminal displayed/exported
 result; another curved-source bore or plane split rejects explicitly.
 A line outer boundary with retained curved openings still has curved geometry.
 
 Resource admission counts bores and cuts by type. There may be at most 16
-combined initial openings and authored bores. The conservative segment budget
+combined initial openings and authored bores. The early history reservation
 is `initial_segments + 4*bores + 3*plane_splits <= 128`; rounded-box stock starts
-with eight segments. This history budget does not decrement when a cut removes
-an opening. Actual child constructors/certificates enforce their own limits
-as well. Seventeen valid cut nodes are tested without consuming a bore count.
+with eight segments. This reservation does not decrement when a cut removes
+an opening. It is not an upper bound on extra segments from crossed openings;
+actual child constructors/certificates independently enforce their 128-segment
+limit. Seventeen valid cut nodes are tested without consuming a bore count.
 
 Changing offset, angle or side rebuilds that node and its dependent suffix;
 unchanged accepted exact B-rep prefixes are reused. Root/profile/tolerance

@@ -993,11 +993,20 @@ impl WorkflowPlan {
         match step {
             WorkflowStep::PlaneSplit { plane, side } => {
                 let (negative, positive) =
-                    split_normal_arc_line_prism_by_plane(solid, plane, self.policy)?.into_solids();
-                *solid = match side {
+                    split_normal_arc_line_prism_by_plane_components(solid, plane, self.policy)?
+                        .into_solids();
+                let mut selected = match side {
                     WorkflowSplitSide::Negative => negative,
                     WorkflowSplitSide::Positive => positive,
                 };
+                if selected.len() != 1 {
+                    return Err(Error::Unsupported(
+                        "workflow plane split requires exactly one connected component on the selected side",
+                    ));
+                }
+                *solid = selected.pop().ok_or(Error::InvalidTopology(
+                    "workflow plane split lost its selected component",
+                ))?;
                 Ok(())
             }
             WorkflowStep::Bore { bore, entry, tool } => {

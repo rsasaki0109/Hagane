@@ -1348,3 +1348,16 @@ workflow. General graphs, Box/Polygon cut nodes, crossed openings and curved
 operations after an all-line terminal child remain future work. See
 [editable plane cuts](workflow-plane-split.md). The estimate remains 15–25%
 toward the standing 80% target.
+
+## Normal analytic partitions across openings
+
+Component partitions now handle resolved opening crossings and disconnected
+sides, producing every actual closed body and paired rectangular section.
+The existing strict single-section API retains its domain. Editable history
+accepts a uniquely connected selected side and preserves the accepted result
+when a candidate selects multiple bodies or invalidates later operations.
+Native/WASM/browser demos and per-component analytic STEP exports accompany
+this extension. General curved Booleans, contact/vertex/tangent cases and
+meaningful skew remain future work. See
+[partitions across openings](arc-line-prism-split-components.md). The estimate
+remains 15–25% toward the standing 80% target.
