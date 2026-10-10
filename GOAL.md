@@ -1,5 +1,10 @@
 # Development goal
 
+[Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
+classify the retained finite solid with checked source and cut-cap witnesses.
+A separate browser probe uses the accepted model; unresolved elliptical-rim
+distances fail explicitly while geometry and export remain available.
+
 [Oblique frustum splits](docs/nurbs-frustum-plane-split.md) produce two actual
 closed rational B-rep children with new planar cut caps, analytic volumes,
 conforming bounded display and per-child STEP export. The initial domain keeps

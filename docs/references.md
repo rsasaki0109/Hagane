@@ -1252,3 +1252,11 @@ and tensor rotation provide centroidal/world-axis conversion and independent
 conservation checks. No implementation source is copied or translated; existing
 MIT OR Apache-2.0 code and dependencies are unchanged. Arithmetic conditioning
 guards are engineering estimates rather than formal interval proofs.
+
+
+Oblique-child [point classification](nurbs-frustum-oblique-classify.md) uses
+Euclidean orthogonal plane projection and subset distance lower bounds for
+convex halfspace intersection. A finite retained-boundary witness is required
+for boundary success; unresolved elliptical-rim distances are explicitly refused.
+This independent MIT OR Apache-2.0 implementation reuses the source finite-frustum
+distance query and introduces no dependency or OCCT source.

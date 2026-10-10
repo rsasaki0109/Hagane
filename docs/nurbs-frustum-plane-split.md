@@ -99,6 +99,10 @@ children and oblique-child STEP import remain future work.
 STEP **export** serializes each actual child, including its retained rational
 surface/curve bases and pcurves, without fitting or copying the source body.
 
+[Point queries](nurbs-frustum-oblique-classify.md) are available on each actual
+child. Resolved finite boundaries are checked without a mesh; ambiguous new-rim
+distances reject conservatively. The browser has a separate accepted-model probe.
+
 ## Native, WASM and browser demonstration
 
 Run `cargo run --example nurbs_frustum_plane_split`. An optional JSON array

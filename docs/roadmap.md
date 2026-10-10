@@ -1,5 +1,10 @@
 # Roadmap
 
+[Mesh-free oblique-child point queries](nurbs-frustum-oblique-classify.md)
+classify actual retained bodies using finite boundary witnesses, with explicit
+ambiguous-rim and arithmetic rejection. Native/WASM/browser queries share the
+Rust implementation. General closest-point and curved Booleans remain future work.
+
 [Oblique frustum splits](nurbs-frustum-plane-split.md) produce two actual closed
 rational B-rep children with new planar cut caps, analytic volumes, conforming
 bounded display and per-child STEP export. The complete cut stays strictly

@@ -380,3 +380,8 @@ mod nurbs_frustum_oblique_split;
 pub use nurbs_frustum_oblique_split::*;
 
 mod nurbs_frustum_oblique_mass;
+
+mod nurbs_frustum_oblique_classify_demo;
+pub use nurbs_frustum_oblique_classify_demo::*;
+
+mod nurbs_frustum_oblique_classification;
