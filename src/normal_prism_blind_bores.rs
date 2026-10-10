@@ -20,6 +20,21 @@ pub struct NormalPrismBlindBores {
     direct_removed_volume: f64,
 }
 impl NormalPrismBlindBores {
+    pub(crate) fn from_parts(
+        kept: Solid,
+        removed: Vec<Solid>,
+        hole_faces: Vec<[usize; 4]>,
+        floor_faces: Vec<usize>,
+        direct_removed_volume: f64,
+    ) -> Self {
+        Self {
+            kept,
+            removed,
+            hole_faces,
+            floor_faces,
+            direct_removed_volume,
+        }
+    }
     pub fn kept(&self) -> &Solid {
         &self.kept
     }

@@ -171,6 +171,20 @@ fn curve_identity(a: &Curve, b: &Curve, reverse: bool, budget: f64) -> Result<()
 
 /// Certify actual imported geometry without replacing it with rebuilt geometry.
 pub(crate) fn certify_validated_normal_prism_blind(s: &Solid, tol: Tolerance) -> Result<()> {
+    recover_validated_normal_prism_blind(s, tol).map(|_| ())
+}
+
+/// Available only after all original cavity geometry passes the complete certificate.
+pub(crate) struct RecoveredNormalPrismBlind {
+    pub stock: Solid,
+    pub specs: Vec<NormalPrismBlindBoreSpec>,
+    pub axis: Vec3,
+    pub stock_face_to_input: Vec<usize>,
+}
+pub(crate) fn recover_validated_normal_prism_blind(
+    s: &Solid,
+    tol: Tolerance,
+) -> Result<RecoveredNormalPrismBlind> {
     Tolerance::new(tol.linear)?;
     s.validate(tol)?;
     if s.shell.faces.len() > 210 || s.edges.len() > 576 || s.vertices.len() > 384 {
@@ -299,7 +313,11 @@ fn extract_candidate(s: &Solid, floor: usize) -> Result<Cavity> {
         vertices: deleted_vertices,
     })
 }
-fn certify_candidates(s: &Solid, tol: Tolerance, cavities: &[Cavity]) -> Result<()> {
+fn certify_candidates(
+    s: &Solid,
+    tol: Tolerance,
+    cavities: &[Cavity],
+) -> Result<RecoveredNormalPrismBlind> {
     let mut deleted_faces = BTreeSet::new();
     let mut deleted_edges = BTreeSet::new();
     let mut deleted_vertices = BTreeSet::new();
@@ -601,5 +619,13 @@ fn certify_candidates(s: &Solid, tol: Tolerance, cavities: &[Cavity]) -> Result<
         (actual_volume - witness_volume).abs(),
         8192. * f64::EPSILON * actual_volume.max(witness_volume),
     )?;
-    Ok(())
+    let stock_face_to_input = (0..s.shell.faces.len())
+        .filter(|i| !deleted_faces.contains(i))
+        .collect();
+    Ok(RecoveredNormalPrismBlind {
+        stock: restored,
+        specs,
+        axis,
+        stock_face_to_input,
+    })
 }

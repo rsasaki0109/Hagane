@@ -1,12 +1,10 @@
 # Development goal
 
-The latest [multiple blind-pocket API](docs/normal-prism-blind-bores.md) creates
-up to 16 strictly projection-disjoint cavities on certified normal stock,
-preserving original boundaries and returning each actual removed body.
-Native/WASM construction, inspection and analytic STEP export share the kernel.
-This is a batch operation on uniform source stock; continued blind machining,
-workflow nodes remain future work. [Multiple-pocket STEP re-import](docs/normal-prism-blind-bores-step.md)
-now certifies supported batch results without replacing their geometry.
+The latest [continued blind machining API](docs/normal-prism-blind-continue.md)
+adds pockets to actual native or STEP-imported blind-pocket solids, retaining
+all original geometry and returning only newly removed bodies. Up to 16 total
+projection-disjoint pockets/openings are supported. Plane cuts after blind
+machining and workflow nodes remain future work.
 
 **Complete Hagane as a usable pure Rust CAD kernel for an end-to-end CAD workflow.**
 
@@ -1515,6 +1513,6 @@ in a proof clone; the actual restored source and strict blind-construction
 witness certify the imported cavity, including analytic whole-curve/pcurve
 identity and shared orientation. Original imported geometry remains unchanged.
 Both entry caps, rigid placement and existing disjoint through openings are
-covered; multiple blind pockets, general STEP and continued blind machining
-remain unsupported. See [single-cavity STEP](docs/normal-prism-blind-step.md).
+covered. Later milestones add multiple pockets and continued machining through
+the separate certified API; general STEP remains unsupported. See [single-cavity STEP](docs/normal-prism-blind-step.md).
 The long-term estimate remains 15–25% toward the standing 80% target.

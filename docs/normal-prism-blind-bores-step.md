@@ -131,3 +131,6 @@ opposite pockets reject and recovery succeeds. Initial direct mesh-index parity
 and independent semantic mesh validation exposed the actual native sixteen-pocket
 zero-area defect described above; the source repair and native regressions
 address it.
+
+Existing batch APIs retain their uniform-stock input domain. To add pockets to
+an already machined body, use the separate [continued machining API](normal-prism-blind-continue.md).

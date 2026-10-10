@@ -1,18 +1,26 @@
 # Roadmap
 
+[Continued blind machining](normal-prism-blind-continue.md) adds new flat-bottom
+pockets to an existing native or STEP-imported part while preserving its original
+B-rep boundaries. The browser can reuse the accepted kept STEP as the next source.
+This scoped operation supports at most 16 total projection-disjoint openings;
+general intersections, subsequent plane cuts and workflow integration remain planned.
+
+
 [Multiple disjoint flat-bottom pockets](normal-prism-blind-bores.md) now share
 one actual normal-stock source, with 1–16 independently validated cavities,
 retained source geometry, per-input removed cylinders and analytic STEP export.
-Overlapping projected disks, preexisting blind source floors and workflow nodes
-remain unsupported. [Multiple-pocket STEP re-import](normal-prism-blind-bores-step.md)
+The original batch API still rejects preexisting blind floors; the separate
+continued-machining API above handles certified prior cavities. Overlapping
+projected disks and workflow nodes remain unsupported. [Multiple-pocket STEP re-import](normal-prism-blind-bores-step.md)
 adds actual-shape certification for the supported batch domain.
 
 The latest [normal-prism blind-bore API](normal-prism-blind-bore.md) adds one
 exact flat-bottom pocket to certified normal curved or all-line stock,
 preserving source boundaries and returning actual kept/removed solids.
 It supports signed cap entry, disjoint prior through openings, rigid placement,
-bounded display and analytic STEP export. [Single-cavity STEP re-import](normal-prism-blind-step.md) adds a separate actual-shape certificate. Repeated
-blind machining and integration into cut histories remain future work.
+bounded display and analytic STEP export. [Single-cavity STEP re-import](normal-prism-blind-step.md) adds a separate actual-shape certificate. The separate continued-machining API now adds pockets to certified prior bodies;
+integration into cut histories remains future work.
 
 This roadmap implements the standing [development goal](../GOAL.md): a usable
 end-to-end pure Rust CAD workflow. Feature-specific supported domains and

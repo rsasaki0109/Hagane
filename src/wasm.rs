@@ -10,6 +10,8 @@ mod exports {
     static ARC_LINE_SPLIT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static ARC_LINE_BORE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static NORMAL_BLIND_BORE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    static BLIND_CONTINUE_INPUT: Mutex<(Vec<u8>, Vec<f64>, bool)> =
+        Mutex::new((Vec::new(), Vec::new(), false));
     static NORMAL_BLIND_BORES_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_CONTACT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_MULTI_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
@@ -431,6 +433,55 @@ mod exports {
             )))
         } else {
             generate(crate::arc_line_prism_split_demo_json(&values))
+        }
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_blind_continue_begin() {
+        let mut input = BLIND_CONTINUE_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1.clear();
+        input.2 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_blind_continue_push_byte(value: u32) -> i32 {
+        let mut input = BLIND_CONTINUE_INPUT.lock().unwrap();
+        if input.2 || value > 255 || input.0.len() >= crate::STEP_IMPORT_MAX_BYTES {
+            input.2 = true;
+            return 1;
+        }
+        input.0.push(value as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_blind_continue_push_value(value: f64) -> i32 {
+        let mut input = BLIND_CONTINUE_INPUT.lock().unwrap();
+        if input.2 || !value.is_finite() || input.1.len() >= 101 {
+            input.2 = true;
+            return 1;
+        }
+        input.1.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_blind_continue_finish() -> i32 {
+        let (bytes, values, bad) = {
+            let mut input = BLIND_CONTINUE_INPUT.lock().unwrap();
+            (
+                std::mem::take(&mut input.0),
+                std::mem::take(&mut input.1),
+                std::mem::take(&mut input.2),
+            )
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "continued blind bore transport exceeds its finite value or STEP byte limits",
+            )));
+        }
+        match String::from_utf8(bytes) {
+            Ok(step) => generate(crate::normal_prism_blind_continue_demo_json(&step, &values)),
+            Err(_) => generate(Err(crate::Error::InvalidInput(
+                "continued blind bore STEP input must be UTF-8",
+            ))),
         }
     }
     #[no_mangle]

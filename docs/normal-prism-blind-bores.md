@@ -120,3 +120,6 @@ depth, precision and transport errors recover. Individual removed cylinders
 re-import. Multiple-cavity import was unsupported in that construction
 milestone; the subsequent [STEP certificate](normal-prism-blind-bores-step.md)
 adds tested retained-body re-import.
+
+Existing batch APIs retain their uniform-stock input domain. To add pockets to
+an already machined body, use the separate [continued machining API](normal-prism-blind-continue.md).
