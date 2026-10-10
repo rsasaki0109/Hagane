@@ -3,8 +3,9 @@
 [Oblique frustum splits](nurbs-frustum-plane-split.md) produce two actual closed
 rational B-rep children with new planar cut caps, analytic volumes, conforming
 bounded display and per-child STEP export. The complete cut stays strictly
-between the original caps; centroid/inertia of these children, further cuts and
-general NURBS Booleans remain unsupported. The estimate remains 15–25%.
+between the original caps. [Analytic child mass properties](nurbs-frustum-oblique-mass.md)
+provide checked world centroids and centroidal inertia, with explicit conditioning
+failures. Further cuts and general NURBS Booleans remain unsupported. The estimate remains 15–25%.
 
 [Closed oblique frustum sections](nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.

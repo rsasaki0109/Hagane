@@ -1236,3 +1236,19 @@ of supporting cone volumes gives the stable zero-taper limit documented in
 [oblique split scope](nurbs-frustum-plane-split.md). Conforming display reuses
 the established rational Bernstein cell/rim bounds with weighted generator
 parameters. Original MIT OR Apache-2.0 code adds no dependencies or OCCT source.
+
+
+
+
+## Oblique frustum moment derivation
+
+The [child mass implementation](nurbs-frustum-oblique-mass.md) independently
+integrates homothetic cone sections: the normalized axial integrals of t², t³
+and t⁴ give volume, first and second moments. Ellipse covariance follows an
+affine transformation of the uniform unit disk (each planar variance is 1/4).
+Equal-radius cases integrate polynomial disk columns directly. The
+[parallel-axis theorem](https://en.wikipedia.org/wiki/Parallel_axis_theorem)
+and tensor rotation provide centroidal/world-axis conversion and independent
+conservation checks. No implementation source is copied or translated; existing
+MIT OR Apache-2.0 code and dependencies are unchanged. Arithmetic conditioning
+guards are engineering estimates rather than formal interval proofs.

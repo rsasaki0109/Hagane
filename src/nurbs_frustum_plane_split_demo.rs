@@ -15,8 +15,17 @@ fn part_report(
     }
     let bounds = body.bounds(policy)?;
     let xyz = |v: Vec3| [v.x, v.y, v.z];
+    let mass_properties = match body.inertia_properties(policy) {
+        Ok(properties) => serde_json::json!({
+            "ok":true,"volume":properties.volume,"centroid":xyz(properties.centroid),
+            "inertia":properties.inertia,"reference":"centroid","tensor_axes":"world",
+            "volume_units":"mm^3","centroid_units":"mm","inertia_units":"mm^5","density":1.
+        }),
+        Err(Error::Unsupported(reason)) => serde_json::json!({"ok":false,"error":reason}),
+        Err(error) => return Err(error),
+    };
     Ok(
-        serde_json::json!({"is_lower":body.is_lower(),"volume":body.volume(policy)?,"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},"bounds_kind":"conservative rational control hull","mesh":{"positions":mesh.positions.into_iter().map(xyz).collect::<Vec<_>>(),"normals":mesh.normals.into_iter().map(xyz).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},"brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","scope":"actual closed oblique frustum child; centroid, inertia and generic import unsupported"}),
+        serde_json::json!({"is_lower":body.is_lower(),"mass_properties":mass_properties,"volume":body.volume(policy)?,"bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},"bounds_kind":"conservative rational control hull","mesh":{"positions":mesh.positions.into_iter().map(xyz).collect::<Vec<_>>(),"normals":mesh.normals.into_iter().map(xyz).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},"brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","scope":"actual closed oblique frustum child; centroid and inertia reported only within checked analytic mass admission; generic import unsupported"}),
     )
 }
 
@@ -56,5 +65,5 @@ pub fn nurbs_frustum_plane_split_demo_json(x: &[f64]) -> Result<String> {
         curves.push(serde_json::json!({"face_id":usage.face_id,"vertices":edge.vertices,"curve":geometry(curve),"pcurve":geometry(pcurve),"points":line.points.into_iter().map(xyz).collect::<Vec<_>>(),"parameters":line.parameters,"error_bounds":line.error_bounds}));
     }
     let frame = source.frame();
-    Ok(serde_json::json!({"units":"mm","placement":{"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)},"linear_tolerance":policy.linear(),"display_chord_tolerance":x[8],"source_volume":source.volume(policy)?,"part_volumes":[parts[0]["volume"],parts[1]["volume"]],"selected":selected,"step":parts[selected]["step"],"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","parts":parts,"section":{"plane_origin":xyz(origin),"plane_normal":xyz(normal),"vertices":split.section.vertices().iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"curves":curves,"closed":true,"pcurve_scope":"source side face parameters"},"scope":"two actual closed rational oblique frustum children; selected STEP is the actual child, both child exports are available; conservative control-hull bounds; centroid, inertia, generic STEP import and general NURBS Booleans unsupported"}).to_string())
+    Ok(serde_json::json!({"units":"mm","placement":{"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)},"linear_tolerance":policy.linear(),"display_chord_tolerance":x[8],"source_volume":source.volume(policy)?,"part_volumes":[parts[0]["volume"],parts[1]["volume"]],"selected":selected,"step":parts[selected]["step"],"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","parts":parts,"section":{"plane_origin":xyz(origin),"plane_normal":xyz(normal),"vertices":split.section.vertices().iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"curves":curves,"closed":true,"pcurve_scope":"source side face parameters"},"scope":"two actual closed rational oblique frustum children; selected STEP is the actual child, both child exports are available; conservative control-hull bounds; mass properties carry explicit checked availability; generic STEP import and general NURBS Booleans unsupported"}).to_string())
 }

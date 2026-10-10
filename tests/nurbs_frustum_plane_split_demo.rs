@@ -55,6 +55,17 @@ fn reports_both_actual_closed_children_and_selected_child_step_without_fake_metr
             assert_eq!(part["is_lower"], i == 0);
             assert!(part.get("centroid").is_none());
             assert!(part.get("inertia").is_none());
+            let inertia = body.inertia_properties(tol).unwrap();
+            assert_eq!(part["mass_properties"]["ok"], true);
+            assert_eq!(
+                part["mass_properties"]["centroid"],
+                json!(xyz(inertia.centroid))
+            );
+            assert_eq!(part["mass_properties"]["inertia"], json!(inertia.inertia));
+            assert_eq!(part["mass_properties"]["volume"], inertia.volume);
+            assert_eq!(part["mass_properties"]["reference"], "centroid");
+            assert_eq!(part["mass_properties"]["tensor_axes"], "world");
+            assert_eq!(part["mass_properties"]["inertia_units"], "mm^5");
             assert_eq!(part["bounds_kind"], "conservative rational control hull");
             let bounds = body.bounds(tol).unwrap();
             assert_eq!(
@@ -136,4 +147,42 @@ fn invalid_selection_planes_and_unresolved_display_do_not_return_partial_childre
     assert!(nurbs_frustum_plane_split_demo_json(&bad).is_err());
     assert!(nurbs_frustum_plane_split_demo_json(&x[..15]).is_err());
     assert_eq!(nurbs_frustum_plane_split_demo_json(&x).unwrap(), original);
+}
+
+#[test]
+fn near_uniform_mass_refusal_preserves_successful_geometry_display_and_exports() {
+    let (mut input, _, _) = values(false, false, 0.);
+    input[0] = 16.;
+    input[1] = 16. + 1e-8;
+    let data: Value =
+        serde_json::from_str(&nurbs_frustum_plane_split_demo_json(&input).unwrap()).unwrap();
+    for part in data["parts"].as_array().unwrap() {
+        assert_eq!(part["mass_properties"]["ok"], false);
+        assert!(!part["mass_properties"]["error"]
+            .as_str()
+            .unwrap()
+            .is_empty());
+        assert!(part["mass_properties"].get("centroid").is_none());
+        assert!(part["mass_properties"].get("inertia").is_none());
+        assert!(part["volume"].as_f64().unwrap() > 0.);
+        assert!(!part["mesh"]["triangles"].as_array().unwrap().is_empty());
+        assert!(part["step"]
+            .as_str()
+            .unwrap()
+            .contains("MANIFOLD_SOLID_BREP"));
+    }
+    assert_eq!(data["step"], data["parts"][0]["step"]);
+    input[15] = 1.;
+    let upper: Value =
+        serde_json::from_str(&nurbs_frustum_plane_split_demo_json(&input).unwrap()).unwrap();
+    assert_eq!(upper["parts"], data["parts"]);
+    assert_eq!(upper["step"], data["parts"][1]["step"]);
+    let (resolved, _, _) = values(false, false, 0.);
+    let recovered: Value =
+        serde_json::from_str(&nurbs_frustum_plane_split_demo_json(&resolved).unwrap()).unwrap();
+    assert!(recovered["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|p| p["mass_properties"]["ok"] == true));
 }

@@ -81,8 +81,9 @@ volume relative to the source are refused. Tests also compare an independent
 positive cylindrical-coordinate integration, rather than only this formula.
 
 `bounds(policy)` returns a **conservative rational control-hull enclosure**,
-not tight extrema. Volume is implemented; centroid and inertia of these new
-children are not implemented and are not substituted from the original stock.
+not tight extrema. [Analytic mass properties](nurbs-frustum-oblique-mass.md)
+provide checked child centroids and full world-axis centroidal inertia.
+Unresolved metric precision returns an explicit error independently of geometry.
 
 ## Supported domain and limitations
 
@@ -94,7 +95,7 @@ crossing, vertical/open sections and unresolved arithmetic return errors.
 There is no partial child result on failure.
 
 General NURBS Booleans, arbitrary surface trimming, repeated cuts of these new
-children, centroid/inertia and oblique-child STEP import remain future work.
+children and oblique-child STEP import remain future work.
 STEP **export** serializes each actual child, including its retained rational
 surface/curve bases and pcurves, without fitting or copying the source body.
 
@@ -105,7 +106,9 @@ supplies exactly 16 finite values: lower radius, upper radius, height,
 Y rotation angle in radians, translation XYZ, linear tolerance, display chord
 tolerance, world plane origin XYZ, world plane normal XYZ and selection
 (`0` lower, `1` upper). The report contains both actual children, individual
-volumes, conservative bounds, meshes, B-reps and STEP strings.
+volumes, conservative bounds, meshes, B-reps and STEP strings. Each child also
+reports actual `mass_properties` or an explicit metric error; an unavailable
+metric does not fabricate values or discard a successfully constructed solid.
 
 Run `./scripts/build-web.sh`, then `python3 -m http.server 8000 --directory web`
 and open `/nurbs-frustum-plane-split.html`. Choose a child to inspect its real

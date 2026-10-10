@@ -378,3 +378,5 @@ pub use nurbs_frustum_plane_section::*;
 
 mod nurbs_frustum_oblique_split;
 pub use nurbs_frustum_oblique_split::*;
+
+mod nurbs_frustum_oblique_mass;
