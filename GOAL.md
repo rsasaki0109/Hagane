@@ -1825,3 +1825,14 @@ first run with all strict PNG/raw-frame rollback guards. The inspected actual
 middle-slab screenshot shows its Inside point, cap-clipped finite segment and
 hole-origin forward-ray interval `[2,20/3]`. Stale blanket recut limitations
 were corrected to distinguish supported parallel cuts from unsupported skew.
+
+## Full regression verification after retained parallel queries
+
+On exact implementation commit `8a54e24`, the entire locked native suite passed:
+316 suites, 1,207 tests, zero failures and zero ignored tests, including both
+documentation tests. The entire WASM runtime script also completed with exit
+zero, covering previous primitives, topology, predicates, STEP, workflows and
+all new repeated parallel slab geometry, optional mass and point/segment/line/ray
+blocks. Source stayed unchanged throughout both checks. This confirms regression
+coverage without claiming generic curved Booleans or general STEP support.
+The standing broad CAD estimate remains 15–25% toward the 80% target.
