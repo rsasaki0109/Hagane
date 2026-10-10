@@ -103,9 +103,8 @@ impl NurbsFrustumWorkflowComponent {
             Self::Oblique(v) => v.classify_point(query, policy),
             Self::Bored(v) => v.classify_point(query, policy),
             Self::BoredOblique(v) => v.classify_point(query, policy),
-            Self::Slab(_) | Self::BoredSlab(_) => Err(Error::Unsupported(
-                "parallel frustum slab classify_point is not implemented",
-            )),
+            Self::Slab(v) => v.classify_point(query, policy),
+            Self::BoredSlab(v) => v.classify_point(query, policy),
         }
     }
     pub fn solid(&self) -> &Solid {

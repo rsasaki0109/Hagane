@@ -1752,3 +1752,28 @@ a build output directory and contaminated cached native artifacts; that result
 was discarded and current-source builds/checks were repeated. Existing display
 tests were migrated from obsolete unavailable-metric expectations to exact
 native centroid/tensor parity without changing their geometry assertions.
+
+## Finite point queries of retained parallel slabs
+
+Plain and bored slab children now classify points against their actual retained
+material. The original source's Euclidean boundary policy is applied first;
+both present cuts provide subset distance bounds. Boundary success requires a
+retained source witness or an orthogonal cut-plane foot inside the finite disk
+or annulus and strictly retained by the opposite cut. Ambiguous shared rims,
+unresolved finite-face witnesses and world precision remain explicit
+Unsupported. Missing original caps are not duplicated as cut boundaries.
+Segment/line/ray slab queries and skew recuts remain unsupported.
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: fmt, strict all-target Clippy, ten relevant native suites (24 tests)
+and WASM build passed. Independent finite annular/cylindrical distances,
+posed/scaled repeated cuts, source-relative guards and a steep thin slab's true
+finite-cap Boundary were checked; overlapping tolerance bands alone do not
+invalidate a finite-face witness. Combined new point, previous mass/parallel
+and ordinary/bored workflow WASM blocks passed with native query and STEP/state
+parity. The entire browser suite passed on its first run with all exact PNG,
+raw-frame, camera and accepted-STEP rollback checks. A stale capability sentence
+was corrected before the final actual screenshot capture.
+The final styled production-background capture passed its geometry, metric and
+point-query assertions; the inspected image shows `[6,0,6]` classified Inside
+for the actual middle annular slab. The temporary capture helper was removed.

@@ -40,8 +40,13 @@ fn retained_parallel_children_have_analytic_volumes_and_atomic_guards() {
         let repeat = command(&mut session, json!({"command":"rebuild","document":doc}));
         assert_eq!(repeat["cache"]["evaluated_nodes"], 0);
         assert_eq!(repeat["component_steps"], first["component_steps"]);
+        let queried = command(
+            &mut session,
+            json!({"command":"query","component":1,"point":[6.,0.,10.]}),
+        );
+        assert_eq!(queried["ok"], true, "{queried}");
+        assert_eq!(queried["query"]["location"], "inside");
         for query in [
-            json!({"command":"query","component":0,"point":[6.,0.,4.]}),
             json!({"command":"segment","component":0,"start":[-20.,0.,4.],"end":[20.,0.,4.]}),
             json!({"command":"line","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),
             json!({"command":"ray","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),

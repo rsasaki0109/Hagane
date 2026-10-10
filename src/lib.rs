@@ -428,6 +428,7 @@ mod nurbs_frustum_slab;
 pub use nurbs_frustum_slab::*;
 mod nurbs_frustum_bored_slab;
 pub use nurbs_frustum_bored_slab::*;
+mod nurbs_frustum_slab_classification;
 mod nurbs_frustum_slab_demo;
 mod nurbs_frustum_slab_display;
 mod nurbs_frustum_slab_mass;

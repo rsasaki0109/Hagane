@@ -58,7 +58,27 @@ material, near-uniform taper or extreme scale. These are engineering floating
 point checks, not interval certificates. Workflow reports keep successful actual
 geometry, display and STEP when optional metrics are unsupported, and expose
 `mass_properties: {ok: false, error: ...}` without a fabricated centroid or tensor.
-Other errors propagate. Point/segment/line/ray queries remain explicitly unavailable.
+Other errors propagate.
+
+Both slab types now provide `classify_point(Point3, GeometryTolerance)` against
+their actual finite retained boundary. The original canonical or bored source
+query supplies a conservative subset-distance check, including the through-hole
+void. Inside admission also requires clearance from both retained cuts. A cut
+cap can witness `Boundary` only when the Euclidean plane foot lies strictly in
+the finite source material and is retained by the opposite cut. A source-face
+boundary witness is admitted only with sufficient clearance from both cuts.
+These checks do not combine separate plane and radial band labels into a false
+rim distance.
+
+The full relative tolerance uses the original finite source extent. Ambiguous
+cut rims, boundary thresholds and unresolved world precision return
+`Unsupported`. Overlapping cap bands can still produce `Boundary` when a finite
+cap foot supplies a valid witness; overlap alone is not a refusal. Conflicting
+bands are unresolved only when no admitted finite-face witness resolves them.
+No nearest-point certificate is fabricated.
+Workflow point probes use the actual accepted component and preserve its mesh,
+metrics, STEP, cache and history. Segment, line and ray queries on slabs remain
+explicitly unavailable.
 Skew repeated cuts, general curved Booleans, continued boring and slab STEP
 re-import remain unsupported. Existing canonical, bored and single-cut query
 APIs keep their previous domains.

@@ -178,7 +178,7 @@ fn body_report(
             NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_)
         )
     }) {
-        "versioned typed rational frustum graph; actual closed exact-basis parallel slabs and separate STEP exports; slab centroid, inertia and point/segment/line/ray queries unsupported"
+        "versioned typed rational frustum graph; actual closed exact-basis parallel slabs and separate STEP exports; actual slab point queries; slab segment/line/ray queries unsupported"
     } else if shape
         .components()
         .iter()

@@ -1355,3 +1355,13 @@ the optional metrics while actual retained geometry remains available. The world
 tensor is a final frame rotation, without large world raw-moment subtraction.
 These are engineering arithmetic guards, not interval certification. No external
 source, dependency or license change is introduced.
+
+Parallel-slab point classification reuses the original finite source's checked
+Euclidean boundary band as a conservative subset-distance bound. Both retained
+cut halfspaces are checked; cap boundary admission requires an actual Euclidean
+plane foot in finite material and retained by the opposite cut. Source witnesses
+require clearance from both cuts. Overlapping bands alone do not imply
+refusal: an admitted finite cap foot remains a valid boundary witness. Conflicting
+bands without a resolved finite-face witness and near-rim ambiguity return
+explicit errors rather than an invented exact corner distance.
+The implementation is independent, with no new source, dependency or license.
