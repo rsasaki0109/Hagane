@@ -32,9 +32,13 @@ crossings, tiny material intervals and insufficient coordinate precision return
 explicit errors. Precision bands use the original complete source extent.
 Inherited source intersection restrictions apply even on a removed side.
 [Infinite line/ray queries](nurbs-frustum-retained-line.md) reuse these checked
-material intervals. Repeated cuts remain unsupported for this type.
+material intervals. Skew repeated cuts remain unsupported for this type.
 
 Tests cover independent analytic interval oracles, both children, cut roots in
 material and void, rotations, multiple scales, parameter reversal, actual UV
 residuals and normals, contact, tiny slivers and invalid-input recovery.
 Original code is MIT OR Apache-2.0; no dependency or OCCT source is added.
+
+[Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
+produce separate typed slab children. Skew recuts remain unsupported; slab
+metrics and queries have separate explicit unsupported status.

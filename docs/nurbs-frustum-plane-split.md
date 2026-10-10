@@ -94,7 +94,7 @@ sections are supported under the stated precision guards. Cap/rim contact or
 crossing, vertical/open sections and unresolved arithmetic return errors.
 There is no partial child result on failure.
 
-General NURBS Booleans, arbitrary surface trimming, repeated cuts of these new
+General NURBS Booleans, arbitrary surface trimming, skew repeated cuts of these new
 children and oblique-child STEP import remain future work.
 STEP **export** serializes each actual child, including its retained rational
 surface/curve bases and pcurves, without fitting or copying the source body.
@@ -139,3 +139,7 @@ ellipse area and cone volume are public mathematics. The stable volume formula
 above is an independent algebraic derivation. Existing Bernstein error bounds
 and the original AP214 writer are reused. This is original MIT OR Apache-2.0
 Rust code with no new dependencies or OCCT source. See [references](references.md).
+
+[Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
+produce separate typed slab children. Skew recuts remain unsupported; slab
+metrics and queries have separate explicit unsupported status.

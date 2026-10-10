@@ -1339,3 +1339,9 @@ The bored-frustum STEP reader extends the existing bounded AP214 decoding
 with complete annular cap loops and exact canonical whole-coefficient/topology
 certificates. Analytic serialized-preimage checks preserve primary parameters.
 No external implementation or new dependency is added.
+
+Repeated parallel frustum cuts retain paired rational rim rows and positive
+homogeneous ruled patches. Equal represented section weights give a continuous
+Bernstein coefficient clearance bound; source caps use constant axial height.
+Guarded cumulative volume differences and shared actual-surface tessellation
+provide retained annular slabs. No external source or dependency is added.

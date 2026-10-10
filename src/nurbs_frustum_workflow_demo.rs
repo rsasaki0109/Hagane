@@ -88,6 +88,20 @@ fn body_report(
                     document.display_chord_tolerance,
                 )?
             }
+            NurbsFrustumWorkflowComponent::Slab(body) => {
+                crate::nurbs_frustum_slab_demo::serialize_frustum_slab(
+                    body,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
+            NurbsFrustumWorkflowComponent::BoredSlab(body) => {
+                crate::nurbs_frustum_slab_demo::serialize_bored_frustum_slab(
+                    body,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
         };
         let count = data["mesh"]["triangles"]
             .as_array()
@@ -108,6 +122,8 @@ fn body_report(
             NurbsFrustumWorkflowComponent::Oblique(oblique) => oblique.source().frame(),
             NurbsFrustumWorkflowComponent::Bored(bored) => bored.source().frame(),
             NurbsFrustumWorkflowComponent::BoredOblique(body) => body.source().source().frame(),
+            NurbsFrustumWorkflowComponent::Slab(body) => body.source().frame(),
+            NurbsFrustumWorkflowComponent::BoredSlab(body) => body.source().source().frame(),
         };
         let xyz = |v: Vec3| [v.x, v.y, v.z];
         data["placement"] = json!({"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)});
@@ -125,6 +141,14 @@ fn body_report(
             }
             NurbsFrustumWorkflowComponent::BoredOblique(_) => {
                 data["component_kind"] = json!("bored_oblique_frustum");
+                data["placement_reference"] = json!("source frame");
+            }
+            NurbsFrustumWorkflowComponent::Slab(_) => {
+                data["component_kind"] = json!("frustum_slab");
+                data["placement_reference"] = json!("source frame");
+            }
+            NurbsFrustumWorkflowComponent::BoredSlab(_) => {
+                data["component_kind"] = json!("bored_frustum_slab");
                 data["placement_reference"] = json!("source frame");
             }
         }
@@ -148,7 +172,14 @@ fn body_report(
             "frustum component total volume is unresolved",
         ));
     }
-    let scope = if shape
+    let scope = if shape.components().iter().any(|body| {
+        matches!(
+            body,
+            NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_)
+        )
+    }) {
+        "versioned typed rational frustum graph; actual closed exact-basis parallel slabs and separate STEP exports; slab centroid, inertia and point/segment/line/ray queries unsupported"
+    } else if shape
         .components()
         .iter()
         .any(|body| matches!(body, NurbsFrustumWorkflowComponent::BoredOblique(_)))
@@ -249,6 +280,10 @@ fn segment_report(
                 let result = v.intersect_segment(point(start), point(end), policy)?;
                 Ok((result.hits, result.material_intervals))
             }
+            NurbsFrustumWorkflowComponent::Slab(_)
+            | NurbsFrustumWorkflowComponent::BoredSlab(_) => Err(Error::Unsupported(
+                "parallel frustum slab intersection queries are not implemented",
+            )),
         }
     })();
     let (hits, intervals) = result.map_err(|error| {
@@ -361,6 +396,10 @@ fn line_report(
                 };
                 Ok((result.hits, result.material_intervals))
             }
+            NurbsFrustumWorkflowComponent::Slab(_)
+            | NurbsFrustumWorkflowComponent::BoredSlab(_) => Err(Error::Unsupported(
+                "parallel frustum slab intersection queries are not implemented",
+            )),
         }
     })();
     let (hits, intervals) = result.map_err(|error| {

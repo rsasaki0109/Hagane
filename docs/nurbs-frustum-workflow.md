@@ -70,7 +70,7 @@ begin/finish resets the transport latch without silently resetting the session.
 
 The native and WASM command paths share the kernel, actual-body serializer and
 transaction rules. Arbitrary-angle STEP import, apex shapes, general lofts,
-repeated cuts of oblique children and general frustum Booleans are unsupported.
+skew repeated cuts of oblique children and general frustum Booleans are unsupported.
 Axial `partition` on an oblique child is also explicitly unsupported.
 Canonical and bored components support checked axial partitions.
 
@@ -107,7 +107,8 @@ selection retain the actual bored body; each accepted component exports its own
 STEP. [Axial partitions](nurbs-frustum-bore-partition.md) retain the actual hole
 in every child; Select permits further local axial partitions.
 [Oblique plane cuts](nurbs-frustum-bored-oblique.md) retain annular children.
-Repeated bores and further cuts of those oblique children still reject explicitly.
+[Repeated parallel cuts](nurbs-frustum-parallel-slabs.md) now retain typed slabs
+after explicit selection. Skew recuts and repeated bores still reject explicitly.
 The stock can still be selected as a separate earlier output node.
 
 Typed components dispatch point queries to the corresponding finite body,
@@ -221,7 +222,7 @@ and tolerance failures, callback rollback, output/display cache reuse, history
 bounds and Redo invalidation. Demo checks compare complete actual component
 reports and reject display work beyond the aggregate budget before committing.
 Oblique tests additionally compare direct child geometry, selected Arc identity,
-plane-edit prefix reuse, exact child export and unsupported recut rollback.
+plane-edit prefix reuse, exact child export and unsupported skew-recut rollback.
 Near-uniform taper may refuse only moments while preserving the accepted shape.
 The workflow reuses this repository's original kernel and transaction design;
 no dependencies or OCCT source were added. Code is MIT OR Apache-2.0.

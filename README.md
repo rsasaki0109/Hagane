@@ -38,7 +38,9 @@ child centroids and inertia with explicit conditioning errors.
 hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](docs/nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual restricted-face UVs. Line/ray queries
-also preserve original parameters on these children. Further cuts, repeated bores
+also preserve original parameters on these children.
+[Repeated parallel cuts](docs/nurbs-frustum-parallel-slabs.md) retain actual
+slab boundaries and holes. Skew repeated cuts and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
@@ -53,7 +55,7 @@ general bored-frustum import and general curved Booleans remain unsupported.
 [Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
 world-plane cuts to actual typed child selection, incremental rebuilding,
 Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;
-further cuts of oblique children remain explicit errors. Rust components now
+skew further cuts of oblique children remain explicit errors. Rust components now
 use canonical, oblique, bored and bored-oblique variants; existing JSON documents remain supported.
 
 [Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
@@ -67,7 +69,7 @@ conforming bounded display and per-child STEP export. The initial domain keeps
 the complete cut strictly between the original caps.
 [Analytic child mass properties](docs/nurbs-frustum-oblique-mass.md) provide
 checked world centroids and centroidal inertia; unresolved metrics fail explicitly
-while geometry remains available. Further cuts remain unsupported.
+while geometry remains available. Skew further cuts remain unsupported.
 
 [Closed oblique frustum sections](docs/nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.

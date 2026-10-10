@@ -150,7 +150,7 @@ impl NurbsFrustumSolid {
         })
     }
 }
-fn cap(
+pub(crate) fn cap(
     source: &NurbsFrustumSolid,
     section: &NurbsFrustumPlaneSection,
     policy: GeometryTolerance,
@@ -311,7 +311,7 @@ fn build(
         shell: Shell { faces },
     })
 }
-fn lower_volume(
+pub(crate) fn lower_volume(
     source: &NurbsFrustumSolid,
     plane: &Surface,
     policy: GeometryTolerance,

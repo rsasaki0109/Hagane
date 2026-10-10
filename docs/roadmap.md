@@ -19,7 +19,9 @@ child centroids and inertia with explicit conditioning errors.
 hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual restricted-face UVs. Line/ray queries
-also preserve original parameters on these children. Further cuts, repeated bores
+also preserve original parameters on these children.
+[Repeated parallel cuts](nurbs-frustum-parallel-slabs.md) retain actual
+slab boundaries and holes. Skew repeated cuts and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
@@ -47,7 +49,7 @@ rational B-rep children with new planar cut caps, analytic volumes, conforming
 bounded display and per-child STEP export. The complete cut stays strictly
 between the original caps. [Analytic child mass properties](nurbs-frustum-oblique-mass.md)
 provide checked world centroids and centroidal inertia, with explicit conditioning
-failures. Further cuts and general NURBS Booleans remain unsupported. The estimate remains 15–25%.
+failures. Skew further cuts and general NURBS Booleans remain unsupported. The estimate remains 15–25%.
 
 [Closed oblique frustum sections](nurbs-frustum-plane-section.md) construct
 actual quadratic rational edges and cubic same-parameter source-face pcurves.

@@ -423,3 +423,10 @@ mod nurbs_frustum_bored_oblique_mass;
 mod nurbs_frustum_bored_oblique_classification;
 
 mod nurbs_frustum_bored_oblique_intersection;
+
+mod nurbs_frustum_slab;
+pub use nurbs_frustum_slab::*;
+mod nurbs_frustum_bored_slab;
+pub use nurbs_frustum_bored_slab::*;
+mod nurbs_frustum_slab_demo;
+mod nurbs_frustum_slab_display;

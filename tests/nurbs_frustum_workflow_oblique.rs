@@ -153,20 +153,23 @@ fn invalid_oblique_followups_ambiguous_inputs_and_unused_bad_nodes_preserve_acce
         id: "recut".into(),
         input: "chosen".into(),
         origin: [0., 0., 8.],
-        normal: [0.1, 0., 1.],
+        normal: [0.2, 0., 1.],
     };
     let repartition = NurbsFrustumWorkflowOperation::Partition {
         id: "recut".into(),
         input: "chosen".into(),
         cuts: vec![1.],
     };
-    for operation in [recut, repartition] {
+    for (operation, expected_code) in [
+        (recut, "geometry_rejected"),
+        (repartition, "canonical_required"),
+    ] {
         let mut bad = selected.clone();
         bad.operations.push(operation);
         bad.output = "recut".into();
         let error = session.rebuild(&bad).unwrap_err();
         assert_eq!(error.operation_id.as_deref(), Some("recut"));
-        assert_eq!(error.code, "canonical_required");
+        assert_eq!(error.code, expected_code);
         assert!(Arc::ptr_eq(&accepted, session.accepted_shape().unwrap()));
         assert!(Arc::ptr_eq(&prefix, session.prefix_snapshot(0).unwrap()));
         assert_eq!(history, (session.undo_count(), session.redo_count()));

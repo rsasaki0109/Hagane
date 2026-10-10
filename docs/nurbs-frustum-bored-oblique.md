@@ -50,7 +50,7 @@ checked availability. Unresolved metrics preserve geometry and export.
 [Mesh-free point classification](nurbs-frustum-bored-oblique-classify.md) now
 uses finite annular witnesses. [Finite segment queries](nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual face UVs. [Line/ray queries](nurbs-frustum-retained-line.md) preserve original parameters.
-Geometry, volume, bounded display and exact STEP export remain usable. Repeated cuts, general curved Booleans and generic
+Geometry, volume, bounded display and exact STEP export remain usable. Skew repeated cuts, general curved Booleans and generic
 bored-frustum STEP import are also unsupported.
 
 Display approximates all eight actual rational walls with one topology-keyed
@@ -64,10 +64,14 @@ The workflow `plane_split` node now accepts one explicitly selected canonical
 or bored component. [This example](nurbs-frustum-workflow-bored-oblique-example.json)
 connects stock → through bore → two slanted annular parts. The browser preset
 exposes the hole radius and world plane, retains unchanged graph prefixes and
-supports Undo/Redo and per-child STEP export. Further cuts of the resulting
+supports Undo/Redo and per-child STEP export. Skew further cuts of the resulting
 bored-oblique components fail explicitly.
 
 Original code is MIT OR Apache-2.0. This composes Hagane's independently
 implemented rational plane sections and finite ruled restrictions, together
 with affine rational-curve projection and positive control-net bounds. No OCCT
 source or new dependency is used.
+
+[Repeated exact-basis parallel cuts](nurbs-frustum-parallel-slabs.md) now
+produce separate typed slab children. Skew recuts remain unsupported; slab
+metrics and queries have separate explicit unsupported status.

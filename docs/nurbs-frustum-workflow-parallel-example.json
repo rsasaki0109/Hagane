@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "document_type": "nurbs_frustum_workflow",
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 1e-12
+  },
+  "display_chord_tolerance": 0.1,
+  "output": "parallel_cut",
+  "operations": [
+    {
+      "kind": "frustum",
+      "id": "stock",
+      "radii": [
+        16,
+        8
+      ],
+      "height": 24,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    {
+      "kind": "coaxial_bore",
+      "id": "hole",
+      "input": "stock",
+      "radius": 4
+    },
+    {
+      "kind": "plane_split",
+      "id": "cut",
+      "input": "hole",
+      "origin": [
+        0,
+        0,
+        12
+      ],
+      "normal": [
+        0.2,
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "select",
+      "id": "selected_lower",
+      "input": "cut",
+      "component": 0
+    },
+    {
+      "kind": "plane_split",
+      "id": "parallel_cut",
+      "input": "selected_lower",
+      "origin": [
+        0,
+        0,
+        6
+      ],
+      "normal": [
+        0.2,
+        0,
+        1
+      ]
+    }
+  ]
+}
