@@ -52,11 +52,10 @@ fn unsupported_suffix_and_invalid_unused_radius_leave_history_unchanged() {
             input: "hole".into(),
             radius: 2.,
         },
-        NurbsFrustumWorkflowOperation::PlaneSplit {
+        NurbsFrustumWorkflowOperation::CoaxialBore {
             id: "bad".into(),
             input: "hole".into(),
-            origin: [0., 0., 12.],
-            normal: [0., 0., 1.],
+            radius: 3.,
         },
     ] {
         let mut bad = d.clone();

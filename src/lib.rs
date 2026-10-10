@@ -406,3 +406,10 @@ pub use nurbs_frustum_retained_line::*;
 
 mod nurbs_frustum_bore_partition;
 pub use nurbs_frustum_bore_partition::*;
+
+mod nurbs_frustum_bored_oblique;
+pub use nurbs_frustum_bored_oblique::*;
+
+mod nurbs_frustum_bored_oblique_display;
+
+mod nurbs_frustum_bored_oblique_demo;

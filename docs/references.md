@@ -1308,3 +1308,9 @@ Bored-frustum axial partitions compose checked canonical restrictions with
 actual coaxial cylinder children. Equal positive rational bases provide
 whole-function correspondence bounds from control-point differences, including
 constant-radius interpolation rounding. No external source or dependency is added.
+
+Bored oblique splitting composes existing independently checked outer/cylinder
+plane sections. Affine plane projection retains each positive rational curve
+basis, making full control residuals a whole-rim bound. Display maps rational
+generator parameters and bounds annular cap strips using the actual inner rim.
+No external source or dependency is added.

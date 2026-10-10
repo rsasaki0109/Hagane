@@ -37,7 +37,7 @@ outputs and forward references are rejected.
 | `posed_frustum` | One actual frustum from positive radii/height, origin, a nonzero finite `rotation_axis` and `angle` in [-π, π] radians. Uses checked rigid rotation; no scale, shear or reflection. |
 | `step_stock` | One actual body from the checked [cardinal STEP importer](nurbs-frustum-cardinal-step-import.md), retaining rational geometry and UV boundaries. |
 | `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one canonical or bored component. |
-| `plane_split` | Two actual closed oblique children from world `origin` and `normal`. Requires one canonical component; the complete cut must stay strictly between its original caps. Lower/upper ordering is independent of normal sign. |
+| `plane_split` | Two actual closed oblique children from world `origin` and `normal`. Requires one canonical or bored component; the complete cut must stay strictly between its original caps. Lower/upper ordering is independent of normal sign. |
 | `coaxial_bore` | One actual genus-one rational body with a coaxial through hole. Requires one canonical component and resolved positive radius/wall clearance. |
 | `select` | The explicitly indexed component of an earlier node, shared as the actual typed body. |
 
@@ -88,7 +88,10 @@ Use unified geometry/volume/display/export methods, or explicitly inspect
 `canonical()` / `oblique()` / `bored()` for type-specific operations. This is a source API
 change: canonical-only callers must unwrap the canonical variant. An oblique
 child is never replaced by its source frustum or silently returned as empty.
-Existing valid JSON documents and canonical report fields remain supported.
+Match `BoredOblique` for the new annular slanted child type. Its mass and
+mesh-free queries return explicit unsupported errors while geometry, display
+and export remain available. Existing valid JSON documents and canonical
+report fields remain supported.
 
 Oblique components report actual `mass_properties` with checked availability.
 A metric-only `Unsupported` result leaves geometry, volume, mesh and STEP usable;
@@ -102,11 +105,14 @@ stock to an actual cylindrical difference with radius 4 mm. Radius edits reuse
 the stock prefix and rebuild the real annular boundary. Undo/Redo and explicit
 selection retain the actual bored body; each accepted component exports its own
 STEP. [Axial partitions](nurbs-frustum-bore-partition.md) retain the actual hole
-in every child; Select permits further local axial partitions. Plane cuts and
-repeated bores on this initial bored type still reject explicitly. The stock can still be selected as a separate earlier output node.
+in every child; Select permits further local axial partitions.
+[Oblique plane cuts](nurbs-frustum-bored-oblique.md) retain annular children.
+Repeated bores and further cuts of those oblique children still reject explicitly.
+The stock can still be selected as a separate earlier output node.
 
 Typed components dispatch point queries to the corresponding finite body,
-including the bored solid's actual inner wall and annular cap distances.
+including the canonical bored solid's actual inner wall and annular cap distances.
+Queries of the new bored-oblique type remain explicitly unsupported.
 The source's filled cap disks are not substituted for annular boundaries.
 
 ## Read-only point queries
@@ -188,7 +194,9 @@ controls. The oblique preset uses the actual `plane_split` node and adds world
 plane origin/normal controls; its two components are the actual closed children. These preserve node IDs and
 the exact stock frame. The through-bore preset adds hole-radius controls for the
 actual `coaxial_bore` node. The bore-partition preset connects this hole to
-four actual annular parts and exposes cut-height controls. Controls irrelevant to the current operation stay hidden. Other histories,
+four actual annular parts and exposes cut-height controls. The bored-oblique
+preset exposes both the hole radius and the world plane for two slanted annular
+children. Controls irrelevant to the current operation stay hidden. Other histories,
 including STEP stocks and additional nodes, use the JSON editor; simplified
 controls are disabled. Choosing a displayed component does not change the graph.
 The explicit Select button appends a real operation. Setting another output

@@ -75,7 +75,7 @@ fn terminal_body_static_unused_errors_and_display_failure_are_atomic() {
     let mut candidates = Vec::new();
     for op in [
         json!({"kind":"coaxial_bore","id":"later","input":"hole","radius":2.}),
-        json!({"kind":"plane_split","id":"later","input":"hole","origin":[12.,-3.,17.],"normal":[0.,0.,1.]}),
+        json!({"kind":"coaxial_bore","id":"later","input":"hole","radius":3.}),
     ] {
         let mut v = value();
         v["operations"].as_array_mut().unwrap().push(op);

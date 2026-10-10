@@ -30,7 +30,9 @@ now clip against the actual cut cap and map restricted-wall UVs.
 [Line/ray queries](docs/nurbs-frustum-retained-line.md) preserve original nonunit
 parameters and all retained material intervals. [Axial bore partitions](docs/nurbs-frustum-bore-partition.md)
 retain the hole in every child and permit further selected-child partitions.
-Oblique bore cuts, repeated bores and bored-frustum STEP import remain unsupported.
+[Oblique bore cuts](docs/nurbs-frustum-bored-oblique.md) now retain annular
+children through a complete interior plane section. Further cuts, repeated bores
+and bored-frustum STEP import remain unsupported.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
@@ -43,7 +45,7 @@ bored-frustum import and general curved Booleans remain unsupported.
 world-plane cuts to actual typed child selection, incremental rebuilding,
 Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;
 further cuts of oblique children remain explicit errors. Rust components now
-use a canonical/oblique/bored enum; existing JSON documents remain supported.
+use canonical, oblique, bored and bored-oblique variants; existing JSON documents remain supported.
 
 [Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
 classify the retained finite solid with checked source and cut-cap witnesses.

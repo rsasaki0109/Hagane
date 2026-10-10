@@ -34,8 +34,9 @@ canonical or bored component. [This example](nurbs-frustum-workflow-bore-partiti
 connects stock → coaxial bore → four axial parts. Select a part before further
 partitioning its own local height. Edits retain unchanged graph prefixes and
 Undo/Redo; all displayed outputs are the actual annular children with their own
-STEP exports. Multipart recuts without Select, oblique partitions, repeated
-bores and general frustum Booleans remain explicit unsupported operations.
+STEP exports. [Complete interior plane cuts](nurbs-frustum-bored-oblique.md)
+also retain the hole. Multipart recuts without Select, repeated cuts of oblique
+children, repeated bores and general frustum Booleans remain unsupported.
 
 Original code is MIT OR Apache-2.0. This composes Hagane's independently
 implemented canonical restriction and coaxial cylinder construction; no OCCT

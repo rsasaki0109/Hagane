@@ -81,6 +81,13 @@ fn body_report(
                     document.display_chord_tolerance,
                 )?
             }
+            NurbsFrustumWorkflowComponent::BoredOblique(body) => {
+                crate::nurbs_frustum_bored_oblique_demo::serialize_bored_oblique_frustum(
+                    body,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
         };
         let count = data["mesh"]["triangles"]
             .as_array()
@@ -100,6 +107,7 @@ fn body_report(
             NurbsFrustumWorkflowComponent::Canonical(canonical) => canonical.frame(),
             NurbsFrustumWorkflowComponent::Oblique(oblique) => oblique.source().frame(),
             NurbsFrustumWorkflowComponent::Bored(bored) => bored.source().frame(),
+            NurbsFrustumWorkflowComponent::BoredOblique(body) => body.source().source().frame(),
         };
         let xyz = |v: Vec3| [v.x, v.y, v.z];
         data["placement"] = json!({"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)});
@@ -113,6 +121,10 @@ fn body_report(
             }
             NurbsFrustumWorkflowComponent::Oblique(_) => {
                 data["component_kind"] = json!("oblique_frustum");
+                data["placement_reference"] = json!("source frame");
+            }
+            NurbsFrustumWorkflowComponent::BoredOblique(_) => {
+                data["component_kind"] = json!("bored_oblique_frustum");
                 data["placement_reference"] = json!("source frame");
             }
         }
@@ -137,6 +149,12 @@ fn body_report(
         ));
     }
     let scope = if shape
+        .components()
+        .iter()
+        .any(|body| matches!(body, NurbsFrustumWorkflowComponent::BoredOblique(_)))
+    {
+        "versioned typed rational frustum graph; actual closed bored oblique children; mass and point/segment/line/ray queries unsupported; separate actual STEP exports"
+    } else if shape
         .components()
         .iter()
         .any(|body| matches!(body, NurbsFrustumWorkflowComponent::Bored(_)))
@@ -227,6 +245,9 @@ fn segment_report(
                     result.material_interval.into_iter().collect::<Vec<_>>(),
                 ))
             }
+            NurbsFrustumWorkflowComponent::BoredOblique(_) => Err(Error::Unsupported(
+                "bored oblique frustum finite and infinite queries are not implemented",
+            )),
         }
     })();
     let (hits, intervals) = result.map_err(|error| {
@@ -331,6 +352,9 @@ fn line_report(
                 };
                 Ok((result.hits, result.material_intervals))
             }
+            NurbsFrustumWorkflowComponent::BoredOblique(_) => Err(Error::Unsupported(
+                "bored oblique frustum finite and infinite queries are not implemented",
+            )),
         }
     })();
     let (hits, intervals) = result.map_err(|error| {
