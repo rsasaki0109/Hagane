@@ -77,8 +77,20 @@ cap foot supplies a valid witness; overlap alone is not a refusal. Conflicting
 bands are unresolved only when no admitted finite-face witness resolves them.
 No nearest-point certificate is fabricated.
 Workflow point probes use the actual accepted component and preserve its mesh,
-metrics, STEP, cache and history. Segment, line and ray queries on slabs remain
-explicitly unavailable.
+metrics, STEP, cache and history. Finite segments now use `intersect_segment(start, end, policy)` on the actual
+slab. Canonical slabs return zero or one material interval; bored slabs retain
+zero, one or two intervals around the opening. Parameters stay on the original
+finite world segment. Original-source intervals are clipped by both retained cut
+halfspaces, and only final material endpoints produce hits. Each hit carries
+actual retained face IDs and UVs; rational wall V is recovered from its actual
+endpoint weights. Surface evaluation and outward-normal crossing checks verify
+the reported witnesses independently of display triangles.
+
+Boundary-band endpoints, tangencies, shared-rim contacts, unresolved cut-plane
+paths, tiny intervals and inadequate world precision return explicit errors.
+Workflow segment probes are read-only and retain accepted mesh, mass, STEP,
+cache and history on success or refusal. Infinite line and ray queries on slabs
+remain explicitly unavailable.
 Skew repeated cuts, general curved Booleans, continued boring and slab STEP
 re-import remain unsupported. Existing canonical, bored and single-cut query
 APIs keep their previous domains.
@@ -86,3 +98,9 @@ APIs keep their previous domains.
 Original code is MIT OR Apache-2.0. This uses independently implemented rational
 plane sections, positive homogeneous ruled patches, shared oriented topology and
 cumulative section integration. No OCCT source or new dependency is used.
+
+Finite segment endpoints must also be separated from the original source's
+boundary band. The inherited source intersection conservatively refuses an
+endpoint on an original cap even when that cap was removed from the slab.
+Move such endpoints strictly beyond the source, or into resolved source
+interior, before querying; clipping does not bypass this source guard.

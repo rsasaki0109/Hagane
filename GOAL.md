@@ -1777,3 +1777,28 @@ was corrected before the final actual screenshot capture.
 The final styled production-background capture passed its geometry, metric and
 point-query assertions; the inspected image shows `[6,0,6]` classified Inside
 for the actual middle annular slab. The temporary capture helper was removed.
+
+## Finite segments through actual retained slabs
+
+Plain slab children now expose zero or one material interval, and bored slabs
+zero, one or two, using the original segment parameter. Checked original-source
+intervals are clipped separately against both actual cut halfspaces. Only final
+material endpoints become boundary hits, preventing removed earlier cut roots
+or void crossings from creating phantom cap hits. Actual planar UV and ruled
+wall parameters use both retained rational rim rows; face evaluation, oriented
+crossing, midpoint material and endpoint correspondence are verified. Contact,
+coincident endpoints, unresolved slivers and insufficient physical precision
+remain explicit errors. Line/ray slab queries remain unsupported.
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: final fmt, strict all-target Clippy, nine relevant native suites
+(22 tests) and WASM build passed. Independent cap clipping, void separation,
+actual UV/oriented-normal, reversed/posed/scaled and no-phantom-hit checks passed.
+Combined new segment and all prior point/mass/parallel/ordinary/bored workflows
+passed with native reports and accepted STEP/cache/history parity. The first
+new WASM fixture placed endpoints on original source caps and was correctly
+refused; corrected outside endpoints passed, and original-cap refusal remains
+an explicit test and documented limit. The entire browser suite passed on its
+first run; all exact PNG/raw-frame rollback guards remained. The inspected
+actual middle-slab screenshot shows four hits and material intervals
+`[0.25,0.4]` and `[0.6,0.833333…]`, alongside its Inside point and mass properties.

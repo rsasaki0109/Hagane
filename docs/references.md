@@ -1365,3 +1365,11 @@ refusal: an admitted finite cap foot remains a valid boundary witness. Conflicti
 bands without a resolved finite-face witness and near-rim ambiguity return
 explicit errors rather than an invented exact corner distance.
 The implementation is independent, with no new source, dependency or license.
+
+Finite slab segments clip checked original-source material intervals against both
+retained cut halfspaces. Only final material endpoints become hits; original wall
+parameters are remapped through actual positive rational row weights. Actual
+surface evaluation, finite boundary classification and signed outward-normal
+crossings check each hit. Strict root-order, separation and arithmetic reserves
+reject unresolved contacts; no display mesh supplies the intersection. No new
+external source, dependency or license is introduced.

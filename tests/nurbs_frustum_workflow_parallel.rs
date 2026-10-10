@@ -46,8 +46,20 @@ fn retained_parallel_children_have_analytic_volumes_and_atomic_guards() {
         );
         assert_eq!(queried["ok"], true, "{queried}");
         assert_eq!(queried["query"]["location"], "inside");
+        let segment = command(
+            &mut session,
+            json!({"command":"segment","component":1,"start":[5.,0.,-5.],"end":[7.,0.,30.]}),
+        );
+        assert_eq!(segment["ok"], true, "{segment}");
+        assert_eq!(segment["segment"]["hits"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            segment["segment"]["material_intervals"]
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
         for query in [
-            json!({"command":"segment","component":0,"start":[-20.,0.,4.],"end":[20.,0.,4.]}),
             json!({"command":"line","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),
             json!({"command":"ray","component":0,"origin":[-20.,0.,4.],"direction":[1.,0.,0.]}),
         ] {

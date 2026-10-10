@@ -178,7 +178,7 @@ fn body_report(
             NurbsFrustumWorkflowComponent::Slab(_) | NurbsFrustumWorkflowComponent::BoredSlab(_)
         )
     }) {
-        "versioned typed rational frustum graph; actual closed exact-basis parallel slabs and separate STEP exports; actual slab point queries; slab segment/line/ray queries unsupported"
+        "versioned typed rational frustum graph; actual closed exact-basis parallel slabs and separate STEP exports; actual slab point and finite segment queries; slab line/ray queries unsupported"
     } else if shape
         .components()
         .iter()
@@ -280,10 +280,17 @@ fn segment_report(
                 let result = v.intersect_segment(point(start), point(end), policy)?;
                 Ok((result.hits, result.material_intervals))
             }
-            NurbsFrustumWorkflowComponent::Slab(_)
-            | NurbsFrustumWorkflowComponent::BoredSlab(_) => Err(Error::Unsupported(
-                "parallel frustum slab intersection queries are not implemented",
-            )),
+            NurbsFrustumWorkflowComponent::Slab(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((
+                    result.hits,
+                    result.material_interval.into_iter().collect::<Vec<_>>(),
+                ))
+            }
+            NurbsFrustumWorkflowComponent::BoredSlab(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((result.hits, result.material_intervals))
+            }
         }
     })();
     let (hits, intervals) = result.map_err(|error| {

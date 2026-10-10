@@ -42,7 +42,8 @@ also preserve original parameters on these children.
 [Repeated parallel cuts](docs/nurbs-frustum-parallel-slabs.md) retain actual
 slab boundaries and holes, with checked analytic centroids and inertia when
 conditioning permits. Conservative finite-face point queries preserve the hole.
-Slab segment/line/ray queries, skew repeated cuts and repeated bores
+Finite slab segments retain actual face UVs and up to two material intervals.
+Slab line/ray queries, skew repeated cuts and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
