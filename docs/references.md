@@ -1267,3 +1267,13 @@ children described above. The graph stores typed canonical/oblique bodies and
 shares exact immutable prefixes; it does not derive geometry from display meshes
 or replace unsupported operations with source bodies. No dependency or OCCT
 source is added. See [workflow contracts and Rust API migration](nurbs-frustum-workflow.md).
+
+
+[Coaxial rational frustum bores](nurbs-frustum-bore.md) independently assemble
+source and cylindrical-tool rational boundary patches with annular cap wires.
+Annular disk moments follow elementary polar integration; positive Bernstein
+coefficients integrate the axial polynomial area/fourth moments. Products are
+factored using physical radius gaps before scaling to avoid thin-wall
+cancellation. Shared rim/generator sampling and existing rational Bernstein
+cell bounds provide display admission. No OCCT source or new dependencies are
+used; original code is MIT OR Apache-2.0.

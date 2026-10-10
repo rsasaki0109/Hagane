@@ -19,6 +19,12 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
+cylindrical tool and retain a closed rational genus-one B-rep, inward cavity
+walls and annular cap wires. Positive analytic volume/moments, bounded display
+and exact STEP export work without mesh CSG. Off-axis and blind frustum bores,
+bored-frustum import and general curved Booleans remain unsupported.
+
 [Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
 world-plane cuts to actual typed child selection, incremental rebuilding,
 Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;

@@ -16,7 +16,7 @@ fn split(h: &[[f64; 4]; 3], t: f64) -> ([[f64; 4]; 3], [[f64; 4]; 3]) {
     ([h[0], a, c], [c, b, h[2]])
 }
 /// Homogeneous Bernstein residual to the endpoint chord, not a circle recipe.
-fn rim_bound(curve: &NurbsCurve, a: f64, b: f64, arithmetic: f64) -> Result<f64> {
+pub(crate) fn rim_bound(curve: &NurbsCurve, a: f64, b: f64, arithmetic: f64) -> Result<f64> {
     if curve.degree() != 2 || curve.control_points().len() != 3 || curve.domain() != [0., 1.] {
         return Err(failure());
     }
@@ -58,7 +58,13 @@ fn rim_bound(curve: &NurbsCurve, a: f64, b: f64, arithmetic: f64) -> Result<f64>
         .max(norm(curve.evaluate(b)? - origin - corners[1]));
     Ok(bound + mismatch + arithmetic)
 }
-fn emit(mesh: &mut Mesh, p: [Point3; 3], n: [Vec3; 3], face: usize, orientation: i8) -> Result<()> {
+pub(crate) fn emit(
+    mesh: &mut Mesh,
+    p: [Point3; 3],
+    n: [Vec3; 3],
+    face: usize,
+    orientation: i8,
+) -> Result<()> {
     let mut p = p;
     let mut n = n;
     if orientation < 0 {

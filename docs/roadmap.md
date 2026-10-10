@@ -1,5 +1,11 @@
 # Roadmap
 
+[Coaxial frustum through bores](nurbs-frustum-bore.md) add a supported curved
+solid difference: exact rational outer/cavity walls, annular cap boundaries,
+positive analytic moments, conforming bounded display and actual STEP export.
+Strict radial/wall admission rejects contacts. Off-axis/blind/repeated bores
+and general curved Booleans remain future work; the estimate remains 15–25%.
+
 [Editable oblique frustum workflows](nurbs-frustum-workflow.md) retain actual
 closed curved children through plane edits, explicit selection, cache reuse,
 Undo/Redo and STEP export. Typed components prevent substituting the source body.
