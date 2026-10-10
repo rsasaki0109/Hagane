@@ -101,3 +101,8 @@ transaction rollback, and Undo/Redo. Native/WASM and browser tests compare actua
 component geometry and STEP, exercise editing, save/load and rejected drafts,
 and preserve camera/export when failure occurs. No superiority or rebuild-speed
 claim is made from these tests.
+
+Command transport rejects unknown fields for rebuild, Undo, Redo and Reset.
+Malformed commands retain actual shape/cache identities and history; valid
+commands recover normally. Stateful native and WASM regressions cover this
+behavior.

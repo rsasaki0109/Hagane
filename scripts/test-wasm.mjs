@@ -1632,3 +1632,23 @@ assert.equal(fwRecord({command:'undo'}).ok,true);assert.equal(fwRecord({command:
 const fwNative=JSON.parse(execFileSync('cargo',['run','--quiet','--locked','--example','nurbs_frustum_workflow','--',JSON.stringify(fwCommands)],{encoding:'utf8',maxBuffer:128*1024*1024,cwd:new URL('../',import.meta.url)}));assert.equal(fwNative.length,fwReports.length);fwReports.forEach((report,i)=>{compareBoundedImport({...report,component_steps:[]},{...fwNative[i],component_steps:[]});if(report.component_steps)report.component_steps.forEach((step,j)=>compareBoundedStep(step,fwNative[i].component_steps[j]));fwCheck(report);});
 for(const invalid of [256,255]){k.hagane_nurbs_frustum_workflow_begin();assert.equal(k.hagane_nurbs_frustum_workflow_push_byte(invalid),invalid===256?1:0);assert.equal(k.hagane_nurbs_frustum_workflow_finish(),1);}k.hagane_nurbs_frustum_workflow_begin();for(let i=0;i<2*1024*1024;i++)assert.equal(k.hagane_nurbs_frustum_workflow_push_byte(32),0);assert.equal(k.hagane_nurbs_frustum_workflow_push_byte(32),1);assert.equal(k.hagane_nurbs_frustum_workflow_finish(),1);assert.deepEqual(frustumWorkflow({command:'rebuild',document:fwBranch}).result.cache,{evaluated_nodes:0,reused_nodes:3});k.hagane_nurbs_frustum_workflow_begin();assert.equal(k.hagane_nurbs_frustum_workflow_push_byte(256),1);assert.deepEqual(frustumWorkflow({command:'rebuild',document:fwBranch}).result.cache,{evaluated_nodes:0,reused_nodes:3});assert.equal(frustumWorkflow({command:'reset'}).result.ok,true);
 console.log('Frustum workflow: actual cardinal components, independent mass/matrix inertia, live prefix reuse, further partitions, STEP stocks/native reports, aggregate display refusal, atomic history and bounded UTF8 transport recovery passed.');
+
+// Append after the existing PrismWorkflow tests. Uses their existing helpers.
+assert.equal(prismWorkflow({command:'reset'}).result.ok,true);
+const prismStrictFirst=prismWorkflow({command:'rebuild',document:prismWorkflowBase}).result;
+const prismStrictEdit=roundedCopy(prismWorkflowBase);prismStrictEdit.display_chord_tolerance*=2;
+const prismStrictSecond=prismWorkflow({command:'rebuild',document:prismStrictEdit}).result;
+function rejectPrismCommandExtras(command,accepted){
+ const rejected=prismWorkflow(command);assert.equal(rejected.status,0);assert.equal(rejected.result.ok,false);assert.equal(rejected.result.diagnostic.code,'invalid_request');assert.deepEqual(rejected.result.accepted_document,accepted.document);
+ const repeat=prismWorkflow({command:'rebuild',document:accepted.document}).result;assert.equal(repeat.ok,true);assert.deepEqual(repeat.cache,{evaluated_nodes:0,reused_nodes:accepted.document.operations.length});assert.deepEqual(repeat.components,accepted.components);assert.deepEqual(repeat.component_steps,accepted.component_steps);assert.deepEqual(repeat.history,accepted.history);
+}
+rejectPrismCommandExtras({command:'undo',unexpected:true},prismStrictSecond);
+const prismStrictUndo=prismWorkflow({command:'undo'}).result;assert.equal(prismStrictUndo.ok,true);assert.deepEqual(prismStrictUndo.document,prismStrictFirst.document);assert.deepEqual(prismStrictUndo.component_steps,prismStrictFirst.component_steps);
+rejectPrismCommandExtras({command:'redo',unexpected:null},prismStrictUndo);
+const prismStrictRedo=prismWorkflow({command:'redo'}).result;assert.equal(prismStrictRedo.ok,true);assert.deepEqual(prismStrictRedo.document,prismStrictSecond.document);assert.deepEqual(prismStrictRedo.component_steps,prismStrictSecond.component_steps);
+rejectPrismCommandExtras({command:'reset',unexpected:{}},prismStrictRedo);
+rejectPrismCommandExtras({command:'rebuild',document:prismWorkflowBase,unexpected:[]},prismStrictRedo);
+assert.equal(prismWorkflow({command:'reset'}).result.reset,true);
+assert.equal(prismWorkflow({command:'rebuild',document:prismWorkflowBase}).result.ok,true);
+
+console.log('Prism workflow malformed command fields: rejection preserves actual geometry/cache/history; valid Undo/Redo/Reset recovery passed.');

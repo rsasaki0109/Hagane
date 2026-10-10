@@ -7,9 +7,9 @@ use serde_json::{json, Value};
 #[serde(tag = "command", rename_all = "snake_case", deny_unknown_fields)]
 enum Command {
     Rebuild { document: PrismWorkflowDocument },
-    Undo,
-    Redo,
-    Reset,
+    Undo {},
+    Redo {},
+    Reset {},
 }
 
 pub fn prism_workflow_example_document() -> Result<PrismWorkflowDocument> {
@@ -75,9 +75,9 @@ pub fn prism_workflow_session_command_json(
     };
     let result = match command {
         Command::Rebuild { document } => session.rebuild_with(&document, body_report),
-        Command::Undo => session.undo_with(body_report),
-        Command::Redo => session.redo_with(body_report),
-        Command::Reset => {
+        Command::Undo {} => session.undo_with(body_report),
+        Command::Redo {} => session.redo_with(body_report),
+        Command::Reset {} => {
             session.reset();
             return Ok(json!({"ok":true,"reset":true,"document":null,"components":[],"component_steps":[],"cache":{"evaluated_nodes":0,"reused_nodes":0},"history":{"can_undo":false,"can_redo":false}}).to_string());
         }
