@@ -1137,3 +1137,45 @@ const precisionNative=JSON.parse(execFileSync('cargo',['run','--quiet','--locked
 const unresolvedInput=readFileSync(new URL('../docs/step-unresolved-display.step',import.meta.url),'utf8');const unresolved=stepImport(unresolvedInput);assert.notEqual(unresolved.status,0);assert.match(unresolved.result.error,/coordinate precision/);
 const collapsedInput=unresolvedInput.replaceAll('1000000000000000.1','1000000000000000.').replaceAll(',0.125)',',0.01)');assert.notEqual(collapsedInput,unresolvedInput);const collapsed=stepImport(collapsedInput);assert.notEqual(collapsed.status,0);assert.match(collapsed.result.error,/zero-angle seam/);assert.equal(stepImport(farInput).status,0);assert.equal(incrementalWorkflow(skewDocument).rebuild.rebuilt_operations,0);
 console.log('Placement precision: far STEP full native/WASM parity, independent chord bounds, stable mesh volume, unresolved display/collapsed circle rejection and recovery passed.');
+
+// Rounded-stock histories use the actual analytic body and bounded STEP reader.
+const roundedWorkflowBase={schema_version:1,units:'mm',tolerance:{linear:1e-6,angular:1e-10,relative:1e-12},operations:[{kind:'rounded_box',id:'round',size:[80,60,24],corner_radius:8},{kind:'bore',id:'hole-a',input:'round',mode:'through',center:[-18,0],radius:4},{kind:'bore',id:'hole-b',input:'hole-a',mode:'through',center:[18,0],radius:5}]};
+const roundedCopy=x=>JSON.parse(JSON.stringify(x));
+const roundedLate=roundedCopy(roundedWorkflowBase);roundedLate.operations[2].radius=6;
+const roundedStock=roundedCopy(roundedLate);roundedStock.operations[0].corner_radius=10;
+const roundedBad=roundedCopy(roundedStock);roundedBad.operations[2].center=[-18,0];
+const roundedPrecision=roundedCopy(roundedStock);roundedPrecision.tolerance.linear=1e-8;
+const roundedShort=roundedCopy(roundedStock);roundedShort.operations.pop();
+const roundedOnly=roundedCopy(roundedStock);roundedOnly.operations.length=1;
+const roundedCornerVoid=roundedCopy(roundedStock);roundedCornerVoid.operations[2].center=[39,29];
+const roundedBlind=roundedCopy(roundedStock);roundedBlind.operations[2].mode='blind';roundedBlind.operations[2].depth=4;
+const roundedHistory=[roundedWorkflowBase,roundedWorkflowBase,roundedLate,roundedStock,roundedBad,roundedStock,roundedPrecision,roundedStock,roundedShort,roundedOnly,roundedStock,roundedCornerVoid,roundedStock,roundedBlind,roundedStock];
+const roundedCounts=[[0,3],[3,0],[2,1],[0,3],null,[3,0],null,[3,0],[2,0],[1,0],[1,2],null,[3,0],null,[3,0]];
+const roundedDir=mkdtempSync('/tmp/hagane-rounded-workflow-'),roundedFiles=[];
+try{
+ k.hagane_workflow_reset_session();
+ const reports=roundedHistory.map((doc,index)=>{
+  const file=roundedDir+'/'+index+'.json';writeFileSync(file,JSON.stringify(doc));roundedFiles.push(file);
+  const result=incrementalWorkflow(doc),counts=roundedCounts[index];
+  if(!counts){assert.equal(result.ok,false);assert.equal(result.mesh,undefined);assert.equal(result.rebuild,undefined);return result;}
+  assert.equal(result.ok,true);assert.deepEqual([result.rebuild.reused_operations,result.rebuild.rebuilt_operations],counts);
+  const fresh=workflow(doc);assert.equal(fresh.ok,true);assert.deepEqual(result.mesh,fresh.mesh);assert.deepEqual(result.document,fresh.document);
+  const stock=doc.operations[0],holes=doc.operations.slice(1),expected=stock.size[2]*(stock.size[0]*stock.size[1]-(4-Math.PI)*stock.corner_radius**2-Math.PI*holes.reduce((sum,h)=>sum+h.radius**2,0));
+  assert.ok(Math.abs(result.mesh.volume-expected)<=512*Number.EPSILON*expected);assert.ok(result.mesh.positions.every(Number.isFinite));
+  return result;
+ });
+ const native=execFileSync('cargo',['run','--quiet','--locked','--example','workflow_session','--',...roundedFiles],{encoding:'utf8',cwd:new URL('../',import.meta.url)}).trim().split('\n').map(JSON.parse);assert.equal(native.length,reports.length);reports.forEach((report,i)=>compareBoundedImport(report,native[i]));
+ for(const doc of [roundedWorkflowBase,roundedStock,roundedShort,roundedOnly]){
+  const exported=stepExport(doc);assert.equal(exported.status,0);
+  const imported=boundedStepImport(exported.result.step);assert.equal(imported.status,0);const body=imported.result.solid,holes=doc.operations.slice(1),n=holes.length;
+  checkFilletBody(body,4+4*n,.1,[16+8*n,24+12*n,10+4*n],8);
+  assert.ok(Math.abs(body.volume-workflow(doc).mesh.volume)<1e-8);
+  assert.deepEqual(body.bounds.min,[-40,-30,-12]);assert.deepEqual(body.bounds.max,[40,30,12]);
+  assert.equal(body.brep.vertices.length-body.brep.edges+body.brep.wires.reduce((sum,wires)=>sum+2-wires.length,0),2-2*n);
+  const capIds=body.brep.surfaces.map((s,i)=>s.kind==='plane'&&Math.abs(s.u[0]*s.v[1]-s.u[1]*s.v[0])>0?i:-1).filter(i=>i>=0);assert.equal(capIds.length,2);capIds.forEach(i=>assert.equal(body.brep.wires[i].length,1+n));
+  body.mesh.triangles.forEach((tri,i)=>{const face=body.mesh.face_ids[i],points=tri.map(v=>body.mesh.positions[v]);if(capIds.includes(face))for(const hole of holes)assert.ok(trianglePointDistanceXY(points,hole.center)>=hole.radius-.1-1e-10);const s=body.brep.surfaces[face];if(s.kind==='framed_cylinder')for(const hole of holes)if(Math.hypot(s.frame.origin[0]-hole.center[0],s.frame.origin[1]-hole.center[1])<1e-8)for(const v of tri){const p=body.mesh.positions[v],normal=body.mesh.normals[v];assert.ok((p[0]-hole.center[0])*normal[0]+(p[1]-hole.center[1])*normal[1]<0);}});
+  const path=roundedDir+'/export.json';writeFileSync(path,JSON.stringify(doc));if(!roundedFiles.includes(path))roundedFiles.push(path);const nativeStep=execFileSync('cargo',['run','--quiet','--locked','--example','step_export','--',path],{encoding:'utf8',cwd:new URL('../',import.meta.url)});compareBoundedStep(exported.result.step,nativeStep);
+ }
+ assert.deepEqual([incrementalWorkflow(roundedStock).rebuild.reused_operations,incrementalWorkflow(roundedStock).rebuild.rebuilt_operations],[3,0]);
+}finally{roundedFiles.forEach(file=>unlinkSync(file));rmdirSync(roundedDir);}
+console.log('Rounded workflow: actual bounded STEP geometry, analytic volumes, closed genus/pcurves/chord bounds, native session parity, suffix/stock cache invalidation and rejected-history preservation passed.');

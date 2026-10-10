@@ -51,6 +51,9 @@ circular-arc through openings; general STEP remains unsupported.
 [Normal circular prism bores](docs/arc-line-prism-bore.md) cut through rounded
 line/arc stock, returning both retained and removed analytic solids.
 Sequential disjoint openings are supported; contacting and oblique cuts reject.
+The [rounded-stock editing workflow](docs/workflow-rounded.md) now connects
+these operations to the existing document history, incremental rebuilding,
+Undo/Redo, local restoration and exact STEP downloads.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
@@ -144,7 +147,8 @@ solid. Oblique/intersecting bores, partial arcs, other curved solids, uncertifie
 nonconvex imports and assemblies remain unsupported.
 
 The [editable modeling workflow](docs/editable-workflow.md) now lets you change
-box/bore dimensions or extrude an editable polygon profile with inner openings
+box/bore dimensions, create rounded stock with disjoint normal through holes,
+or extrude an editable polygon profile with inner openings
 and an optional skew direction with disjoint Z-axis through/blind bores,
 add/select/remove multiple mixed through/blind cuts (top or bottom entry),
 including opposing holes separated by a resolved web,

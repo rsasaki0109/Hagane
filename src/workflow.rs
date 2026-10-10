@@ -39,6 +39,11 @@ pub enum WorkflowOperation {
         id: String,
         size: [f64; 3],
     },
+    RoundedBox {
+        id: String,
+        size: [f64; 3],
+        corner_radius: f64,
+    },
     Bore {
         #[serde(default, skip_serializing_if = "WorkflowBoreEntry::is_top")]
         entry: WorkflowBoreEntry,
@@ -137,6 +142,7 @@ impl WorkflowDocument {
     fn operation_id(&self, index: usize) -> &str {
         match &self.operations[index] {
             WorkflowOperation::Box { id, .. }
+            | WorkflowOperation::RoundedBox { id, .. }
             | WorkflowOperation::Extrusion { id, .. }
             | WorkflowOperation::Bore { id, .. } => id,
         }
@@ -182,6 +188,7 @@ impl WorkflowDocument {
         for op in &self.operations {
             let id = match op {
                 WorkflowOperation::Box { id, .. }
+                | WorkflowOperation::RoundedBox { id, .. }
                 | WorkflowOperation::Extrusion { id, .. }
                 | WorkflowOperation::Bore { id, .. } => id,
             };
@@ -194,8 +201,23 @@ impl WorkflowDocument {
                 ));
             }
         }
+        let rounded_radius = match &self.operations[0] {
+            WorkflowOperation::RoundedBox { corner_radius, .. } => Some(*corner_radius),
+            _ => None,
+        };
+        if rounded_radius.is_some() && self.operations.len() > 17 {
+            let mut d = diagnostic(
+                "unsupported_history",
+                None,
+                Some("operations"),
+                "Rounded-box histories support at most 16 through bores.",
+            );
+            d.category = "unsupported";
+            return Err(d);
+        }
         let (box_id, b, profile) = match &self.operations[0] {
-            WorkflowOperation::Box { id, size } => {
+            WorkflowOperation::Box { id, size }
+            | WorkflowOperation::RoundedBox { id, size, .. } => {
                 let size = Vec3::new(size[0], size[1], size[2]);
                 if !size.finite()
                     || [size.x, size.y, size.z]
@@ -211,6 +233,18 @@ impl WorkflowDocument {
                     d.suggestion =
                         Some("Enter positive, resolved width, length and height.".into());
                     return Err(d);
+                }
+                if let Some(radius) = rounded_radius {
+                    let band = policy
+                        .length_at_scale(size.x.hypot(size.y).hypot(size.z))
+                        .map_err(|e| geometry_error(e, id))?;
+                    if !radius.is_finite()
+                        || radius <= 10. * band
+                        || size.x - 2. * radius <= 10. * band
+                        || size.y - 2. * radius <= 10. * band
+                    {
+                        return Err(diagnostic("invalid_corner_radius",Some(id),Some("corner_radius"),"Corner radius must be positive and resolved, leaving resolved straight sides in both XY dimensions."));
+                    }
                 }
                 (
                     id,
@@ -321,6 +355,16 @@ impl WorkflowDocument {
                     Some("entry"),
                     "Through bores must omit entry or use top; entry only selects blind cuts.",
                 ));
+            }
+            if rounded_radius.is_some() && *mode == WorkflowBoreMode::Blind {
+                let mut d = diagnostic(
+                    "rounded_blind_bore_unsupported",
+                    Some(id),
+                    Some("mode"),
+                    "Rounded-box stock currently supports through bores only.",
+                );
+                d.category = "unsupported";
+                return Err(d);
             }
             if *mode == WorkflowBoreMode::Blind {
                 let valid_depth =
@@ -496,11 +540,15 @@ impl WorkflowDocument {
             bores,
             tools,
             tolerance: t,
+            rounded_radius,
+            policy,
         })
     }
     fn candidate_segments(&self, failed: Option<&str>) -> Vec<[[f64; 3]; 2]> {
         let height = match self.operations.first() {
-            Some(WorkflowOperation::Box { size, .. }) => size[2],
+            Some(
+                WorkflowOperation::Box { size, .. } | WorkflowOperation::RoundedBox { size, .. },
+            ) => size[2],
             Some(WorkflowOperation::Extrusion { height, .. }) => *height,
             _ => return vec![],
         };
@@ -597,6 +645,8 @@ struct WorkflowPlan {
     bores: Vec<BoxBore>,
     tools: Vec<CylinderSpec>,
     tolerance: Tolerance,
+    rounded_radius: Option<f64>,
+    policy: GeometryTolerance,
 }
 impl WorkflowPlan {
     fn apply_bore(
@@ -606,7 +656,17 @@ impl WorkflowPlan {
         bore: BoxBore,
         tool: CylinderSpec,
     ) -> Result<()> {
-        if self.entries[index] == WorkflowBoreEntry::Bottom {
+        if self.rounded_radius.is_some() {
+            *solid = bore_normal_arc_line_prism(
+                solid,
+                Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
+                bore.radius,
+                self.policy,
+            )?
+            .into_solids()
+            .0;
+            Ok(())
+        } else if self.entries[index] == WorkflowBoreEntry::Bottom {
             crate::operations::append_bottom_blind_bore(solid, self.stock, bore);
             Ok(())
         } else {
@@ -614,7 +674,15 @@ impl WorkflowPlan {
         }
     }
     fn make_stock(&self) -> Result<Solid> {
-        if let Some(profile) = &self.profile {
+        if let Some(radius) = self.rounded_radius {
+            let stock = make_box(self.stock, self.tolerance)?;
+            Ok(fillet_parallel_box_edges(
+                &stock,
+                &[8, 9, 10, 11].map(|i| (i, radius)),
+                self.policy,
+            )?
+            .into_solid())
+        } else if let Some(profile) = &self.profile {
             extrude_polygon(profile, self.direction, self.tolerance)
         } else {
             make_box(self.stock, self.tolerance)

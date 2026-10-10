@@ -502,6 +502,14 @@ pub fn export_workflow_step_mm_json(input: &str) -> Result<String> {
     let solid = doc
         .rebuild()
         .map_err(|_| Error::InvalidInput("STEP workflow geometry was rejected"))?;
-    let step = export_step_mm(&solid, Tolerance::new(doc.tolerance.linear)?)?;
+    let tolerance = Tolerance::new(doc.tolerance.linear)?;
+    let step = if matches!(
+        doc.operations.first(),
+        Some(WorkflowOperation::RoundedBox { .. })
+    ) {
+        export_step_bounded_analytic_mm(&solid, tolerance.linear)?
+    } else {
+        export_step_mm(&solid, tolerance)?
+    };
     serde_json::to_string(&serde_json::json!({"step":step,"units":"mm","schema":"AP214","faces":solid.shell.faces.len()})).map_err(|_|Error::InvalidInput("STEP export report serialization failed"))
 }

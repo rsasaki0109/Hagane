@@ -40,8 +40,9 @@ near contacts; blind floor thickness is independently checked. Blind nodes now
 select top/bottom entry with exact floor normals and depth-interval checks,
 incremental editing and validated browser restoration. Opposing blind cuts
 now accept overlapping XY footprints when their depth intervals retain a
-resolved web, with measured axial/pair diagnostics and atomic rejection. Curved profiles and arbitrary-plane extrusion frames
-remain outside the document scope. Other operation types,
+resolved web, with measured axial/pair diagnostics and atomic rejection. Arbitrary mixed curved profiles and arbitrary-plane extrusion frames
+remain outside the document scope; the new rounded-box root is a specifically
+certified exception. Other operation types,
 mesh-cache optimization and persistent topology references remain planned.
 Measure task success and rebuild behavior before claiming an advantage over
 established CAD tools. Further isolated presets are secondary to this workflow.
@@ -1303,3 +1304,13 @@ The native/WASM demo composes actual box fillets with the bore and exports
 both results. General curved Booleans, oblique axes and contacting cuts remain
 future work. The estimate remains **15–25%**, toward **80%**.
 See [normal prism bores](arc-line-prism-bore.md).
+
+## Editable rounded stock and normal bores
+
+The existing operation document now includes actual rounded-box stock followed
+by up to 16 disjoint normal through bores. Corner-radius and bore edits use
+unchanged exact B-rep prefixes, atomic rejection, Undo/Redo, saved documents
+and bounded analytic STEP export in the existing editor. Blind rounded-stock
+cuts and general curved Booleans remain unsupported. See [rounded workflow](workflow-rounded.md).
+This integrates existing verified analytic operations; the long-term estimate
+remains 15–25% toward the standing 80% target.

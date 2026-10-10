@@ -1393,3 +1393,13 @@ The native/WASM demo composes actual box fillets with the bore and exports
 both results. General curved Booleans, oblique axes and contacting cuts remain
 future work. The estimate remains **15–25%**, toward **80%**.
 See [normal prism bores](docs/arc-line-prism-bore.md).
+
+## Editable rounded stock and normal bores
+
+The existing operation document now includes actual rounded-box stock followed
+by up to 16 disjoint normal through bores. Corner-radius and bore edits use
+unchanged exact B-rep prefixes, atomic rejection, Undo/Redo, saved documents
+and bounded analytic STEP export in the existing editor. Blind rounded-stock
+cuts and general curved Booleans remain unsupported. See [rounded workflow](docs/workflow-rounded.md).
+This integrates existing verified analytic operations; the long-term estimate
+remains 15–25% toward the standing 80% target.

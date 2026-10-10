@@ -994,3 +994,9 @@ certificate. Four exact circular quarters describe the opening; cylinder
 volume is the classical `pi * r² * h`. Retained curve correspondence and separate
 removed-volume/conservation budgets guard reconstruction. No mesh Boolean,
 OCCT source or new dependency is introduced; existing licenses remain unchanged.
+
+The rounded-stock workflow composes the already documented analytic parallel
+edge fillet and normal arc-line prism bore operations. Its volume check uses
+rounded-rectangle area `WD − (4 − π)r²` and cylinder volume `πR²H`; no new
+dependency or OCCT source is introduced. Operation documents and prefix caches
+are original Rust/JavaScript code under MIT OR Apache-2.0.

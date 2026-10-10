@@ -42,18 +42,21 @@ The native library exposes `WorkflowDocument::rebuild()` for the exact solid
 and `evaluate_workflow_json(text)` for a serialized report. The default
 [operation document](workflow-example.json) is independently usable by both
 native and WASM. Angular/relative/linear tolerance policy is stored and checked;
-the supported axis-aligned primitives currently use its linear component.
+the existing box/polygon paths use its linear component. Rounded-box fillets
+and normal bores additionally enforce the stored angular/relative policy.
 
 ## Version 1 domain
 
 - Explicit `schema_version: 1` and `units: "mm"` are required. Other versions
   or units are rejected; values are not silently converted.
-- History has one centered axis-aligned `box` or world-XY `extrusion` operation
-  followed by at most
-  256 `bore` nodes. Each input references the immediately preceding operation
+- History has one centered axis-aligned `box`, `rounded_box`, or world-XY
+  `extrusion` operation. Box/polygon histories support at most 256 `bore` nodes;
+  rounded-box histories support at most 16 disjoint through bores. Each input references the immediately preceding operation
   ID (the stock operation for the first bore); IDs are unique and
   contain 1–64 ASCII letters, digits, hyphens or underscores.
-- Box size is `[width, length, height]`. Bore center is world XY in mm.
+- Box size is `[width, length, height]`. Rounded boxes additionally require
+  a positive resolved `corner_radius`; blind rounded-stock cuts reject.
+  Bore center is world XY in mm.
   `mode: "through"` has no depth (null is treated as absent), while `"blind"`
   requires finite positive depth entering the top/+Z cap. Through tools are
   generated with strict cap overhang, not inferred from blind depth.
@@ -570,3 +573,10 @@ closed shared topology/meshes, tiny/large dimensions, cut ordering, contact,
 near contact, overlap and unchanged-prefix recovery. Native/WASM full reports
 and meshes agree; browser checks edit opposing depths, reject loss of the web,
 recover, undo/redo and restore downloaded/local documents.
+
+## Rounded stock extension
+
+A `rounded_box` root now connects actual four-edge fillets and disjoint normal
+through bores to this same session, editor and saved format. See
+[rounded workflow](workflow-rounded.md) for the example, limits and validation.
+Blind bores on rounded stock reject explicitly.
