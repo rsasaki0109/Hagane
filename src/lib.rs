@@ -269,5 +269,8 @@ mod edge_chamfer_demo;
 pub use edge_chamfer_demo::*;
 mod edge_chamfer_multi;
 pub use edge_chamfer_multi::*;
+mod convex_contact_split;
 mod edge_chamfer_multi_demo;
 pub use edge_chamfer_multi_demo::*;
+mod edge_chamfer_contact_demo;
+pub use edge_chamfer_contact_demo::*;

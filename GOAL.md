@@ -1339,3 +1339,13 @@ are sequentially disjoint; returned bevels are final trimmed faces. Existing
 vertex contacts, notably equal adjacent/all-edge box bevels, remain explicitly
 unsupported, along with curved/general chamfers and fillets. The estimate
 remains **15–25%**, toward **80%**. See [multiple chamfers](docs/edge-chamfer-multi.md).
+
+## Guarded vertex-contact planar chamfers
+
+A dedicated convex planar chamfer entry point now handles resolved intermediate
+vertex contacts, including all twelve equal-setback box edges. Actual closed
+B-reps retain source vertex positions and final bevel faces; displacement and
+intersection conditioning guards reject unresolved cases. The original
+transverse APIs retain their narrower domain. Curved/general chamfers and
+fillets remain future work. The estimate remains **15–25%**, toward **80%**.
+See [contact-capable chamfers](docs/edge-chamfer-contact.md).

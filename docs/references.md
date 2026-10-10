@@ -934,3 +934,15 @@ material disjoint in its interior from preceding removals. This uses Hagane's
 original planar splitter and bisector geometry. The independent adjacent-wedge
 overlap oracle integrates `(a-t)*(b-t)` over `0..min(a,b)`. No new dependency
 or external CAD source is introduced; original code remains MIT OR Apache-2.0.
+
+### Vertex-contact planar chamfers
+
+Indexed convex polygon clipping, a shared edge-intersection cache and directed
+section-cycle extraction are original code. Conditioning checks bound
+along-edge displacement using normal-gap allowances and edge slopes, including
+a denominator allowance for binary64 roundoff. Exact binary64 orientation uses
+Hagane's existing original integer predicates. The all-edge box volume oracle
+uses inclusion-exclusion: each corner's three pair overlaps sum to d³ and its
+triple overlap is d³/4, producing the 6d³ total correction over eight corners.
+No external CAD source or new dependency is introduced. Original code remains
+MIT OR Apache-2.0; engineering guards are not interval certification.

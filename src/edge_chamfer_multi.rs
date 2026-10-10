@@ -60,6 +60,24 @@ pub fn chamfer_straight_convex_edges(
     selections: &[(usize, f64)],
     tol: GeometryTolerance,
 ) -> Result<PlanarEdgeChamfers> {
+    chamfer_multiple(source, selections, tol, false)
+}
+/// Intersect bevel planes including guarded contacts with intermediate vertices.
+/// Actual vertex positions are retained; shallow or ill-conditioned contacts are
+/// rejected. This does not widen the existing transverse partition API.
+pub fn chamfer_straight_convex_edges_with_vertex_contacts(
+    source: &Solid,
+    selections: &[(usize, f64)],
+    tol: GeometryTolerance,
+) -> Result<PlanarEdgeChamfers> {
+    chamfer_multiple(source, selections, tol, true)
+}
+fn chamfer_multiple(
+    source: &Solid,
+    selections: &[(usize, f64)],
+    tol: GeometryTolerance,
+    contacts: bool,
+) -> Result<PlanarEdgeChamfers> {
     if selections.is_empty() || selections.len() > 64 {
         return Err(Error::InvalidInput(
             "multi chamfer requires 1..64 original edge selections",
@@ -84,7 +102,11 @@ pub fn chamfer_straight_convex_edges(
     let mut solid = source.clone();
     let mut removed = Vec::with_capacity(planes.len());
     for plane in &planes {
-        let split = split_solid_by_plane(&solid, plane, tol)?;
+        let split = if contacts {
+            crate::convex_contact_split::split_convex_with_vertex_contacts(&solid, plane, tol)?
+        } else {
+            split_solid_by_plane(&solid, plane, tol)?
+        };
         solid = split.negative;
         removed.push(split.positive);
     }

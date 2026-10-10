@@ -42,7 +42,8 @@ precision are rejected transactionally, without publishing intermediate results.
 **Equal-setback adjacent box edges and all 12 equal-setback box edges remain
 unsupported**, because their next plane passes through an existing cut vertex.
 This limitation is explicit; near contacts are not nudged into apparent success.
-A dedicated contact-aware clipping algorithm remains future work.
+The separate [contact-capable API](edge-chamfer-contact.md) now handles resolved
+vertex contacts; this transverse entry point keeps its narrower contract.
 
 The browser supports 1–12 selected box edges, actual retained/removed-piece
 views, final bevel overlays and exact accepted-solid AP214 STEP downloads.

@@ -35,6 +35,10 @@ fn plane_json(surface: &Surface) -> Result<Value> {
     )
 }
 pub fn edge_chamfer_multi_demo_json(x: &[f64]) -> Result<String> {
+    edge_chamfer_mode_demo_json(x, false)
+}
+
+pub(crate) fn edge_chamfer_mode_demo_json(x: &[f64], vertex_contacts: bool) -> Result<String> {
     if !(11..=33).contains(&x.len())
         || x.iter().any(|v| !v.is_finite())
         || x[8] < 1.
@@ -64,7 +68,11 @@ pub fn edge_chamfer_multi_demo_json(x: &[f64]) -> Result<String> {
         tol.absolute(),
     )?
     .transformed(placement, tol.absolute())?;
-    let result = chamfer_straight_convex_edges(&source, &selections, tol)?;
+    let result = if vertex_contacts {
+        chamfer_straight_convex_edges_with_vertex_contacts(&source, &selections, tol)?
+    } else {
+        chamfer_straight_convex_edges(&source, &selections, tol)?
+    };
     let removed = result
         .removed()
         .iter()
@@ -78,5 +86,10 @@ pub fn edge_chamfer_multi_demo_json(x: &[f64]) -> Result<String> {
         .iter()
         .sum::<f64>();
     let bevels=result.bevels().iter().map(|patch|Ok(serde_json::json!({"surface":plane_json(&patch.surface)?,"orientation":patch.orientation,"rings":patch.rings.iter().map(|ring|ring.iter().map(|p|[p.x,p.y,p.z]).collect::<Vec<_>>()).collect::<Vec<_>>()}))).collect::<Result<Vec<_>>>()?;
-    Ok(serde_json::json!({"units":"mm","scope":"1..12 original planar box edges with equal setback per edge; resolved unequal crossing cuts supported, contact, unresolved intersections, curved faces and fillets rejected","source":solid_json(&source,tol)?,"kept":solid_json(result.solid(),tol)?,"removed":removed,"removed_volume":removed_volume,"chamfers":{"selections":result.selections(),"bevel_planes":result.bevel_planes().iter().map(plane_json).collect::<Result<Vec<_>>>()?,"bevel_patches":bevels,"setback_kind":"equal physical setback on each selected original edge","patch_kind":"actual final clipped bevel faces"},"placement":{"angle":x[3],"translation":[x[4],x[5],x[6]],"axis":[0.,1.,0.]},"linear_tolerance":x[7],"step":export_step_mm(result.solid(),tol.absolute())?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN"}).to_string())
+    let mut report = serde_json::json!({"units":"mm","scope":"1..12 original planar box edges with equal setback per edge; resolved unequal crossing cuts supported, contact, unresolved intersections, curved faces and fillets rejected","source":solid_json(&source,tol)?,"kept":solid_json(result.solid(),tol)?,"removed":removed,"removed_volume":removed_volume,"chamfers":{"selections":result.selections(),"bevel_planes":result.bevel_planes().iter().map(plane_json).collect::<Result<Vec<_>>>()?,"bevel_patches":bevels,"setback_kind":"equal physical setback on each selected original edge","patch_kind":"actual final clipped bevel faces"},"placement":{"angle":x[3],"translation":[x[4],x[5],x[6]],"axis":[0.,1.,0.]},"linear_tolerance":x[7],"step":export_step_mm(result.solid(),tol.absolute())?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN"});
+    if vertex_contacts {
+        report["mode"] = serde_json::json!("vertex_contacts");
+        report["scope"]=serde_json::json!("1..12 original planar box edge chamfers with resolved vertex contacts; exact supporting planes with conservative floating-point admission, no coordinate snapping; unresolved conditioning, curved faces and fillets rejected");
+    }
+    Ok(report.to_string())
 }
