@@ -134,6 +134,27 @@ Successful or failed probes preserve rendering, camera and STEP export.
 A failed probe preserves the last successful result; accepting another model
 or changing displayed components clears it to avoid stale labels.
 
+## Read-only segment queries
+
+```json
+{"command":"segment","component":0,"start":[-20,0,12],"end":[20,0,12]}
+```
+
+The command queries the accepted output component with its document tolerance.
+Success contains `segment.start`, `segment.end`, `segment.component`, actual
+`segment.hits` (parameter, world point and face/UV witnesses),
+`segment.material_intervals` and `segment.mesh_free: true`, with mm units.
+Canonical components support the existing single material interval; bored
+components support zero, one or two. Oblique components explicitly reject this
+initial query rather than returning intersections with their original source.
+
+The browser offers a separate world-coordinate segment probe. It displays
+intersection and material interval results while preserving geometry, point
+probe, camera, STEP and history. Failed requests keep the last successful
+segment result. Accepted geometry or displayed component changes clear it.
+The same explicit contact and arithmetic restrictions as the typed
+[finite bore query](nurbs-frustum-bore.md) apply.
+
 ## Browser editing
 
 Run `./scripts/build-web.sh`, then `python3 -m http.server 8000 --directory web`

@@ -1288,3 +1288,8 @@ implemented kernel; no external source or dependency is added.
 Read-only workflow point queries reuse the retained component's existing
 independent finite-boundary classifier and accepted tolerance policy. The JSON
 and browser adapters add no geometric approximation or external dependency.
+
+Finite bored-frustum segment queries independently compose the existing checked
+convex source/tool interval queries by interval subtraction. Retained face/UV
+witnesses and material membership are checked against the actual kept body;
+this uses elementary set operations on intervals and adds no dependency.

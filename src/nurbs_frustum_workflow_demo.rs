@@ -9,6 +9,11 @@ enum Command {
     Rebuild {
         document: NurbsFrustumWorkflowDocument,
     },
+    Segment {
+        component: usize,
+        start: [f64; 3],
+        end: [f64; 3],
+    },
     Query {
         component: usize,
         point: [f64; 3],
@@ -144,6 +149,90 @@ fn body_report(
     )
 }
 
+fn segment_report(
+    session: &NurbsFrustumWorkflowSession,
+    component: usize,
+    start: [f64; 3],
+    end: [f64; 3],
+) -> std::result::Result<Value, Box<WorkflowDiagnostic>> {
+    let diagnostic = |category, code, id: Option<&str>, message: String| {
+        Box::new(WorkflowDiagnostic {
+            category,
+            code,
+            operation_id: id.map(str::to_owned),
+            field: None,
+            message,
+            suggestion: None,
+            measured_clearance: None,
+            required_clearance: None,
+        })
+    };
+    let doc = session.accepted_document().ok_or_else(|| {
+        diagnostic(
+            "invalid_input",
+            "no_accepted_document",
+            None,
+            "Accept a frustum workflow before querying a segment.".into(),
+        )
+    })?;
+    let shape = session.accepted_shape().ok_or_else(|| {
+        diagnostic(
+            "validation_failed",
+            "output_unavailable",
+            Some(&doc.output),
+            "Accepted output snapshot is unavailable.".into(),
+        )
+    })?;
+    let body = shape.components().get(component).ok_or_else(|| {
+        diagnostic(
+            "invalid_input",
+            "invalid_component",
+            Some(&doc.output),
+            "Segment component index is unavailable in the accepted output.".into(),
+        )
+    })?;
+    let xyz = |v: Vec3| [v.x, v.y, v.z];
+    let point = |v: [f64; 3]| Vec3::new(v[0], v[1], v[2]);
+    let policy = doc.geometry_tol()?;
+    let result: Result<_> = (|| {
+        if start.iter().chain(end.iter()).any(|v| !v.is_finite()) {
+            return Err(Error::InvalidInput("Segment endpoints must be finite."));
+        }
+        match body {
+            NurbsFrustumWorkflowComponent::Canonical(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((
+                    result.hits,
+                    result.material_interval.into_iter().collect::<Vec<_>>(),
+                ))
+            }
+            NurbsFrustumWorkflowComponent::Bored(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((result.hits, result.material_intervals))
+            }
+            NurbsFrustumWorkflowComponent::Oblique(_) => Err(Error::Unsupported(
+                "segment queries on oblique workflow components are unsupported",
+            )),
+        }
+    })();
+    let (hits, intervals) = result.map_err(|error| {
+        diagnostic(
+            match error {
+                Error::InvalidInput(_) => "invalid_input",
+                Error::Unsupported(_) => "unsupported",
+                _ => "validation_failed",
+            },
+            "geometry_rejected",
+            Some(&doc.output),
+            error.to_string(),
+        )
+    })?;
+    let hits:Vec<_>=hits.into_iter().map(|hit|json!({"parameter":hit.parameter,"point":xyz(hit.point),"faces":hit.faces.into_iter().map(|face|json!({"face_id":face.face_id,"uv":face.uv})).collect::<Vec<_>>()})).collect();
+    Ok(
+        json!({"ok":true,"units":"mm","segment":{"component":component,"start":start,"end":end,"hits":hits,"material_intervals":intervals,"mesh_free":true},"scope":"read-only finite segment intersection with the actual accepted workflow component; no modeling cut or geometry, display, export, cache or history mutation"}),
+    )
+}
+
 /// Execute one bounded request. Domain errors are structured JSON with ok=false;
 /// the accepted document, shape, cache and undo/redo remain unchanged.
 pub fn nurbs_frustum_workflow_session_command_json(
@@ -160,6 +249,7 @@ pub fn nurbs_frustum_workflow_session_command_json(
         Err(error) => return Ok(json!({"ok":false,"diagnostic":{"category":"invalid_input","code":"invalid_request","operation_id":null,"message":error.to_string()},"accepted_document":session.accepted_document()}).to_string()),
     };
     let result = match command {
+        Command::Segment { component, start, end } => return Ok(match segment_report(session,component,start,end) {Ok(value)=>value.to_string(),Err(error)=>json!({"ok":false,"diagnostic":error,"accepted_document":session.accepted_document()}).to_string()}),
         Command::Query { component, point } => {
             return Ok(match session.classify_point(component, Vec3::new(point[0], point[1], point[2])) {
                 Ok(location) => {

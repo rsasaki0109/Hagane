@@ -108,3 +108,34 @@ The [editable workflow](nurbs-frustum-workflow.md) adds `coaxial_bore` to schema
 It retains the actual bored component for radius edits, selection, Undo/Redo,
 bounded display and exact STEP output. A canonical single component is required;
 further cuts of bored results remain explicit errors.
+
+## Exact finite segment intersections
+
+`part.intersect_segment(start, end, policy)` returns checked hits and
+`material_intervals`, with parameters on the original segment from 0 to 1.
+A line crossing both sides of the hole has four boundary hits and two material
+intervals. Each hit carries the actual kept B-rep face IDs and surface UVs;
+tool cap faces are not part of the result.
+
+The implementation subtracts the actual finite tool cylinder's checked convex
+interval from the source's checked convex interval. It validates each retained
+material midpoint and its endpoints against the actual bored solid and verifies
+retained surface witnesses. The tool uses the source's effective length band
+while retaining the caller's absolute arithmetic budget. No mesh intersection
+or modeling cut determines these intervals.
+
+For radii `[16,8]`, height 24 and hole radius 4, the segment from `[-20,0,12]`
+to `[20,0,12]` has hits at `0.2, 0.4, 0.6, 0.8` and material intervals
+`[0.2,0.4]`, `[0.6,0.8]`. A segment along the axis through the hole has no
+material intervals. Segments contained in material retain `[0,1]`.
+
+The initial domain inherits conservative convex-query admission: tangencies,
+rim contacts, endpoints within the source/tool boundary bands, unresolved
+crossing order, tiny material intervals and insufficient world precision reject
+explicitly. In particular, an endpoint on a removed cap disk may still reject
+through source-query admission even when it is outside the bored solid.
+A guarded convexity certificate directly returns empty material when both
+radial endpoints are strictly inside the hole; this avoids merging nearly
+coincident source/tool cap roots. Original endpoint precision checks still run.
+General line/ray queries and oblique-child segment intersections remain future
+work. The [workflow](nurbs-frustum-workflow.md) provides a read-only browser probe.
