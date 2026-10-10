@@ -19,11 +19,18 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Editable curved-stock blind pockets](docs/workflow-normal-blind.md) now connect
+rounded boxes and line/arc extrusions to incremental machining histories,
+depth/entry editing, Undo/Redo and exact STEP downloads. Disjoint through bores
+may precede blind pockets; later through bores and blind plane-cut histories
+remain unsupported.
+
 [Continued blind machining](docs/normal-prism-blind-continue.md) adds new flat-bottom
 pockets to an existing native or STEP-imported part while preserving its original
 B-rep boundaries. The browser can reuse the accepted kept STEP as the next source.
 This scoped operation supports at most 16 total projection-disjoint openings;
-general intersections, subsequent plane cuts and workflow integration remain planned.
+general intersections and subsequent plane cuts remain planned. Import-based
+workflow nodes remain planned; curved-stock creation histories now support blind nodes.
 
 
 

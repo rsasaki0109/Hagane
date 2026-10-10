@@ -2,6 +2,13 @@
 
 ![The actual line/arc workflow](workflow-arc-line.png)
 
+A later milestone adds [editable blind pockets](workflow-normal-blind.md) to
+these stock histories. Through bores may precede projection-disjoint blind
+nodes with top/bottom entry; through-after-blind and blind plane-cut histories
+remain unsupported. The through-only examples below remain valid. Earlier
+blanket blind restrictions and their historical regression descriptions are
+superseded for this supported domain.
+
 `arc_line_extrusion` adds a custom analytic profile to the existing native/WASM
 operation document. Lines and signed circular arcs form an outer ring and
 optional disjoint initial openings. Rust builds and certifies an actual normal
@@ -140,8 +147,9 @@ inputs. The example uses linear tolerance 1e-6 mm.
 Initial holes must lie strictly inside the outer ring, with no crossing,
 contact or nesting. Through bores must lie in actual material and remain
 separated from prior openings. A bounding rectangle does not certify curved
-containment. Blind bores, skew extrusion, arbitrary-plane stock and general
-curved Booleans remain unsupported in this document operation.
+containment. Resolved blind bores now follow the separate domain above;
+through-after-blind, blind plane-cut histories, skew extrusion, arbitrary-plane
+stock and general curved Booleans remain unsupported.
 
 Changing the profile or stock height invalidates its cached suffix; editing a
 later bore reuses earlier accepted exact solids. Invalid profile, contact,

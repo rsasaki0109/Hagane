@@ -93,7 +93,7 @@ fn scope_singular_contacts_signed_orientation_and_resources_are_checked() {
     }
     assert_eq!(
         d.rebuild().unwrap_err().code,
-        "arc_line_blind_bore_unsupported"
+        "curved_through_after_blind_unsupported"
     );
     for sweep in [0., std::f64::consts::PI, f64::NAN] {
         let mut d = document();

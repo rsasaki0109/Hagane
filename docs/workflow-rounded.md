@@ -2,6 +2,13 @@
 
 ![The actual rounded-stock editing workflow](workflow-rounded.png)
 
+A later milestone adds [editable blind pockets](workflow-normal-blind.md) to
+these stock histories. Through bores may precede projection-disjoint blind
+nodes with top/bottom entry; through-after-blind and blind plane-cut histories
+remain unsupported. The through-only examples below remain valid. Earlier
+blanket blind restrictions and their historical regression descriptions are
+superseded for this supported domain.
+
 The existing native/WASM operation document now accepts a `rounded_box` root.
 It constructs a centered box and fillets all four original Z-parallel edges,
 retaining exact line/circular-arc cap boundaries and cylindrical corner walls.
@@ -53,7 +60,8 @@ radius must be positive and resolved, leaving straight portions on both XY
 sides. Circular tools must lie strictly in actual rounded material; the
 bounding box alone does not certify a bore near a curved corner.
 
-Blind cuts on rounded stock are explicitly unsupported. Oblique cuts,
+Blind cuts are supported in the separate domain described above. Through cuts
+after blind nodes and blind plane-cut histories remain unsupported. Oblique cuts,
 intersecting/nested/contacting holes, unresolved wall gaps and dimension or
 coordinate precision failures reject. Choosing rounded stock does not silently
 change an existing blind hole into a through hole or rewrite its tolerances.

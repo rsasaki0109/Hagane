@@ -38,8 +38,9 @@ even for opposite-side pockets with an axial web. Pocket radius, depth, wall
 clearance and remaining floor must exceed the conditioning/tolerance bands.
 Only certified normal prisms with supported line/quarter-circle profiles and
 analytic planar/cylindrical boundaries are accepted. Contacts, overlapping
-projections, general curved Booleans, subsequent plane cuts and workflow nodes
-remain unsupported. Existing single/batch APIs retain their original domains.
+projections, general curved Booleans and subsequent plane cuts remain unsupported.
+The separate [creation workflow](workflow-normal-blind.md) now accepts scoped
+blind nodes on rounded/line-arc stock; imported-stock workflow nodes remain planned. Existing single/batch APIs retain their original domains.
 Invalid or unsupported inputs return explicit errors without changing the source.
 
 Run the native demo against an actual exported part:

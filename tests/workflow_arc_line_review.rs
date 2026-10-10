@@ -289,7 +289,9 @@ fn invalid_quarter_loops_hole_contacts_and_blind_edits_preserve_accepted_arc() {
     let mut blind = value.clone();
     blind["operations"][1]["mode"] = json!("blind");
     blind["operations"][1]["depth"] = json!(2.);
-    bad.push(blind);
+    let blind_body = typed(&blind).rebuild().unwrap();
+    let blind_expected = (200. + 25. * PI - 4. - 2.25 * PI) * 8. - 2. * PI;
+    assert!((blind_body.volume().unwrap() - blind_expected).abs() < 1e-9);
     let mut unknown = value.clone();
     unknown["operations"][0]["outer"][0]["a"] = json!([15., 15.]);
     bad.push(unknown);

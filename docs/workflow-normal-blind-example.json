@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 1e-12
+  },
+  "operations": [
+    {
+      "kind": "rounded_box",
+      "id": "rounded-stock",
+      "size": [
+        80,
+        60,
+        24
+      ],
+      "corner_radius": 8
+    },
+    {
+      "kind": "bore",
+      "id": "through",
+      "input": "rounded-stock",
+      "mode": "through",
+      "center": [
+        -24,
+        0
+      ],
+      "radius": 4
+    },
+    {
+      "kind": "bore",
+      "id": "top-pocket",
+      "input": "through",
+      "mode": "blind",
+      "center": [
+        0,
+        0
+      ],
+      "radius": 5,
+      "depth": 8
+    },
+    {
+      "kind": "bore",
+      "id": "bottom-pocket",
+      "input": "top-pocket",
+      "mode": "blind",
+      "entry": "bottom",
+      "center": [
+        20,
+        0
+      ],
+      "radius": 3,
+      "depth": 6
+    }
+  ]
+}

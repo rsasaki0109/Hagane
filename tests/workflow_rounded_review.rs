@@ -189,7 +189,9 @@ fn rejected_rounded_edits_leave_real_accepted_snapshots_and_document_intact() {
     let mut blind = value.clone();
     blind["operations"][2]["mode"] = json!("blind");
     blind["operations"][2]["depth"] = json!(3.);
-    bad.push(blind);
+    let blind_body = typed(&blind).rebuild().unwrap();
+    let blind_expected = (4800. - (4. - PI) * 9.) * 20. - PI * 4. * 20. - PI * 9. * 3.;
+    assert!((blind_body.volume().unwrap() - blind_expected).abs() < 1e-8);
     let mut contact = value.clone();
     contact["operations"][2]["center"] = json!([-5., 0.]);
     bad.push(contact);

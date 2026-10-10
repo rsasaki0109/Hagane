@@ -86,8 +86,8 @@ fn rounded_corner_scope_and_resource_failures_are_explicit() {
     }
     let error = d.rebuild().unwrap_err();
     assert_eq!(error.category, "unsupported");
-    assert_eq!(error.code, "rounded_blind_bore_unsupported");
-    assert_eq!(error.operation_id.as_deref(), Some("bore-1"));
+    assert_eq!(error.code, "curved_through_after_blind_unsupported");
+    assert_eq!(error.operation_id.as_deref(), Some("bore-2"));
     for radius in [0., -1., 40., f64::NAN] {
         let mut d = document();
         if let WorkflowOperation::RoundedBox { corner_radius, .. } = &mut d.operations[0] {

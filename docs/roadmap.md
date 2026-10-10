@@ -1,10 +1,17 @@
 # Roadmap
 
+[Editable curved-stock blind pockets](workflow-normal-blind.md) connect rounded
+stock and line/arc extrusion to incremental top/bottom machining histories,
+real prefix reuse, Undo/Redo and exact STEP export. Through bores may precede
+blind pockets; through-after-blind and any blind plane-cut history remain unsupported.
+
+
 [Continued blind machining](normal-prism-blind-continue.md) adds new flat-bottom
 pockets to an existing native or STEP-imported part while preserving its original
 B-rep boundaries. The browser can reuse the accepted kept STEP as the next source.
 This scoped operation supports at most 16 total projection-disjoint openings;
-general intersections, subsequent plane cuts and workflow integration remain planned.
+general intersections, subsequent plane cuts and imported-stock workflow nodes
+remain planned. Curved-stock creation histories now support scoped blind nodes.
 
 
 [Multiple disjoint flat-bottom pockets](normal-prism-blind-bores.md) now share
@@ -12,7 +19,8 @@ one actual normal-stock source, with 1–16 independently validated cavities,
 retained source geometry, per-input removed cylinders and analytic STEP export.
 The original batch API still rejects preexisting blind floors; the separate
 continued-machining API above handles certified prior cavities. Overlapping
-projected disks and workflow nodes remain unsupported. [Multiple-pocket STEP re-import](normal-prism-blind-bores-step.md)
+projected disks remain unsupported. Scoped creation-history blind nodes are now
+supported by the workflow described above. [Multiple-pocket STEP re-import](normal-prism-blind-bores-step.md)
 adds actual-shape certification for the supported batch domain.
 
 The latest [normal-prism blind-bore API](normal-prism-blind-bore.md) adds one
@@ -20,7 +28,7 @@ exact flat-bottom pocket to certified normal curved or all-line stock,
 preserving source boundaries and returning actual kept/removed solids.
 It supports signed cap entry, disjoint prior through openings, rigid placement,
 bounded display and analytic STEP export. [Single-cavity STEP re-import](normal-prism-blind-step.md) adds a separate actual-shape certificate. The separate continued-machining API now adds pockets to certified prior bodies;
-integration into cut histories remains future work.
+blind plane-cut histories remain future work.
 
 This roadmap implements the standing [development goal](../GOAL.md): a usable
 end-to-end pure Rust CAD workflow. Feature-specific supported domains and

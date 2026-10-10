@@ -1,10 +1,11 @@
 # Development goal
 
-The latest [continued blind machining API](docs/normal-prism-blind-continue.md)
-adds pockets to actual native or STEP-imported blind-pocket solids, retaining
-all original geometry and returning only newly removed bodies. Up to 16 total
-projection-disjoint pockets/openings are supported. Plane cuts after blind
-machining and workflow nodes remain future work.
+The latest [editable curved-stock blind workflow](docs/workflow-normal-blind.md)
+connects rounded boxes and line/arc extrusions to exact top/bottom flat-bottom
+pockets, incremental replay, Undo/Redo and STEP export. Disjoint through bores
+may precede blind nodes. Through-after-blind and blind plane-cut histories remain
+unsupported. The separate [continued machining API](docs/normal-prism-blind-continue.md)
+also retains actual imported B-rep geometry when adding pockets.
 
 **Complete Hagane as a usable pure Rust CAD kernel for an end-to-end CAD workflow.**
 

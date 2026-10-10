@@ -279,7 +279,7 @@ impl WorkflowDocument {
                 "unsupported_history",
                 None,
                 Some("operations"),
-                "Rounded-box histories support at most 16 through bores and 128 profile segments, reserving 8 for stock, 4 per bore and 3 per plane split.",
+                "Rounded-box histories support at most 16 bores and 128 profile segments, reserving 8 for stock, 4 per bore and 3 per plane split.",
             );
             d.category = "unsupported";
             return Err(d);
@@ -688,16 +688,15 @@ impl WorkflowDocument {
                     "Through bores must omit entry or use top; entry only selects blind cuts.",
                 ));
             }
-            if curved && *mode == WorkflowBoreMode::Blind {
+            if curved
+                && *mode == WorkflowBoreMode::Through
+                && bores.iter().any(|b| b.depth.is_some())
+            {
                 let mut d = diagnostic(
-                    if rounded_radius.is_some() {
-                        "rounded_blind_bore_unsupported"
-                    } else {
-                        "arc_line_blind_bore_unsupported"
-                    },
+                    "curved_through_after_blind_unsupported",
                     Some(id),
                     Some("mode"),
-                    "Curved line/arc stock currently supports through bores only.",
+                    "Through bores after blind machining are unsupported on curved line/arc stock.",
                 );
                 d.category = "unsupported";
                 return Err(d);
@@ -792,7 +791,8 @@ impl WorkflowDocument {
                     .hypot(center[1] - previous.center[1])
                     - radius
                     - previous.radius;
-                let opposite = *mode == WorkflowBoreMode::Blind
+                let opposite = !curved
+                    && *mode == WorkflowBoreMode::Blind
                     && previous.depth.is_some()
                     && entry != previous_entry;
                 let axial_gap = if opposite {
@@ -859,8 +859,8 @@ impl WorkflowDocument {
             entries.push(*entry);
             ids.push(id.as_str());
         }
-        // Pair separation was certified using the actual entry/depth intervals.
-        // Reuse single-tool checks without imposing the old XY-only pair rule.
+        // Legacy planar pairs use actual entry/depth intervals. Curved stock
+        // instead requires disjoint XY footprints on both entry sides.
         let tools = if curved {
             vec![None; bores.len()]
         } else {
@@ -1040,6 +1040,40 @@ impl WorkflowPlan {
             }
             WorkflowStep::Bore { bore, entry, tool } => {
                 if normal {
+                    if let Some(depth) = bore.depth {
+                        if self
+                            .steps
+                            .iter()
+                            .any(|s| matches!(s, WorkflowStep::PlaneSplit { .. }))
+                        {
+                            return Err(Error::Unsupported(
+                                "normal plane-cut histories support through bores only",
+                            ));
+                        }
+                        let (z, side) = match entry {
+                            WorkflowBoreEntry::Top => (
+                                self.stock.min.z + self.stock.size.z,
+                                NormalPrismBoreEntry::Positive,
+                            ),
+                            WorkflowBoreEntry::Bottom => {
+                                (self.stock.min.z, NormalPrismBoreEntry::Negative)
+                            }
+                        };
+                        *solid = append_blind_bores_normal_prism(
+                            solid,
+                            &[NormalPrismBlindBoreSpec {
+                                center: Point3::new(bore.center[0], bore.center[1], z),
+                                radius: bore.radius,
+                                depth,
+                                entry: side,
+                            }],
+                            Vec3::new(0., 0., 1.),
+                            self.policy,
+                        )?
+                        .into_solids()
+                        .0;
+                        return Ok(());
+                    }
                     *solid = bore_normal_prism(
                         solid,
                         Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
