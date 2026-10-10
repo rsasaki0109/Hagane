@@ -79,6 +79,10 @@ all-line source stock, with native/WASM inspection and analytic STEP export.
 [Single-cavity STEP re-import](docs/normal-prism-blind-step.md) now verifies
 the actual pocket and restored source stock without replacing imported geometry.
 Repeated blind machining remains unsupported.
+[Multiple disjoint blind pockets](docs/normal-prism-blind-bores.md) can now be
+specified together on certified normal stock, with individual removed solids,
+exact retained floors and per-body STEP exports. Sources already containing
+blind floors and multiple-pocket STEP import remain unsupported.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

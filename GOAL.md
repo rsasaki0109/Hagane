@@ -1,5 +1,12 @@
 # Development goal
 
+The latest [multiple blind-pocket API](docs/normal-prism-blind-bores.md) creates
+up to 16 strictly projection-disjoint cavities on certified normal stock,
+preserving original boundaries and returning each actual removed body.
+Native/WASM construction, inspection and analytic STEP export share the kernel.
+This is a batch operation on uniform source stock; continued blind machining,
+workflow nodes and multiple-pocket STEP import remain future work.
+
 **Complete Hagane as a usable pure Rust CAD kernel for an end-to-end CAD workflow.**
 
 The workflow is: create or import exact geometry, construct and edit a valid

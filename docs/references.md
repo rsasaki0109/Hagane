@@ -1,5 +1,13 @@
 # Provenance, references, and licenses
 
+Multiple normal-prism blind pockets reuse the exact single-cavity construction,
+strict projected-disk separation, checked topology remapping and cylinder-volume
+conservation. Direct removed totals use standard Kahan compensated summation:
+W. Kahan, "Pracniques: Further Remarks on Reducing Truncation Errors,"
+Communications of the ACM 8(1), 1965, doi:10.1145/363707.363723.
+Original MIT OR Apache-2.0 Rust, no OCCT source or new dependencies.
+See [operation domain](normal-prism-blind-bores.md).
+
 Single-cavity analytic STEP certification restores a proof clone of actual
 normal stock, validates strict circular-pocket construction, and compares full
 affine/trigonometric boundary coefficients and oriented cylinder/plane geometry.

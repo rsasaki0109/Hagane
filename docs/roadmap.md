@@ -1,5 +1,11 @@
 # Roadmap
 
+[Multiple disjoint flat-bottom pockets](normal-prism-blind-bores.md) now share
+one actual normal-stock source, with 1–16 independently validated cavities,
+retained source geometry, per-input removed cylinders and analytic STEP export.
+Overlapping projected disks, preexisting blind source floors, workflow nodes
+and multiple-pocket STEP import remain unsupported.
+
 The latest [normal-prism blind-bore API](normal-prism-blind-bore.md) adds one
 exact flat-bottom pocket to certified normal curved or all-line stock,
 preserving source boundaries and returning actual kept/removed solids.
