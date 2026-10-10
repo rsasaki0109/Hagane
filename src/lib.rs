@@ -349,3 +349,8 @@ mod nurbs_frustum_demo;
 mod nurbs_frustum_display;
 mod nurbs_frustum_mass;
 pub use nurbs_frustum_demo::*;
+
+mod nurbs_frustum_workflow_demo;
+pub use nurbs_frustum_workflow_demo::*;
+mod nurbs_frustum_workflow;
+pub use nurbs_frustum_workflow::*;

@@ -1185,3 +1185,9 @@ matrices with determinant +1; cross products reconstruct the omitted plane
 axis exactly in this domain. This avoids assuming a floating-point round-trip
 for arbitrary rotations. Complete representation certificates remain required.
 The extension is original MIT OR Apache-2.0 Rust code with no new dependencies.
+
+Rational frustum workflow transactions reuse the original typed rational B-rep,
+axial partition algorithms, cardinal STEP reader and immutable Rust `Arc` snapshots.
+Volume accumulation uses the compensated summation reference above. This
+MIT OR Apache-2.0 workflow adds no dependencies or OCCT source. See the
+[document and validation scope](nurbs-frustum-workflow.md).

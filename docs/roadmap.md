@@ -1,5 +1,10 @@
 # Roadmap
 
+[Editable rational frustum workflows](nurbs-frustum-workflow.md) connect actual cardinal-frame
+stock or STEP input to axial partitions and explicit component selection.
+Native and WASM sessions reuse unchanged B-reps, validate outputs before commit
+and support bounded Undo/Redo. General curved Booleans remain unsupported.
+
 [Exact rational NURBS frustum lofts](nurbs-frustum.md) add closed ruled
 surfaces beyond height graphs, with same-parameter rational boundaries, validated
 mass/inertia, bounded display and exact STEP export. This typed positive-radius

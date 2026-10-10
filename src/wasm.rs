@@ -21,6 +21,9 @@ mod exports {
         Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_SPLIT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static NURBS_FRUSTUM_CLASSIFY_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    static NURBS_FRUSTUM_WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    static NURBS_FRUSTUM_WORKFLOW_SESSION: Mutex<Option<crate::NurbsFrustumWorkflowSession>> =
+        Mutex::new(None);
     static PRISM_WORKFLOW_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static PRISM_WORKFLOW_SESSION: Mutex<Option<crate::PrismWorkflowSession>> = Mutex::new(None);
     static PRISM_REGION_BOOLEAN_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
@@ -509,6 +512,46 @@ mod exports {
             )))
         } else {
             generate(crate::normal_prism_arc_line_boolean_demo_json(&values))
+        }
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_workflow_begin() {
+        let mut input = NURBS_FRUSTUM_WORKFLOW_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_workflow_push_byte(value: u32) -> i32 {
+        let mut input = NURBS_FRUSTUM_WORKFLOW_INPUT.lock().unwrap();
+        if input.1 || value > 255 || input.0.len() >= 2 * 1024 * 1024 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_frustum_workflow_finish() -> i32 {
+        let (bytes, bad) = {
+            let mut input = NURBS_FRUSTUM_WORKFLOW_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "frustum workflow transport requires at most 2 MiB of bytes",
+            )));
+        }
+        match std::str::from_utf8(&bytes) {
+            Err(_) => generate(Err(crate::Error::InvalidInput(
+                "frustum workflow request must be UTF-8",
+            ))),
+            Ok(text) => {
+                let mut session = NURBS_FRUSTUM_WORKFLOW_SESSION.lock().unwrap();
+                let session = session.get_or_insert_with(crate::NurbsFrustumWorkflowSession::new);
+                generate(crate::nurbs_frustum_workflow_session_command_json(
+                    session, text,
+                ))
+            }
         }
     }
     #[no_mangle]
