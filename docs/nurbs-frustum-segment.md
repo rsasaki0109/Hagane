@@ -57,6 +57,28 @@ finite body. Nonfinite or identical endpoints are invalid. Rejection returns an
 error, never an invented empty interval. Infinite rays, general NURBS line
 intersection, face splitting and Boolean operations are outside this API.
 
+## Actionable rejection reasons
+
+Unsupported queries identify the failing geometric or precision condition. The
+Rust API retains its `Error::Unsupported` category; the shared demo and WASM
+transport propagate the explanation to the browser. Error wording is descriptive
+rather than a versioned machine-readable code contract.
+
+| Reported condition | Possible input change |
+| --- | --- |
+| Endpoint within the boundary band | Move the endpoint away from the boundary. |
+| Lateral tangency or unresolved double-root separation | Move the segment away from contact. |
+| Cap-plane overlap or cap-rim contact | Use a transverse crossing away from the rim. |
+| Near-linear lateral direction | Choose a direction farther from a generator. |
+| Unresolved world-coordinate precision | Use a closer coordinate origin or suitable tolerance. |
+| Segment too short relative to tolerance | Lengthen the segment or choose a smaller admissible tolerance. |
+
+Changing a tolerance can alter the admissible domain and may itself be rejected;
+queries never silently reduce their guard budgets. Tests distinguish the actual
+endpoint/contact/overlap/coordinate cases and verify unchanged successful
+reports after rejection. Acceptance thresholds and geometric results are
+unchanged by this diagnostic improvement.
+
 ## Native, WASM and browser demonstration
 
 Run `cargo run --example nurbs_frustum_segment` for the actual default body and

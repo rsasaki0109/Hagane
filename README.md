@@ -23,6 +23,8 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 actual face UV witnesses and a checked material interval. Native/WASM/browser
 demos retain the original B-rep; contacts and insufficient precision are explicit
 errors. This supplies intersection infrastructure without claiming a Boolean cut.
+Rejections distinguish boundary endpoints, tangency, overlaps and coordinate
+precision, with input-change guidance propagated through native/WASM/browser.
 
 [Editable rational frustum workflows](docs/nurbs-frustum-workflow.md) connect actual cardinal-frame
 stock or STEP input to axial partitions and explicit component selection.

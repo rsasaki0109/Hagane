@@ -16,10 +16,8 @@ pub struct NurbsFrustumSegmentIntersection {
     pub hits: Vec<NurbsFrustumSegmentHit>,
     pub material_interval: Option<[f64; 2]>,
 }
-fn unresolved() -> Error {
-    Error::Unsupported(
-        "frustum segment intersection is tangent, coincident or numerically unresolved",
-    )
+fn unresolved(reason: &'static str) -> Error {
+    Error::Unsupported(reason)
 }
 fn norm(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
@@ -42,7 +40,9 @@ impl NurbsFrustumSolid {
         let delta = end - start;
         let length = norm(delta);
         if !delta.finite() || !length.is_normal() {
-            return Err(unresolved());
+            return Err(unresolved(
+                "segment endpoint subtraction or length is numerically unresolved",
+            ));
         }
         let [r0, r1] = self.radii();
         let height = self.height();
@@ -60,22 +60,27 @@ impl NurbsFrustumSolid {
         }
         let anchor = norm(start - self.frame().origin()).max(norm(end - self.frame().origin()));
         let arithmetic = 65536. * f64::EPSILON * world + 4. * metric_error * anchor;
-        if !arithmetic.is_finite() || arithmetic >= policy.linear() / 8. || length <= 10. * band {
-            return Err(unresolved());
+        if !arithmetic.is_finite() || arithmetic >= policy.linear() / 8. {
+            return Err(unresolved("segment world-coordinate precision is unresolved; use a closer coordinate origin or a suitable tolerance"));
+        }
+        if length <= 10. * band {
+            return Err(unresolved("segment is too short relative to the boundary tolerance; lengthen it or reduce the tolerance"));
         }
         let endpoint_locations = [
             self.classify_point(start, policy)?,
             self.classify_point(end, policy)?,
         ];
         if endpoint_locations.contains(&PointLocation::Boundary) {
-            return Err(unresolved());
+            return Err(unresolved("segment endpoint is within the boundary band; move endpoints away from the boundary"));
         }
         let a = self.frame().local_point(start);
         let b = self.frame().local_point(end);
         let d = b - a;
         let normalization = scale.max(norm(a)).max(norm(b));
         if !normalization.is_normal() {
-            return Err(unresolved());
+            return Err(unresolved(
+                "segment local-coordinate normalization is unresolved",
+            ));
         }
         let a = Vec3::new(
             a.x / normalization,
@@ -112,10 +117,12 @@ impl NurbsFrustumSolid {
                 * (1. + a.x.abs() + a.y.abs() + ra.abs() + d.x.abs() + d.y.abs() + rd.abs())
             + 32. * perturbation * perturbation;
         if !guard.is_finite() {
-            return Err(unresolved());
+            return Err(unresolved(
+                "lateral coefficient arithmetic is unresolved at the requested tolerance",
+            ));
         }
         if !coeff_scale.is_normal() || ![aa, bb, cc].iter().all(|x| x.is_finite()) {
-            return Err(unresolved());
+            return Err(unresolved("lateral polynomial coefficients are unresolved"));
         }
         let mut roots = vec![];
         let cone_guard = (band + arithmetic) * (1. + slope.abs()) / normalization
@@ -123,7 +130,7 @@ impl NurbsFrustumSolid {
                 * f64::EPSILON
                 * (1. + a.x.abs() + a.y.abs() + ra.abs() + d.x.abs() + d.y.abs() + rd.abs());
         if !cone_guard.is_finite() {
-            return Err(unresolved());
+            return Err(unresolved("extended-cone interior precision is unresolved"));
         }
         let cone_inside = ra > cone_guard
             && ra + rd > cone_guard
@@ -134,15 +141,21 @@ impl NurbsFrustumSolid {
             // interior proves there is no lateral boundary along this segment.
         } else if aa.abs() <= guard {
             if aa != 0. {
-                return Err(unresolved());
+                return Err(unresolved(
+                    "near-linear lateral direction is unresolved; use a more transverse segment",
+                ));
             }
             if bb == 0. {
                 if cc.abs() <= guard {
-                    return Err(unresolved());
+                    return Err(unresolved(
+                        "segment may overlap a lateral generator; use a transverse direction",
+                    ));
                 }
             } else {
                 if bb.abs() <= 3. * guard + 2. * aa.abs() {
-                    return Err(unresolved());
+                    return Err(unresolved(
+                        "linear lateral derivative is unresolved; use a more transverse segment",
+                    ));
                 }
                 roots.push(-cc / bb);
             }
@@ -151,12 +164,14 @@ impl NurbsFrustumSolid {
             let error = 8192. * f64::EPSILON * (bb * bb + 4. * (aa * cc).abs())
                 + guard * (2. * bb.abs() + 4. * aa.abs() + 4. * cc.abs() + 8. * guard);
             if discriminant.abs() <= error {
-                return Err(unresolved());
+                return Err(unresolved("lateral tangency or double-root separation is unresolved; move the segment away from contact"));
             }
             if discriminant > 0. {
                 let q = -0.5 * (bb + discriminant.sqrt().copysign(bb));
                 if q == 0. {
-                    return Err(unresolved());
+                    return Err(unresolved(
+                        "lateral quadratic root construction is unresolved",
+                    ));
                 }
                 roots.extend([q / aa, cc / q]);
             }
@@ -164,7 +179,7 @@ impl NurbsFrustumSolid {
         let mut candidates = vec![];
         for t in roots {
             if !t.is_finite() {
-                return Err(unresolved());
+                return Err(unresolved("lateral root parameter is nonfinite"));
             }
             if t > 0. && t < 1. {
                 let derivative = (2. * aa * t + bb).abs();
@@ -174,7 +189,7 @@ impl NurbsFrustumSolid {
                     || !uncertainty.is_finite()
                     || uncertainty * length >= policy.linear() / 4.
                 {
-                    return Err(unresolved());
+                    return Err(unresolved("lateral root position uncertainty exceeds the precision budget; use a more transverse segment or suitable tolerance"));
                 }
                 let p = a + d * t;
                 if p.z > band / normalization && p.z < h - band / normalization {
@@ -182,7 +197,7 @@ impl NurbsFrustumSolid {
                 } else if p.z.abs() <= band / normalization
                     || (p.z - h).abs() <= band / normalization
                 {
-                    return Err(unresolved());
+                    return Err(unresolved("lateral crossing is within a cap-rim contact band; move it away from the rim"));
                 }
             }
         }
@@ -191,12 +206,12 @@ impl NurbsFrustumSolid {
                 let t = (z - a.z) / d.z;
                 if t > 0. && t < 1. {
                     if arithmetic / (d.z.abs() * normalization) * length >= policy.linear() / 16. {
-                        return Err(unresolved());
+                        return Err(unresolved("cap root position uncertainty exceeds the precision budget; use a direction more transverse to the cap"));
                     }
                     let p = a + d * t;
                     let rho = p.x.hypot(p.y) * normalization;
                     if (rho - r).abs() <= band + arithmetic {
-                        return Err(unresolved());
+                        return Err(unresolved("cap crossing is within the cap-rim contact band; move it away from the rim"));
                     }
                     if rho < r {
                         candidates.push((t, Some(face)));
@@ -204,19 +219,21 @@ impl NurbsFrustumSolid {
                 }
             }
         } else if a.z.abs() <= band / normalization || (a.z - h).abs() <= band / normalization {
-            return Err(unresolved());
+            return Err(unresolved(
+                "segment overlaps or lies within the cap-plane band; use a transverse direction",
+            ));
         }
         candidates.sort_by(|x, y| x.0.total_cmp(&y.0));
         if candidates
             .windows(2)
             .any(|w| (w[1].0 - w[0].0) * length <= 10. * band)
         {
-            return Err(unresolved());
+            return Err(unresolved("boundary root ordering is unresolved; separate the crossings or reduce the tolerance"));
         }
         let mut hits = vec![];
         for (t, cap) in candidates {
             if !t.is_finite() || t * length <= 10. * band || (1. - t) * length <= 10. * band {
-                return Err(unresolved());
+                return Err(unresolved("boundary root is too close to a segment endpoint; extend the segment away from the crossing"));
             }
             let point = start + delta * t;
             let p = self.frame().local_point(point);
@@ -229,7 +246,9 @@ impl NurbsFrustumSolid {
             } else {
                 let rho = p.x.hypot(p.y);
                 if !rho.is_normal() {
-                    return Err(unresolved());
+                    return Err(unresolved(
+                        "lateral witness radius is numerically unresolved",
+                    ));
                 }
                 let dirs = [[1., 0.], [0., 1.], [-1., 0.], [0., -1.]];
                 for (q, dir) in dirs.iter().enumerate() {
@@ -247,18 +266,22 @@ impl NurbsFrustumSolid {
                 }
             }
             if faces.is_empty() {
-                return Err(unresolved());
+                return Err(unresolved(
+                    "lateral quarter-face witness could not be resolved",
+                ));
             }
             for witness in &faces {
                 let evaluated = self.solid().shell.faces[witness.face_id]
                     .surface
                     .try_evaluate(witness.uv[0], witness.uv[1])?;
                 if norm(evaluated - point) + arithmetic > policy.linear() / 4. {
-                    return Err(unresolved());
+                    return Err(unresolved("actual surface witness does not agree with the segment root within tolerance"));
                 }
             }
             if self.classify_point(point, policy)? != PointLocation::Boundary {
-                return Err(unresolved());
+                return Err(unresolved(
+                    "actual boundary classification does not agree with the segment root",
+                ));
             }
             hits.push(NurbsFrustumSegmentHit {
                 parameter: t,
@@ -276,12 +299,12 @@ impl NurbsFrustumSolid {
             match location {
                 PointLocation::Inside => {
                     if material.is_some() {
-                        return Err(unresolved());
+                        return Err(unresolved("multiple material intervals contradict the convex frustum certificate"));
                     }
                     material = Some([w[0], w[1]]);
                 }
                 PointLocation::Outside => (),
-                PointLocation::Boundary => return Err(unresolved()),
+                PointLocation::Boundary => return Err(unresolved("material interval midpoint lies within the boundary band; use a better-separated segment")),
             }
         }
         if hits.len() > 2
@@ -290,15 +313,19 @@ impl NurbsFrustumSolid {
             || (endpoint_locations[1] == PointLocation::Inside)
                 != material.is_some_and(|v| v[1] == 1.)
         {
-            return Err(unresolved());
+            return Err(unresolved("material interval endpoints or boundary count are inconsistent with endpoint classification"));
         }
         for hit in &hits {
             let Some(interval) = material else {
-                return Err(unresolved());
+                return Err(unresolved(
+                    "boundary hit has no corresponding material interval",
+                ));
             };
             let entering = hit.parameter == interval[0];
             if !entering && hit.parameter != interval[1] {
-                return Err(unresolved());
+                return Err(unresolved(
+                    "boundary hit does not coincide with a material interval endpoint",
+                ));
             }
             for witness in &hit.faces {
                 let face = &self.solid().shell.faces[witness.face_id];
@@ -309,7 +336,7 @@ impl NurbsFrustumSolid {
                     || crossing.abs() <= 256. * f64::EPSILON * length + arithmetic
                     || (crossing < 0.) != entering
                 {
-                    return Err(unresolved());
+                    return Err(unresolved("actual face normal crossing is ambiguous or inconsistent with the material interval"));
                 }
             }
         }
