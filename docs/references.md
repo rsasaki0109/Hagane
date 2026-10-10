@@ -1,5 +1,15 @@
 # Provenance, references, and licenses
 
+Normal-prism/convex-tool partition uses independently implemented planar
+arrangements, analytic line/line and line/circle roots, directed boundary
+classification and cycle reconstruction. Conceptual reference: M. de Berg,
+O. Cheong, M. van Kreveld and M. Overmars, *Computational Geometry: Algorithms
+and Applications*, third edition, Springer, 2008. Circle-segment area follows
+integration of `sqrt(r²-y²)`; extruded volume is exact cap area times height.
+Original code is MIT OR Apache-2.0, with no OCCT source or new dependencies.
+See [certified operation domain](prism-convex-partition.md).
+
+
 Multiple normal-prism blind pockets reuse the exact single-cavity construction,
 strict projected-disk separation, checked topology remapping and cylinder-volume
 conservation. Direct removed totals use standard Kahan compensated summation:

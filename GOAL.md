@@ -1,11 +1,14 @@
 # Development goal
 
-The latest [editable curved-stock blind workflow](docs/workflow-normal-blind.md)
-connects rounded boxes and line/arc extrusions to exact top/bottom flat-bottom
-pockets, incremental replay, Undo/Redo and STEP export. Disjoint through bores
-may precede blind nodes. Through-after-blind and blind plane-cut histories remain
-unsupported. The separate [continued machining API](docs/normal-prism-blind-continue.md)
-also retains actual imported B-rep geometry when adding pockets.
+The latest [exact curved prismatic partition](docs/prism-convex-partition.md)
+constructs difference/common B-reps when convex polygon tools cross cylindrical
+stock walls. Analytic line/circle arrangements return all actual components and
+preserve restricted curves/pcurves; empty and disconnected results are explicit.
+The current domain shares one physical axis and cap interval and rejects contacts,
+tangency/vertex overlays and general curved 3D Booleans. This advances the reusable
+intersection-graph and sewing prerequisite beyond contained circular bores.
+[Editable curved-stock blind histories](docs/workflow-normal-blind.md) remain
+available with incremental replay, Undo/Redo and STEP export.
 
 **Complete Hagane as a usable pure Rust CAD kernel for an end-to-end CAD workflow.**
 

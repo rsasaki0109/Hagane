@@ -19,6 +19,13 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Exact curved prismatic partition](docs/prism-convex-partition.md) now computes
+difference and intersection with a convex polygonal tool across actual cylindrical
+sidewalls. Analytic boundary arrangements produce all closed B-rep components,
+including disconnected and empty results, with bounded STEP export. The initial
+domain uses a common extrusion axis and cap interval; general 3D curved Booleans,
+contacts and tangent/vertex crossings remain unsupported.
+
 [Editable curved-stock blind pockets](docs/workflow-normal-blind.md) now connect
 rounded boxes and line/arc extrusions to incremental machining histories,
 depth/entry editing, Undo/Redo and exact STEP downloads. Disjoint through bores

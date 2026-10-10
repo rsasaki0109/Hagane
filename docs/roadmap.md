@@ -1,5 +1,12 @@
 # Roadmap
 
+[Exact curved prismatic partition](prism-convex-partition.md) constructs analytic
+line/circle crossing arrangements for actual difference/common components when
+convex polygon tools cross cylindrical stock walls. It supports disconnected
+and empty results within the same-axis/same-cap-interval domain. Contacts,
+tangent/vertex overlays, union and general curved 3D Booleans remain planned.
+
+
 [Editable curved-stock blind pockets](workflow-normal-blind.md) connect rounded
 stock and line/arc extrusion to incremental top/bottom machining histories,
 real prefix reuse, Undo/Redo and exact STEP export. Through bores may precede
