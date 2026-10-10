@@ -57,6 +57,9 @@ Undo/Redo, local restoration and exact STEP downloads.
 [Editable line/arc profiles](docs/workflow-arc-line.md) now additionally support
 custom normal stock with signed quarter arcs, noncentered XY coordinates,
 initial openings and subsequent through bores in that same history.
+[Axial-plane prism partition](docs/arc-line-prism-split.md) additionally creates
+both actual closed sides of a transverse line/arc-stock cut, preserving source
+subarcs and uncut openings. It remains a separate scoped API and Web demo.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

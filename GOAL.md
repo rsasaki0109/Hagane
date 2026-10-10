@@ -1414,3 +1414,14 @@ saved documents and analytic STEP exports use the existing workflow.
 Blind/skew/arbitrary-plane stock and general curved Booleans remain outside
 this document operation. See [line/arc workflow](docs/workflow-arc-line.md).
 The long-term estimate remains 15–25% toward the standing 80% target.
+
+## Axial-plane line/arc prism partition
+
+Certified normal analytic stock now partitions into both actual closed sides
+of one axial-plane cut. Original line/subarc coverage, opposing section faces,
+uncut opening ownership and child-scale volume checks accompany construction.
+Meaningfully oblique planes, hole crossings, contacts, vertex/tangent passage
+and disconnected sections remain unsupported. This is broader analytic Boolean
+infrastructure, not general curved Boolean completion or a new workflow node.
+See [analytic prism partition](docs/arc-line-prism-split.md). The long-term
+estimate remains 15–25% toward the standing 80% target.

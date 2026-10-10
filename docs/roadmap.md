@@ -1325,3 +1325,14 @@ saved documents and analytic STEP exports use the existing workflow.
 Blind/skew/arbitrary-plane stock and general curved Booleans remain outside
 this document operation. See [line/arc workflow](workflow-arc-line.md).
 The long-term estimate remains 15–25% toward the standing 80% target.
+
+## Axial-plane analytic prism partition
+
+A scoped partition API constructs negative and positive closed normal line/arc
+solids with original curve coverage and opposing planar section faces.
+Uncut initial openings retain their side; hole crossing, tangent/vertex contact,
+meaningful skew and disconnected sections reject. Native/WASM demos expose
+both actual bodies and their analytic STEP exports. General curved Booleans
+and editable split-document nodes remain subsequent work. See
+[analytic prism partition](arc-line-prism-split.md). The estimate remains
+15–25% toward the standing 80% target.

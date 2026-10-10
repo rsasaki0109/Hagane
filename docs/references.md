@@ -1006,3 +1006,13 @@ normal-prism certification and analytic normal-bore operations. The independent
 capsule check uses rectangle area `2R * center_distance` plus disk area `πR²`,
 then subtracts actual cylinder volumes. Its serde document and cache integration
 are original MIT OR Apache-2.0 code; no new dependency or OCCT source is used.
+
+## Axial-plane partition of analytic prisms
+
+The normal line/arc prism partition composes the existing analytic planar trim
+intersection, shared-edge face subdivision and exact normal extrusion algorithms.
+Whole source line coverage and circular subarc basis/interval coverage are checked
+independently of child volume. Circle-segment test oracles integrate
+`sqrt(r*r-x*x)` using `(x*sqrt(r*r-x*x)+r*r*asin(x/r))/2`; cap areas use the existing
+Green-theorem line/arc integrals. No OCCT source or new dependencies are used.
+Original implementation remains MIT OR Apache-2.0.
