@@ -1277,3 +1277,10 @@ factored using physical radius gaps before scaling to avoid thin-wall
 cancellation. Shared rim/generator sampling and existing rational Bernstein
 cell bounds provide display admission. No OCCT source or new dependencies are
 used; original code is MIT OR Apache-2.0.
+
+Finite bored-frustum classification reduces rotational boundary distance to
+point-to-segment distance in the radius/height meridian plane, including the
+radial intervals of annular caps. Editable bore histories retain the actual
+construction-certified body rather than reconstructing a display substitute.
+These additions use elementary Euclidean geometry and the existing independently
+implemented kernel; no external source or dependency is added.

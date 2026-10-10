@@ -50,6 +50,11 @@ pub enum NurbsFrustumWorkflowOperation {
         origin: [f64; 3],
         normal: [f64; 3],
     },
+    CoaxialBore {
+        id: String,
+        input: String,
+        radius: f64,
+    },
     Select {
         id: String,
         input: String,
@@ -61,10 +66,18 @@ pub enum NurbsFrustumWorkflowOperation {
 pub enum NurbsFrustumWorkflowComponent {
     Canonical(Arc<NurbsFrustumSolid>),
     Oblique(Arc<NurbsObliqueFrustumSolid>),
+    Bored(Arc<NurbsBoredFrustumSolid>),
 }
 impl NurbsFrustumWorkflowComponent {
     pub fn canonical(&self) -> Option<&Arc<NurbsFrustumSolid>> {
         if let Self::Canonical(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn bored(&self) -> Option<&Arc<NurbsBoredFrustumSolid>> {
+        if let Self::Bored(v) = self {
             Some(v)
         } else {
             None
@@ -85,30 +98,35 @@ impl NurbsFrustumWorkflowComponent {
         match self {
             Self::Canonical(v) => v.classify_point(query, policy),
             Self::Oblique(v) => v.classify_point(query, policy),
+            Self::Bored(v) => v.classify_point(query, policy),
         }
     }
     pub fn solid(&self) -> &Solid {
         match self {
             Self::Canonical(v) => v.solid(),
             Self::Oblique(v) => v.solid(),
+            Self::Bored(v) => v.solid(),
         }
     }
     pub fn validate(&self, policy: GeometryTolerance) -> Result<()> {
         match self {
             Self::Canonical(v) => v.validate(policy),
             Self::Oblique(v) => v.validate(policy),
+            Self::Bored(v) => v.validate(policy),
         }
     }
     pub fn volume(&self, policy: GeometryTolerance) -> Result<f64> {
         match self {
             Self::Canonical(v) => v.volume(policy),
             Self::Oblique(v) => v.volume(policy),
+            Self::Bored(v) => v.volume(policy),
         }
     }
     pub fn mass_properties(&self, policy: GeometryTolerance) -> Result<NurbsGraphMassProperties> {
         match self {
             Self::Canonical(v) => v.mass_properties(policy),
             Self::Oblique(v) => v.mass_properties(policy),
+            Self::Bored(v) => v.mass_properties(policy),
         }
     }
     pub fn inertia_properties(
@@ -118,18 +136,21 @@ impl NurbsFrustumWorkflowComponent {
         match self {
             Self::Canonical(v) => v.inertia_properties(policy),
             Self::Oblique(v) => v.inertia_properties(policy),
+            Self::Bored(v) => v.inertia_properties(policy),
         }
     }
     pub fn export_step_mm(&self, policy: GeometryTolerance) -> Result<String> {
         match self {
             Self::Canonical(v) => v.export_step_mm(policy),
             Self::Oblique(v) => v.export_step_mm(policy),
+            Self::Bored(v) => v.export_step_mm(policy),
         }
     }
     pub fn tessellate(&self, chord: f64, policy: GeometryTolerance) -> Result<Mesh> {
         match self {
             Self::Canonical(v) => v.tessellate(chord, policy),
             Self::Oblique(v) => v.tessellate(chord, policy),
+            Self::Bored(v) => v.tessellate(chord, policy),
         }
     }
 }
@@ -187,6 +208,7 @@ impl NurbsFrustumWorkflowOperation {
             | Self::StepStock { id, .. }
             | Self::Partition { id, .. }
             | Self::PlaneSplit { id, .. }
+            | Self::CoaxialBore { id, .. }
             | Self::Select { id, .. } => id,
         }
     }
@@ -194,6 +216,7 @@ impl NurbsFrustumWorkflowOperation {
         match self {
             Self::Partition { input, .. }
             | Self::PlaneSplit { input, .. }
+            | Self::CoaxialBore { input, .. }
             | Self::Select { input, .. } => Some(input),
             _ => None,
         }
@@ -330,6 +353,16 @@ impl NurbsFrustumWorkflowDocument {
                         ));
                     }
                 }
+                NurbsFrustumWorkflowOperation::CoaxialBore { radius, .. }
+                    if !radius.is_finite() || *radius <= 0. =>
+                {
+                    return Err(diagnostic(
+                        "invalid_input",
+                        "invalid_radius",
+                        Some(id),
+                        "Coaxial bore radius must be positive and finite.",
+                    ));
+                }
                 NurbsFrustumWorkflowOperation::PlaneSplit { origin, normal, .. }
                     if origin.iter().chain(normal).any(|x| !x.is_finite())
                         || Vec3::new(normal[0], normal[1], normal[2])
@@ -448,6 +481,25 @@ impl NurbsFrustumWorkflowDocument {
                     )
                 })?]
             }
+            NurbsFrustumWorkflowOperation::CoaxialBore { input, radius, .. } => {
+                let shape = inputs[input.as_str()];
+                if shape.components().len() != 1 {
+                    return Err(diagnostic(
+                        "unsupported",
+                        "ambiguous_components",
+                        Some(id),
+                        "CoaxialBore requires one explicitly selected component.",
+                    ));
+                }
+                let source = shape.components()[0].canonical().ok_or_else(|| diagnostic(
+                    "unsupported", "canonical_required", Some(id),
+                    "CoaxialBore requires a canonical frustum; bored or oblique components cannot be bored again."))?;
+                vec![NurbsFrustumWorkflowComponent::Bored(Arc::new(
+                    source
+                        .bore_coaxial(*radius, tol)
+                        .map_err(|e| geometry(e, id))?,
+                ))]
+            }
             NurbsFrustumWorkflowOperation::PlaneSplit {
                 input,
                 origin,
@@ -465,7 +517,7 @@ impl NurbsFrustumWorkflowDocument {
                 }
                 let source = shape.components()[0].canonical().ok_or_else(|| diagnostic(
                     "unsupported", "canonical_required", Some(id),
-                    "PlaneSplit requires a canonical frustum; oblique components cannot be split again."))?;
+                    "PlaneSplit requires a canonical frustum; bored or oblique components cannot be split again."))?;
                 let normal = Vec3::new(normal[0], normal[1], normal[2])
                     .normalized()
                     .map_err(|e| geometry(e, id))?;
@@ -504,7 +556,7 @@ impl NurbsFrustumWorkflowDocument {
                         "Partition requires one explicitly selected component.",
                     ));
                 }
-                shape.components()[0].canonical().ok_or_else(|| diagnostic("unsupported", "canonical_required", Some(id), "Partition requires a canonical frustum; oblique components cannot be repartitioned."))?
+                shape.components()[0].canonical().ok_or_else(|| diagnostic("unsupported", "canonical_required", Some(id), "Partition requires a canonical frustum; bored or oblique components cannot be repartitioned."))?
                     .split_axial_many(cuts, tol)
                     .map_err(|e| geometry(e, id))?
                     .parts

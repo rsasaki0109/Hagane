@@ -92,3 +92,19 @@ The circular rational construction, Bernstein integration of polynomial
 annular sections and tensor rotation are public mathematics. This original
 MIT OR Apache-2.0 implementation uses no OCCT source or new dependencies.
 See [references and dependency licenses](references.md).
+
+## Mesh-free point classification
+
+`part.classify_point(point, policy)` returns `Inside`, `Outside` or `Boundary`
+for the actual retained solid. In the source meridian plane it computes the
+Euclidean distance to the finite outer generatrix, finite inner cylinder and
+both annular cap intervals. This includes diagonal distances to circular rims;
+independent wall/cap tolerance bands are not substituted for rim distance.
+Queries in the hole and beyond cap extensions are outside. The source extent
+sets the relative tolerance, and source frame/world arithmetic is checked before
+shortcuts. Unresolved threshold comparisons return `Unsupported`.
+
+The [editable workflow](nurbs-frustum-workflow.md) adds `coaxial_bore` to schema 1.
+It retains the actual bored component for radius edits, selection, Undo/Redo,
+bounded display and exact STEP output. A canonical single component is required;
+further cuts of bored results remain explicit errors.

@@ -55,6 +55,13 @@ fn body_report(
                     document.display_chord_tolerance,
                 )?
             }
+            NurbsFrustumWorkflowComponent::Bored(bored) => {
+                crate::nurbs_frustum_bore_demo::serialize_bored_frustum(
+                    bored,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
         };
         let count = data["mesh"]["triangles"]
             .as_array()
@@ -73,12 +80,17 @@ fn body_report(
         let frame = match body {
             NurbsFrustumWorkflowComponent::Canonical(canonical) => canonical.frame(),
             NurbsFrustumWorkflowComponent::Oblique(oblique) => oblique.source().frame(),
+            NurbsFrustumWorkflowComponent::Bored(bored) => bored.source().frame(),
         };
         let xyz = |v: Vec3| [v.x, v.y, v.z];
         data["placement"] = json!({"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)});
         match body {
             NurbsFrustumWorkflowComponent::Canonical(_) => {
                 data["scope"] = json!("actual typed rational frustum workflow component; exact axial partition, explicit component selection; arbitrary lofts and general Booleans unsupported");
+            }
+            NurbsFrustumWorkflowComponent::Bored(_) => {
+                data["component_kind"] = json!("bored_frustum");
+                data["placement_reference"] = json!("source frame");
             }
             NurbsFrustumWorkflowComponent::Oblique(_) => {
                 data["component_kind"] = json!("oblique_frustum");
@@ -106,6 +118,12 @@ fn body_report(
         ));
     }
     let scope = if shape
+        .components()
+        .iter()
+        .any(|body| matches!(body, NurbsFrustumWorkflowComponent::Bored(_)))
+    {
+        "versioned typed rational frustum graph; actual closed coaxial through bores and explicit component selection; output reports all actual components with separate STEP exports; off-axis bores, blind cavities and general Booleans unsupported"
+    } else if shape
         .components()
         .iter()
         .any(|body| body.oblique().is_some())

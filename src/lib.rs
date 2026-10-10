@@ -393,4 +393,5 @@ mod nurbs_frustum_bore;
 pub use nurbs_frustum_bore::*;
 mod nurbs_frustum_bore_mass;
 
+mod nurbs_frustum_bore_classification;
 mod nurbs_frustum_bored_display;

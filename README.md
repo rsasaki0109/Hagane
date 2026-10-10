@@ -19,6 +19,13 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
+bored solid through hole-radius edits, component selection, incremental rebuilding,
+Undo/Redo and exact STEP export. Mesh-free point classification measures distance
+to finite outer/inner walls and annular caps. Further cuts of bored components
+and bored-frustum STEP import remain unsupported. Overall completion remains
+an engineering estimate of **15–25%**, toward the **80%** goal.
+
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
 cylindrical tool and retain a closed rational genus-one B-rep, inward cavity
 walls and annular cap wires. Positive analytic volume/moments, bounded display
@@ -29,7 +36,7 @@ bored-frustum import and general curved Booleans remain unsupported.
 world-plane cuts to actual typed child selection, incremental rebuilding,
 Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;
 further cuts of oblique children remain explicit errors. Rust components now
-use a canonical/oblique enum; existing JSON documents remain supported.
+use a canonical/oblique/bored enum; existing JSON documents remain supported.
 
 [Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
 classify the retained finite solid with checked source and cut-cap witnesses.

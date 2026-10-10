@@ -1,8 +1,8 @@
 # Editable rational frustum workflow
 
 The versioned Rust workflow connects exact cardinal-frame frustum construction,
-axis-angle poses, actual STEP input, axial partitions, closed oblique plane splits
-and explicit component selection. A session
+axis-angle poses, actual STEP input, axial partitions, closed oblique plane splits,
+coaxial through bores and explicit component selection. A session
 retains unchanged B-rep prefixes, reports real node evaluation counts and
 supports bounded Undo/Redo. It is a scoped modeling graph, not a general CAD
 history or Boolean engine.
@@ -38,6 +38,7 @@ outputs and forward references are rejected.
 | `step_stock` | One actual body from the checked [cardinal STEP importer](nurbs-frustum-cardinal-step-import.md), retaining rational geometry and UV boundaries. |
 | `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one canonical component. |
 | `plane_split` | Two actual closed oblique children from world `origin` and `normal`. Requires one canonical component; the complete cut must stay strictly between its original caps. Lower/upper ordering is independent of normal sign. |
+| `coaxial_bore` | One actual genus-one rational body with a coaxial through hole. Requires one canonical component and resolved positive radius/wall clearance. |
 | `select` | The explicitly indexed component of an earlier node, shared as the actual typed body. |
 
 The default graph constructs an X-oriented 16-to-8 mm frustum of height 24 mm,
@@ -83,7 +84,7 @@ prefix; output/display edits reuse the actual children.
 For Rust 0.1 callers, `components()` now returns typed
 `NurbsFrustumWorkflowComponent` values rather than only canonical frustum Arcs.
 Use unified geometry/volume/display/export methods, or explicitly inspect
-`canonical()` / `oblique()` for type-specific operations. This is a source API
+`canonical()` / `oblique()` / `bored()` for type-specific operations. This is a source API
 change: canonical-only callers must unwrap the canonical variant. An oblique
 child is never replaced by its source frustum or silently returned as empty.
 Existing valid JSON documents and canonical report fields remain supported.
@@ -92,6 +93,19 @@ Oblique components report actual `mass_properties` with checked availability.
 A metric-only `Unsupported` result leaves geometry, volume, mesh and STEP usable;
 other errors still reject the output before session commit. No source centroid
 or tensor is substituted for an unavailable child metric.
+
+## Coaxial bore histories
+
+The [through-bore example](nurbs-frustum-workflow-bore-example.json) connects
+stock to an actual cylindrical difference with radius 4 mm. Radius edits reuse
+the stock prefix and rebuild the real annular boundary. Undo/Redo and explicit
+selection retain the actual bored body; each accepted component exports its own
+STEP. Further axial/plane cuts or bores on this initial bored type reject
+explicitly. The stock can still be selected as a separate earlier output node.
+
+Typed components dispatch point queries to the corresponding finite body,
+including the bored solid's actual inner wall and annular cap distances.
+The source's filled cap disks are not substituted for annular boundaries.
 
 ## Browser editing
 
@@ -102,7 +116,9 @@ export for each accepted output component.
 
 The default three-node graph has radius, height, cut-height and component-index
 controls. The oblique preset uses the actual `plane_split` node and adds world
-plane origin/normal controls; its two components are the actual closed children. These preserve node IDs and the exact stock frame. Other histories,
+plane origin/normal controls; its two components are the actual closed children. These preserve node IDs and
+the exact stock frame. The through-bore preset adds hole-radius controls for the
+actual `coaxial_bore` node. Controls irrelevant to the current operation stay hidden. Other histories,
 including STEP stocks and additional nodes, use the JSON editor; simplified
 controls are disabled. Choosing a displayed component does not change the graph.
 The explicit Select button appends a real operation. Setting another output
