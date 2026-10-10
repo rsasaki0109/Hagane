@@ -39,12 +39,23 @@ fn body_report(
     let mut components = Vec::with_capacity(shape.components().len());
     let mut triangle_count = 0usize;
     for body in shape.components() {
-        let mut data = crate::nurbs_frustum_demo::serialize_frustum(
-            body,
-            tolerance,
-            document.display_chord_tolerance,
-            0.,
-        )?;
+        let mut data = match body {
+            NurbsFrustumWorkflowComponent::Canonical(canonical) => {
+                crate::nurbs_frustum_demo::serialize_frustum(
+                    canonical,
+                    tolerance,
+                    document.display_chord_tolerance,
+                    0.,
+                )?
+            }
+            NurbsFrustumWorkflowComponent::Oblique(oblique) => {
+                crate::nurbs_frustum_plane_split_demo::part_report(
+                    oblique,
+                    tolerance,
+                    document.display_chord_tolerance,
+                )?
+            }
+        };
         let count = data["mesh"]["triangles"]
             .as_array()
             .ok_or(Error::InvalidInput("frustum mesh report has no triangles"))?
@@ -59,10 +70,21 @@ fn body_report(
                 "frustum aggregate display triangle budget exceeded",
             ));
         }
-        let frame = body.frame();
+        let frame = match body {
+            NurbsFrustumWorkflowComponent::Canonical(canonical) => canonical.frame(),
+            NurbsFrustumWorkflowComponent::Oblique(oblique) => oblique.source().frame(),
+        };
         let xyz = |v: Vec3| [v.x, v.y, v.z];
         data["placement"] = json!({"translation":xyz(frame.origin()),"axes":frame.axes().map(xyz)});
-        data["scope"] = json!("actual typed rational frustum workflow component; exact axial partition, explicit component selection; arbitrary lofts and general Booleans unsupported");
+        match body {
+            NurbsFrustumWorkflowComponent::Canonical(_) => {
+                data["scope"] = json!("actual typed rational frustum workflow component; exact axial partition, explicit component selection; arbitrary lofts and general Booleans unsupported");
+            }
+            NurbsFrustumWorkflowComponent::Oblique(_) => {
+                data["component_kind"] = json!("oblique_frustum");
+                data["placement_reference"] = json!("source frame");
+            }
+        }
         components.push(data);
     }
     let steps: Result<Vec<_>> = shape
@@ -83,11 +105,20 @@ fn body_report(
             "frustum component total volume is unresolved",
         ));
     }
+    let scope = if shape
+        .components()
+        .iter()
+        .any(|body| body.oblique().is_some())
+    {
+        "versioned typed rational frustum graph; actual closed oblique splits and explicit component selection; output reports all actual components with separate STEP exports; arbitrary lofts and general Booleans unsupported"
+    } else {
+        "versioned typed rational frustum graph; exact axial partitions and explicit component selection; output reports all actual components with separate STEP exports; arbitrary lofts and general Booleans unsupported"
+    };
     Ok(
         json!({"ok":true,"document":document,"components":components,"component_steps":steps?,
         "output":{"id":document.output,"component_count":shape.components().len(),"total_volume":volume,"status":if shape.components().is_empty(){"empty"}else if shape.components().len()==1{"single"}else{"multiple"}},
         "units":"mm","step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN",
-        "scope":"versioned typed rational frustum graph; exact axial partitions and explicit component selection; output reports all actual components with separate STEP exports; arbitrary lofts and general Booleans unsupported"}),
+        "scope":scope}),
     )
 }
 

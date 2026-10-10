@@ -53,7 +53,7 @@ fn selected_and_multi_output_reports_use_actual_parts_with_separate_exports() {
     let shape = session.accepted_shape().unwrap();
     check_report(
         &selected["components"][0],
-        &shape.components()[0],
+        shape.components()[0].canonical().unwrap(),
         doc.display_chord_tolerance,
     );
     assert_eq!(
@@ -75,7 +75,12 @@ fn selected_and_multi_output_reports_use_actual_parts_with_separate_exports() {
     }
     let shape = session.accepted_shape().unwrap();
     let mut sum = 0.;
-    for (i, body) in shape.components().iter().enumerate() {
+    for (i, body) in shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+        .enumerate()
+    {
         check_report(&multi["components"][i], body, doc.display_chord_tolerance);
         assert_eq!(multi["component_steps"][i], multi["components"][i]["step"]);
         let imported = import_step_nurbs_frustum_cardinal_mm(

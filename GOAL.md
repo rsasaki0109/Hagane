@@ -1,5 +1,11 @@
 # Development goal
 
+[Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
+world-plane cuts to actual typed child selection, incremental rebuilding,
+Undo/Redo and exact per-child STEP export. Optional mass failures retain geometry;
+further cuts of oblique children remain explicit errors. Rust components now
+use a canonical/oblique enum; existing JSON documents remain supported.
+
 [Mesh-free oblique-child point queries](docs/nurbs-frustum-oblique-classify.md)
 classify the retained finite solid with checked source and cut-cap witnesses.
 A separate browser probe uses the accepted model; unresolved elliptical-rim

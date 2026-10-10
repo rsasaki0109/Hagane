@@ -1,5 +1,11 @@
 # Roadmap
 
+[Editable oblique frustum workflows](nurbs-frustum-workflow.md) retain actual
+closed curved children through plane edits, explicit selection, cache reuse,
+Undo/Redo and STEP export. Typed components prevent substituting the source body.
+Repeated oblique cuts and general curved Booleans remain unsupported; the
+long-term completion estimate remains 15–25%.
+
 [Mesh-free oblique-child point queries](nurbs-frustum-oblique-classify.md)
 classify actual retained bodies using finite boundary witnesses, with explicit
 ambiguous-rim and arithmetic rejection. Native/WASM/browser queries share the

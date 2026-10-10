@@ -44,18 +44,101 @@ pub enum NurbsFrustumWorkflowOperation {
         input: String,
         cuts: Vec<f64>,
     },
+    PlaneSplit {
+        id: String,
+        input: String,
+        origin: [f64; 3],
+        normal: [f64; 3],
+    },
     Select {
         id: String,
         input: String,
         component: usize,
     },
 }
+/// Typed retained bodies; canonical-only operations require explicit matching.
+#[derive(Clone, Debug)]
+pub enum NurbsFrustumWorkflowComponent {
+    Canonical(Arc<NurbsFrustumSolid>),
+    Oblique(Arc<NurbsObliqueFrustumSolid>),
+}
+impl NurbsFrustumWorkflowComponent {
+    pub fn canonical(&self) -> Option<&Arc<NurbsFrustumSolid>> {
+        if let Self::Canonical(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn oblique(&self) -> Option<&Arc<NurbsObliqueFrustumSolid>> {
+        if let Self::Oblique(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn classify_point(
+        &self,
+        query: Point3,
+        policy: GeometryTolerance,
+    ) -> Result<PointLocation> {
+        match self {
+            Self::Canonical(v) => v.classify_point(query, policy),
+            Self::Oblique(v) => v.classify_point(query, policy),
+        }
+    }
+    pub fn solid(&self) -> &Solid {
+        match self {
+            Self::Canonical(v) => v.solid(),
+            Self::Oblique(v) => v.solid(),
+        }
+    }
+    pub fn validate(&self, policy: GeometryTolerance) -> Result<()> {
+        match self {
+            Self::Canonical(v) => v.validate(policy),
+            Self::Oblique(v) => v.validate(policy),
+        }
+    }
+    pub fn volume(&self, policy: GeometryTolerance) -> Result<f64> {
+        match self {
+            Self::Canonical(v) => v.volume(policy),
+            Self::Oblique(v) => v.volume(policy),
+        }
+    }
+    pub fn mass_properties(&self, policy: GeometryTolerance) -> Result<NurbsGraphMassProperties> {
+        match self {
+            Self::Canonical(v) => v.mass_properties(policy),
+            Self::Oblique(v) => v.mass_properties(policy),
+        }
+    }
+    pub fn inertia_properties(
+        &self,
+        policy: GeometryTolerance,
+    ) -> Result<NurbsGraphInertiaProperties> {
+        match self {
+            Self::Canonical(v) => v.inertia_properties(policy),
+            Self::Oblique(v) => v.inertia_properties(policy),
+        }
+    }
+    pub fn export_step_mm(&self, policy: GeometryTolerance) -> Result<String> {
+        match self {
+            Self::Canonical(v) => v.export_step_mm(policy),
+            Self::Oblique(v) => v.export_step_mm(policy),
+        }
+    }
+    pub fn tessellate(&self, chord: f64, policy: GeometryTolerance) -> Result<Mesh> {
+        match self {
+            Self::Canonical(v) => v.tessellate(chord, policy),
+            Self::Oblique(v) => v.tessellate(chord, policy),
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub enum NurbsFrustumWorkflowShape {
-    Components(Vec<Arc<NurbsFrustumSolid>>),
+    Components(Vec<NurbsFrustumWorkflowComponent>),
 }
 impl NurbsFrustumWorkflowShape {
-    pub fn components(&self) -> &[Arc<NurbsFrustumSolid>] {
+    pub fn components(&self) -> &[NurbsFrustumWorkflowComponent] {
         match self {
             Self::Components(v) => v,
         }
@@ -103,12 +186,15 @@ impl NurbsFrustumWorkflowOperation {
             | Self::PosedFrustum { id, .. }
             | Self::StepStock { id, .. }
             | Self::Partition { id, .. }
+            | Self::PlaneSplit { id, .. }
             | Self::Select { id, .. } => id,
         }
     }
     fn input(&self) -> Option<&str> {
         match self {
-            Self::Partition { input, .. } | Self::Select { input, .. } => Some(input),
+            Self::Partition { input, .. }
+            | Self::PlaneSplit { input, .. }
+            | Self::Select { input, .. } => Some(input),
             _ => None,
         }
     }
@@ -244,6 +330,19 @@ impl NurbsFrustumWorkflowDocument {
                         ));
                     }
                 }
+                NurbsFrustumWorkflowOperation::PlaneSplit { origin, normal, .. }
+                    if origin.iter().chain(normal).any(|x| !x.is_finite())
+                        || Vec3::new(normal[0], normal[1], normal[2])
+                            .normalized()
+                            .is_err() =>
+                {
+                    return Err(diagnostic(
+                        "invalid_input",
+                        "invalid_plane",
+                        Some(id),
+                        "Plane origin must be finite and its normal finite and nonzero.",
+                    ));
+                }
                 NurbsFrustumWorkflowOperation::Partition { cuts, .. }
                     if cuts.is_empty()
                         || cuts.len() > 16
@@ -299,10 +398,10 @@ impl NurbsFrustumWorkflowDocument {
                     tol,
                 )
                 .map_err(|e| geometry(e, id))?;
-                vec![Arc::new(
+                vec![NurbsFrustumWorkflowComponent::Canonical(Arc::new(
                     NurbsFrustumSolid::new(frame, *radii, *height, tol)
                         .map_err(|e| geometry(e, id))?,
-                )]
+                ))]
             }
             NurbsFrustumWorkflowOperation::PosedFrustum {
                 radii,
@@ -325,14 +424,17 @@ impl NurbsFrustumWorkflowDocument {
                     tol,
                 )
                 .map_err(|e| geometry(e, id))?;
-                vec![Arc::new(
+                vec![NurbsFrustumWorkflowComponent::Canonical(Arc::new(
                     NurbsFrustumSolid::new(frame, *radii, *height, tol)
                         .map_err(|e| geometry(e, id))?,
-                )]
+                ))]
             }
-            NurbsFrustumWorkflowOperation::StepStock { step, .. } => vec![Arc::new(
-                import_step_nurbs_frustum_cardinal_mm(step, tol).map_err(|e| geometry(e, id))?,
-            )],
+            NurbsFrustumWorkflowOperation::StepStock { step, .. } => {
+                vec![NurbsFrustumWorkflowComponent::Canonical(Arc::new(
+                    import_step_nurbs_frustum_cardinal_mm(step, tol)
+                        .map_err(|e| geometry(e, id))?,
+                ))]
+            }
             NurbsFrustumWorkflowOperation::Select {
                 input, component, ..
             } => {
@@ -346,6 +448,52 @@ impl NurbsFrustumWorkflowDocument {
                     )
                 })?]
             }
+            NurbsFrustumWorkflowOperation::PlaneSplit {
+                input,
+                origin,
+                normal,
+                ..
+            } => {
+                let shape = inputs[input.as_str()];
+                if shape.components().len() != 1 {
+                    return Err(diagnostic(
+                        "unsupported",
+                        "ambiguous_components",
+                        Some(id),
+                        "PlaneSplit requires one explicitly selected component.",
+                    ));
+                }
+                let source = shape.components()[0].canonical().ok_or_else(|| diagnostic(
+                    "unsupported", "canonical_required", Some(id),
+                    "PlaneSplit requires a canonical frustum; oblique components cannot be split again."))?;
+                let normal = Vec3::new(normal[0], normal[1], normal[2])
+                    .normalized()
+                    .map_err(|e| geometry(e, id))?;
+                let reference = if normal.x.abs() < 0.9 {
+                    Vec3::new(1., 0., 0.)
+                } else {
+                    Vec3::new(0., 1., 0.)
+                };
+                let u = reference
+                    .cross(normal)
+                    .normalized()
+                    .map_err(|e| geometry(e, id))?;
+                let v = normal.cross(u).normalized().map_err(|e| geometry(e, id))?;
+                let split = source
+                    .split_by_plane(
+                        &Surface::Plane {
+                            origin: Point3::new(origin[0], origin[1], origin[2]),
+                            u,
+                            v,
+                        },
+                        tol,
+                    )
+                    .map_err(|e| geometry(e, id))?;
+                vec![
+                    NurbsFrustumWorkflowComponent::Oblique(Arc::new(split.lower)),
+                    NurbsFrustumWorkflowComponent::Oblique(Arc::new(split.upper)),
+                ]
+            }
             NurbsFrustumWorkflowOperation::Partition { input, cuts, .. } => {
                 let shape = inputs[input.as_str()];
                 if shape.components().len() != 1 {
@@ -356,12 +504,12 @@ impl NurbsFrustumWorkflowDocument {
                         "Partition requires one explicitly selected component.",
                     ));
                 }
-                shape.components()[0]
+                shape.components()[0].canonical().ok_or_else(|| diagnostic("unsupported", "canonical_required", Some(id), "Partition requires a canonical frustum; oblique components cannot be repartitioned."))?
                     .split_axial_many(cuts, tol)
                     .map_err(|e| geometry(e, id))?
                     .parts
                     .into_iter()
-                    .map(Arc::new)
+                    .map(|v| NurbsFrustumWorkflowComponent::Canonical(Arc::new(v)))
                     .collect()
             }
         };

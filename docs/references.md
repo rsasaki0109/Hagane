@@ -1260,3 +1260,10 @@ convex halfspace intersection. A finite retained-boundary witness is required
 for boundary success; unresolved elliptical-rim distances are explicitly refused.
 This independent MIT OR Apache-2.0 implementation reuses the source finite-frustum
 distance query and introduces no dependency or OCCT source.
+
+
+Editable oblique frustum workflows retain the independently constructed closed
+children described above. The graph stores typed canonical/oblique bodies and
+shares exact immutable prefixes; it does not derive geometry from display meshes
+or replace unsupported operations with source bodies. No dependency or OCCT
+source is added. See [workflow contracts and Rust API migration](nurbs-frustum-workflow.md).

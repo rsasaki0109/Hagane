@@ -1,7 +1,8 @@
 # Editable rational frustum workflow
 
 The versioned Rust workflow connects exact cardinal-frame frustum construction,
-axis-angle poses, actual STEP input, axial partitions and explicit component selection. A session
+axis-angle poses, actual STEP input, axial partitions, closed oblique plane splits
+and explicit component selection. A session
 retains unchanged B-rep prefixes, reports real node evaluation counts and
 supports bounded Undo/Redo. It is a scoped modeling graph, not a general CAD
 history or Boolean engine.
@@ -35,7 +36,8 @@ outputs and forward references are rejected.
 | `frustum` | One exact positive-radius frustum from radii, height, origin and three axes. Axes must be one of the 24 exact right-handed signed coordinate bases. |
 | `posed_frustum` | One actual frustum from positive radii/height, origin, a nonzero finite `rotation_axis` and `angle` in [-π, π] radians. Uses checked rigid rotation; no scale, shear or reflection. |
 | `step_stock` | One actual body from the checked [cardinal STEP importer](nurbs-frustum-cardinal-step-import.md), retaining rational geometry and UV boundaries. |
-| `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one component. |
+| `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one canonical component. |
+| `plane_split` | Two actual closed oblique children from world `origin` and `normal`. Requires one canonical component; the complete cut must stay strictly between its original caps. Lower/upper ordering is independent of normal sign. |
 | `select` | The explicitly indexed component of an earlier node, shared as the actual typed body. |
 
 The default graph constructs an X-oriented 16-to-8 mm frustum of height 24 mm,
@@ -67,7 +69,29 @@ begin/finish resets the transport latch without silently resetting the session.
 
 The native and WASM command paths share the kernel, actual-body serializer and
 transaction rules. Arbitrary-angle STEP import, apex shapes, general lofts,
-oblique partitions and frustum Booleans are unsupported.
+repeated cuts of oblique children and general frustum Booleans are unsupported.
+Axial `partition` on an oblique child is also explicitly unsupported.
+
+## Oblique children and Rust API migration
+
+The [oblique example document](nurbs-frustum-workflow-oblique-example.json)
+constructs an identity-frame source and retains both actual closed children.
+Select component 0 or 1 with the existing `select` node to retain the lower or
+upper child and export its actual STEP. Plane edits reuse the unchanged source
+prefix; output/display edits reuse the actual children.
+
+For Rust 0.1 callers, `components()` now returns typed
+`NurbsFrustumWorkflowComponent` values rather than only canonical frustum Arcs.
+Use unified geometry/volume/display/export methods, or explicitly inspect
+`canonical()` / `oblique()` for type-specific operations. This is a source API
+change: canonical-only callers must unwrap the canonical variant. An oblique
+child is never replaced by its source frustum or silently returned as empty.
+Existing valid JSON documents and canonical report fields remain supported.
+
+Oblique components report actual `mass_properties` with checked availability.
+A metric-only `Unsupported` result leaves geometry, volume, mesh and STEP usable;
+other errors still reject the output before session commit. No source centroid
+or tensor is substituted for an unavailable child metric.
 
 ## Browser editing
 
@@ -77,7 +101,8 @@ versioned document and supports Undo/Redo, JSON upload/download and exact STEP
 export for each accepted output component.
 
 The default three-node graph has radius, height, cut-height and component-index
-controls. These preserve node IDs and the exact stock frame. Other histories,
+controls. The oblique preset uses the actual `plane_split` node and adds world
+plane origin/normal controls; its two components are the actual closed children. These preserve node IDs and the exact stock frame. Other histories,
 including STEP stocks and additional nodes, use the JSON editor; simplified
 controls are disabled. Choosing a displayed component does not change the graph.
 The explicit Select button appends a real operation. Setting another output
@@ -98,6 +123,9 @@ partition seams. They check real `Arc` reuse, explicit selection, invalid graph
 and tolerance failures, callback rollback, output/display cache reuse, history
 bounds and Redo invalidation. Demo checks compare complete actual component
 reports and reject display work beyond the aggregate budget before committing.
+Oblique tests additionally compare direct child geometry, selected Arc identity,
+plane-edit prefix reuse, exact child export and unsupported recut rollback.
+Near-uniform taper may refuse only moments while preserving the accepted shape.
 The workflow reuses this repository's original kernel and transaction design;
 no dependencies or OCCT source were added. Code is MIT OR Apache-2.0.
 

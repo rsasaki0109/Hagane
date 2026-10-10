@@ -1,7 +1,7 @@
 //! Two actual closed rational children of one strict oblique frustum split.
 use crate::*;
 
-fn part_report(
+pub(crate) fn part_report(
     body: &NurbsObliqueFrustumSolid,
     policy: GeometryTolerance,
     chord: f64,

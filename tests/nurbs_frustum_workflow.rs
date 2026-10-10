@@ -30,9 +30,15 @@ fn actual_parts_fresh_replay_step_stock_and_prefix_identity() {
         signature(&document.rebuild().unwrap())
     );
     let stock = session.prefix_snapshot(0).unwrap().clone();
-    let parent = stock.components()[0].clone();
+    let parent = stock.components()[0].canonical().unwrap().clone();
     let direct = parent.split_axial_many(&[6., 12., 18.], policy()).unwrap();
-    for (actual, expected) in accepted.shape.components().iter().zip(&direct.parts) {
+    for (actual, expected) in accepted
+        .shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+        .zip(&direct.parts)
+    {
         assert_eq!(
             format!("{:?}", actual.solid()),
             format!("{:?}", expected.solid())
@@ -48,7 +54,12 @@ fn actual_parts_fresh_replay_step_stock_and_prefix_identity() {
     }
     let mut sum_volume = 0.;
     let mut first_moment = Vec3::new(0., 0., 0.);
-    for part in accepted.shape.components() {
+    for part in accepted
+        .shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+    {
         let mass = part.mass_properties(policy()).unwrap();
         sum_volume += mass.volume;
         first_moment = first_moment + mass.centroid * mass.volume;
@@ -95,8 +106,8 @@ fn actual_parts_fresh_replay_step_stock_and_prefix_identity() {
     );
     assert!(Arc::ptr_eq(session.prefix_snapshot(0).unwrap(), &stock));
     assert!(Arc::ptr_eq(
-        &chosen.shape.components()[0],
-        &accepted.shape.components()[1]
+        chosen.shape.components()[0].canonical().unwrap(),
+        accepted.shape.components()[1].canonical().unwrap()
     ));
     let mut further = selected.clone();
     further["operations"]

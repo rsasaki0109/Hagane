@@ -50,7 +50,12 @@ fn actual_pose_and_independent_world_moments_partition_conservation() {
         .unwrap();
     let parent = NurbsFrustumSolid::new(frame, [16., 8.], 24., policy()).unwrap();
     let direct = parent.split_axial_many(&[6., 12., 18.], policy()).unwrap();
-    for (actual, expected) in shape.components().iter().zip(&direct.parts) {
+    for (actual, expected) in shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+        .zip(&direct.parts)
+    {
         assert_eq!(
             format!("{:?}", actual.solid()),
             format!("{:?}", expected.solid())
@@ -84,7 +89,11 @@ fn actual_pose_and_independent_world_moments_partition_conservation() {
     let mut sum_volume = 0.;
     let mut moment = Vec3::new(0., 0., 0.);
     let mut tensor = [[0.; 3]; 3];
-    for part in shape.components() {
+    for part in shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+    {
         let p = part.inertia_properties(policy()).unwrap();
         sum_volume += p.volume;
         moment = moment + p.centroid * p.volume;
@@ -111,7 +120,11 @@ fn actual_pose_and_independent_world_moments_partition_conservation() {
 fn actual_pcurves_closed_display_and_native_report() {
     let document = doc(value(0.7));
     let shape = document.rebuild().unwrap();
-    for body in shape.components() {
+    for body in shape
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+    {
         let solid = body.solid();
         for face in &solid.shell.faces {
             for coedge in &face.wires[0].coedges {

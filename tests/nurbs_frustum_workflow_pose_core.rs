@@ -13,7 +13,12 @@ fn actual_pose_and_partitions_match_direct_brep_and_world_metrics() {
     let direct = NurbsFrustumSolid::new(frame, [16., 8.], 24., policy).unwrap();
     let parts = direct.split_axial_many(&[6., 12.], policy).unwrap();
     let actual = doc.rebuild().unwrap();
-    for (a, b) in actual.components().iter().zip(&parts.parts) {
+    for (a, b) in actual
+        .components()
+        .iter()
+        .map(|body| body.canonical().unwrap())
+        .zip(&parts.parts)
+    {
         assert_eq!(
             a.export_step_mm(policy).unwrap(),
             b.export_step_mm(policy).unwrap()
