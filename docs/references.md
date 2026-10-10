@@ -1133,3 +1133,14 @@ containing material boundary, using analytic point-location witnesses rather
 than a possibly exterior centroid. References remain the published planar
 arrangement and Green-theorem sources above. Original code is MIT OR Apache-2.0;
 no library dependency or OCCT source was added.
+
+### Rational conic ruled frusta
+
+The exact four-quarter frustum uses rational conic and ruled-surface constructions
+from the Piegl/Tiller NURBS references above: weights [1, sqrt(1/2), 1] describe
+each circle quarter, and linear interpolation of coaxial radius/height supplies
+a degree [2,1] rational tensor patch. The same rational primary parameter is
+retained by planar cap pcurves and affine side UV uses. Polynomial disk moments
+give volume/centroid/inertia; Bernstein homogeneous residual bounds certify
+triangle/chord approximations and the shared cap boundary. The implementation
+is original MIT OR Apache-2.0 Rust code with no copied OCCT source or new library.

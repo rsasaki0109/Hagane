@@ -1,0 +1,39 @@
+//! Native/WASM rendering and exact STEP for checked rational frustum B-reps.
+use crate::*;
+
+/// Lower/upper radius, height, Y pose angle, translation XYZ, linear/chord tolerances.
+pub fn nurbs_frustum_demo_json(x: &[f64]) -> Result<String> {
+    if x.len() != 9 || x.iter().any(|v| !v.is_finite()) {
+        return Err(Error::InvalidInput(
+            "NURBS frustum requires exactly nine finite values",
+        ));
+    }
+    let policy = GeometryTolerance::new(x[7], GeometryTolerance::default().angular(), 0.)?;
+    let pose = Transform::translation(Vec3::new(x[4], x[5], x[6]))?
+        .compose(Transform::rotation(Vec3::new(0., 1., 0.), x[3])?)?;
+    let frame = Frame3::new_with_tolerance(
+        Point3::new(x[4], x[5], x[6]),
+        [
+            pose.vector(Vec3::new(1., 0., 0.)),
+            pose.vector(Vec3::new(0., 1., 0.)),
+            pose.vector(Vec3::new(0., 0., 1.)),
+        ],
+        policy,
+    )?;
+    let body = NurbsFrustumSolid::new(frame, [x[0], x[1]], x[2], policy)?;
+    let mass = body.mass_properties(policy)?;
+    let inertia = body.inertia_properties(policy)?;
+    let bounds = body.bounds(policy)?;
+    let mesh = body.tessellate(x[8], policy)?;
+    let xyz = |p: Point3| [p.x, p.y, p.z];
+    Ok(serde_json::json!({
+        "units":"mm","radii":[x[0],x[1]],"height":x[2],"volume":mass.volume,"centroid":xyz(mass.centroid),"inertia":inertia.inertia,
+        "bounds":{"min":xyz(bounds.min),"max":xyz(bounds.max)},"bounds_kind":"exact endpoint-circle axis envelopes",
+        "placement":{"angle":x[3],"translation":[x[4],x[5],x[6]],"axis":[0.,1.,0.]},"axis":[frame.axes()[2].x,frame.axes()[2].y,frame.axes()[2].z],
+        "linear_tolerance":x[7],"display_chord_tolerance":x[8],
+        "mesh":{"positions":mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},
+        "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,
+        "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN",
+        "scope":"typed positive-radius coaxial circular frustum; four exact rational NURBS ruled sides, rational rims, plane caps and line generators; apex, arbitrary lofts, general Booleans and frustum STEP import unsupported"
+    }).to_string())
+}

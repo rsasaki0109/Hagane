@@ -1,5 +1,10 @@
 # Roadmap
 
+[Exact rational NURBS frustum lofts](nurbs-frustum.md) add closed ruled
+surfaces beyond height graphs, with same-parameter rational boundaries, validated
+mass/inertia, bounded display and exact STEP export. This typed positive-radius
+coaxial domain does not claim arbitrary lofts, apex shapes or general NURBS Booleans.
+
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,
 explicit component selection, incremental prefix reuse, Undo/Redo and per-part

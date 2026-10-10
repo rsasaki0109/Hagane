@@ -326,3 +326,10 @@ pub use prism_workflow::*;
 
 mod prism_workflow_demo;
 pub use prism_workflow_demo::*;
+
+mod nurbs_frustum;
+pub use nurbs_frustum::*;
+mod nurbs_frustum_demo;
+mod nurbs_frustum_display;
+mod nurbs_frustum_mass;
+pub use nurbs_frustum_demo::*;

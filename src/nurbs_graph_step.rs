@@ -71,6 +71,49 @@ pub(crate) fn decompose_affine(origin: [f64; 2], direction: [f64; 2]) -> Result<
     Ok(([direction[0] / length, direction[1] / length], length))
 }
 impl Writer {
+    fn direction3(&mut self, v: Vec3) -> Result<usize> {
+        if !v.finite() {
+            return Err(Error::InvalidInput("STEP direction is nonfinite"));
+        }
+        self.entity(format!(
+            "DIRECTION('',({},{},{}))",
+            number(v.x),
+            number(v.y),
+            number(v.z)
+        ))
+    }
+    fn line3(&mut self, a: Point3, b: Point3) -> Result<usize> {
+        let delta = b - a;
+        let scale = delta.x.abs().max(delta.y.abs()).max(delta.z.abs());
+        if !delta.finite() || !scale.is_finite() || scale <= 0. {
+            return Err(Error::InvalidTopology("STEP line direction is unresolved"));
+        }
+        let unit = Vec3::new(delta.x / scale, delta.y / scale, delta.z / scale);
+        let length = scale * (unit.x * unit.x + unit.y * unit.y + unit.z * unit.z).sqrt();
+        if !length.is_normal() {
+            return Err(Error::Unsupported("STEP line magnitude is unresolved"));
+        }
+        let point = self.point(a)?;
+        let direction = self.direction3(Vec3::new(
+            delta.x / length,
+            delta.y / length,
+            delta.z / length,
+        ))?;
+        let vector = self.entity(format!("VECTOR('',#{direction},{})", number(length)))?;
+        self.entity(format!("LINE('',#{point},#{vector})"))
+    }
+    fn plane3(&mut self, origin: Point3, u: Vec3, v: Vec3, tolerance: Tolerance) -> Result<usize> {
+        if !crate::geometry::plane_basis_valid(u, v, GeometryTolerance::try_from(tolerance)?) {
+            return Err(Error::InvalidTopology("STEP plane basis is unresolved"));
+        }
+        let point = self.point(origin)?;
+        let axis = self.direction3(u.cross(v).normalized()?)?;
+        let reference = self.direction3(u)?;
+        let placement = self.entity(format!(
+            "AXIS2_PLACEMENT_3D('',#{point},#{axis},#{reference})"
+        ))?;
+        self.entity(format!("PLANE('',#{placement})"))
+    }
     fn entity(&mut self, body: String) -> Result<usize> {
         if self.records.len() >= 100000 {
             return Err(Error::Unsupported(
@@ -214,7 +257,7 @@ impl Writer {
         self.entity(format!("PCURVE('',#{surface},#{representation})"))
     }
 }
-fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
+pub(crate) fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
     Tolerance::new(tolerance.linear)?;
     if solid.vertices.len() > 4096 || solid.edges.len() > 4096 || solid.shell.faces.len() > 512 {
         return Err(Error::Unsupported(
@@ -223,20 +266,26 @@ fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
     }
     let mut controls = 0usize;
     for edge in &solid.edges {
-        let Curve::Nurbs(c) = &edge.curve else {
-            return Err(Error::Unsupported(
-                "graph STEP requires retained spline edge geometry",
-            ));
-        };
-        controls = controls.saturating_add(c.control_points().len());
+        match &edge.curve {
+            Curve::Nurbs(c) => controls = controls.saturating_add(c.control_points().len()),
+            Curve::Line { .. } => (),
+            _ => {
+                return Err(Error::Unsupported(
+                    "typed spline STEP requires spline or straight edge geometry",
+                ))
+            }
+        }
     }
     for face in &solid.shell.faces {
-        let Surface::Nurbs(s) = &face.surface else {
-            return Err(Error::Unsupported(
-                "graph STEP requires retained spline face geometry",
-            ));
-        };
-        controls = controls.saturating_add(s.control_points().len());
+        match &face.surface {
+            Surface::Nurbs(s) => controls = controls.saturating_add(s.control_points().len()),
+            Surface::Plane { .. } => (),
+            _ => {
+                return Err(Error::Unsupported(
+                    "typed spline STEP requires spline or planar face geometry",
+                ))
+            }
+        }
         for coedge in face.wires.iter().flat_map(|w| &w.coedges) {
             if let PCurve::Nurbs(curve) = &coedge.pcurve {
                 controls = controls.saturating_add(curve.control_points().len());
@@ -256,10 +305,11 @@ fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
     }
     let mut surfaces = Vec::new();
     for face in &solid.shell.faces {
-        let Surface::Nurbs(surface) = &face.surface else {
-            unreachable!()
-        };
-        surfaces.push(w.surface(surface)?);
+        surfaces.push(match &face.surface {
+            Surface::Nurbs(surface) => w.surface(surface)?,
+            Surface::Plane { origin, u, v } => w.plane3(*origin, *u, *v, tolerance)?,
+            _ => unreachable!(),
+        });
     }
     let uv_context =
         w.entity("(GEOMETRIC_REPRESENTATION_CONTEXT(2) REPRESENTATION_CONTEXT('',''))".into())?;
@@ -282,10 +332,11 @@ fn write(solid: &Solid, tolerance: Tolerance) -> Result<String> {
                 "graph STEP requires two distinct face uses per shared edge",
             ));
         }
-        let Curve::Nurbs(curve) = &edge.curve else {
-            unreachable!()
+        let geometry = match &edge.curve {
+            Curve::Nurbs(curve) => w.curve(curve)?,
+            Curve::Line { a, b } => w.line3(*a, *b)?,
+            _ => unreachable!(),
         };
-        let geometry = w.curve(curve)?;
         let pcurves = uses[ei]
             .iter()
             .map(|(fi, c)| w.pcurve(surfaces[*fi], &c.pcurve, uv_context))
