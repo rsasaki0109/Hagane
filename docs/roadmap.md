@@ -1,5 +1,11 @@
 # Roadmap
 
+[Closed oblique frustum sections](nurbs-frustum-plane-section.md) construct
+actual quadratic rational edges and cubic same-parameter source-face pcurves.
+The closed section has shared vertices and bounded display; it is not a solid
+cut. Cap crossings, contact and unresolved precision are explicitly unsupported.
+General 3D Booleans remain future work; the estimate remains 15–25%.
+
 [Frustum line and ray queries](nurbs-frustum-line.md) retain original nonunit
 parameters and actual rational face UV witnesses. A checked finite-body
 enclosure feeds the segment solver; inside rays and resolved misses are explicit.

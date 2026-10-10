@@ -1216,3 +1216,13 @@ Original nonunit parameter recovery uses elementary norm scaling. This original
 MIT OR Apache-2.0 extension retains the segment solver's actual rational face
 witnesses and adds no dependencies or OCCT source. See
 [finite-body line/ray scope](nurbs-frustum-line.md).
+
+Closed oblique frustum sections solve the plane equation in the linear ruling
+parameter, then cancel homogeneous terms to retain quadratic spatial conics.
+Bernstein multiplication by the edge parameter and degree elevation give the
+cubic same-parameter UV curve. Positive-weight convex hulls certify whole-curve
+cap clearance and bound the plane residual from spatial controls; the
+coefficient cancellation identity bounds correspondence to the source patch.
+These use the existing public NURBS mathematics references. Original code is
+MIT OR Apache-2.0 with no new dependencies or OCCT source. See
+[closed section scope](nurbs-frustum-plane-section.md).

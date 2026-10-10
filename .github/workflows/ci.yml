@@ -39,3 +39,4 @@ jobs:
       - run: node scripts/test-frustum-workflow-browser.mjs
       - run: node scripts/test-frustum-segment-browser.mjs
       - run: node scripts/test-frustum-line-browser.mjs
+      - run: node scripts/test-frustum-plane-section-browser.mjs
