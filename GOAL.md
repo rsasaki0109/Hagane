@@ -1,5 +1,11 @@
 # Development goal
 
+[Exact line/arc prism Booleans](docs/prism-arc-line-booleans.md) now return
+all difference, intersection and union components when circular-arc tools cross
+line/arc stock boundaries. Analytic circle/circle roots extend the actual B-rep
+arrangement; the same-axis, same-cap-interval domain rejects contact overlays
+and general curved 3D Booleans.
+
 The latest [exact curved prismatic partition](docs/prism-convex-partition.md)
 constructs difference/common B-reps when convex polygon tools cross cylindrical
 stock walls. Analytic line/circle arrangements return all actual components and

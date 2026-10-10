@@ -1,10 +1,17 @@
 # Roadmap
 
+[Exact line/arc prism Booleans](prism-arc-line-booleans.md) now return
+all difference, intersection and union components when circular-arc tools cross
+line/arc stock boundaries. Analytic circle/circle roots extend the actual B-rep
+arrangement; the same-axis, same-cap-interval domain rejects contact overlays
+and general curved 3D Booleans.
+
 [Exact curved prismatic partition](prism-convex-partition.md) constructs analytic
 line/circle crossing arrangements for actual difference/common components when
 convex polygon tools cross cylindrical stock walls. It supports disconnected
 and empty results within the same-axis/same-cap-interval domain. Contacts,
-tangent/vertex overlays, union and general curved 3D Booleans remain planned.
+tangent/vertex overlays and general curved 3D Booleans remain planned.
+Union is implemented in the additive line/arc prism API linked above.
 
 
 [Editable curved-stock blind pockets](workflow-normal-blind.md) connect rounded

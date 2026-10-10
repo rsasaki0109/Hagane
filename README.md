@@ -19,6 +19,12 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Exact line/arc prism Booleans](docs/prism-arc-line-booleans.md) now return
+all difference, intersection and union components when circular-arc tools cross
+line/arc stock boundaries. Analytic circle/circle roots extend the actual B-rep
+arrangement; the same-axis, same-cap-interval domain rejects contact overlays
+and general curved 3D Booleans.
+
 [Exact curved prismatic partition](docs/prism-convex-partition.md) now computes
 difference and intersection with a convex polygonal tool across actual cylindrical
 sidewalls. Analytic boundary arrangements produce all closed B-rep components,

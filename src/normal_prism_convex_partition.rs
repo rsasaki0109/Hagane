@@ -126,7 +126,7 @@ fn endpoint_clearance(a: PlanarSegment, b: PlanarSegment, margin: f64) -> Result
     }
     Ok(())
 }
-fn intersections(
+fn line_intersections(
     source: PlanarSegment,
     tool: PlanarSegment,
     margin: f64,
@@ -221,6 +221,133 @@ fn intersections(
         }
     }
     Ok(result)
+}
+fn arc_intersections(
+    a: PlanarSegment,
+    b: PlanarSegment,
+    margin: f64,
+    reserve: f64,
+    angular: f64,
+    arithmetic: f64,
+) -> Result<Vec<(f64, f64, P2)>> {
+    match (a, b) {
+        (_, PlanarSegment::Line { .. }) => {
+            let events = line_intersections(a, b, margin, reserve, angular)?;
+            if let PlanarSegment::Arc { center, radius, .. } = a {
+                let PlanarSegment::Line { a: p, b: q } = b else {
+                    unreachable!()
+                };
+                let v = sub(q, p);
+                let length = v[0].hypot(v[1]);
+                for (_, _, point) in &events {
+                    let radial = sub(*point, center);
+                    let sine = dot(radial, v).abs() / (radius * length);
+                    checked((arithmetic + 512. * f64::EPSILON * radius) / sine, reserve)?;
+                    if sine <= angular.sin() {
+                        return Err(DOMAIN);
+                    }
+                }
+            }
+            Ok(events)
+        }
+        (PlanarSegment::Line { .. }, PlanarSegment::Arc { .. }) => Ok(arc_intersections(
+            b, a, margin, reserve, angular, arithmetic,
+        )?
+        .into_iter()
+        .map(|(t, u, p)| (u, t, p))
+        .collect()),
+        (
+            PlanarSegment::Arc {
+                center: c0,
+                radius: r0,
+                ..
+            },
+            PlanarSegment::Arc {
+                center: c1,
+                radius: r1,
+                ..
+            },
+        ) => {
+            endpoint_clearance(a, b, margin)?;
+            let delta = sub(c1, c0);
+            let d = delta[0].hypot(delta[1]);
+            if !d.is_finite() {
+                return Err(DOMAIN);
+            }
+            if d <= margin {
+                if (r0 - r1).abs() > d + margin {
+                    return Ok(Vec::new());
+                }
+                return Err(DOMAIN);
+            }
+            let unit = [delta[0] / d, delta[1] / d];
+            let outside = d - r0 - r1;
+            let inside = d - (r0 - r1).abs();
+            if outside > margin || inside < -margin {
+                return Ok(Vec::new());
+            }
+            if outside.abs() <= margin || inside.abs() <= margin {
+                for s in [-1., 1.] {
+                    for t in [-1., 1.] {
+                        let p = [c0[0] + s * r0 * unit[0], c0[1] + s * r0 * unit[1]];
+                        let q = [c1[0] + t * r1 * unit[0], c1[1] + t * r1 * unit[1]];
+                        if distance(p, q) <= margin
+                            && arc_fraction(a, p).is_some()
+                            && arc_fraction(b, q).is_some()
+                        {
+                            return Err(DOMAIN);
+                        }
+                    }
+                }
+                // No contact on these finite arcs; nonpositive support factors
+                // cannot produce a transverse finite event.
+                if outside >= 0. || inside <= 0. {
+                    return Ok(Vec::new());
+                }
+            }
+            let scale = d.max(r0).max(r1);
+            let nd = d / scale;
+            let n0 = r0 / scale;
+            let n1 = r1 / scale;
+            let factors = [n0 + n1 - nd, n0 + n1 + nd, nd - n0 + n1, nd + n0 - n1];
+            if factors.iter().any(|f| !f.is_finite() || *f <= 0.) {
+                return Ok(Vec::new());
+            }
+            let h2 = factors.iter().product::<f64>() / (4. * nd * nd);
+            let along = (nd * nd + (n0 - n1) * (n0 + n1)) / (2. * nd) * scale;
+            let h = h2.sqrt() * scale;
+            if !h.is_finite() || !along.is_finite() {
+                return Err(DOMAIN);
+            }
+            let sine = nd * (h / scale) / (n0 * n1);
+            let mut result = Vec::new();
+            for sign in [-1., 1.] {
+                let p = [
+                    c0[0] + unit[0] * along - unit[1] * h * sign,
+                    c0[1] + unit[1] * along + unit[0] * h * sign,
+                ];
+                if let (Some(t), Some(u)) = (arc_fraction(a, p), arc_fraction(b, p)) {
+                    if t.min(1. - t) * segment_length(a) <= margin
+                        || u.min(1. - u) * segment_length(b) <= margin
+                        || sine <= angular.sin()
+                    {
+                        return Err(DOMAIN);
+                    }
+                    checked((arithmetic + 4096. * f64::EPSILON * scale) / sine, reserve)?;
+                    let exact = a.evaluate(t);
+                    checked(
+                        distance(exact, p)
+                            + distance(exact, b.evaluate(u))
+                            + (distance(p, c0) - r0).abs()
+                            + (distance(p, c1) - r1).abs(),
+                        reserve,
+                    )?;
+                    result.push((t, u, exact));
+                }
+            }
+            Ok(result)
+        }
+    }
 }
 #[derive(Clone)]
 struct InputSegment {
@@ -451,6 +578,20 @@ pub fn partition_normal_prism_by_convex_tool(
     axis: Vec3,
     tolerance: GeometryTolerance,
 ) -> Result<NormalPrismConvexPartition> {
+    let (difference, intersection, _) = partition_engine(source, tool, axis, tolerance, false)?;
+    Ok(NormalPrismConvexPartition {
+        difference,
+        intersection,
+    })
+}
+pub(crate) type BooleanBodies = (Vec<Solid>, Vec<Solid>, Vec<Solid>);
+pub(crate) fn partition_engine(
+    source: &Solid,
+    tool: &Solid,
+    axis: Vec3,
+    tolerance: GeometryTolerance,
+    curved_tool: bool,
+) -> Result<BooleanBodies> {
     let tol = tolerance.absolute();
     source.validate(tol)?;
     tool.validate(tol)?;
@@ -459,16 +600,28 @@ pub fn partition_normal_prism_by_convex_tool(
     let cutter =
         crate::arc_line_prism_validation::recognize_validated_normal_prism(tool, axis, tol)?;
     if !cutter.region.holes.is_empty()
-        || tool
-            .edges
-            .iter()
-            .any(|e| !matches!(e.curve, Curve::Line { .. }))
+        || (!curved_tool
+            && tool
+                .edges
+                .iter()
+                .any(|e| !matches!(e.curve, Curve::Line { .. })))
     {
         return Err(Error::Unsupported(
             "partition tool must be a convex all-line prism without holes",
         ));
     }
-    crate::booleans::convex_planes(tool, tolerance)?;
+    if !curved_tool {
+        crate::booleans::convex_planes(tool, tolerance)?;
+    }
+    if curved_tool
+        && cutter.region.outer.iter().any(
+            |s| matches!(s,PlanarSegment::Arc{sweep,..}if sweep.abs()>FRAC_PI_2+64.*f64::EPSILON),
+        )
+    {
+        return Err(Error::Unsupported(
+            "arc-line Boolean tool requires quarter or smaller arcs without holes",
+        ));
+    }
     let mut stock_rings = vec![orient(&stock.region.outer, true)?];
     for hole in &stock.region.holes {
         stock_rings.push(orient(hole, false)?);
@@ -538,8 +691,53 @@ pub fn partition_normal_prism_by_convex_tool(
     )?;
     let mut transformed = Vec::new();
     for segment in &cutter.region.outer {
-        let PlanarSegment::Line { a, b } = *segment else {
-            return Err(DOMAIN);
+        let (a, b) = match *segment {
+            PlanarSegment::Line { a, b } => (a, b),
+            PlanarSegment::Arc {
+                center,
+                radius,
+                start_angle,
+                sweep,
+            } => {
+                let actual = cutter.frame.point(Vec3::new(center[0], center[1], 0.));
+                let local = stock.frame.local_point(actual);
+                checked(
+                    (local.z - cb.z).abs()
+                        + length(actual - stock.frame.point(Vec3::new(local.x, local.y, cb.z))),
+                    reserve,
+                )?;
+                let x = stock.frame.local_vector(cutter.frame.axes()[0]);
+                let y = stock.frame.local_vector(cutter.frame.axes()[1]);
+                let phase = x.y.atan2(x.x);
+                let orientation = if x.x * y.y - x.y * y.x > 0. { 1. } else { -1. };
+                let cosine = stock.frame.vector(Vec3::new(phase.cos(), phase.sin(), 0.));
+                let sine = stock.frame.vector(Vec3::new(
+                    -phase.sin() * orientation,
+                    phase.cos() * orientation,
+                    0.,
+                ));
+                checked(
+                    radius
+                        * (length(cosine - cutter.frame.axes()[0])
+                            + length(sine - cutter.frame.axes()[1])),
+                    reserve,
+                )?;
+                let start = phase + orientation * start_angle;
+                let wrapped = start.rem_euclid(TAU);
+                checked(
+                    radius
+                        * ((start.cos() - wrapped.cos()).abs()
+                            + (start.sin() - wrapped.sin()).abs()),
+                    reserve,
+                )?;
+                transformed.push(PlanarSegment::Arc {
+                    center: [local.x, local.y],
+                    radius,
+                    start_angle: wrapped,
+                    sweep: orientation * sweep,
+                });
+                continue;
+            }
         };
         let mut points = Vec::new();
         for p in [a, b] {
@@ -563,17 +761,36 @@ pub fn partition_normal_prism_by_convex_tool(
     let mut crossings = 0;
     for a in &mut first {
         for b in &mut second {
-            for (t, u, p) in intersections(
-                a.geometry,
-                b.geometry,
-                margin + arithmetic,
-                reserve,
-                tolerance.angular(),
-            )? {
+            let events = if curved_tool {
+                arc_intersections(
+                    a.geometry,
+                    b.geometry,
+                    margin + arithmetic,
+                    reserve,
+                    tolerance.angular(),
+                    arithmetic,
+                )?
+            } else {
+                line_intersections(
+                    a.geometry,
+                    b.geometry,
+                    margin + arithmetic,
+                    reserve,
+                    tolerance.angular(),
+                )?
+            };
+            for (t, u, p) in events {
                 if crossings >= 128 {
                     return Err(Error::Unsupported("partition crossing limit exceeded"));
                 }
                 // Each analytic event owns one shared ID; no proximity welding occurs.
+                if curved_tool
+                    && nodes[total..]
+                        .iter()
+                        .any(|q| distance(*q, p) <= margin + arithmetic)
+                {
+                    return Err(DOMAIN);
+                }
                 let node = nodes.len();
                 nodes.push(p);
                 a.breaks.push((t, node));
@@ -587,9 +804,15 @@ pub fn partition_normal_prism_by_convex_tool(
     let classify_tol = Tolerance::new(margin + arithmetic)?;
     let mut difference = Vec::new();
     let mut common = Vec::new();
+    let mut union = Vec::new();
     for f in source_fragments {
         match crate::mixed::point_location(f.geometry.evaluate(0.5), &tool_ring, classify_tol)? {
-            PointLocation::Outside => difference.push(f),
+            PointLocation::Outside => {
+                difference.push(f);
+                if curved_tool {
+                    union.push(f);
+                }
+            }
             PointLocation::Inside => common.push(f),
             PointLocation::Boundary => return Err(DOMAIN),
         }
@@ -604,11 +827,15 @@ pub fn partition_normal_prism_by_convex_tool(
                     end: f.start,
                 });
             }
-            PointLocation::Outside => {}
+            PointLocation::Outside => {
+                if curved_tool {
+                    union.push(f);
+                }
+            }
             PointLocation::Boundary => return Err(DOMAIN),
         }
     }
-    if difference.len() + common.len() > 128 {
+    if difference.len() + common.len() + union.len() > 128 {
         return Err(Error::Unsupported(
             "partition combined result profile limit exceeded",
         ));
@@ -630,6 +857,18 @@ pub fn partition_normal_prism_by_convex_tool(
         tol,
         effective,
     )?;
+    let union = if curved_tool {
+        extrude_cycles(
+            cycles(&union)?,
+            stock.frame,
+            stock.height,
+            axis,
+            tol,
+            effective,
+        )?
+    } else {
+        Vec::new()
+    };
     let mut sum = 0.;
     let mut correction = 0.;
     for body in difference.iter().chain(&intersection) {
@@ -652,10 +891,22 @@ pub fn partition_normal_prism_by_convex_tool(
     {
         return Err(DOMAIN);
     }
-    Ok(NormalPrismConvexPartition {
-        difference,
-        intersection,
-    })
+    if curved_tool {
+        let mut volume = 0.;
+        let mut correction = 0.;
+        for body in &union {
+            let adjusted = body.volume()? - correction;
+            let next = volume + adjusted;
+            correction = (next - volume) - adjusted;
+            volume = next;
+        }
+        let expected = source.volume()? + tool.volume()? - overlap;
+        checked(
+            (volume - expected).abs(),
+            32768. * f64::EPSILON * (source.volume()?.abs() + tool.volume()?.abs() + overlap.abs()),
+        )?;
+    }
+    Ok((difference, intersection, union))
 }
 
 #[cfg(test)]

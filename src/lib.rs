@@ -310,3 +310,8 @@ pub use arc_line_prism_split_demo::*;
 
 mod arc_line_prism_split_components_demo;
 pub use arc_line_prism_split_components_demo::*;
+
+mod normal_prism_arc_line_boolean;
+pub use normal_prism_arc_line_boolean::*;
+mod normal_prism_arc_boolean_demo;
+pub use normal_prism_arc_boolean_demo::*;

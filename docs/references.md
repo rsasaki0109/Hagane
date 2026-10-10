@@ -1110,3 +1110,15 @@ points, existing filtered exact orientation predicates and oriented boundary
 incidence. It changes connectivity only when a UV triangle collapses in world
 coordinates; original samples, pcurves and chord sampling remain unchanged.
 Existing Earcut dependency and license notices are unchanged.
+
+### Finite circle/circle prismatic Boolean arrangements
+
+The additive normal line/arc prism Boolean uses the planar arrangement and
+Green-theorem references above. Circle/circle roots follow elementary Euclidean
+intersection geometry: the distance along the center line and factored triangle
+height determine two candidate points, then finite signed arc intervals select
+the actual crossings. Independent two-disk lens tests use sector areas minus
+the center triangle, with Heron’s factored area formula. Directed outside
+boundaries give the union, inside boundaries the common material, and reversed
+tool-inside boundaries the difference. The implementation is original
+MIT OR Apache-2.0 Rust code; no dependency or OCCT source was added.
