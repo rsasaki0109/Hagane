@@ -985,3 +985,12 @@ containment and segment-intersection algorithms described above. It checks
 whole imported boundaries and corresponding outer/inner wires against that
 validated region; no STEP source shape is regenerated as the imported result.
 This extends the same public entity model and introduces no new dependency.
+
+## Normal circular prism bore
+
+The original bore implementation reuses the checked analytic line/arc-region
+extrusion and region-intersection algorithms, and the whole-curve normal-prism
+certificate. Four exact circular quarters describe the opening; cylinder
+volume is the classical `pi * r² * h`. Retained curve correspondence and separate
+removed-volume/conservation budgets guard reconstruction. No mesh Boolean,
+OCCT source or new dependency is introduced; existing licenses remain unchanged.

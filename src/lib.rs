@@ -280,4 +280,8 @@ mod edge_fillet_demo;
 pub use edge_fillet_demo::*;
 mod step_bounded_import_demo;
 pub use step_bounded_import_demo::*;
+mod arc_line_prism_bore;
 mod arc_line_prism_validation;
+pub use arc_line_prism_bore::*;
+mod arc_line_prism_bore_demo;
+pub use arc_line_prism_bore_demo::*;

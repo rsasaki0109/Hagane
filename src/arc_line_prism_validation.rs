@@ -46,7 +46,22 @@ fn translated_curve(a: &Curve, b: &Curve, delta: Vec3, reverse: bool, budget: f6
     }
     Ok(())
 }
+/// Recovered actual planar-cap parameter geometry for a checked normal prism.
+/// The frame's roundoff projection and every source rim are checked within the
+/// unchanged physical precision reservations; no imported geometry is replaced.
+#[derive(Clone, Debug)]
+pub(crate) struct CertifiedArcLinePrism {
+    pub frame: Frame3,
+    pub region: ArcLineRegion,
+    pub height: f64,
+}
 pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Result<()> {
+    recognize_validated_arc_line_prism(s, tol).map(|_| ())
+}
+pub(crate) fn recognize_validated_arc_line_prism(
+    s: &Solid,
+    tol: Tolerance,
+) -> Result<CertifiedArcLinePrism> {
     Tolerance::new(tol.linear)?;
     if s.shell.faces.len() > 130 || s.edges.len() > 384 || s.vertices.len() > 256 {
         return Err(DOMAIN);
@@ -179,16 +194,12 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
     // This trusted constructor validates the actual cap's simple region. It is a
     // check only: no imported vertex, curve, surface or pcurve is replaced.
     let outer = profiles.remove(0);
-    let expected = extrude_arc_line_region_in_frame(
-        &ArcLineRegion {
-            origin: Point3::new(0., 0., 0.),
-            outer,
-            holes: profiles,
-        },
-        delta,
-        frame,
-        tol,
-    )?;
+    let region = ArcLineRegion {
+        origin: Point3::new(0., 0., 0.),
+        outer,
+        holes: profiles,
+    };
+    let expected = extrude_arc_line_region_in_frame(&region, delta, frame, tol)?;
     let bottom_edges: BTreeSet<_> = base
         .wires
         .iter()
@@ -452,5 +463,9 @@ pub(crate) fn certify_validated_arc_line_prism(s: &Solid, tol: Tolerance) -> Res
     {
         return Err(DOMAIN);
     }
-    Ok(())
+    Ok(CertifiedArcLinePrism {
+        frame,
+        region,
+        height,
+    })
 }

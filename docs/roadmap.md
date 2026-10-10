@@ -1292,3 +1292,14 @@ export/import, inward walls, genus-two closure and bounded display.
 Contact, nesting, outside and unresolved precision reject; general curved
 Booleans and arbitrary STEP solids remain future work. The estimate remains
 **15–25%**, toward **80%**. See [analytic STEP openings](step-bounded-import.md).
+
+## Normal circular bores in line/arc prisms
+
+A dedicated normal through-bore operation now cuts certified line/arc stock,
+including rounded boxes and sources with disjoint existing openings. Both
+retained and removed results are closed analytic B-reps, with source-curve
+retention, inward hole walls and independent volume/conservation checks.
+The native/WASM demo composes actual box fillets with the bore and exports
+both results. General curved Booleans, oblique axes and contacting cuts remain
+future work. The estimate remains **15–25%**, toward **80%**.
+See [normal prism bores](arc-line-prism-bore.md).

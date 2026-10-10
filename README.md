@@ -48,6 +48,10 @@ now imports checked line/arc normal extrusions, including these fillets,
 with actual shared geometry and pcurves, including disjoint rectangular and
 circular-arc through openings; general STEP remains unsupported.
 
+[Normal circular prism bores](docs/arc-line-prism-bore.md) cut through rounded
+line/arc stock, returning both retained and removed analytic solids.
+Sequential disjoint openings are supported; contacting and oblique cuts reject.
+
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.
