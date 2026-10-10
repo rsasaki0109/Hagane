@@ -39,14 +39,16 @@ hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](docs/nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual restricted-face UVs. Line/ray queries
 also preserve original parameters on these children. Further cuts, repeated bores
-and bored-frustum STEP import remain unsupported.
+and general bored-frustum STEP import remain unsupported.
+[Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
+retains actual annular topology and coefficients in its separate bounded domain.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
 cylindrical tool and retain a closed rational genus-one B-rep, inward cavity
 walls and annular cap wires. Positive analytic volume/moments, bounded display
 and exact STEP export work without mesh CSG. Off-axis and blind frustum bores,
-bored-frustum import and general curved Booleans remain unsupported.
+general bored-frustum import and general curved Booleans remain unsupported.
 
 [Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
 world-plane cuts to actual typed child selection, incremental rebuilding,

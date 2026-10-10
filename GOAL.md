@@ -20,14 +20,16 @@ hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](docs/nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual restricted-face UVs. Line/ray queries
 also preserve original parameters on these children. Further cuts, repeated bores
-and bored-frustum STEP import remain unsupported.
+and general bored-frustum STEP import remain unsupported.
+[Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
+retains actual annular topology and coefficients in its separate bounded domain.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual
 cylindrical tool and retain a closed rational genus-one B-rep, inward cavity
 walls and annular cap wires. Positive analytic volume/moments, bounded display
 and exact STEP export work without mesh CSG. Off-axis and blind frustum bores,
-bored-frustum import and general curved Booleans remain unsupported.
+general bored-frustum import and general curved Booleans remain unsupported.
 
 [Editable oblique frustum workflows](docs/nurbs-frustum-workflow.md) connect
 world-plane cuts to actual typed child selection, incremental rebuilding,
@@ -1675,3 +1677,18 @@ Validation: fmt, strict all-target Clippy, 18 relevant native tests and WASM
 build passed. The entire new line/ray block plus prior segment/workflow/mass/point
 native/WASM checks passed. The entire browser suite passed on its first run;
 actual ray interval `[2,7]` and retained annular model screenshot were inspected.
+
+## Exact cardinal bored-frustum STEP re-import
+
+A separate bounded millimetre reader admits one canonical coaxial through bore
+in translated right-handed signed-cardinal frames. Actual 16V/24E/10F B-rep,
+rational coefficients and both annular cap wires are retained after a complete
+certificate. General rotations, oblique children, other units and generic STEP
+remain unsupported. See [exact bored STEP scope](docs/nurbs-frustum-bored-step-import.md).
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: fmt, strict all-target Clippy, 23 relevant native tests and WASM
+build passed. The entire new importer and all three previous frustum importer
+WASM blocks passed with native report/STEP parity and strict error recovery.
+The entire new browser regression passed on its first run; the actual imported
+annular child screenshot was inspected. CI includes the new browser regression.

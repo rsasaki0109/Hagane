@@ -20,7 +20,9 @@ hole and certify actual annular cut-cap witnesses.
 [Finite bored-oblique segments](nurbs-frustum-bored-oblique-segment.md)
 retain both material intervals and actual restricted-face UVs. Line/ray queries
 also preserve original parameters on these children. Further cuts, repeated bores
-and bored-frustum STEP import remain unsupported.
+and general bored-frustum STEP import remain unsupported.
+[Exact cardinal bored STEP import](nurbs-frustum-bored-step-import.md)
+retains actual annular topology and coefficients in its separate bounded domain.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](nurbs-frustum-bore.md) add a supported curved

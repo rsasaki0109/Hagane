@@ -303,6 +303,7 @@ type Association = (u32, PCurve, Option<SerializedAffine>);
 struct Builder<'a> {
     db: &'a Database,
     cardinal: bool,
+    bored: bool,
     scale: f64,
     solid: Solid,
     vertices: BTreeMap<u32, usize>,
@@ -400,7 +401,7 @@ impl Builder<'_> {
     fn face(&mut self, id: u32) -> Result<()> {
         let a = self.db.simple(id, "ADVANCED_FACE", 4)?;
         let bounds = list(&a[1])?;
-        if bounds.is_empty() || bounds.len() > 1 {
+        if bounds.is_empty() || bounds.len() > if self.bored { 2 } else { 1 } {
             return Err(unsupported());
         }
         let surface_id = reference(&a[2])?;
@@ -439,6 +440,7 @@ impl Builder<'_> {
             Surface::Nurbs(Box::new(surface(self.db, surface_id, self.scale)?))
         };
         let mut outer = None;
+        let mut inner = None;
         for bound in bounds {
             let id = reference(bound)?;
             let record = self.db.records.get(&id).ok_or_else(unsupported)?;
@@ -446,7 +448,7 @@ impl Builder<'_> {
                 return Err(unsupported());
             }
             let kind = record[0].0.as_str();
-            if kind != "FACE_OUTER_BOUND" {
+            if kind != "FACE_OUTER_BOUND" && !(self.bored && kind == "FACE_BOUND") {
                 return Err(unsupported());
             }
             let bound = self.db.simple(id, kind, 3)?;
@@ -492,11 +494,29 @@ impl Builder<'_> {
                     pcurve,
                 });
             }
-            if outer.replace(Wire { coedges }).is_some() {
+            let target = if kind == "FACE_OUTER_BOUND" {
+                &mut outer
+            } else {
+                &mut inner
+            };
+            if target.replace(Wire { coedges }).is_some() {
                 return Err(unsupported());
             }
         }
-        let wires = vec![outer.ok_or_else(unsupported)?];
+        let mut wires = vec![outer.ok_or_else(unsupported)?];
+        if let Some(inner) = inner {
+            wires.push(inner);
+        }
+        if self.bored {
+            let expected = if matches!(surface, Surface::Plane { .. }) {
+                2
+            } else {
+                1
+            };
+            if wires.len() != expected || wires.iter().any(|w| w.coedges.len() != 4) {
+                return Err(unsupported());
+            }
+        }
         self.surfaces.push(surface_id);
         self.solid.shell.faces.push(Face {
             surface,
@@ -508,18 +528,25 @@ impl Builder<'_> {
 }
 /// Decode bounded actual geometry; canonical frustum recognition is separate.
 pub(crate) fn read_frustum_solid(input: &str, tol: Tolerance) -> Result<ParsedFrustumStep> {
-    read_frustum_solid_mode(input, tol, false)
+    read_frustum_solid_mode(input, tol, false, false)
 }
 pub(crate) fn read_frustum_cardinal_solid(
     input: &str,
     tol: Tolerance,
 ) -> Result<ParsedFrustumStep> {
-    read_frustum_solid_mode(input, tol, true)
+    read_frustum_solid_mode(input, tol, true, false)
+}
+pub(crate) fn read_bored_frustum_cardinal_solid(
+    input: &str,
+    tol: Tolerance,
+) -> Result<ParsedFrustumStep> {
+    read_frustum_solid_mode(input, tol, true, true)
 }
 fn read_frustum_solid_mode(
     input: &str,
     tol: Tolerance,
     cardinal: bool,
+    bored: bool,
 ) -> Result<ParsedFrustumStep> {
     Tolerance::new(tol.linear)?;
     let db = Parser::new(input)?.document_polygon_graph()?;
@@ -531,7 +558,7 @@ fn read_frustum_solid_mode(
     }
     let shell = db.simple(shell_id, "CLOSED_SHELL", 2)?;
     let faces = list(&shell[1])?;
-    if faces.len() != 6 {
+    if faces.len() != if bored { 10 } else { 6 } {
         return Err(unsupported());
     }
     let representation = db.unique("ADVANCED_BREP_SHAPE_REPRESENTATION")?;
@@ -548,6 +575,7 @@ fn read_frustum_solid_mode(
     let mut builder = Builder {
         db: &db,
         cardinal,
+        bored,
         scale,
         solid: Solid {
             vertices: vec![],
@@ -569,18 +597,31 @@ fn read_frustum_solid_mode(
         }
         builder.face(id)?;
     }
-    let n = builder.solid.vertices.len() / 2;
-    if n != 4
-        || builder.solid.vertices.len() != 2 * n
-        || builder.solid.edges.len() != 3 * n
-        || builder.solid.shell.faces.len() != n + 2
+    let expected = if bored { (16, 24, 10) } else { (8, 12, 6) };
+    if (
+        builder.solid.vertices.len(),
+        builder.solid.edges.len(),
+        builder.solid.shell.faces.len(),
+    ) != expected
+    {
+        return Err(unsupported());
+    }
+    if bored
+        && builder
+            .solid
+            .shell
+            .faces
+            .iter()
+            .filter(|f| matches!(f.surface, Surface::Plane { .. }))
+            .count()
+            != 2
     {
         return Err(unsupported());
     }
     let mut incidence = vec![(0usize, 0i32); builder.solid.edges.len()];
     let mut attached = vec![BTreeSet::new(); builder.solid.edges.len()];
     for (fi, face) in builder.solid.shell.faces.iter().enumerate() {
-        for coedge in &face.wires[0].coedges {
+        for coedge in face.wires.iter().flat_map(|w| &w.coedges) {
             incidence[coedge.edge].0 += 1;
             incidence[coedge.edge].1 +=
                 face.orientation as i32 * if coedge.forward { 1 } else { -1 };
@@ -645,4 +686,58 @@ fn read_frustum_solid_mode(
         affine: builder.affine,
         lines: builder.lines,
     })
+}
+
+#[cfg(test)]
+mod bored_decoder_tests {
+    use super::*;
+    #[test]
+    fn annular_decoder_retains_all_actual_geometry_and_raw_associations() {
+        let p = GeometryTolerance::new(1e-6, 1e-10, 0.).unwrap();
+        let frame = Frame3::new(
+            Point3::new(12., -5., 8.),
+            [
+                Vec3::new(0., 1., 0.),
+                Vec3::new(0., 0., 1.),
+                Vec3::new(1., 0., 0.),
+            ],
+            p.absolute(),
+        )
+        .unwrap();
+        let source = NurbsFrustumSolid::new(frame, [16., 8.], 24., p).unwrap();
+        let body = source.bore_coaxial(4., p).unwrap();
+        let step = body.export_step_mm(p).unwrap();
+        let parsed = read_bored_frustum_cardinal_solid(&step, p.absolute()).unwrap();
+        assert_eq!(
+            (
+                parsed.solid.vertices.len(),
+                parsed.solid.edges.len(),
+                parsed.solid.shell.faces.len()
+            ),
+            (16, 24, 10)
+        );
+        assert_eq!(parsed.lines.len(), 8);
+        assert_eq!(parsed.affine.len(), 32);
+        assert_eq!(
+            parsed
+                .solid
+                .shell
+                .faces
+                .iter()
+                .filter(|f| f.wires.len() == 2)
+                .count(),
+            2
+        );
+        for face in &parsed.solid.shell.faces {
+            for wire in &face.wires {
+                assert_eq!(wire.coedges.len(), 4);
+            }
+        }
+        assert!(read_frustum_cardinal_solid(&step, p.absolute()).is_err());
+        assert!(read_bored_frustum_cardinal_solid(
+            &source.export_step_mm(p).unwrap(),
+            p.absolute()
+        )
+        .is_err());
+    }
 }

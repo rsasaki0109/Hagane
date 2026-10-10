@@ -14,3 +14,4 @@ cp docs/nurbs-frustum-workflow-oblique-example.json web/nurbs-frustum-workflow-o
 cp docs/nurbs-frustum-workflow-bore-example.json web/nurbs-frustum-workflow-bore-example.json
 cp docs/nurbs-frustum-workflow-bore-partition-example.json web/nurbs-frustum-workflow-bore-partition-example.json
 cp docs/nurbs-frustum-workflow-bored-oblique-example.json web/nurbs-frustum-workflow-bored-oblique-example.json
+cp docs/nurbs-frustum-bored-example.step web/nurbs-frustum-bored-example.step

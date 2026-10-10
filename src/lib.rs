@@ -391,6 +391,10 @@ pub use nurbs_frustum_bore_demo::*;
 
 mod nurbs_frustum_bore;
 pub use nurbs_frustum_bore::*;
+mod nurbs_frustum_bored_step_import;
+pub use nurbs_frustum_bored_step_import::*;
+mod nurbs_frustum_bored_step_import_demo;
+pub use nurbs_frustum_bored_step_import_demo::*;
 mod nurbs_frustum_bore_mass;
 
 mod nurbs_frustum_bore_classification;

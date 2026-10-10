@@ -61,6 +61,25 @@ impl NurbsBoredFrustumSolid {
         result.validate(policy)?;
         Ok(result)
     }
+    /// Checked admission retains the complete decoded geometry. Only the
+    /// exact canonical annular representation is accepted; no repair occurs.
+    pub(crate) fn from_brep(
+        solid: Solid,
+        source: &NurbsFrustumSolid,
+        radius: f64,
+        policy: GeometryTolerance,
+    ) -> Result<Self> {
+        source.validate(policy)?;
+        let tool = NurbsFrustumSolid::new(source.frame(), [radius; 2], source.height(), policy)?;
+        let result = Self {
+            solid,
+            source: source.clone(),
+            tool,
+            radius,
+        };
+        result.validate(policy)?;
+        Ok(result)
+    }
     pub fn source(&self) -> &NurbsFrustumSolid {
         &self.source
     }

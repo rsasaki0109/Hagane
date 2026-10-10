@@ -1334,3 +1334,8 @@ certify empty intervals. No external source or dependency is added.
 Bored-oblique line/ray queries reuse the independently implemented expanded
 source slab enclosure, actual retained finite segment intervals and checked
 original-parameter reconstruction. No external source or dependency is added.
+
+The bored-frustum STEP reader extends the existing bounded AP214 decoding
+with complete annular cap loops and exact canonical whole-coefficient/topology
+certificates. Analytic serialized-preimage checks preserve primary parameters.
+No external implementation or new dependency is added.

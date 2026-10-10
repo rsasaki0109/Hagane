@@ -148,3 +148,7 @@ children and support continued editing after explicit component selection.
 
 [Oblique plane cuts](nurbs-frustum-bored-oblique.md) preserve the actual bore
 through two closed annular children and exact STEP export.
+
+[Exact cardinal bored STEP re-import](nurbs-frustum-bored-step-import.md)
+retains the canonical annular family in translated signed-cardinal frames.
+General bored rational shells and oblique-child import remain unsupported.
