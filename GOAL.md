@@ -1357,6 +1357,17 @@ rounds one to four parallel original edges with tangent circular arcs and
 cylindrical faces. The retained closed solid and direct analytic removed
 volume are available; cusp-bearing removed solids are not returned. Separate
 bounded-analytic STEP export retains shared analytic geometry and pcurves.
-General fillets, mixed-axis blends and bounded circular STEP import remain
-future work. The estimate remains **15–25%**, toward **80%**.
+General fillets and mixed-axis blends remain future work. The dedicated
+bounded circular STEP reader is documented below. The estimate remains **15–25%**, toward **80%**.
 See [parallel box-edge fillets](docs/edge-fillet.md).
+
+## Bounded analytic STEP import
+
+A separate opt-in reader retains actual lines, circles, bounded circular arcs,
+planes, cylinders and both surface pcurves. Line/arc bodies require a checked
+simple normal extrusion with matching caps and shared walls. Unit conversion,
+resource limits and geometric conditioning are explicit. A native example and
+WASM browser import/export workflow accompany the reader. General STEP,
+freeform surfaces and arbitrary curved solids remain future work.
+The estimate remains **15–25%**, toward **80%**.
+See [bounded analytic STEP import](docs/step-bounded-import.md).

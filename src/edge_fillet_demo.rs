@@ -27,6 +27,12 @@ fn curve_json(c: &Curve) -> Result<Value> {
         Curve::Line { a, b } => {
             Ok(serde_json::json!({"kind":"line","a":xyz(*a),"b":xyz(*b),"parameter_range":[0.,1.]}))
         }
+        Curve::Circle { center, radius } => Ok(
+            serde_json::json!({"kind":"circle","frame":frame_json(Frame3::translation(*center)?),"radius":radius,"parameter_range":[0.,std::f64::consts::TAU]}),
+        ),
+        Curve::FramedCircle { frame, radius } => Ok(
+            serde_json::json!({"kind":"circle","frame":frame_json(*frame),"radius":radius,"parameter_range":[0.,std::f64::consts::TAU]}),
+        ),
         Curve::Arc {
             frame,
             radius,
@@ -50,6 +56,9 @@ fn pcurve_json(c: &PCurve) -> Result<Value> {
         } => Ok(
             serde_json::json!({"kind":"arc","center":center,"radius":radius,"start_angle":start_angle,"sweep":sweep}),
         ),
+        PCurve::Circle { center, radius } => {
+            Ok(serde_json::json!({"kind":"circle","center":center,"radius":radius}))
+        }
         _ => Err(Error::Unsupported("fillet demo pcurve unsupported")),
     }
 }
@@ -75,6 +84,7 @@ fn brep_json(solid: &Solid) -> Result<Value> {
                 let edge = &solid.edges[coedge.edge];
                 let end = match edge.curve {
                     Curve::Arc { sweep, .. } => sweep,
+                    Curve::Circle { .. } | Curve::FramedCircle { .. } => std::f64::consts::TAU,
                     _ => 1.,
                 };
                 let witnesses=(0..=8).map(|j|{let t=end*j as f64/8.;let uv=coedge.pcurve.try_evaluate(t)?;Ok(serde_json::json!({"parameter":t,"uv":uv,"point":xyz(edge.curve.try_evaluate(t)?),"surface_point":xyz(face.surface.try_evaluate(uv[0],uv[1])?)}))}).collect::<Result<Vec<_>>>()?;
@@ -108,7 +118,7 @@ fn brep_json(solid: &Solid) -> Result<Value> {
         serde_json::json!({"vertices":solid.vertices.iter().map(|v|xyz(v.point)).collect::<Vec<_>>(),"edge_vertices":solid.edges.iter().map(|e|e.vertices).collect::<Vec<_>>(),"edges":solid.edges.len(),"faces":solid.shell.faces.len(),"closed":true,"curves":curves,"surfaces":surfaces,"face_orientations":solid.shell.faces.iter().map(|f|f.orientation).collect::<Vec<_>>(),"wires":wires,"tangency_witnesses":tangencies}),
     )
 }
-fn solid_json(solid: &Solid, error: f64, tol: Tolerance) -> Result<Value> {
+pub(crate) fn solid_json(solid: &Solid, error: f64, tol: Tolerance) -> Result<Value> {
     solid.validate(tol)?;
     let mesh = solid.tessellate(error, tol)?;
     let bounds = solid.bounds();

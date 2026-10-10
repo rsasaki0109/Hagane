@@ -98,9 +98,10 @@ Canonical B-rep arc validation currently admits positive sweeps up to pi.
 Clockwise input profile arcs use their canonical oriented circle frame.
 Negative/long invalid B-rep arcs, unresolved endpoints and unsupported
 geometry are rejected. The original `export_step_mm` and planar writer keep
-their prior domain and output. The current strict STEP importer does not
-import these bounded circular edges; this milestone supplies exact export,
-rather than claiming round-trip support.
+their prior domain and output. The original strict STEP importer does not
+import these bounded circular edges. The separate opt-in
+[bounded analytic reader](step-bounded-import.md) now supports checked
+line/arc normal-extrusion round trips, including these fillets.
 
 The display chord tolerance controls arc subdivision. For radius `r` and
 segment angle `a`, radial chord error is `r * (1 - cos(a/2))`. Display tests

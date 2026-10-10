@@ -3,6 +3,7 @@
 #[cfg(target_arch = "wasm32")]
 mod exports {
     use std::sync::Mutex;
+    static STEP_BOUNDED_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_FILLET_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_CONTACT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     static EDGE_CHAMFER_MULTI_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
@@ -365,6 +366,40 @@ mod exports {
         } else {
             generate(crate::nurbs_graph_polygon_hole_demo_json(&values))
         }
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_step_bounded_begin() {
+        let mut input = STEP_BOUNDED_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_step_bounded_push_byte(byte: u32) -> i32 {
+        let mut input = STEP_BOUNDED_INPUT.lock().unwrap();
+        if input.1 || byte > 255 || input.0.len() >= 1024 * 1024 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(byte as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_step_bounded_finish() -> i32 {
+        let (bytes, bad) = {
+            let mut input = STEP_BOUNDED_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        let result = if bad {
+            Err(crate::Error::InvalidInput(
+                "bounded STEP transport requires at most 1 MiB of valid bytes",
+            ))
+        } else {
+            match std::str::from_utf8(&bytes) {
+                Ok(text) => crate::import_step_bounded_analytic_json(text),
+                Err(_) => Err(crate::Error::InvalidInput("bounded STEP must be UTF-8")),
+            }
+        };
+        generate(result)
     }
     #[no_mangle]
     pub extern "C" fn hagane_edge_fillet_begin() {

@@ -215,15 +215,15 @@ impl<'a> Parser<'a> {
         Ok((name, self.args(0)?))
     }
     fn document(self) -> Result<Database> {
-        self.document_mode(false, false)
+        self.document_mode(false, false, false)
     }
     pub(crate) fn document_graph(self) -> Result<Database> {
-        self.document_mode(true, false)
+        self.document_mode(true, false, false)
     }
     pub(crate) fn document_polygon_graph(self) -> Result<Database> {
-        self.document_mode(true, true)
+        self.document_mode(true, true, false)
     }
-    fn document_mode(mut self, graph: bool, polygon: bool) -> Result<Database> {
+    fn document_mode(mut self, graph: bool, polygon: bool, bounded: bool) -> Result<Database> {
         self.keyword("ISO-10303-21")?;
         self.symbol(b';')?;
         self.keyword("HEADER")?;
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
             records,
             used: RefCell::new(BTreeSet::new()),
         };
-        db.check_records(graph, polygon)?;
+        db.check_records(graph, polygon, bounded)?;
         Ok(db)
     }
 }
@@ -366,7 +366,7 @@ fn all_refs(value: &Value, output: &mut Vec<u32>) {
     }
 }
 impl Database {
-    fn check_records(&self, graph: bool, polygon: bool) -> Result<()> {
+    fn check_records(&self, graph: bool, polygon: bool, bounded: bool) -> Result<()> {
         const SIMPLE: &[&str] = &[
             "CARTESIAN_POINT",
             "DIRECTION",
@@ -407,6 +407,8 @@ impl Database {
             }
             if record.len() == 1 {
                 if !SIMPLE.contains(&record[0].0.as_str())
+                    && !(bounded
+                        && ["SURFACE_CURVE", "AXIS2_PLACEMENT_2D"].contains(&record[0].0.as_str()))
                     && !(graph
                         && [
                             "B_SPLINE_CURVE_WITH_KNOTS",
@@ -731,6 +733,8 @@ struct Builder<'a> {
     edges: BTreeMap<u32, usize>,
     coedge_count: usize,
     analytic: bool,
+    bounded: bool,
+    associated: BTreeMap<usize, Vec<(u32, PCurve)>>,
     seams: BTreeMap<usize, (u32, [PCurve; 2])>,
 }
 impl Builder<'_> {
@@ -762,10 +766,40 @@ impl Builder<'_> {
         let args = self.db.simple(id, "EDGE_CURVE", 5)?;
         let a = self.vertex(reference(&args[1])?)?;
         let b = self.vertex(reference(&args[2])?)?;
-        let geometry_id = reference(&args[3])?;
+        let mut geometry_id = reference(&args[3])?;
+        let mut associated = Vec::new();
+        if self.bounded {
+            let raw = self.db.record(geometry_id)?;
+            if raw.len() != 1 || !["SURFACE_CURVE", "SEAM_CURVE"].contains(&raw[0].0.as_str()) {
+                return Err(Error::Unsupported(
+                    "bounded STEP requires explicit surface curves",
+                ));
+            }
+            let wrapper = self.db.simple(geometry_id, &raw[0].0, 4)?;
+            if wrapper[3] != Value::Enum("CURVE_3D".into()) {
+                return Err(Error::Unsupported(
+                    "bounded STEP requires a 3D master curve",
+                ));
+            }
+            let refs = list(&wrapper[2])?;
+            if refs.len() != 2 || refs[0] == refs[1] {
+                return Err(Error::InvalidTopology(
+                    "bounded STEP needs two distinct pcurves",
+                ));
+            }
+            for value in refs {
+                associated.push(self.bounded_pcurve(reference(value)?)?);
+            }
+            if (raw[0].0 == "SEAM_CURVE") != (associated[0].0 == associated[1].0) {
+                return Err(Error::InvalidTopology(
+                    "bounded STEP pcurve owners disagree with seam kind",
+                ));
+            }
+            geometry_id = reference(&wrapper[1])?;
+        }
         let record = self.db.record(geometry_id)?;
         if self.analytic && record.len() == 1 && record[0].0 == "CIRCLE" {
-            if a != b {
+            if a != b && !self.bounded {
                 return Err(Error::Unsupported(
                     "STEP circular import requires a complete one-vertex circle",
                 ));
@@ -783,15 +817,83 @@ impl Builder<'_> {
                     "invalid or unresolved STEP circle radius",
                 ));
             }
-            let curve = Curve::FramedCircle { frame, radius };
-            let budget = (64. * f64::EPSILON * radius).min(self.tol.linear / 1024.);
+            let mut curve = Curve::FramedCircle { frame, radius };
+            let budget = if self.bounded {
+                let origin = frame.origin();
+                let start = self.solid.vertices[a].point;
+                let world = radius
+                    .max(origin.x.abs())
+                    .max(origin.y.abs())
+                    .max(origin.z.abs())
+                    .max(start.x.abs())
+                    .max(start.y.abs())
+                    .max(start.z.abs());
+                let guard = 4096. * f64::EPSILON * world;
+                if !guard.is_finite() || guard >= self.tol.linear / 8. {
+                    return Err(Error::Unsupported(
+                        "bounded STEP circle coordinate precision is unresolved",
+                    ));
+                }
+                guard
+            } else {
+                (64. * f64::EPSILON * radius).min(self.tol.linear / 1024.)
+            };
             let local = frame.local_point(self.solid.vertices[a].point);
             if !local.finite() || (local - Vec3::new(radius, 0., 0.)).norm() > budget {
                 return Err(Error::Unsupported(
                     "STEP circle vertex must resolve the placement's zero-angle seam",
                 ));
             }
+            if self.bounded && a != b {
+                let end = frame.local_point(self.solid.vertices[b].point);
+                if !end.finite()
+                    || end.z.abs() > budget
+                    || (end.x.hypot(end.y) - radius).abs() > budget
+                    || end.y < 0.
+                {
+                    return Err(Error::Unsupported(
+                        "bounded STEP arc endpoint phase is unresolved",
+                    ));
+                }
+                let sweep = end.y.atan2(end.x);
+                if sweep <= 0.
+                    || sweep > std::f64::consts::PI
+                    || (self.solid.vertices[a].point - self.solid.vertices[b].point).norm()
+                        <= 10. * self.tol.linear
+                {
+                    return Err(Error::Unsupported("bounded STEP arc sweep is unresolved"));
+                }
+                curve = Curve::Arc {
+                    frame,
+                    radius,
+                    sweep,
+                };
+                for (_, pc) in &mut associated {
+                    if let PCurve::Arc { sweep: ps, .. } = pc {
+                        *ps = sweep;
+                    }
+                }
+            }
+            if self.bounded && a == b {
+                for (_, pc) in &mut associated {
+                    if let PCurve::Arc {
+                        center,
+                        radius,
+                        start_angle,
+                        ..
+                    } = *pc
+                    {
+                        if start_angle != 0. {
+                            return Err(Error::Unsupported("full circle UV phase must be zero"));
+                        }
+                        *pc = PCurve::Circle { center, radius };
+                    }
+                }
+            }
             let index = self.solid.edges.len();
+            if self.bounded {
+                self.associated.insert(index, associated);
+            }
             self.solid.edges.push(Edge {
                 vertices: [a, b],
                 curve,
@@ -858,16 +960,127 @@ impl Builder<'_> {
                 "STEP line geometry disagrees with edge endpoints or same_sense",
             ));
         }
+        if self.bounded
+            && (!boolean(&args[4])?
+                || (start - origin).norm() > self.tol.linear / 4.
+                || (dir * magnitude - delta).norm() > self.tol.linear / 4.)
+        {
+            return Err(Error::Unsupported(
+                "bounded STEP line parameterization disagrees with its vertices",
+            ));
+        }
         let index = self.solid.edges.len();
         self.solid.edges.push(Edge {
             vertices: [a, b],
             curve: Curve::Line { a: start, b: end },
         });
         self.edges.insert(id, index);
+        if self.bounded {
+            self.associated.insert(index, associated);
+        }
         if let Some(seam) = seam {
             self.seams.insert(index, seam);
         }
         Ok(index)
+    }
+    fn bounded_pcurve(&self, id: u32) -> Result<(u32, PCurve)> {
+        let args = self.db.simple(id, "PCURVE", 3)?;
+        let owner = reference(&args[1])?;
+        let surface = self.db.record(owner)?;
+        let plane = surface.len() == 1 && surface[0].0 == "PLANE";
+        if !plane && !(surface.len() == 1 && surface[0].0 == "CYLINDRICAL_SURFACE") {
+            return Err(Error::Unsupported(
+                "bounded UV owner must be plane or cylinder",
+            ));
+        }
+        let rep = self
+            .db
+            .simple(reference(&args[2])?, "DEFINITIONAL_REPRESENTATION", 3)?;
+        let curves = list(&rep[1])?;
+        if curves.len() != 1 {
+            return Err(Error::Unsupported("bounded pcurve needs one curve"));
+        }
+        let context = reference(&rep[2])?;
+        if self
+            .db
+            .component(context, "GEOMETRIC_REPRESENTATION_CONTEXT")?
+            != [Value::Number(2.)]
+            || self.db.record(context)?.len() != 2
+            || self.db.component(context, "REPRESENTATION_CONTEXT")?.len() != 2
+            || self
+                .db
+                .component(context, "REPRESENTATION_CONTEXT")?
+                .iter()
+                .any(|v| !matches!(v, Value::String(_)))
+        {
+            return Err(Error::InvalidInput("invalid bounded UV context"));
+        }
+        let geometry = reference(&curves[0])?;
+        let record = self.db.record(geometry)?;
+        let point2 = |id| -> Result<[f64; 2]> {
+            let p = self.db.simple(id, "CARTESIAN_POINT", 2)?;
+            let v = list(&p[1])?;
+            if v.len() != 2 {
+                return Err(SYNTAX);
+            }
+            Ok([number(&v[0])?, number(&v[1])?])
+        };
+        let direction2 = |id| -> Result<[f64; 2]> {
+            let p = self.db.simple(id, "DIRECTION", 2)?;
+            let v = list(&p[1])?;
+            if v.len() != 2 {
+                return Err(SYNTAX);
+            }
+            let d = [number(&v[0])?, number(&v[1])?];
+            let len = d[0].hypot(d[1]);
+            if !len.is_finite() || len == 0. {
+                return Err(SYNTAX);
+            }
+            Ok([d[0] / len, d[1] / len])
+        };
+        let pc = match record[0].0.as_str() {
+            "LINE" => {
+                let line = self.db.simple(geometry, "LINE", 3)?;
+                let p = point2(reference(&line[1])?)?;
+                let vector = self.db.simple(reference(&line[2])?, "VECTOR", 3)?;
+                let d = direction2(reference(&vector[1])?)?;
+                let m = number(&vector[2])?;
+                if m <= 0. || !m.is_finite() {
+                    return Err(SYNTAX);
+                }
+                let scales = if plane {
+                    [self.scale; 2]
+                } else {
+                    [1., self.scale]
+                };
+                PCurve::Affine {
+                    origin: std::array::from_fn(|a| p[a] * scales[a]),
+                    direction: std::array::from_fn(|a| d[a] * m * scales[a]),
+                }
+            }
+            "CIRCLE" if plane => {
+                let c = self.db.simple(geometry, "CIRCLE", 3)?;
+                let place = self.db.simple(reference(&c[1])?, "AXIS2_PLACEMENT_2D", 3)?;
+                let p = point2(reference(&place[1])?)?;
+                let d = direction2(reference(&place[2])?)?;
+                let radius = number(&c[2])? * self.scale;
+                if !radius.is_finite() || radius <= self.tol.linear {
+                    return Err(SYNTAX);
+                }
+                PCurve::Arc {
+                    center: p.map(|v| v * self.scale),
+                    radius,
+                    start_angle: d[1].atan2(d[0]),
+                    sweep: std::f64::consts::TAU,
+                }
+            }
+            _ => {
+                return Err(Error::Unsupported(
+                    "bounded pcurve requires a line or planar circle",
+                ))
+            }
+        };
+        Ok((owner, pc))
     }
     fn seam_pcurve(&self, id: u32) -> Result<(u32, PCurve)> {
         let args = self.db.simple(id, "PCURVE", 3)?;
@@ -943,6 +1156,36 @@ impl Builder<'_> {
         surface: &Surface,
         surface_id: u32,
     ) -> Result<PCurve> {
+        if self.bounded {
+            let candidates = self
+                .associated
+                .get(&edge)
+                .ok_or(Error::InvalidTopology("missing bounded edge pcurves"))?;
+            let matches: Vec<_> = candidates
+                .iter()
+                .filter(|(id, _)| *id == surface_id)
+                .collect();
+            if matches.len() == 1 {
+                return Ok(matches[0].1.clone());
+            }
+            if matches.len() == 2
+                && matches
+                    .iter()
+                    .all(|(_, p)| matches!(p, PCurve::Affine { .. }))
+            {
+                let want = if forward { std::f64::consts::TAU } else { 0. };
+                let chosen: Vec<_> = matches
+                    .iter()
+                    .filter(|(_, p)| p.evaluate(0.)[0] == want)
+                    .collect();
+                if chosen.len() == 1 {
+                    return Ok(chosen[0].1.clone());
+                }
+            }
+            return Err(Error::InvalidTopology(
+                "missing or ambiguous bounded pcurve owner",
+            ));
+        }
         match (&self.solid.edges[edge].curve, surface) {
             (Curve::Line { a, b }, Surface::Plane { .. }) => {
                 if self.seams.contains_key(&edge) {
@@ -1093,43 +1336,87 @@ impl Builder<'_> {
         let outer = outer.ok_or(Error::InvalidTopology("missing STEP outer bound"))?;
         let outer_wire = wires.remove(outer);
         wires.insert(0, outer_wire);
-        if let Surface::FramedCylinder { frame, radius, .. } = surface {
-            if wires.len() != 1 || wires[0].coedges.len() != 4 {
-                return Err(Error::Unsupported(
-                    "STEP cylinder import requires one full four-coedge rectangle",
-                ));
+        if self.bounded {
+            if let Surface::FramedCylinder { frame, radius, .. } = surface {
+                let mut max = 0_f64;
+                let mut min = f64::INFINITY;
+                for c in wires.iter().flat_map(|w| &w.coedges) {
+                    let range = self.solid.edges[c.edge].curve.range();
+                    for p in range {
+                        let v = c.pcurve.try_evaluate(p)?[1];
+                        min = min.min(v);
+                        max = max.max(v);
+                    }
+                }
+                if min != 0. || !max.is_finite() || max <= 10. * self.tol.linear {
+                    return Err(Error::Unsupported(
+                        "bounded cylinder requires a resolved zero-origin axial trim",
+                    ));
+                }
+                if wires.len() != 1 || wires[0].coedges.len() != 4 {
+                    return Err(Error::Unsupported(
+                        "bounded cylinder requires one four-coedge rectangle",
+                    ));
+                }
+                // A STEP EDGE_LOOP has no distinguished first edge. The kernel's
+                // rectangular trim representation starts at the lower rim.
+                // Rotate identities only; retain every parameter and orientation.
+                let lower: Vec<_> = wires[0].coedges.iter().enumerate().filter(|(_, c)| {
+                    matches!(c.pcurve, PCurve::Affine { origin: [_, 0.], direction: [u, 0.] } if u != 0.)
+                        && matches!(self.solid.edges[c.edge].curve, Curve::Arc { .. } | Curve::FramedCircle { .. })
+                }).map(|(i, _)| i).collect();
+                if lower.len() != 1 {
+                    return Err(Error::Unsupported(
+                        "bounded cylinder requires one unique lower rim",
+                    ));
+                }
+                wires[0].coedges.rotate_left(lower[0]);
+                surface = Surface::FramedCylinder {
+                    frame,
+                    radius,
+                    height: max,
+                };
             }
-            let coedges = &mut wires[0].coedges;
-            let bottom = coedges
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| {
-                    matches!(self.solid.edges[c.edge].curve, Curve::FramedCircle { .. })
-                })
-                .min_by(|(_, a), (_, b)| {
-                    a.pcurve.evaluate(0.)[1].total_cmp(&b.pcurve.evaluate(0.)[1])
-                })
-                .map(|(i, _)| i)
-                .ok_or(Error::InvalidTopology(
-                    "STEP cylindrical face lacks circular rims",
-                ))?;
-            coedges.rotate_left(bottom);
-            let lower = coedges[0].pcurve.evaluate(0.);
-            let upper = coedges[2].pcurve.evaluate(0.);
-            if lower != [0., 0.]
-                || upper[0] != 0.
-                || !upper[1].is_finite()
-                || upper[1] <= 10. * self.tol.linear
-            {
-                return Err(Error::Unsupported(
+        }
+        if !self.bounded {
+            if let Surface::FramedCylinder { frame, radius, .. } = surface {
+                if wires.len() != 1 || wires[0].coedges.len() != 4 {
+                    return Err(Error::Unsupported(
+                        "STEP cylinder import requires one full four-coedge rectangle",
+                    ));
+                }
+                let coedges = &mut wires[0].coedges;
+                let bottom = coedges
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, c)| {
+                        matches!(self.solid.edges[c.edge].curve, Curve::FramedCircle { .. })
+                    })
+                    .min_by(|(_, a), (_, b)| {
+                        a.pcurve.evaluate(0.)[1].total_cmp(&b.pcurve.evaluate(0.)[1])
+                    })
+                    .map(|(i, _)| i)
+                    .ok_or(Error::InvalidTopology(
+                        "STEP cylindrical face lacks circular rims",
+                    ))?;
+                coedges.rotate_left(bottom);
+                let lower = coedges[0].pcurve.evaluate(0.);
+                let upper = coedges[2].pcurve.evaluate(0.);
+                if lower != [0., 0.]
+                    || upper[0] != 0.
+                    || !upper[1].is_finite()
+                    || upper[1] <= 10. * self.tol.linear
+                {
+                    return Err(Error::Unsupported(
                     "STEP cylinder placement must start at the lower rim with resolved positive height",
                 ));
+                }
+                surface = Surface::FramedCylinder {
+                    frame,
+                    radius,
+                    height: upper[1],
+                };
             }
-            surface = Surface::FramedCylinder {
-                frame,
-                radius,
-                height: upper[1],
-            };
         }
         self.solid.shell.faces.push(Face {
             surface,
@@ -1162,8 +1449,80 @@ fn import_supported(
     convex_only: bool,
     analytic: bool,
 ) -> Result<Solid> {
+    import_mode(input, tolerance, convex_only, analytic, false)
+}
+/// Import the opt-in bounded analytic subset, retaining explicit surface pcurves.
+pub fn import_step_bounded_analytic_mm(input: &str, tolerance: Tolerance) -> Result<Solid> {
+    import_mode(input, tolerance, false, true, true)
+}
+fn bounded_world_precision(solid: &Solid, tolerance: Tolerance) -> Result<()> {
+    let mut scale = f64::MIN_POSITIVE;
+    let mut point = |p: Point3| {
+        scale = scale.max(p.x.abs()).max(p.y.abs()).max(p.z.abs());
+    };
+    for vertex in &solid.vertices {
+        point(vertex.point);
+    }
+    for edge in &solid.edges {
+        match &edge.curve {
+            Curve::Line { a, b } => {
+                point(*a);
+                point(*b);
+            }
+            Curve::Circle { center, .. } => point(*center),
+            Curve::FramedCircle { frame, .. } | Curve::Arc { frame, .. } => point(frame.origin()),
+            _ => return Err(Error::Unsupported("unsupported bounded STEP curve")),
+        }
+    }
+    for face in &solid.shell.faces {
+        match &face.surface {
+            Surface::Plane { origin, .. } => point(*origin),
+            Surface::Cylinder { center, .. } => point(*center),
+            Surface::FramedCylinder { frame, .. } => point(frame.origin()),
+            _ => return Err(Error::Unsupported("unsupported bounded STEP surface")),
+        }
+    }
+    for edge in &solid.edges {
+        match edge.curve {
+            Curve::Line { a, b } => scale = scale.max((b - a).norm()),
+            Curve::Circle { radius, .. }
+            | Curve::FramedCircle { radius, .. }
+            | Curve::Arc { radius, .. } => scale = scale.max(radius),
+            _ => unreachable!(),
+        }
+    }
+    for face in &solid.shell.faces {
+        match face.surface {
+            Surface::Cylinder { radius, height, .. }
+            | Surface::FramedCylinder { radius, height, .. } => {
+                scale = scale.max(radius).max(height)
+            }
+            _ => {}
+        }
+    }
+    scale = scale.max((solid.bounds().max - solid.bounds().min).norm());
+    let allowance = 4096. * f64::EPSILON * scale;
+    if !scale.is_finite() || !allowance.is_finite() || allowance >= tolerance.linear / 8. {
+        return Err(Error::Unsupported(
+            "bounded STEP world arithmetic exceeds tolerance",
+        ));
+    }
+    Ok(())
+}
+
+fn import_mode(
+    input: &str,
+    tolerance: Tolerance,
+    convex_only: bool,
+    analytic: bool,
+    bounded: bool,
+) -> Result<Solid> {
     Tolerance::new(tolerance.linear)?;
-    let db = Parser::new(input)?.document()?;
+    let db = if bounded {
+        Parser::new(input)?.document_mode(false, false, true)?
+    } else {
+        Parser::new(input)?.document()?
+    };
     let root = db.unique("MANIFOLD_SOLID_BREP")?;
     let brep = db.simple(root, "MANIFOLD_SOLID_BREP", 2)?;
     let shell = reference(&brep[1])?;
@@ -1172,8 +1531,12 @@ fn import_supported(
     }
     let faces = db.simple(shell, "CLOSED_SHELL", 2)?;
     let faces = list(&faces[1])?;
-    if faces.is_empty() || faces.len() > 128 {
-        return Err(Error::Unsupported("STEP import supports 1..128 faces"));
+    if faces.is_empty() || faces.len() > if bounded { 512 } else { 128 } {
+        return Err(Error::Unsupported(if bounded {
+            "STEP import supports 1..512 faces"
+        } else {
+            "STEP import supports 1..128 faces"
+        }));
     }
     let representation = db.unique("ADVANCED_BREP_SHAPE_REPRESENTATION")?;
     let shape = db.simple(representation, "ADVANCED_BREP_SHAPE_REPRESENTATION", 3)?;
@@ -1196,6 +1559,8 @@ fn import_supported(
         edges: BTreeMap::new(),
         coedge_count: 0,
         analytic,
+        bounded,
+        associated: BTreeMap::new(),
         seams: BTreeMap::new(),
     };
     let mut seen = BTreeSet::new();
@@ -1205,6 +1570,9 @@ fn import_supported(
             return Err(Error::InvalidTopology("duplicate STEP shell face"));
         }
         builder.face(id)?;
+    }
+    if bounded {
+        bounded_world_precision(&builder.solid, tolerance)?;
     }
     builder.solid.validate(tolerance)?;
     if !builder.solid.volume()?.is_finite()
@@ -1216,7 +1584,18 @@ fn import_supported(
             "STEP solid metrics exceed finite arithmetic",
         ));
     }
-    if analytic
+    if bounded
+        && builder
+            .solid
+            .edges
+            .iter()
+            .any(|e| matches!(e.curve, Curve::Arc { .. }))
+    {
+        crate::arc_line_prism_validation::certify_validated_arc_line_prism(
+            &builder.solid,
+            tolerance,
+        )?;
+    } else if analytic
         && builder
             .solid
             .shell
@@ -1274,10 +1653,10 @@ fn import_supported(
         "ADVANCED_BREP_SHAPE_REPRESENTATION",
     ];
     for (&id, record) in &db.records {
-        if record
-            .iter()
-            .any(|(name, _)| GEOMETRY.contains(&name.as_str()))
-            && !db.used.borrow().contains(&id)
+        if record.iter().any(|(name, _)| {
+            GEOMETRY.contains(&name.as_str())
+                || (bounded && ["SURFACE_CURVE", "AXIS2_PLACEMENT_2D"].contains(&name.as_str()))
+        }) && !db.used.borrow().contains(&id)
         {
             return Err(Error::Unsupported(
                 "STEP contains unused or unrepresented geometry",

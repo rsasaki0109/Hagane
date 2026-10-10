@@ -967,3 +967,15 @@ Optional bounded-fillet STEP interoperability checks use the already recorded
 cached `occt-import-js`/OCCT reader as an external test oracle. Its existing
 license conditions apply; it is neither linked into Hagane nor a source for
 the original fillet or writer implementation.
+
+## Bounded analytic STEP reader
+
+The dedicated reader uses the public ISO 10303 entity model referenced above
+for oriented topology, CIRCLE, SURFACE_CURVE/SEAM_CURVE and PCURVE. The original
+normal-extrusion certificate compares analytic entire line/arc boundaries,
+translated caps and shared walls; it retains imported geometry. Plane UV
+coordinates scale as lengths; cylindrical U remains angular and V scales as
+a length. Conservative floating-point reserves are engineering guards, not
+interval arithmetic certification. No OCCT source or new dependency is used.
+Optional interoperability checks reuse the previously recorded external OCCT
+reader and its license conditions, solely as a test oracle.
