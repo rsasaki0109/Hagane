@@ -1726,3 +1726,29 @@ composition differences with identical raw WebGL pixels; test-only opaque
 comparison backgrounds now survive reloads, while all exact PNG assertions
 remain. The production background was restored before capturing and inspecting
 the actual two-cap annular slab (volume 2911.6631285677404 mm³).
+
+## Analytic mass properties of retained parallel slabs
+
+Plain and bored slab children now expose checked analytic centroid and full
+world-space centroidal inertia. One-boundary children reuse their original
+oblique moments; two-boundary children subtract cumulative local centered
+moments, and annular children subtract the inner slab in the same source frame.
+Cancellation and rounding allowances propagate through both stages. Geometry's
+stable volume remains authoritative, and unresolved metric conditioning returns
+explicit Unsupported while preserving actual B-rep, volume, display and STEP.
+Point/segment/line/ray queries of slabs and skew recuts remain unsupported.
+The long-term estimate remains 15–25% toward the standing 80% target.
+
+Validation: final fmt, strict all-target Clippy, seven relevant native suites
+(18 tests) and WASM build passed. New cylinder/annular all-component tensor
+oracles, posed/scaled repeats, tapered conservation and precision refusal tests
+passed. The combined new mass and previous parallel/oblique WASM blocks passed
+with complete native JSON/STEP parity; prior bored-oblique workflow output is
+byte-identical after the shared helper extraction. The entire browser suite
+passed on its first run, including optional metric refusal/STEP retention and
+all exact image/raw-frame rollback checks. The actual middle-slab screenshot
+with centroid and inertia was inspected. An earlier baseline comparison shared
+a build output directory and contaminated cached native artifacts; that result
+was discarded and current-source builds/checks were repeated. Existing display
+tests were migrated from obsolete unavailable-metric expectations to exact
+native centroid/tensor parity without changing their geometry assertions.

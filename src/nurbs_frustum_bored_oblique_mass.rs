@@ -1,4 +1,5 @@
 //! Checked signed parallel-axis composition in one source-local frame.
+use crate::nurbs_frustum_oblique_mass::CheckedCenteredMoments;
 use crate::*;
 fn unresolved() -> Error {
     Error::Unsupported(
@@ -34,17 +35,26 @@ fn product(factors: &[f64]) -> Result<f64> {
     }
     Ok(v)
 }
-struct Centered {
-    volume: f64,
-    centroid: Point3,
-    cov: [[f64; 3]; 3],
-    scale: f64,
-}
-fn moments(body: &NurbsBoredObliqueFrustumSolid, policy: GeometryTolerance) -> Result<Centered> {
+fn moments(
+    body: &NurbsBoredObliqueFrustumSolid,
+    policy: GeometryTolerance,
+) -> Result<CheckedCenteredMoments> {
     body.validate(policy)?;
     let outer = crate::nurbs_frustum_oblique_mass::checked_centered_moments(body.outer(), policy)?;
     let inner = crate::nurbs_frustum_oblique_mass::checked_centered_moments(body.inner(), policy)?;
     let volume = body.volume(policy)?;
+    subtract_centered(outer, inner, volume, body.source().source().frame(), policy)
+}
+/// Checked subtraction of positive bodies in the same original local frame.
+/// The returned envelopes include signed accumulation and denominator reserves
+/// so a subsequent annular subtraction can propagate them again.
+pub(crate) fn subtract_centered(
+    outer: CheckedCenteredMoments,
+    inner: CheckedCenteredMoments,
+    volume: f64,
+    frame: Frame3,
+    policy: GeometryTolerance,
+) -> Result<CheckedCenteredMoments> {
     let scale = outer.scale;
     let ratio = inner.scale / scale;
     let wo = outer.volume / volume;
@@ -136,7 +146,7 @@ fn moments(body: &NurbsBoredObliqueFrustumSolid, policy: GeometryTolerance) -> R
             }
         }
     }
-    let centroid = body.source().source().frame().point(Point3::new(
+    let centroid = frame.point(Point3::new(
         mean[0] * scale,
         mean[1] * scale,
         mean[2] * scale,
@@ -148,11 +158,15 @@ fn moments(body: &NurbsBoredObliqueFrustumSolid, policy: GeometryTolerance) -> R
     if !centroid.finite() || 32768. * f64::EPSILON * world >= policy.linear() / 8. {
         return Err(unresolved());
     }
-    Ok(Centered {
+    Ok(CheckedCenteredMoments {
         volume,
         centroid,
         cov,
         scale,
+        mean,
+        mean_error: em,
+        covariance_error: error,
+        relative_volume_error: 2. * ev,
     })
 }
 impl NurbsBoredObliqueFrustumSolid {
@@ -168,46 +182,51 @@ impl NurbsBoredObliqueFrustumSolid {
         policy: GeometryTolerance,
     ) -> Result<NurbsGraphInertiaProperties> {
         let m = moments(self, policy)?;
-        let trace = m.cov[0][0] + m.cov[1][1] + m.cov[2][2];
-        let local: [[f64; 3]; 3] = std::array::from_fn(|i| {
-            std::array::from_fn(|j| {
-                if i == j {
-                    trace - m.cov[i][j]
-                } else {
-                    -m.cov[i][j]
-                }
-            })
-        });
-        let axes = self.source().source().frame().axes();
-        let component = |a: Vec3, i: usize| [a.x, a.y, a.z][i];
-        let coefficients: [[f64; 3]; 3] = std::array::from_fn(|i| {
-            std::array::from_fn(|j| {
-                let mut sum = 0.;
-                for (a, row) in local.iter().enumerate() {
-                    for (b, value) in row.iter().enumerate() {
-                        sum += component(axes[a], i) * value * component(axes[b], j);
-                    }
-                }
-                sum
-            })
-        });
-        let mut inertia = [[0.; 3]; 3];
-        for (i, row) in coefficients.iter().enumerate() {
-            for (j, &coefficient) in row.iter().enumerate().skip(i) {
-                let value = if coefficient == 0. {
-                    0.
-                } else {
-                    product(&[m.volume, m.scale, m.scale, coefficient.abs()])?
-                        * coefficient.signum()
-                };
-                inertia[i][j] = value;
-                inertia[j][i] = value;
-            }
-        }
-        Ok(NurbsGraphInertiaProperties {
-            volume: m.volume,
-            centroid: m.centroid,
-            inertia,
-        })
+        inertia_from_centered(m, self.source().source().frame())
     }
+}
+pub(crate) fn inertia_from_centered(
+    m: CheckedCenteredMoments,
+    frame: Frame3,
+) -> Result<NurbsGraphInertiaProperties> {
+    let trace = m.cov[0][0] + m.cov[1][1] + m.cov[2][2];
+    let local: [[f64; 3]; 3] = std::array::from_fn(|i| {
+        std::array::from_fn(|j| {
+            if i == j {
+                trace - m.cov[i][j]
+            } else {
+                -m.cov[i][j]
+            }
+        })
+    });
+    let axes = frame.axes();
+    let component = |a: Vec3, i: usize| [a.x, a.y, a.z][i];
+    let coefficients: [[f64; 3]; 3] = std::array::from_fn(|i| {
+        std::array::from_fn(|j| {
+            let mut sum = 0.;
+            for (a, row) in local.iter().enumerate() {
+                for (b, value) in row.iter().enumerate() {
+                    sum += component(axes[a], i) * value * component(axes[b], j);
+                }
+            }
+            sum
+        })
+    });
+    let mut inertia = [[0.; 3]; 3];
+    for (i, row) in coefficients.iter().enumerate() {
+        for (j, &coefficient) in row.iter().enumerate().skip(i) {
+            let value = if coefficient == 0. {
+                0.
+            } else {
+                product(&[m.volume, m.scale, m.scale, coefficient.abs()])? * coefficient.signum()
+            };
+            inertia[i][j] = value;
+            inertia[j][i] = value;
+        }
+    }
+    Ok(NurbsGraphInertiaProperties {
+        volume: m.volume,
+        centroid: m.centroid,
+        inertia,
+    })
 }

@@ -1345,3 +1345,13 @@ homogeneous ruled patches. Equal represented section weights give a continuous
 Bernstein coefficient clearance bound; source caps use constant axial height.
 Guarded cumulative volume differences and shared actual-surface tessellation
 provide retained annular slabs. No external source or dependency is added.
+
+Parallel-slab analytic mass uses the existing independently implemented checked
+centered section moments. Cumulative section subtraction and, for an annular
+slab, outer-minus-inner subtraction propagate signed parallel-axis error
+allowances in one original source-local frame. Stable geometry volume is checked
+independently; finite precision and positive covariance admission can refuse only
+the optional metrics while actual retained geometry remains available. The world
+tensor is a final frame rotation, without large world raw-moment subtraction.
+These are engineering arithmetic guards, not interval certification. No external
+source, dependency or license change is introduced.

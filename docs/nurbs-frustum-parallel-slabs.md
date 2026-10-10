@@ -37,8 +37,28 @@ The editable workflow uses explicit component selection before a further
 and applies the entered world plane. Other components remain separate graph
 outputs. Failed edits retain accepted geometry, camera, history and STEP.
 
-This milestone supports geometry, volume, display and STEP export. Slab mass
-properties and point/segment/line/ray queries remain explicitly unavailable.
+Both `NurbsFrustumSlabSolid` and `NurbsBoredFrustumSlabSolid` provide
+`mass_properties(policy)` and `inertia_properties(policy)`. Accepted metrics
+report the actual world centroid and the full centroidal inertia tensor, with
+unit density (`mm³`, `mm`, and `mm⁵`).
+
+The calculation keeps checked centered moments in the original source-local
+frame. A slab with two cut caps subtracts the lower cumulative section from the
+upper cumulative section; a slab retaining an original cap uses the corresponding
+single-cut moments. A bored slab then subtracts its inner cylindrical slab from
+its outer slab in that same frame. Signed parallel-axis composition propagates
+volume, mean and covariance error allowances through both subtractions before
+rotating the resulting tensor into world axes. It does not subtract large world
+raw moments or infer metrics from the display mesh.
+
+The independently checked stable geometry volume remains authoritative. Moment
+volume correspondence, finite arithmetic, centroid precision and positive
+covariance guards can return `Unsupported` for unresolved cancellation, thin
+material, near-uniform taper or extreme scale. These are engineering floating
+point checks, not interval certificates. Workflow reports keep successful actual
+geometry, display and STEP when optional metrics are unsupported, and expose
+`mass_properties: {ok: false, error: ...}` without a fabricated centroid or tensor.
+Other errors propagate. Point/segment/line/ray queries remain explicitly unavailable.
 Skew repeated cuts, general curved Booleans, continued boring and slab STEP
 re-import remain unsupported. Existing canonical, bored and single-cut query
 APIs keep their previous domains.

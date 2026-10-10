@@ -116,7 +116,15 @@ fn two_cap_bored_slabs_keep_annular_faces_exact_shared_edges_and_actual_patch_bo
             report["components"][i]["mesh"]["triangles"],
             json!(mesh.triangles)
         );
-        assert_eq!(report["components"][i]["mass_properties"]["ok"], false);
+        let mass = body.inertia_properties(policy).unwrap();
+        let metrics = &report["components"][i]["mass_properties"];
+        assert_eq!(metrics["ok"], true);
+        assert_eq!(metrics["volume"], mass.volume);
+        assert_eq!(
+            metrics["centroid"],
+            json!([mass.centroid.x, mass.centroid.y, mass.centroid.z])
+        );
+        assert_eq!(metrics["inertia"], json!(mass.inertia));
         for cap in 0..2 {
             assert_eq!(body.solid().shell.faces[cap].wires.len(), 2);
         }
@@ -152,7 +160,15 @@ fn canonical_slabs_display_actual_two_cap_geometry_and_explicit_metric_scope() {
             report["components"][i]["volume"],
             body.volume(policy).unwrap()
         );
-        assert_eq!(report["components"][i]["mass_properties"]["ok"], false);
+        let mass = body.inertia_properties(policy).unwrap();
+        let metrics = &report["components"][i]["mass_properties"];
+        assert_eq!(metrics["ok"], true);
+        assert_eq!(metrics["volume"], mass.volume);
+        assert_eq!(
+            metrics["centroid"],
+            json!([mass.centroid.x, mass.centroid.y, mass.centroid.z])
+        );
+        assert_eq!(metrics["inertia"], json!(mass.inertia));
         for (tri, id) in mesh.triangles.iter().zip(&mesh.face_ids) {
             if *id < 2 {
                 let Surface::Plane { origin, u, v } = &body.solid().shell.faces[*id].surface else {

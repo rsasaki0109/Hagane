@@ -21,7 +21,8 @@ hole and certify actual annular cut-cap witnesses.
 retain both material intervals and actual restricted-face UVs. Line/ray queries
 also preserve original parameters on these children.
 [Repeated parallel cuts](nurbs-frustum-parallel-slabs.md) retain actual
-slab boundaries and holes. Skew repeated cuts and repeated bores
+slab boundaries and holes, with checked analytic centroids and inertia when
+conditioning permits. Slab queries, skew repeated cuts and repeated bores
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.

@@ -29,7 +29,10 @@ fn retained_parallel_children_have_analytic_volumes_and_atomic_guards() {
         let area = std::f64::consts::PI * (144. - if bored { 16. } else { 0. });
         for body in first["components"].as_array().unwrap() {
             assert!((body["volume"].as_f64().unwrap() - 8. * area).abs() < 1e-8);
-            assert_eq!(body["mass_properties"]["ok"], false);
+            assert_eq!(body["mass_properties"]["ok"], true);
+            assert!((body["mass_properties"]["volume"].as_f64().unwrap() - 8. * area).abs() < 1e-8);
+            assert_eq!(body["mass_properties"]["inertia_units"], "mm^5");
+            assert_eq!(body["mass_properties"]["tensor_axes"], "world");
             assert_eq!(body["brep"]["closed"], true);
             assert_eq!(body["genus"], if bored { 1 } else { 0 });
             assert!(body["step"].as_str().unwrap().contains("CLOSED_SHELL"));
