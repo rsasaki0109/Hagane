@@ -4,6 +4,8 @@
 surfaces beyond height graphs, with same-parameter rational boundaries, validated
 mass/inertia, bounded display and exact STEP export. This typed positive-radius
 coaxial domain does not claim arbitrary lofts, apex shapes or general NURBS Booleans.
+Mesh-free world-point classification now checks Euclidean distances to finite
+side/cap/rim boundaries; unresolved precision is explicitly refused.
 
 [Editable multi-component prism workflows](prism-workflow.md) connect
 exact stock and actual STEP import to difference/intersection/union nodes,

@@ -25,6 +25,7 @@ let part = NurbsFrustumSolid::new(Frame3::IDENTITY, [16., 8.], 24., policy)?;
 let volume = part.volume(policy)?;
 let display = part.tessellate(0.1, policy)?;
 let step = part.export_step_mm(policy)?;
+let location = part.classify_point(Point3::new(0., 0., 12.), policy)?;
 # Ok(()) }
 ```
 
@@ -54,6 +55,30 @@ unrepresentable requested properties return errors.
 This is a dedicated typed supported domain. Raw generic `Solid` validation,
 mass and tessellation do not thereby gain general NURBS support. Use the typed
 methods above. The `solid()` accessor exposes the retained B-rep for inspection.
+
+## Mesh-free point classification
+
+`classify_point(world_point, policy)` checks the retained body first and returns
+`PointLocation::{Inside, Outside, Boundary}`. Rotational symmetry reduces exact
+Euclidean distance to the finite meridian side segment and the two finite cap
+disks. The tolerance band includes circular rims: independent radial/axial bands
+would misclassify diagonal points beyond a rim, so they are not used.
+
+The complete physical body scale supplies the relative tolerance. Frame and query
+coordinate precision must remain resolved against the absolute tolerance;
+unresolved distances at the band threshold return `Unsupported` rather than a
+guessed classification. No display mesh, inertia evaluation or STEP export is
+needed. The generic `Solid` point-query scope remains unchanged.
+
+```sh
+cargo run --example nurbs_frustum_classification
+```
+
+The browser query uses the last accepted model and world XYZ coordinates. Invalid
+draft dimensions and rejected queries preserve the accepted model, camera and
+STEP. The native/WASM helper takes the nine model/display numbers used above,
+followed by three world coordinates. All twelve must be finite; the display chord
+value is transport metadata and does not trigger tessellation.
 
 ## Display and STEP
 

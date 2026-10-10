@@ -8,19 +8,8 @@ pub fn nurbs_frustum_demo_json(x: &[f64]) -> Result<String> {
             "NURBS frustum requires exactly nine finite values",
         ));
     }
-    let policy = GeometryTolerance::new(x[7], GeometryTolerance::default().angular(), 0.)?;
-    let pose = Transform::translation(Vec3::new(x[4], x[5], x[6]))?
-        .compose(Transform::rotation(Vec3::new(0., 1., 0.), x[3])?)?;
-    let frame = Frame3::new_with_tolerance(
-        Point3::new(x[4], x[5], x[6]),
-        [
-            pose.vector(Vec3::new(1., 0., 0.)),
-            pose.vector(Vec3::new(0., 1., 0.)),
-            pose.vector(Vec3::new(0., 0., 1.)),
-        ],
-        policy,
-    )?;
-    let body = NurbsFrustumSolid::new(frame, [x[0], x[1]], x[2], policy)?;
+    let (body, policy) = query_body(x)?;
+    let frame = body.frame();
     let mass = body.mass_properties(policy)?;
     let inertia = body.inertia_properties(policy)?;
     let bounds = body.bounds(policy)?;
@@ -36,4 +25,38 @@ pub fn nurbs_frustum_demo_json(x: &[f64]) -> Result<String> {
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN",
         "scope":"typed positive-radius coaxial circular frustum; four exact rational NURBS ruled sides, rational rims, plane caps and line generators; apex, arbitrary lofts, general Booleans and frustum STEP import unsupported"
     }).to_string())
+}
+
+fn query_body(x: &[f64]) -> Result<(NurbsFrustumSolid, GeometryTolerance)> {
+    let policy = GeometryTolerance::new(x[7], GeometryTolerance::default().angular(), 0.)?;
+    let pose = Transform::translation(Vec3::new(x[4], x[5], x[6]))?
+        .compose(Transform::rotation(Vec3::new(0., 1., 0.), x[3])?)?;
+    let frame = Frame3::new_with_tolerance(
+        Point3::new(x[4], x[5], x[6]),
+        [
+            pose.vector(Vec3::new(1., 0., 0.)),
+            pose.vector(Vec3::new(0., 1., 0.)),
+            pose.vector(Vec3::new(0., 0., 1.)),
+        ],
+        policy,
+    )?;
+    let body = NurbsFrustumSolid::new(frame, [x[0], x[1]], x[2], policy)?;
+    Ok((body, policy))
+}
+
+/// Mesh-free world-point query: nine model/display values, then world XYZ.
+pub fn nurbs_frustum_classification_demo_json(x: &[f64]) -> Result<String> {
+    if x.len() != 12 || x.iter().any(|v| !v.is_finite()) {
+        return Err(Error::InvalidInput(
+            "frustum point query requires exactly twelve finite values",
+        ));
+    }
+    let (body, policy) = query_body(x)?;
+    let point = Point3::new(x[9], x[10], x[11]);
+    let location = match body.classify_point(point, policy)? {
+        PointLocation::Inside => "inside",
+        PointLocation::Outside => "outside",
+        PointLocation::Boundary => "boundary",
+    };
+    Ok(serde_json::json!({"location":location,"point":[x[9],x[10],x[11]],"radii":body.radii(),"height":body.height(),"units":"mm","linear_tolerance":x[7],"placement":{"angle":x[3],"translation":[x[4],x[5],x[6]],"axis":[0.,1.,0.]},"scope":"validated finite rational frustum; Euclidean boundary band, mesh-free query"}).to_string())
 }

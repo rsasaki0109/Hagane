@@ -1144,3 +1144,11 @@ retained by planar cap pcurves and affine side UV uses. Polynomial disk moments
 give volume/centroid/inertia; Bernstein homogeneous residual bounds certify
 triangle/chord approximations and the shared cap boundary. The implementation
 is original MIT OR Apache-2.0 Rust code with no copied OCCT source or new library.
+
+### Finite frustum point distance
+
+Frustum point queries project onto a finite side segment in the radius/height
+meridian and compute distance to the finite cap disks. Matching query azimuth
+minimizes rotational-surface distance; segment endpoints and disk boundaries
+include the circular rims. This elementary Euclidean construction is original
+MIT OR Apache-2.0 Rust code, without a mesh query or new dependency.
