@@ -47,11 +47,6 @@ fn unsupported_suffix_and_invalid_unused_radius_leave_history_unchanged() {
     let accepted = s.accepted_shape().unwrap().clone();
     let history = s.undo_count();
     for operation in [
-        NurbsFrustumWorkflowOperation::Partition {
-            id: "bad".into(),
-            input: "hole".into(),
-            cuts: vec![1.],
-        },
         NurbsFrustumWorkflowOperation::CoaxialBore {
             id: "bad".into(),
             input: "hole".into(),

@@ -12,3 +12,4 @@ cp docs/nurbs-frustum-cardinal-example.step web/nurbs-frustum-cardinal-example.s
 cp docs/nurbs-frustum-workflow-example.json web/nurbs-frustum-workflow-example.json
 cp docs/nurbs-frustum-workflow-oblique-example.json web/nurbs-frustum-workflow-oblique-example.json
 cp docs/nurbs-frustum-workflow-bore-example.json web/nurbs-frustum-workflow-bore-example.json
+cp docs/nurbs-frustum-workflow-bore-partition-example.json web/nurbs-frustum-workflow-bore-partition-example.json

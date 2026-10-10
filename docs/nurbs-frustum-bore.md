@@ -107,7 +107,8 @@ shortcuts. Unresolved threshold comparisons return `Unsupported`.
 The [editable workflow](nurbs-frustum-workflow.md) adds `coaxial_bore` to schema 1.
 It retains the actual bored component for radius edits, selection, Undo/Redo,
 bounded display and exact STEP output. A canonical single component is required;
-further cuts of bored results remain explicit errors.
+axial partitions retain the actual hole in every child; plane cuts and
+repeated bores remain explicit errors.
 
 ## Exact finite segment intersections
 
@@ -140,3 +141,6 @@ coincident source/tool cap roots. Original endpoint precision checks still run.
 [Retained line/ray queries](nurbs-frustum-retained-line.md) are supported;
 [oblique-child finite segment queries](nurbs-frustum-oblique-segment.md) are
 supported separately. The [workflow](nurbs-frustum-workflow.md) provides a read-only browser probe.
+
+[Axial bore partitions](nurbs-frustum-bore-partition.md) produce closed annular
+children and support continued editing after explicit component selection.

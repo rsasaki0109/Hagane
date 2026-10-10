@@ -9,10 +9,10 @@ finite segment queries return both material intervals across a hole, with actual
 face/UV witnesses. [Oblique segment queries](nurbs-frustum-oblique-segment.md)
 now clip against the actual cut cap and map restricted-wall UVs.
 [Line/ray queries](nurbs-frustum-retained-line.md) preserve original nonunit
-parameters and all retained material intervals. Further cuts of
-bored components and bored-frustum STEP import remain unsupported. Overall
-completion remains
-an engineering estimate of **15–25%**, toward the **80%** goal.
+parameters and all retained material intervals. [Axial bore partitions](nurbs-frustum-bore-partition.md)
+retain the hole in every child and permit further selected-child partitions.
+Oblique bore cuts, repeated bores and bored-frustum STEP import remain unsupported.
+Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](nurbs-frustum-bore.md) add a supported curved
 solid difference: exact rational outer/cavity walls, annular cap boundaries,

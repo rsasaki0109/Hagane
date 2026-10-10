@@ -1303,3 +1303,8 @@ Retained frustum line/ray queries reuse the existing independent checked slab
 enclosure and original-parameter reconstruction with actual finite segment
 queries. Half-line clipping handles all material intervals and uses physical
 travel for contact guards. No new source or dependency is added.
+
+Bored-frustum axial partitions compose checked canonical restrictions with
+actual coaxial cylinder children. Equal positive rational bases provide
+whole-function correspondence bounds from control-point differences, including
+constant-radius interpolation rounding. No external source or dependency is added.

@@ -556,13 +556,17 @@ impl NurbsFrustumWorkflowDocument {
                         "Partition requires one explicitly selected component.",
                     ));
                 }
-                shape.components()[0].canonical().ok_or_else(|| diagnostic("unsupported", "canonical_required", Some(id), "Partition requires a canonical frustum; bored or oblique components cannot be repartitioned."))?
-                    .split_axial_many(cuts, tol)
-                    .map_err(|e| geometry(e, id))?
-                    .parts
-                    .into_iter()
-                    .map(|v| NurbsFrustumWorkflowComponent::Canonical(Arc::new(v)))
-                    .collect()
+                match &shape.components()[0] {
+                    NurbsFrustumWorkflowComponent::Canonical(body) => body.split_axial_many(cuts,tol)
+                        .map_err(|e| geometry(e,id))?.parts.into_iter()
+                        .map(|v| NurbsFrustumWorkflowComponent::Canonical(Arc::new(v))).collect(),
+                    NurbsFrustumWorkflowComponent::Bored(body) => body.split_axial_many(cuts,tol)
+                        .map_err(|e| geometry(e,id))?.parts.into_iter()
+                        .map(|v| NurbsFrustumWorkflowComponent::Bored(Arc::new(v))).collect(),
+                    NurbsFrustumWorkflowComponent::Oblique(_) => return Err(diagnostic(
+                        "unsupported", "canonical_required", Some(id),
+                        "Partition requires a canonical or bored frustum; oblique components cannot be repartitioned.")),
+                }
             }
         };
         for b in &bodies {

@@ -36,7 +36,7 @@ outputs and forward references are rejected.
 | `frustum` | One exact positive-radius frustum from radii, height, origin and three axes. Axes must be one of the 24 exact right-handed signed coordinate bases. |
 | `posed_frustum` | One actual frustum from positive radii/height, origin, a nonzero finite `rotation_axis` and `angle` in [-π, π] radians. Uses checked rigid rotation; no scale, shear or reflection. |
 | `step_stock` | One actual body from the checked [cardinal STEP importer](nurbs-frustum-cardinal-step-import.md), retaining rational geometry and UV boundaries. |
-| `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one canonical component. |
+| `partition` | All actual closed parts from 1–16 ordered source-local physical cut heights. Input must contain exactly one canonical or bored component. |
 | `plane_split` | Two actual closed oblique children from world `origin` and `normal`. Requires one canonical component; the complete cut must stay strictly between its original caps. Lower/upper ordering is independent of normal sign. |
 | `coaxial_bore` | One actual genus-one rational body with a coaxial through hole. Requires one canonical component and resolved positive radius/wall clearance. |
 | `select` | The explicitly indexed component of an earlier node, shared as the actual typed body. |
@@ -72,6 +72,7 @@ The native and WASM command paths share the kernel, actual-body serializer and
 transaction rules. Arbitrary-angle STEP import, apex shapes, general lofts,
 repeated cuts of oblique children and general frustum Booleans are unsupported.
 Axial `partition` on an oblique child is also explicitly unsupported.
+Canonical and bored components support checked axial partitions.
 
 ## Oblique children and Rust API migration
 
@@ -100,8 +101,9 @@ The [through-bore example](nurbs-frustum-workflow-bore-example.json) connects
 stock to an actual cylindrical difference with radius 4 mm. Radius edits reuse
 the stock prefix and rebuild the real annular boundary. Undo/Redo and explicit
 selection retain the actual bored body; each accepted component exports its own
-STEP. Further axial/plane cuts or bores on this initial bored type reject
-explicitly. The stock can still be selected as a separate earlier output node.
+STEP. [Axial partitions](nurbs-frustum-bore-partition.md) retain the actual hole
+in every child; Select permits further local axial partitions. Plane cuts and
+repeated bores on this initial bored type still reject explicitly. The stock can still be selected as a separate earlier output node.
 
 Typed components dispatch point queries to the corresponding finite body,
 including the bored solid's actual inner wall and annular cap distances.
@@ -185,7 +187,8 @@ The default three-node graph has radius, height, cut-height and component-index
 controls. The oblique preset uses the actual `plane_split` node and adds world
 plane origin/normal controls; its two components are the actual closed children. These preserve node IDs and
 the exact stock frame. The through-bore preset adds hole-radius controls for the
-actual `coaxial_bore` node. Controls irrelevant to the current operation stay hidden. Other histories,
+actual `coaxial_bore` node. The bore-partition preset connects this hole to
+four actual annular parts and exposes cut-height controls. Controls irrelevant to the current operation stay hidden. Other histories,
 including STEP stocks and additional nodes, use the JSON editor; simplified
 controls are disabled. Choosing a displayed component does not change the graph.
 The explicit Select button appends a real operation. Setting another output
