@@ -46,8 +46,24 @@ fn actual_annular_children_and_atomic_unsupported_queries() {
         json!({"command":"query","component":0,"point":[6.,0.,4.]}),
     );
     assert_eq!(classified["query"]["location"], "inside");
-    for query in [
+    let segment = command(
+        &mut session,
         json!({"command":"segment","component":0,"start":[-20.,0.,6.],"end":[20.,0.,6.]}),
+    );
+    assert_eq!(segment["ok"], true);
+    for (i, expected) in [[0.2, 0.4], [0.6, 0.8]].iter().enumerate() {
+        for (j, value) in expected.iter().enumerate() {
+            assert!(
+                (segment["segment"]["material_intervals"][i][j]
+                    .as_f64()
+                    .unwrap()
+                    - value)
+                    .abs()
+                    < 1e-12
+            );
+        }
+    }
+    for query in [
         json!({"command":"line","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
         json!({"command":"ray","component":0,"origin":[0.,0.,6.],"direction":[1.,0.,0.]}),
     ] {

@@ -39,7 +39,7 @@ material in world millimetres:
 Tests cover holes, retained and removed halfspaces, original annular caps,
 finite cut-cap witnesses, diagonal rim ambiguity, rotations, scale changes,
 relative policy, nonfinite input and coordinate precision. Native, WASM and
-browser probes share the Rust kernel implementation. Segment/line/ray queries
+browser probes share the Rust kernel implementation. Line/ray queries
 and repeated cuts of bored-oblique children remain unsupported.
 
 Original code is MIT OR Apache-2.0. This uses finite annular boundary distances,

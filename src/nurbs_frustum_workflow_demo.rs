@@ -153,7 +153,7 @@ fn body_report(
         .iter()
         .any(|body| matches!(body, NurbsFrustumWorkflowComponent::BoredOblique(_)))
     {
-        "versioned typed rational frustum graph; actual closed bored oblique children; optional analytic mass properties; actual point queries; segment/line/ray queries unsupported; separate actual STEP exports"
+        "versioned typed rational frustum graph; actual closed bored oblique children; optional analytic mass properties; actual point and finite segment queries; line/ray queries unsupported; separate actual STEP exports"
     } else if shape
         .components()
         .iter()
@@ -245,9 +245,10 @@ fn segment_report(
                     result.material_interval.into_iter().collect::<Vec<_>>(),
                 ))
             }
-            NurbsFrustumWorkflowComponent::BoredOblique(_) => Err(Error::Unsupported(
-                "bored oblique frustum finite and infinite queries are not implemented",
-            )),
+            NurbsFrustumWorkflowComponent::BoredOblique(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((result.hits, result.material_intervals))
+            }
         }
     })();
     let (hits, intervals) = result.map_err(|error| {

@@ -36,4 +36,5 @@ kernel metrics, and browser history edits recompute the actual selected body.
 Original code is MIT OR Apache-2.0. This uses the existing independent analytic
 cone/cylinder integrals, covariance identity and parallel-axis theorem. No OCCT
 source or new dependency is used. [Mesh-free point queries](nurbs-frustum-bored-oblique-classify.md) are supported;
-segment/line/ray queries and repeated cuts remain unsupported.
+Line/ray queries and repeated cuts remain unsupported; finite segments now have
+checked actual-face witnesses.

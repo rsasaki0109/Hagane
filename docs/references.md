@@ -1325,3 +1325,8 @@ Bored-oblique point queries combine the independently implemented finite
 annular source classifier with actual retained halfspace distance lower bounds
 and an orthogonal foot strictly inside the actual annular material. Ambiguous
 finite elliptical-rim distances remain unsupported. No new dependency is added.
+
+Bored-oblique finite segments combine checked annular source intervals with
+independent halfspace clipping. Rational generator parameter inversion and
+affine Gram coordinates supply actual surface witnesses; both endpoint gaps
+certify empty intervals. No external source or dependency is added.

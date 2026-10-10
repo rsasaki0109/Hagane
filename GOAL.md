@@ -1639,3 +1639,21 @@ Both entry caps, rigid placement and existing disjoint through openings are
 covered. Later milestones add multiple pockets and continued machining through
 the separate certified API; general STEP remains unsupported. See [single-cavity STEP](docs/normal-prism-blind-step.md).
 The long-term estimate remains 15–25% toward the standing 80% target.
+
+## Finite segments through bored oblique children
+
+Actual retained annular children now support mesh-free finite segment queries.
+Independent clipping preserves both material intervals across a hole; cut roots
+in the void produce no cap hit. Actual restricted-face UV and oriented normals
+are checked, with explicit errors for contacts and unresolved precision.
+See [finite segment scope](docs/nurbs-frustum-bored-oblique-segment.md).
+Line/ray queries for this child type remain future work. The long-term estimate
+remains 15–25% toward the standing 80% target.
+
+Validation: fmt, strict all-target Clippy, 21 relevant native tests and the
+WASM build passed. Combined native/WASM segment/workflow/mass/point checks
+passed. The entire browser suite passed on its second run; the first run
+failed an existing line-probe exact PNG comparison before the new block.
+A targeted raw-buffer/camera/PNG diagnostic passed without reproducing the
+cause; the original equality guard remains intact and no fix is claimed.
+The actual final model screenshot was inspected.
