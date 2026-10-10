@@ -590,3 +590,16 @@ through bores. See [line/arc workflow](workflow-arc-line.md) for the actual
 example, geometry/tolerance limits and validation. Blind cuts on this stock
 reject explicitly. The display centers accepted positions while reports,
 JSON and STEP retain original world coordinates.
+
+## Plane cuts in curved-stock history
+
+`plane_split` nodes now keep a specified actual halfspace after rounded-box or
+line/arc stock and pass that closed body to later cuts/through bores. World-XY
+normal angle (radians), signed offset and retained side are saved in JSON.
+The same linear chain supports cut/bore editing, removal/relinking, prefix reuse,
+Undo/Redo and accepted-model exports. Existing Box/Polygon histories reject
+these nodes explicitly. Shared admission uses initial segments + 4 per bore +
+3 per cut <=128 and initial openings + bores <=16; it is conservative even
+when a cut discards an opening. Terminal all-line children can be displayed
+and exported, while subsequent curved-source operations reject. See
+[editable plane cuts](workflow-plane-split.md) for the complete domain/example.

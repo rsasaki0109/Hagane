@@ -1016,3 +1016,10 @@ independently of child volume. Circle-segment test oracles integrate
 `sqrt(r*r-x*x)` using `(x*sqrt(r*r-x*x)+r*r*asin(x/r))/2`; cap areas use the existing
 Green-theorem line/arc integrals. No OCCT source or new dependencies are used.
 Original implementation remains MIT OR Apache-2.0.
+
+Editable analytic-stock plane cuts compose the independently implemented prism
+partition and normal-bore algorithms above. JSON stores plane angle/offset/side
+and the original operation chain; reconstruction uses actual accepted B-rep
+prefixes. Rounded-half and subsequent bore oracles use the existing
+`width*depth - (4-pi)*radius^2` cross-section area and `pi*r^2*height` tool volume.
+No new dependencies or OCCT source are used; licensing is unchanged.

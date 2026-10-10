@@ -59,7 +59,9 @@ custom normal stock with signed quarter arcs, noncentered XY coordinates,
 initial openings and subsequent through bores in that same history.
 [Axial-plane prism partition](docs/arc-line-prism-split.md) additionally creates
 both actual closed sides of a transverse line/arc-stock cut, preserving source
-subarcs and uncut openings. It remains a separate scoped API and Web demo.
+subarcs and uncut openings. The [editable plane-cut workflow](docs/workflow-plane-split.md)
+now keeps either side in the existing document history, followed by additional
+normal bores and cuts, with prefix reuse, Undo/Redo and accepted-model exports.
 
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded

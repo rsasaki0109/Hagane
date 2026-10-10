@@ -51,6 +51,13 @@ pub enum WorkflowOperation {
         size: [f64; 3],
         corner_radius: f64,
     },
+    PlaneSplit {
+        id: String,
+        input: String,
+        offset: f64,
+        normal_angle: f64,
+        side: WorkflowSplitSide,
+    },
     Bore {
         #[serde(default, skip_serializing_if = "WorkflowBoreEntry::is_top")]
         entry: WorkflowBoreEntry,
@@ -62,6 +69,12 @@ pub enum WorkflowOperation {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         depth: Option<f64>,
     },
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkflowSplitSide {
+    Negative,
+    Positive,
 }
 /// Exact profile intent in millimetres and radians. Signed arcs retain direction.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -161,8 +174,8 @@ impl WorkflowDocument {
         let mut solid = plan
             .make_stock()
             .map_err(|e| geometry_error(e, self.operation_id(0)))?;
-        for (i, (&bore, &tool)) in plan.bores.iter().zip(&plan.tools).enumerate() {
-            plan.apply_bore(&mut solid, i, bore, tool)
+        for (i, step) in plan.steps.iter().enumerate() {
+            plan.apply_step(&mut solid, step)
                 .map_err(|e| geometry_error(e, self.operation_id(i + 1)))?;
         }
         solid
@@ -176,7 +189,8 @@ impl WorkflowDocument {
             | WorkflowOperation::RoundedBox { id, .. }
             | WorkflowOperation::ArcLineExtrusion { id, .. }
             | WorkflowOperation::Extrusion { id, .. }
-            | WorkflowOperation::Bore { id, .. } => id,
+            | WorkflowOperation::Bore { id, .. }
+            | WorkflowOperation::PlaneSplit { id, .. } => id,
         }
     }
     fn checked_plan(&self) -> std::result::Result<WorkflowPlan, Box<WorkflowDiagnostic>> {
@@ -223,7 +237,8 @@ impl WorkflowDocument {
                 | WorkflowOperation::RoundedBox { id, .. }
                 | WorkflowOperation::ArcLineExtrusion { id, .. }
                 | WorkflowOperation::Extrusion { id, .. }
-                | WorkflowOperation::Bore { id, .. } => id,
+                | WorkflowOperation::Bore { id, .. }
+                | WorkflowOperation::PlaneSplit { id, .. } => id,
             };
             if !valid_id(id) {
                 return Err(diagnostic(
@@ -238,12 +253,24 @@ impl WorkflowDocument {
             WorkflowOperation::RoundedBox { corner_radius, .. } => Some(*corner_radius),
             _ => None,
         };
-        if rounded_radius.is_some() && self.operations.len() > 17 {
+        let bore_count = self
+            .operations
+            .iter()
+            .filter(|op| matches!(op, WorkflowOperation::Bore { .. }))
+            .count();
+        let split_count = self
+            .operations
+            .iter()
+            .filter(|op| matches!(op, WorkflowOperation::PlaneSplit { .. }))
+            .count();
+        if rounded_radius.is_some()
+            && (bore_count > 16 || 8 + 4 * bore_count + 3 * split_count > 128)
+        {
             let mut d = diagnostic(
                 "unsupported_history",
                 None,
                 Some("operations"),
-                "Rounded-box histories support at most 16 through bores.",
+                "Rounded-box histories support at most 16 through bores and 128 profile segments, reserving 8 for stock, 4 per bore and 3 per plane split.",
             );
             d.category = "unsupported";
             return Err(d);
@@ -256,13 +283,13 @@ impl WorkflowDocument {
         } = &self.operations[0]
         {
             let total = outer.len() + holes.iter().map(Vec::len).sum::<usize>();
-            let bores = self.operations.len() - 1;
+            let bores = bore_count;
             if holes.len() > 16
                 || total > 128
                 || holes.len() + bores > 16
-                || total + 4 * bores > 128
+                || total + 4 * bores + 3 * split_count > 128
             {
-                let mut d=diagnostic("unsupported_history",Some(id),Some("outer_or_holes_or_operations"),"Line/arc stock and through bores support at most 16 holes and 128 total profile segments.");
+                let mut d=diagnostic("unsupported_history",Some(id),Some("outer_or_holes_or_operations"),"Line/arc histories support at most 16 total holes and 128 profile segments, reserving 4 per added bore and 3 per plane split.");
                 d.category = "unsupported";
                 return Err(d);
             }
@@ -436,7 +463,7 @@ impl WorkflowDocument {
                     "invalid_history",
                     None,
                     Some("operations"),
-                    "The first operation must create a box or polygon extrusion.",
+                    "The first operation must create a box, rounded box, polygon extrusion or arc-line extrusion.",
                 ))
             }
         };
@@ -445,6 +472,143 @@ impl WorkflowDocument {
             WorkflowOperation::Extrusion { offset, .. } => Vec3::new(offset[0], offset[1], size.z),
             _ => Vec3::new(0., 0., size.z),
         };
+        if split_count > 0 {
+            if !curved {
+                let mut d = diagnostic(
+                    "plane_split_root_unsupported",
+                    self.operations.iter().find_map(|op| match op {
+                        WorkflowOperation::PlaneSplit { id, .. } => Some(id.as_str()),
+                        _ => None,
+                    }),
+                    Some("operations"),
+                    "Plane split nodes require rounded-box or arc-line extrusion stock.",
+                );
+                d.category = "unsupported";
+                return Err(d);
+            }
+            let mut ids = vec![box_id.as_str()];
+            let mut steps = Vec::new();
+            for op in &self.operations[1..] {
+                let (id, input) = match op {
+                    WorkflowOperation::Bore { id, input, .. }
+                    | WorkflowOperation::PlaneSplit { id, input, .. } => (id, input),
+                    _ => {
+                        return Err(diagnostic(
+                            "unsupported_history",
+                            None,
+                            Some("operations"),
+                            "Only through bores and plane splits may follow curved stock.",
+                        ))
+                    }
+                };
+                if ids.contains(&id.as_str()) || Some(input.as_str()) != ids.last().copied() {
+                    return Err(diagnostic("invalid_reference",Some(id),Some("input"),"Operation ID must be unique and input must reference the immediately preceding operation."));
+                }
+                let step = match op {
+                    WorkflowOperation::PlaneSplit {
+                        offset,
+                        normal_angle,
+                        side,
+                        ..
+                    } => {
+                        if !offset.is_finite() || !normal_angle.is_finite() {
+                            return Err(diagnostic(
+                                "invalid_plane_split",
+                                Some(id),
+                                Some("offset_or_normal_angle"),
+                                "Plane offset and normal angle must be finite.",
+                            ));
+                        }
+                        let (sin, cos) = normal_angle.sin_cos();
+                        let plane = Surface::Plane {
+                            origin: Point3::new(cos * offset, sin * offset, 0.),
+                            u: Vec3::new(0., 0., 1.),
+                            v: Vec3::new(sin, -cos, 0.),
+                        };
+                        WorkflowStep::PlaneSplit { plane, side: *side }
+                    }
+                    WorkflowOperation::Bore {
+                        entry,
+                        mode,
+                        center,
+                        radius,
+                        depth,
+                        ..
+                    } => {
+                        if *mode == WorkflowBoreMode::Blind {
+                            let mut d = diagnostic(
+                                if rounded_radius.is_some() {
+                                    "rounded_blind_bore_unsupported"
+                                } else {
+                                    "arc_line_blind_bore_unsupported"
+                                },
+                                Some(id),
+                                Some("mode"),
+                                "Curved line/arc stock supports through bores only.",
+                            );
+                            d.category = "unsupported";
+                            return Err(d);
+                        }
+                        if *entry != WorkflowBoreEntry::Top {
+                            return Err(diagnostic(
+                                "unexpected_entry",
+                                Some(id),
+                                Some("entry"),
+                                "Through bores must omit entry or use top.",
+                            ));
+                        }
+                        if depth.is_some() {
+                            return Err(diagnostic(
+                                "unexpected_depth",
+                                Some(id),
+                                Some("depth"),
+                                "Through bores must omit depth.",
+                            ));
+                        }
+                        if center.iter().any(|v| !v.is_finite())
+                            || !radius.is_finite()
+                            || *radius <= 10. * t.linear
+                        {
+                            return Err(diagnostic(
+                                "invalid_bore_parameters",
+                                Some(id),
+                                Some("radius_or_center"),
+                                "Bore center and radius must be finite and resolved.",
+                            ));
+                        }
+                        WorkflowStep::Bore {
+                            bore: BoxBore {
+                                center: *center,
+                                radius: *radius,
+                                depth: None,
+                            },
+                            entry: *entry,
+                            tool: None,
+                        }
+                    }
+                    _ => {
+                        return Err(diagnostic(
+                            "unsupported_history",
+                            Some(id),
+                            None,
+                            "Unsupported operation in split history.",
+                        ))
+                    }
+                };
+                steps.push(step);
+                ids.push(id.as_str());
+            }
+            return Ok(WorkflowPlan {
+                stock: b,
+                direction,
+                profile,
+                steps,
+                tolerance: t,
+                rounded_radius,
+                arc_profile,
+                policy,
+            });
+        }
         let mut bores: Vec<BoxBore> = Vec::new();
         let mut entries = Vec::new();
         let mut ids = vec![box_id.as_str()];
@@ -686,9 +850,12 @@ impl WorkflowDocument {
             stock: b,
             direction,
             profile,
-            entries,
-            bores,
-            tools,
+            steps: bores
+                .into_iter()
+                .zip(entries)
+                .zip(tools)
+                .map(|((bore, entry), tool)| WorkflowStep::Bore { bore, entry, tool })
+                .collect(),
             tolerance: t,
             rounded_radius,
             arc_profile,
@@ -791,47 +958,72 @@ pub fn workflow_input_failure(message: &str) -> Result<String> {
     serde_json::to_string(&report).map_err(|_| Error::InvalidInput("workflow serialization failed"))
 }
 
+enum WorkflowStep {
+    Bore {
+        bore: BoxBore,
+        entry: WorkflowBoreEntry,
+        tool: Option<CylinderSpec>,
+    },
+    PlaneSplit {
+        plane: Surface,
+        side: WorkflowSplitSide,
+    },
+}
 struct WorkflowPlan {
     stock: BoxSpec,
     direction: Vec3,
     profile: Option<PolygonProfile>,
-    entries: Vec<WorkflowBoreEntry>,
-    bores: Vec<BoxBore>,
-    tools: Vec<Option<CylinderSpec>>,
+    steps: Vec<WorkflowStep>,
     tolerance: Tolerance,
     rounded_radius: Option<f64>,
     arc_profile: Option<ArcLineRegion>,
     policy: GeometryTolerance,
 }
 impl WorkflowPlan {
-    fn apply_bore(
-        &self,
-        solid: &mut Solid,
-        index: usize,
-        bore: BoxBore,
-        tool: Option<CylinderSpec>,
-    ) -> Result<()> {
-        if self.rounded_radius.is_some() || self.arc_profile.is_some() {
-            *solid = bore_normal_arc_line_prism(
-                solid,
-                Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
-                bore.radius,
-                self.policy,
-            )?
-            .into_solids()
-            .0;
-            Ok(())
-        } else if self.entries[index] == WorkflowBoreEntry::Bottom {
-            crate::operations::append_bottom_blind_bore(solid, self.stock, bore);
-            Ok(())
-        } else {
-            apply_checked_prism_bore(
-                solid,
-                self.stock,
-                bore,
-                tool.ok_or(Error::InvalidTopology("missing checked prism tool"))?,
-                self.tolerance,
-            )
+    fn apply_step(&self, solid: &mut Solid, step: &WorkflowStep) -> Result<()> {
+        let curved = self.rounded_radius.is_some() || self.arc_profile.is_some();
+        if curved
+            && !solid
+                .edges
+                .iter()
+                .any(|e| matches!(e.curve, Curve::Arc { .. }))
+        {
+            return Err(Error::Unsupported("a line-only partition child supports terminal display/export, but subsequent curved-source operations are unsupported"));
+        }
+        match step {
+            WorkflowStep::PlaneSplit { plane, side } => {
+                let (negative, positive) =
+                    split_normal_arc_line_prism_by_plane(solid, plane, self.policy)?.into_solids();
+                *solid = match side {
+                    WorkflowSplitSide::Negative => negative,
+                    WorkflowSplitSide::Positive => positive,
+                };
+                Ok(())
+            }
+            WorkflowStep::Bore { bore, entry, tool } => {
+                if curved {
+                    *solid = bore_normal_arc_line_prism(
+                        solid,
+                        Point3::new(bore.center[0], bore.center[1], self.stock.min.z),
+                        bore.radius,
+                        self.policy,
+                    )?
+                    .into_solids()
+                    .0;
+                    Ok(())
+                } else if *entry == WorkflowBoreEntry::Bottom {
+                    crate::operations::append_bottom_blind_bore(solid, self.stock, *bore);
+                    Ok(())
+                } else {
+                    apply_checked_prism_bore(
+                        solid,
+                        self.stock,
+                        *bore,
+                        tool.ok_or(Error::InvalidTopology("missing checked prism tool"))?,
+                        self.tolerance,
+                    )
+                }
+            }
         }
     }
     fn make_stock(&self) -> Result<Solid> {
@@ -948,14 +1140,9 @@ impl WorkflowSession {
             (*snapshots[reused - 1]).clone()
         };
         for index in reused.max(1)..document.operations.len() {
-            plan.apply_bore(
-                &mut solid,
-                index - 1,
-                plan.bores[index - 1],
-                plan.tools[index - 1],
-            )
-            .and_then(|()| solid.validate(plan.tolerance))
-            .map_err(|e| geometry_error(e, document.operation_id(index)))?;
+            plan.apply_step(&mut solid, &plan.steps[index - 1])
+                .and_then(|()| solid.validate(plan.tolerance))
+                .map_err(|e| geometry_error(e, document.operation_id(index)))?;
             snapshots.push(Arc::new(solid.clone()));
         }
         let result = WorkflowRebuild {

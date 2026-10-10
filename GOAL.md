@@ -1425,3 +1425,14 @@ and disconnected sections remain unsupported. This is broader analytic Boolean
 infrastructure, not general curved Boolean completion or a new workflow node.
 See [analytic prism partition](docs/arc-line-prism-split.md). The long-term
 estimate remains 15–25% toward the standing 80% target.
+
+## Editable analytic-stock plane cuts
+
+Plane partition is now an actual selected-side node in rounded/line-arc
+operation history, with subsequent cuts and through bores evaluated on the
+retained body. Cut offset/angle/side edits, operation removal/relinking, prefix
+reuse, atomic rejection, Undo/Redo, saved intent and accepted STEP export share
+the existing native/WASM workflow. General operation graphs, Box/Polygon cut
+nodes, hole-crossing partitions and curved operations after an all-line
+terminal child remain unsupported. See [editable plane cuts](docs/workflow-plane-split.md).
+The long-term estimate remains 15–25% toward the standing 80% target.

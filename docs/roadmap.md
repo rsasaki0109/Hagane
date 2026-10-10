@@ -1336,3 +1336,15 @@ both actual bodies and their analytic STEP exports. General curved Booleans
 and editable split-document nodes remain subsequent work. See
 [analytic prism partition](arc-line-prism-split.md). The estimate remains
 15–25% toward the standing 80% target.
+
+## Analytic plane cuts in editable history
+
+Rounded/line-arc stock histories now contain actual selected-side plane-cut
+nodes, followed by additional cuts/normal bores on the retained B-rep. Shared
+resource admission counts operation types; real prefix reuse and transactional
+rejection preserve accepted geometry and editing intent. Browser cut controls,
+removal/relinking, Undo/Redo, saved documents and STEP export use the existing
+workflow. General graphs, Box/Polygon cut nodes, crossed openings and curved
+operations after an all-line terminal child remain future work. See
+[editable plane cuts](workflow-plane-split.md). The estimate remains 15–25%
+toward the standing 80% target.
