@@ -144,9 +144,9 @@ The command queries the accepted output component with its document tolerance.
 Success contains `segment.start`, `segment.end`, `segment.component`, actual
 `segment.hits` (parameter, world point and face/UV witnesses),
 `segment.material_intervals` and `segment.mesh_free: true`, with mm units.
-Canonical components support the existing single material interval; bored
-components support zero, one or two. Oblique components explicitly reject this
-initial query rather than returning intersections with their original source.
+Canonical and [oblique components](nurbs-frustum-oblique-segment.md) support
+one optional material interval; bored components support zero, one or two.
+Oblique hits refer to the actual cut cap and restricted rational walls.
 
 The browser offers a separate world-coordinate segment probe. It displays
 intersection and material interval results while preserving geometry, point

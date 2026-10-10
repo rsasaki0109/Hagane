@@ -137,5 +137,6 @@ through source-query admission even when it is outside the bored solid.
 A guarded convexity certificate directly returns empty material when both
 radial endpoints are strictly inside the hole; this avoids merging nearly
 coincident source/tool cap roots. Original endpoint precision checks still run.
-General line/ray queries and oblique-child segment intersections remain future
-work. The [workflow](nurbs-frustum-workflow.md) provides a read-only browser probe.
+General line/ray queries remain future work;
+[oblique-child finite segment queries](nurbs-frustum-oblique-segment.md) are
+supported separately. The [workflow](nurbs-frustum-workflow.md) provides a read-only browser probe.

@@ -1293,3 +1293,8 @@ Finite bored-frustum segment queries independently compose the existing checked
 convex source/tool interval queries by interval subtraction. Retained face/UV
 witnesses and material membership are checked against the actual kept body;
 this uses elementary set operations on intervals and adds no dependency.
+
+Oblique-child finite segment queries use elementary convex halfspace clipping
+and invert the rational interpolation of the actual ruled-wall generator to
+produce kept surface parameters. No external source or dependency is added;
+see [finite oblique queries](nurbs-frustum-oblique-segment.md).

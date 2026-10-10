@@ -107,13 +107,7 @@ fn segment_errors_and_oblique_scope_preserve_accepted_state_and_recover() {
         let mut bad = request.clone();
         bad["start"] = json!([1e14, 0., 12.]);
         assert_eq!(call(&mut session, bad)["ok"], false);
-        if kind == "split" {
-            let report = call(&mut session, request.clone());
-            assert_eq!(report["diagnostic"]["category"], "unsupported");
-            assert_eq!(report["diagnostic"]["operation_id"], "result");
-        } else {
-            assert_eq!(call(&mut session, request.clone())["ok"], true);
-        }
+        assert_eq!(call(&mut session, request.clone())["ok"], true);
         assert!(Arc::ptr_eq(&shape, session.accepted_shape().unwrap()));
         assert_eq!((session.undo_count(), session.redo_count()), history);
         let replay = call(

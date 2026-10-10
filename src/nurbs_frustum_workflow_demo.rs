@@ -210,9 +210,13 @@ fn segment_report(
                 let result = v.intersect_segment(point(start), point(end), policy)?;
                 Ok((result.hits, result.material_intervals))
             }
-            NurbsFrustumWorkflowComponent::Oblique(_) => Err(Error::Unsupported(
-                "segment queries on oblique workflow components are unsupported",
-            )),
+            NurbsFrustumWorkflowComponent::Oblique(v) => {
+                let result = v.intersect_segment(point(start), point(end), policy)?;
+                Ok((
+                    result.hits,
+                    result.material_interval.into_iter().collect::<Vec<_>>(),
+                ))
+            }
         }
     })();
     let (hits, intervals) = result.map_err(|error| {

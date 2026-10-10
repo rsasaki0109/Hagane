@@ -398,3 +398,5 @@ mod nurbs_frustum_bored_display;
 
 mod nurbs_frustum_bore_intersection;
 pub use nurbs_frustum_bore_intersection::*;
+
+mod nurbs_frustum_oblique_intersection;
