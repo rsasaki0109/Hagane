@@ -263,3 +263,7 @@ mod graph_workflow_session;
 pub use graph_workflow_session::*;
 mod graph_workflow_demo;
 pub use graph_workflow_demo::*;
+mod edge_chamfer;
+pub use edge_chamfer::*;
+mod edge_chamfer_demo;
+pub use edge_chamfer_demo::*;

@@ -1231,3 +1231,12 @@ last accepted state. Complex accepted histories remain editable as JSON rather
 than being flattened by the simple form. General curved modeling, circular-bore
 STEP import and arbitrary operation graphs remain future work. The estimate
 remains **15–25%**, toward **80%**. See [editable graph workflow](graph-workflow.md).
+
+## Isolated planar edge chamfer
+
+An equal-setback chamfer now splits a strictly convex planar straight-edge
+solid into actual retained and removed closed B-reps, with a shared planar
+bevel and exact STEP export. The browser displays accepted geometry and
+preserves it after rejected edits. Curved, interacting and general chamfers
+and fillets remain unsupported. The estimate remains **15–25%**, toward
+**80%**. See [planar edge chamfer](edge-chamfer.md).

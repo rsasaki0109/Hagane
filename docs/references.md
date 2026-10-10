@@ -916,3 +916,12 @@ Immutable prefix snapshots and transactional replay are original application
 code; saved data records intent rather than supplying geometry. Existing serde
 and serde_json dependencies retain their recorded MIT OR Apache-2.0 terms.
 No external CAD source or additional dependency is introduced.
+
+### Isolated planar edge chamfer
+
+The implementation uses elementary supporting-plane half-space intersection
+and the Euclidean angle-bisector identity: for outward unit normals n1,n2,
+the inward offset is d*|n1 cross n2|/|n1+n2| for equal face setback d.
+Hagane's existing original planar splitter supplies closed B-reps. No external
+CAD implementation or new dependency is used. Original code remains
+MIT OR Apache-2.0; existing dependency licenses are unchanged.

@@ -34,6 +34,10 @@ stock, UV selection, rigid placement and optional circular bore to reproducible
 documents, incremental rebuilding, browser Undo/Redo, autosave, point queries
 and exact STEP downloads. It remains a scoped linear modeling history.
 
+[Planar edge chamfer](docs/edge-chamfer.md) creates actual retained and removed
+solids for one isolated equal-setback edge of a convex planar solid, with a
+Web demo and exact STEP export. Curved and interacting chamfers remain planned.
+
 [Rectangular NURBS restriction](docs/nurbs-surface-trim.md) now retains an exact
 selected UV rectangle with rational B-rep edges, shared corners and bounded
 display. The `web/surface-trim.html` demo edits its limits using Rust/WASM.
