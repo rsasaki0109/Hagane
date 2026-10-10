@@ -1314,3 +1314,9 @@ plane sections. Affine plane projection retains each positive rational curve
 basis, making full control residuals a whole-rim bound. Display maps rational
 generator parameters and bounds annular cap strips using the actual inner rim.
 No external source or dependency is added.
+
+Bored oblique child mass combines checked analytic outer and removed-cylinder
+centered moments in one normalized local frame. Signed parallel-axis
+composition, covariance trace and rigid tensor rotation retain propagated
+metric uncertainty; no mesh integral or world-origin moment subtraction is used.
+No external source or dependency is added.

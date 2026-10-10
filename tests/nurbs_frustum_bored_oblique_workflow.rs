@@ -18,7 +18,7 @@ fn actual_annular_children_and_atomic_unsupported_queries() {
     assert_eq!(report["components"].as_array().unwrap().len(), 2);
     for body in report["components"].as_array().unwrap() {
         assert_eq!(body["component_kind"], "bored_oblique_frustum");
-        assert_eq!(body["mass_properties"]["ok"], false);
+        assert_eq!(body["mass_properties"]["ok"], true);
         assert!((body["volume"].as_f64().unwrap() - 1536. * std::f64::consts::PI).abs() < 1e-8);
         assert_eq!(body["brep"]["vertices"].as_array().unwrap().len(), 16);
         assert_eq!(body["brep"]["edges"], 24);
@@ -27,6 +27,19 @@ fn actual_annular_children_and_atomic_unsupported_queries() {
         assert_eq!(loops[0].as_array().unwrap().len(), 2);
         assert_eq!(loops[1].as_array().unwrap().len(), 2);
         assert!(body["step"].as_str().unwrap().contains("CLOSED_SHELL"));
+    }
+    let children = report["components"].as_array().unwrap();
+    for (i, body) in children.iter().enumerate() {
+        let expected = if i == 0 {
+            [2. / 3., 1. / 3., 73. / 12.]
+        } else {
+            [-2. / 3., -1. / 3., 215. / 12.]
+        };
+        for (axis, value) in expected.iter().enumerate() {
+            assert!(
+                (body["mass_properties"]["centroid"][axis].as_f64().unwrap() - value).abs() < 1e-10
+            );
+        }
     }
     for query in [
         json!({"command":"query","component":0,"point":[6.,0.,4.]}),

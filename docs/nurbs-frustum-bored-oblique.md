@@ -45,9 +45,11 @@ B-rep, rather than substituting filled outer pieces or mesh Boolean results.
 Volumes use checked analytic outer and inner child volumes. Subtraction and
 parent conservation have explicit floating-point conditioning guards;
 unresolved very thin material can be unsupported even when the parent exists.
-Centroids, inertia and mesh-free point/segment/line/ray queries for this new
-child type remain unsupported. Geometry, volume, bounded display and exact STEP
-export remain usable. Repeated cuts, general curved Booleans and generic
+[Analytic centroids and inertia](nurbs-frustum-bored-oblique-mass.md) now have
+checked availability. Unresolved metrics preserve geometry and export.
+Mesh-free point/segment/line/ray queries for this new child type remain
+unsupported. Geometry, volume, bounded display and exact STEP export remain
+usable. Repeated cuts, general curved Booleans and generic
 bored-frustum STEP import are also unsupported.
 
 Display approximates all eight actual rational walls with one topology-keyed

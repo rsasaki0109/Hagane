@@ -413,3 +413,5 @@ pub use nurbs_frustum_bored_oblique::*;
 mod nurbs_frustum_bored_oblique_display;
 
 mod nurbs_frustum_bored_oblique_demo;
+
+mod nurbs_frustum_bored_oblique_mass;

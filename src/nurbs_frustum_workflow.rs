@@ -134,9 +134,7 @@ impl NurbsFrustumWorkflowComponent {
             Self::Canonical(v) => v.mass_properties(policy),
             Self::Oblique(v) => v.mass_properties(policy),
             Self::Bored(v) => v.mass_properties(policy),
-            Self::BoredOblique(_) => Err(Error::Unsupported(
-                "bored oblique frustum mass_properties is not implemented",
-            )),
+            Self::BoredOblique(v) => v.mass_properties(policy),
         }
     }
     pub fn inertia_properties(
@@ -147,9 +145,7 @@ impl NurbsFrustumWorkflowComponent {
             Self::Canonical(v) => v.inertia_properties(policy),
             Self::Oblique(v) => v.inertia_properties(policy),
             Self::Bored(v) => v.inertia_properties(policy),
-            Self::BoredOblique(_) => Err(Error::Unsupported(
-                "bored oblique frustum inertia_properties is not implemented",
-            )),
+            Self::BoredOblique(v) => v.inertia_properties(policy),
         }
     }
     pub fn export_step_mm(&self, policy: GeometryTolerance) -> Result<String> {

@@ -126,13 +126,20 @@ fn disk_raw(radius: f64, depth: f64, a: f64, b: f64, offset: f64, reflection: f6
         eq,
     })
 }
-struct Centered {
-    volume: f64,
-    centroid: Point3,
-    cov: [[f64; 3]; 3],
-    scale: f64,
+pub(crate) struct CheckedCenteredMoments {
+    pub(crate) volume: f64,
+    pub(crate) centroid: Point3,
+    pub(crate) cov: [[f64; 3]; 3],
+    pub(crate) scale: f64,
+    pub(crate) mean: [f64; 3],
+    pub(crate) mean_error: [f64; 3],
+    pub(crate) covariance_error: f64,
+    pub(crate) relative_volume_error: f64,
 }
-fn moments(body: &NurbsObliqueFrustumSolid, policy: GeometryTolerance) -> Result<Centered> {
+pub(crate) fn checked_centered_moments(
+    body: &NurbsObliqueFrustumSolid,
+    policy: GeometryTolerance,
+) -> Result<CheckedCenteredMoments> {
     body.validate(policy)?;
     let source = body.source();
     let [r0, r1] = source.radii();
@@ -298,16 +305,20 @@ fn moments(body: &NurbsObliqueFrustumSolid, policy: GeometryTolerance) -> Result
     if !centroid.finite() || 32768. * f64::EPSILON * world >= policy.linear() / 8. {
         return Err(unresolved());
     }
-    Ok(Centered {
+    Ok(CheckedCenteredMoments {
         volume,
         centroid,
         cov,
         scale,
+        mean,
+        mean_error: errors,
+        covariance_error: error,
+        relative_volume_error: raw.ev / stable + 1024. * f64::EPSILON,
     })
 }
 impl NurbsObliqueFrustumSolid {
     pub fn mass_properties(&self, policy: GeometryTolerance) -> Result<NurbsGraphMassProperties> {
-        let m = moments(self, policy)?;
+        let m = checked_centered_moments(self, policy)?;
         Ok(NurbsGraphMassProperties {
             volume: m.volume,
             centroid: m.centroid,
@@ -318,7 +329,7 @@ impl NurbsObliqueFrustumSolid {
         &self,
         policy: GeometryTolerance,
     ) -> Result<NurbsGraphInertiaProperties> {
-        let m = moments(self, policy)?;
+        let m = checked_centered_moments(self, policy)?;
         let trace = m.cov[0][0] + m.cov[1][1] + m.cov[2][2];
         let local: [[f64; 3]; 3] = std::array::from_fn(|i| {
             std::array::from_fn(|j| {

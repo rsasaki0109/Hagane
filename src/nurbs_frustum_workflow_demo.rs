@@ -153,7 +153,7 @@ fn body_report(
         .iter()
         .any(|body| matches!(body, NurbsFrustumWorkflowComponent::BoredOblique(_)))
     {
-        "versioned typed rational frustum graph; actual closed bored oblique children; mass and point/segment/line/ray queries unsupported; separate actual STEP exports"
+        "versioned typed rational frustum graph; actual closed bored oblique children; optional analytic mass properties; point/segment/line/ray queries unsupported; separate actual STEP exports"
     } else if shape
         .components()
         .iter()
