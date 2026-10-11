@@ -1442,3 +1442,12 @@ implementation then evaluates the actual rational surface and measures its
 world-space residual. The original body tolerance, represented-frame metric
 error and query-coordinate arithmetic bound admission. This independently
 derived point-query implementation adds no source or dependency license.
+
+Finite segment intersections substitute an affine segment into the public
+implicit ring-torus equation `(x²+y²+z²+R²-r²)² = 4R²(x²+y²)`.
+Differentiating the independently derived quartic gives a cubic. Bernstein
+coefficient convex-hull signs and de Casteljau subdivision bound derivative
+signs; the one-Lipschitz distance to the tube center circle bounds excluded
+critical collars. Guarded sign brackets and actual rational face evaluation
+validate crossings. This implementation adds no dependency or external source;
+original code remains MIT OR Apache-2.0.

@@ -6,7 +6,9 @@ share 32 exact edges in a closed genus-one B-rep. Checked analytic volume and
 centroidal inertia, bounded conforming display, exact STEP export and a shared
 native/WASM browser demo are implemented. Mesh-free
 [point queries](nurbs-torus-classification.md) return actual face/UV witnesses
-and use the accepted Rust solid after rejected edits. Horn/spindle tori, line queries,
+and use the accepted Rust solid after rejected edits.
+[Finite segments](nurbs-torus-segment.md) return ordered actual face/UV hits and
+material intervals with explicit contact and precision refusal. Horn/spindle tori, line queries,
 torus STEP import, trimming and general torus Booleans remain future work.
 
 [Editable through-bore histories](nurbs-frustum-workflow.md) retain the actual

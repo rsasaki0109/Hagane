@@ -14,7 +14,9 @@ division by zero.
 Boundary results contain an actual face index, UV, evaluated surface point,
 Euclidean distance and outward normal. Major and minor angles are mapped to
 the corresponding rational quarter parameters, then the retained NURBS face is
-evaluated. A measured distance with its arithmetic reserve must fit the caller's
+evaluated. Coordinates within the existing arithmetic allowance of a cardinal
+seam use a canonical quarter start; the actual evaluated distance still has to
+pass the same boundary check. A measured distance with its arithmetic reserve must fit the caller's
 boundary band. Unresolved threshold comparisons and insufficient query precision
 return explicit errors. These are binary64 engineering guards, not an interval
 certificate or a general closest-point solver.
@@ -47,5 +49,6 @@ used by `nurbs_torus`, followed by world point XYZ. The browser probe is on
 `nurbs-torus.html`; see [the torus demo instructions](nurbs-torus.md).
 
 This supports point classification and boundary witnesses on regular ring tori.
-Line/ray/segment intersections, general closest points, trimming, torus STEP
+[Finite segment intersections](nurbs-torus-segment.md) are implemented separately.
+Line/ray intersections, general closest points, trimming, torus STEP
 import and torus Booleans remain unsupported.

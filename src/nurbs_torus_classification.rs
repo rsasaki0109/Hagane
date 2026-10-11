@@ -21,7 +21,17 @@ fn unresolved() -> Error {
 fn norm(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
 }
-fn quarter(angle: f64) -> Result<(usize, f64)> {
+fn quarter(x: f64, y: f64, allowance: f64) -> Result<(usize, f64)> {
+    // A physical seam displacement below the existing coordinate arithmetic
+    // reserve has no stable angular side. Choose its literal quarter start;
+    // the final actual surface-distance test still certifies the witness.
+    if y.abs() <= allowance {
+        return Ok((if x >= 0. { 0 } else { 2 }, 0.));
+    }
+    if x.abs() <= allowance {
+        return Ok((if y >= 0. { 1 } else { 3 }, 0.));
+    }
+    let angle = y.atan2(x);
     let angle = if angle < 0. {
         angle + std::f64::consts::TAU
     } else {
@@ -103,8 +113,8 @@ impl NurbsTorusSolid {
         if signed.abs() + allowance > band || rho <= allowance || tube <= allowance {
             return Err(unresolved());
         }
-        let (i, u) = quarter(local.y.atan2(local.x))?;
-        let (j, v) = quarter(local.z.atan2(rho - major))?;
+        let (i, u) = quarter(local.x, local.y, allowance)?;
+        let (j, v) = quarter(rho - major, local.z, allowance)?;
         let face = i * 4 + j;
         let surface = &self.solid().shell.faces[face].surface;
         let boundary = surface.try_evaluate(u, v)?;

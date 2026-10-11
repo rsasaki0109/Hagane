@@ -1,5 +1,52 @@
 # Development goal
 
+[Finite torus segment queries](docs/nurbs-torus-segment.md) return up to four
+ordered actual face/UV hits and two material intervals from the accepted Rust
+B-rep, including inside-endpoint clipping and reversed segments. Meshes do not
+supply intersections.
+
+## Finite torus segment milestone
+
+The independently derived scaled quartic uses guarded Bernstein derivative
+subdivision and one-Lipschitz boundary-clearance collars. Each accepted crossing
+has an opposite-sign physical root bracket at most the original absolute linear
+tolerance divided by sixteen, plus an actual NURBS witness and entering/exiting
+normal. Full-source contact bands, world/frame precision checks, shallow-angle
+forward guards and bounded work reject unresolved inputs explicitly. Tangencies,
+boundary-band endpoints, tiny/nonfinite segments and close roots refuse rather
+than returning an incomplete result.
+
+Native/session/example, a separate six-value WASM transport and the browser
+finite segment probe read the actual accepted typed solid and policy. Failed
+queries and unaccepted edits preserve the geometry, mesh, point probe and STEP.
+Successful model replacement clears stale point and segment results.
+
+The initial strict native/WASM comparison exposed different adjacent face IDs
+at a posed cardinal seam despite identical root parameters and physical witness
+agreement. Arithmetic-scale seam canonicalization now chooses the same actual
+quarter start and retains the measured surface-distance check. The exact failing
+fixture remains in the strict native/WASM and browser regression tests; parity
+assertions were not weakened.
+
+Formatting, strict all-target Clippy, thirteen related native suites with
+23 tests and the release WASM build passed. Independent tests checked analytic
+circle-section roots, hole misses, inside-endpoint clipping, reversal, poses and
+three scales, actual face/UV/normal witnesses, full relative bands, precision
+refusal and unchanged actual B-rep/STEP. The final model report retained every
+prior geometry, mesh, metric, bounds and STEP value, excluding updated scope
+metadata. The entire previous torus/point and new segment WASM blocks passed,
+including strict posed-seam native parity and fresh-instance refusal before
+model acceptance. The first parity failure and its diagnosis remain preserved.
+The entire expanded torus browser runner passed against the final artifact,
+including the exact seam reproduction, actual face/UV witnesses, three scales,
+strict camera/pixel/private export preservation and responsive orbit. Its actual
+production screenshot shows the accepted posed torus, four hits and two material
+intervals and was inspected. Temporary dependency linkage was removed.
+
+Line/ray queries, general closest points, trimming, torus STEP import and torus
+Booleans remain unsupported. No new dependency or external source was introduced.
+Broad completion remains 15–25% toward the standing 80% goal.
+
 [Mesh-free torus point queries](docs/nurbs-torus-classification.md) distinguish
 the tube material, central hole and boundary with actual retained NURBS face/UV
 witnesses. Native and browser queries read the accepted Rust solid; rejected
@@ -48,7 +95,7 @@ Existing build-script fixture copies restored them without changing the tested
 WASM. The entire unchanged legacy rerun subsequently passed, including its final
 metre-unit STEP page. No assertion or tested artifact was changed.
 
-Torus line/ray/segment intersections, general closest points, trimming, STEP
+Torus line/ray intersections, general closest points, trimming, STEP
 import and Booleans remain unsupported. No new dependency or external code was
 introduced. Broad completion remains 15–25% toward the standing 80% goal.
 

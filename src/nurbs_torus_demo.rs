@@ -37,6 +37,16 @@ impl NurbsTorusDemoSession {
                 .to_string(),
         )
     }
+    /// Read-only finite segment intersection on the accepted actual B-rep.
+    pub fn intersect_segment(&self, start: Point3, end: Point3) -> Result<String> {
+        let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus segment query requires an accepted body",
+        ))?;
+        let result = body.intersect_segment(start, end, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h| {let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
+    }
 }
 pub fn nurbs_torus_demo_json(x: &[f64]) -> Result<String> {
     NurbsTorusDemoSession::new().apply(x)
@@ -84,6 +94,6 @@ pub(crate) fn serialize_torus(
         "mesh":{"positions":mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"closed":true,"genus":1,
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","import_supported":false,
-        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point queries; torus import, line queries and general Booleans unsupported"}),
+        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point and finite segment queries; torus import, line queries and general Booleans unsupported"}),
     )
 }

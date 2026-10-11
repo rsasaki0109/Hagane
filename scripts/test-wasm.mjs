@@ -1966,3 +1966,22 @@ for(const model of tqModels){const accepted=torusDemo(model);assert.equal(accept
  const unchanged=torusDemo(model);compareBoundedImport(unchanged.result,body);
 }
 console.log('Accepted torus point probes: actual face/UV witnesses, finite Euclidean bands/native small-report parity, transactional rejected edits and independent three-value transport recovery passed.');
+
+// Finite segments use the accepted exact torus and retain all material intervals.
+function torusSegment(start,end){k.hagane_nurbs_torus_segment_begin();for(const v of [...start,...end])assert.equal(k.hagane_nurbs_torus_segment_push(v),0);const status=k.hagane_nurbs_torus_segment_finish();return {status,result:JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())))};}
+for(const model of [[16,4,0,0,0,0,1e-6,.1],[16,4,.37,12,-5,8,1e-6,.1]]){
+ const accepted=torusDemo(model);assert.equal(accepted.status,0);const body=accepted.result,world=q=>body.placement.translation.map((v,j)=>v+q.reduce((s,x,a)=>s+x*body.placement.axes[a][j],0));
+ for(const [a,b,roots,intervals] of [[[-24,0,0],[24,0,0],[1/12,1/4,3/4,11/12],[[1/12,1/4],[3/4,11/12]]],[[24,0,0],[-24,0,0],[1/12,1/4,3/4,11/12],[[1/12,1/4],[3/4,11/12]]],[[13,0,0],[19,0,0],[],[[0,1]]],[[0,0,-8],[0,0,8],[],[]],[[16,0,-8],[16,0,8],[.25,.75],[[.25,.75]]]]){
+  const start=world(a),end=world(b),query=torusSegment(start,end);assert.equal(query.status,0,JSON.stringify(query.result));const result=query.result;assert.equal(result.hits.length,roots.length);const length=Math.hypot(...end.map((v,j)=>v-start[j])),parameterBudget=model[6]/(16*length)+64*Number.EPSILON;result.hits.forEach((h,i)=>assert.ok(Math.abs(h.parameter-roots[i])<=parameterBudget));assert.equal(result.material_intervals.length,intervals.length);result.material_intervals.forEach((interval,i)=>interval.forEach((t,j)=>assert.ok(Math.abs(t-intervals[i][j])<=parameterBudget)));assert.equal(result.mesh_free,true);
+  for(const h of result.hits){compareIntersection(h.point,start.map((v,j)=>v+h.parameter*(end[j]-v)));compareIntersection(h.boundary.point,polygonSourcePoint(body.brep.surfaces[h.boundary.face],...h.boundary.uv));assert.ok(Math.hypot(...h.point.map((v,j)=>v-h.boundary.point[j]))<=model[6]);compareIntersection(Math.hypot(...h.boundary.normal),1);}
+  for(const [lo,hi] of result.material_intervals){assert.equal(torusQuery(start.map((v,j)=>v+(lo+hi)/2*(end[j]-v))).result.location,'inside');}
+  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--example','nurbs_torus_segment','--',JSON.stringify([...model,...start,...end])],{encoding:'utf8',maxBuffer:256*1024*1024}));compareBoundedImport(result,native);
+ }
+ for(const [a,b] of [[[20,0,0],[24,0,0]],[[-24,0,4],[24,0,4]],[[16,0,0],[16,0,0]]])assert.equal(torusSegment(world(a),world(b)).status,1);
+ assert.equal(torusDemo([4,4,...model.slice(2)]).status,1);assert.equal(torusSegment(world([-24,0,0]),world([24,0,0])).status,0);
+ k.hagane_nurbs_torus_segment_begin();assert.equal(k.hagane_nurbs_torus_segment_push(NaN),1);assert.equal(k.hagane_nurbs_torus_segment_push(1),1);assert.equal(k.hagane_nurbs_torus_segment_finish(),1);
+ k.hagane_nurbs_torus_segment_begin();for(const v of [1,2,3,4,5,6])assert.equal(k.hagane_nurbs_torus_segment_push(v),0);assert.equal(k.hagane_nurbs_torus_segment_push(7),1);assert.equal(k.hagane_nurbs_torus_segment_finish(),1);assert.equal(torusSegment([1,2],[3,4]).status,1);
+ k.hagane_nurbs_torus_segment_begin();const endpoints=[...world([-24,0,0]),...world([24,0,0])];for(const v of endpoints.slice(0,3))assert.equal(k.hagane_nurbs_torus_segment_push(v),0);assert.equal(torusQuery(world([16,0,0])).result.location,'inside');for(const v of endpoints.slice(3))assert.equal(k.hagane_nurbs_torus_segment_push(v),0);assert.equal(k.hagane_nurbs_torus_segment_finish(),0);
+ compareBoundedImport(torusDemo(model).result,body);
+}
+console.log('Accepted torus finite segments: analytic four roots/two intervals, actual retained face/UV witnesses, reversal/pose/native parity, atomic model/query failure and independent six-value transport recovery passed.');

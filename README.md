@@ -25,6 +25,8 @@ Rust solid supplies analytic volume and inertia, bounded B-rep tessellation,
 exact STEP export and an interactive [torus demo](web/nurbs-torus.html).
 Mesh-free [point queries](docs/nurbs-torus-classification.md) use the accepted
 Rust solid and certify boundary results on its actual NURBS faces.
+[Finite segment intersections](docs/nurbs-torus-segment.md) return up to four
+actual face/UV hits and two material intervals across the central hole.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

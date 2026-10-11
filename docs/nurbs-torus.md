@@ -65,4 +65,8 @@ rational control hull, rather than claiming a tight analytic AABB.
 writer. Generic Solid NURBS operations and generic STEP import remain outside
 this typed scope. Mesh-free [point queries](nurbs-torus-classification.md)
 classify the accepted body and return actual face/UV boundary witnesses.
+[Finite segment queries](nurbs-torus-segment.md) expose ordered actual face/UV
+witnesses and up to two material intervals across the hole. The browser accepts
+world start/end coordinates and reads the retained model; unaccepted edits and
+failed queries preserve the accepted mesh and STEP.
 Torus Boolean and line-query APIs remain unsupported.
