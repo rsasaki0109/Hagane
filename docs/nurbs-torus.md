@@ -72,3 +72,9 @@ failed queries preserve the accepted mesh and STEP.
 [Line and ray queries](nurbs-torus-line.md) preserve original nonunit parameters
 and forward material intervals from inside origins. Torus Boolean and generic
 closest-point APIs remain unsupported.
+
+[Horizontal plane splitting](nurbs-torus-horizontal-split.md) creates two actual
+closed children from restricted source patches and annular plane caps. Each
+child supports validation, volume, conservative bounds, conforming display and
+actual STEP export. Browser previews retain the accepted full source; its probes
+and source export continue querying that source.

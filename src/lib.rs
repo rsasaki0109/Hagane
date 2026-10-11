@@ -466,3 +466,10 @@ pub use nurbs_torus_segment::*;
 
 mod nurbs_torus_line;
 pub use nurbs_torus_line::*;
+
+mod nurbs_torus_horizontal_split;
+pub use nurbs_torus_horizontal_split::*;
+
+mod nurbs_torus_horizontal_display;
+
+mod nurbs_torus_horizontal_demo;

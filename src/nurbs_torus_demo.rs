@@ -47,6 +47,14 @@ impl NurbsTorusDemoSession {
         let hits=result.hits.into_iter().map(|h| {let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
         Ok(serde_json::json!({"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
+    /// Return two actual closed children without replacing the accepted full torus.
+    pub fn split_horizontal(&self, height: f64, chord: f64) -> Result<String> {
+        let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus horizontal split requires an accepted body",
+        ))?;
+        crate::nurbs_torus_horizontal_demo::serialize_horizontal_split(body, height, chord, *policy)
+            .map(|v| v.to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

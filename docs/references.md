@@ -1459,3 +1459,15 @@ checked quartic segment solver supplies actual boundary witnesses. Mapping
 retains the original nonunit parameter; rays classify their original anchor
 and retain every forward material interval. This adds no external source or
 dependency, and original code remains MIT OR Apache-2.0.
+
+Horizontal torus splitting restricts the original rational tensor patches by
+knot insertion, preserving their original parameter domains. Source isoparametric
+curves provide shared boundaries; affine projection of actual rational rim control
+points with unchanged weights gives plane-cap pcurves. The disk cross-section
+Jacobian integrates to volume element `2*pi*R` times disk area, hence each
+child volume `2*pi*R*r*r*(theta-sin(theta)*cos(theta))`. The small positive cap
+series begins `2*theta^3/3 - 2*theta^5/15 + 4*theta^7/315`; it is derived
+independently from the sine double-angle expansion. Actual angular restricted
+patch display retains the torus Hessian bound and shared annular rim samples.
+This original implementation adds no third-party source or dependency and uses
+MIT OR Apache-2.0.

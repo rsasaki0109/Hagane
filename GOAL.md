@@ -1,5 +1,61 @@
 # Development goal
 
+[Horizontal torus splitting](docs/nurbs-torus-horizontal-split.md) produces two
+actual closed genus-one B-rep solids by restricting the source NURBS patches and
+adding annular plane caps. Each child supports checked volume, conservative
+bounds, conforming display and export of its actual STEP geometry/topology.
+
+## Actual horizontal torus plane-split milestone
+
+A local height cuts perpendicular to the source axis, including arbitrary rigid
+source placement. Literal zero retains whole minor quarters; resolved nonzero
+cuts retain connected restricted strips in their original UV domains. There is
+no near-zero snapping. Every cut clearance, annulus width and partial strip
+must resolve under the original full-body policy and world arithmetic.
+
+Exact source parameter curves supply the shared cut rims and meridians. Caps
+retain matching rational weights/knots and affine-projected original rim control
+points. Complete actual-body coefficients/topology are certified against the
+source restrictions; every shared edge has two opposing oriented uses. Positive
+child volumes use guarded disk-segment integration and a cancellation-resistant
+small-cap series. Display evaluates actual restricted surfaces and shares exact
+edge samples with the annular cap, using a whole-triangle angular Hessian bound
+plus frame/restriction/evaluation/cache arithmetic reserves.
+
+The read-only session serializes both child meshes, actual B-reps and STEP
+before success. Its separate two-value WASM transport rejects malformed input
+without replacing the accepted full source. The browser can view either child,
+export its private accepted STEP and restore the source view. Source metrics,
+STEP and all existing probes are explicitly identified as full-source operations;
+preview children do not claim unimplemented child query behavior. Failed cuts,
+display requests or model edits preserve the last accepted view and exports.
+
+Formatting, strict all-target Clippy, twenty-two related native suites with
+38 tests and the release WASM build passed. Independent smooth-coordinate
+numerical integration checked both child volumes, including admitted thin caps,
+arbitrary poses and three scales. Actual restricted UVs, implicit torus geometry,
+whole cap boundaries, oriented shared topology, actual STEP and source immutability
+passed. Display tests checked dense whole-triangle error, real normals, annular
+void intrusion, exact welded two-use edge incidence and genus one. Session tests
+verified unchanged actual source B-rep/STEP and all previous query strings after
+successful previews and rejected geometry/display requests. The previous full
+model report remained byte-identical: 3,116,825 bytes, with no scope exclusion.
+The entire previous torus query blocks and new horizontal split WASM tests passed
+with strict native report/STEP parity, cut/pose/scale coverage, source query
+retention, independent transport recovery and fresh-instance refusal before
+source acceptance.
+The entire expanded torus browser script passed against the final artifact,
+including actual closed-child geometry, independent volume/chord evidence,
+strict native parity, private child/source exports, explicit full-source query
+labels, cut/model failure preservation and responsive orbit. Its production
+screenshot shows the actual lower child and annular cap and was inspected.
+Temporary dependency linkage and focused harnesses were removed.
+
+General oblique torus cuts, repeated child cuts, child mass/query operations,
+generic torus STEP import and general Booleans remain unsupported. No new
+dependency or external source was introduced. Broad completion remains 15–25%
+toward the standing 80% goal.
+
 [Torus lines and rays](docs/nurbs-torus-line.md) now preserve original nonunit
 parameters and return every resolved actual face/UV crossing and material
 interval. Forward rays clip inside-origin intervals to zero and retain a second

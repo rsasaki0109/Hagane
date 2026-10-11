@@ -10,7 +10,10 @@ and use the accepted Rust solid after rejected edits.
 [Finite segments](nurbs-torus-segment.md) return ordered actual face/UV hits and
 material intervals with explicit contact and precision refusal.
 [Lines and rays](nurbs-torus-line.md) preserve original nonunit parameters and
-clip forward rays from inside the tube. Horn/spindle tori,
+clip forward rays from inside the tube.
+[Horizontal plane splits](nurbs-torus-horizontal-split.md) retain actual restricted
+patches and annular caps in two closed genus-one children, with analytic volumes,
+conforming display and exact STEP export. Horn/spindle tori, arbitrary oblique cuts,
 torus STEP import, trimming and general torus Booleans remain future work.
 
 [Editable through-bore histories](nurbs-frustum-workflow.md) retain the actual

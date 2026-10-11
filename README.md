@@ -29,6 +29,9 @@ Rust solid and certify boundary results on its actual NURBS faces.
 actual face/UV hits and two material intervals across the central hole.
 [Line and ray intersections](docs/nurbs-torus-line.md) preserve original nonunit
 parameters and clip forward rays that start inside material.
+[Horizontal plane splits](docs/nurbs-torus-horizontal-split.md) produce two
+closed solids with retained NURBS patches and annular caps, bounded display and
+actual STEP export.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
