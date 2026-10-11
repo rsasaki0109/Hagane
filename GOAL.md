@@ -12,8 +12,9 @@ passed tests, zero failures and zero ignored tests, including two documentation
 tests. The entire unchanged WASM regression script also exited successfully,
 including all prior workflows and accepted torus point probes. Finite segment
 development remained in a separate checkout throughout these runs.
-The additional all-pages browser rerun described below is still pending and
-is not included in this full native/WASM checkpoint.
+The entire unchanged all-pages browser rerun also exited successfully after
+the existing build-script sample assets were restored. The tested WASM artifact
+remained unchanged. The initial missing-fixture failure remains recorded below.
 
 ## Accepted torus point-query milestone
 
@@ -44,8 +45,8 @@ and its actual Boundary-witness screenshot was inspected.
 An additional unchanged all-pages browser run reached its STEP sample page
 and failed because this isolated checkout lacked generated sample assets.
 Existing build-script fixture copies restored them without changing the tested
-WASM. The full legacy rerun is ongoing separately; it is not counted as passed
-in this milestone's validation above.
+WASM. The entire unchanged legacy rerun subsequently passed, including its final
+metre-unit STEP page. No assertion or tested artifact was changed.
 
 Torus line/ray/segment intersections, general closest points, trimming, STEP
 import and Booleans remain unsupported. No new dependency or external code was
