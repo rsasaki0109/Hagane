@@ -5,6 +5,16 @@ ordered actual face/UV hits and two material intervals from the accepted Rust
 B-rep, including inside-endpoint clipping and reversed segments. Meshes do not
 supply intersections.
 
+## Full regression checkpoint: finite torus segments
+
+On frozen `fc02909`, the complete native run passed 341 suites with 1,248
+passed tests, zero failures and zero ignored tests, including two documentation
+tests. The entire WASM regression script also exited successfully, including
+all prior modeling/interchange workflows and actual accepted torus point and
+finite segment probes. Line/ray development remained in a separate checkout;
+this checkpoint does not include those new APIs. The complete expanded torus
+browser runner for the segment milestone had already passed separately.
+
 ## Finite torus segment milestone
 
 The independently derived scaled quartic uses guarded Bernstein derivative
