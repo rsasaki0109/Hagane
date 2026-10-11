@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "document_type": "nurbs_frustum_workflow",
+  "units": "mm",
+  "tolerance": {
+    "linear": 1e-06,
+    "angular": 1e-10,
+    "relative": 1e-10
+  },
+  "display_chord_tolerance": 0.1,
+  "output": "enlarged",
+  "operations": [
+    {
+      "kind": "frustum",
+      "id": "stock",
+      "radii": [
+        16,
+        8
+      ],
+      "height": 24,
+      "origin": [
+        0,
+        0,
+        0
+      ],
+      "axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    },
+    {
+      "kind": "plane_split",
+      "id": "cut",
+      "input": "stock",
+      "origin": [
+        0,
+        0,
+        12
+      ],
+      "normal": [
+        0.2,
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "select",
+      "id": "selected_lower",
+      "input": "cut",
+      "component": 0
+    },
+    {
+      "kind": "interior_plane_split",
+      "id": "interior_cut",
+      "input": "selected_lower",
+      "origin": [
+        0,
+        0,
+        6
+      ],
+      "normal": [
+        -0.1,
+        0.1,
+        1
+      ]
+    },
+    {
+      "kind": "select",
+      "id": "middle",
+      "input": "interior_cut",
+      "component": 1
+    },
+    {
+      "kind": "coaxial_bore",
+      "id": "retained_hole",
+      "input": "middle",
+      "radius": 3
+    },
+    {
+      "kind": "enlarge_coaxial_bore",
+      "id": "enlarged",
+      "input": "retained_hole",
+      "radius": 4
+    }
+  ]
+}

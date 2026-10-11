@@ -23,8 +23,11 @@ also preserve original parameters on these children.
 [Repeated parallel cuts](docs/nurbs-frustum-parallel-slabs.md) retain actual
 slab boundaries and holes. [Strictly interior skew cuts](docs/nurbs-frustum-interior-plane-splits.md)
 now retain differently oriented, uniformly ordered plane boundaries and holes
-in separate plane-bounded types. Intersecting boundary cuts, repeated bores
-and general bored-frustum STEP import remain unsupported.
+in separate plane-bounded types. [Retained coaxial drilling and enlargement](docs/nurbs-frustum-retained-bore.md)
+now add holes or strictly enlarge them on these actual plane-bounded bodies,
+with optional closed removed partitions. Intersecting boundary cuts, further
+boring through older retained APIs and general bored-frustum STEP import remain
+unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
@@ -1876,3 +1879,33 @@ Source remained unchanged throughout both checks; subsequent retained-bore work
 was isolated in a separate worktree. This is regression evidence for the bounded
 implementation, not a claim of general curved Booleans or generic STEP support.
 The standing broad estimate remains 15–25% toward the 80% target.
+
+## Coaxial drilling and enlargement after retained cuts
+
+Plain plane-bounded bodies now admit coaxial through drilling; bored
+plane-bounded bodies admit strictly larger resolved radii. Actual external
+geometry remains unchanged, and regenerated cylindrical rims attach to the
+same caller cap planes. Explicit partition APIs return closed kept and removed
+bodies: a finite cylinder for drilling, or a finite annulus for enlargement,
+with opposing exact interface geometry. Admission retains the original full
+source tolerance, world precision and minimum-radius bounds; equality, shrink,
+contact and unresolved radial clearance are explicit errors.
+Workflow drilling gains only this additional plain typed domain. A separate
+`enlarge_coaxial_bore` operation accepts one explicitly selected bored
+plane-bounded component. Existing canonical/older retained APIs keep their
+previous domains. Actual display, checked optional mass, all four query kinds
+and STEP export apply to the real kept and removed bodies.
+
+Validation: final fmt, strict all-target Clippy, six relevant native suites
+(eight tests) and isolated WASM build passed. Independent posed/scaled disk and
+annulus moments, all nine tensor components, unchanged external coefficients,
+closed genus-one topology, actual UV/normal witnesses, bounded closed displays,
+kept/removed conservation and strict original-band rejection passed. Combined
+new bore/enlargement and prior interior-plane WASM workflows passed with fresh
+native replay, STEP, cache/history and failure recovery. The entire browser
+workflow suite passed after reusing installed Playwright dependencies; the
+initial isolated launch stopped before running tests because that package was
+absent. The temporary dependency link was removed. All existing PNG/raw-frame
+guards remained. The inspected actual enlarged-body screenshot shows volume
+`2882.687`, checked mass, successful probes and the new hole-radius controls.
+The broad estimate remains 15–25% toward the standing 80% target.

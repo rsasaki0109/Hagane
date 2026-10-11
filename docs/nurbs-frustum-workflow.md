@@ -108,7 +108,8 @@ STEP. [Axial partitions](nurbs-frustum-bore-partition.md) retain the actual hole
 in every child; Select permits further local axial partitions.
 [Oblique plane cuts](nurbs-frustum-bored-oblique.md) retain annular children.
 [Repeated parallel cuts](nurbs-frustum-parallel-slabs.md) now retain typed slabs
-after explicit selection. Skew recuts and repeated bores still reject explicitly.
+after explicit selection. Skew planes in the parallel-cut API and general
+repeated boring still reject explicitly.
 The stock can still be selected as a separate earlier output node.
 
 Typed components dispatch point queries to the corresponding finite body,
@@ -254,3 +255,9 @@ general oblique frames. A posed document can be saved and rebuilt without
 claiming general rotated STEP import.
 
 ![Actual general-axis stock and selected partition rendered by WASM](nurbs-frustum-workflow-posed.png)
+
+The separate [retained-bore operation](nurbs-frustum-retained-bore.md) allows
+`coaxial_bore` on one plain `PlaneBounded` component and
+`enlarge_coaxial_bore` on one `BoredPlaneBounded` component. These use actual
+retained section planes and keep the outer body. Older canonical, single-cut
+oblique and parallel-slab bore domains remain unchanged.

@@ -61,6 +61,11 @@ pub enum NurbsFrustumWorkflowOperation {
         input: String,
         radius: f64,
     },
+    EnlargeCoaxialBore {
+        id: String,
+        input: String,
+        radius: f64,
+    },
     Select {
         id: String,
         input: String,
@@ -263,6 +268,7 @@ impl NurbsFrustumWorkflowOperation {
             | Self::PlaneSplit { id, .. }
             | Self::InteriorPlaneSplit { id, .. }
             | Self::CoaxialBore { id, .. }
+            | Self::EnlargeCoaxialBore { id, .. }
             | Self::Select { id, .. } => id,
         }
     }
@@ -272,6 +278,7 @@ impl NurbsFrustumWorkflowOperation {
             | Self::PlaneSplit { input, .. }
             | Self::InteriorPlaneSplit { input, .. }
             | Self::CoaxialBore { input, .. }
+            | Self::EnlargeCoaxialBore { input, .. }
             | Self::Select { input, .. } => Some(input),
             _ => None,
         }
@@ -409,6 +416,7 @@ impl NurbsFrustumWorkflowDocument {
                     }
                 }
                 NurbsFrustumWorkflowOperation::CoaxialBore { radius, .. }
+                | NurbsFrustumWorkflowOperation::EnlargeCoaxialBore { radius, .. }
                     if !radius.is_finite() || *radius <= 0. =>
                 {
                     return Err(diagnostic(
@@ -547,14 +555,37 @@ impl NurbsFrustumWorkflowDocument {
                         "CoaxialBore requires one explicitly selected component.",
                     ));
                 }
-                let source = shape.components()[0].canonical().ok_or_else(|| diagnostic(
-                    "unsupported", "canonical_required", Some(id),
-                    "CoaxialBore requires a canonical frustum; bored or oblique components cannot be bored again."))?;
-                vec![NurbsFrustumWorkflowComponent::Bored(Arc::new(
-                    source
-                        .bore_coaxial(*radius, tol)
-                        .map_err(|e| geometry(e, id))?,
-                ))]
+                match &shape.components()[0] {
+                    NurbsFrustumWorkflowComponent::Canonical(source) => vec![NurbsFrustumWorkflowComponent::Bored(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
+                    NurbsFrustumWorkflowComponent::PlaneBounded(source) => vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
+                    _ => return Err(diagnostic("unsupported","canonical_required",Some(id),"CoaxialBore requires a canonical or explicitly plane-bounded solid; other retained or already bored bodies are unsupported.")),
+                }
+            }
+            NurbsFrustumWorkflowOperation::EnlargeCoaxialBore { input, radius, .. } => {
+                let shape = inputs[input.as_str()];
+                if shape.components().len() != 1 {
+                    return Err(diagnostic(
+                        "unsupported",
+                        "ambiguous_components",
+                        Some(id),
+                        "EnlargeCoaxialBore requires one explicitly selected component.",
+                    ));
+                }
+                match &shape.components()[0] {
+                    NurbsFrustumWorkflowComponent::BoredPlaneBounded(source) => {
+                        vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                            source
+                                .enlarge_coaxial_bore(*radius, tol)
+                                .map_err(|e| geometry(e, id))?,
+                        ))]
+                    }
+                    _ => return Err(diagnostic(
+                        "unsupported",
+                        "bored_plane_bounded_required",
+                        Some(id),
+                        "EnlargeCoaxialBore requires an explicitly plane-bounded bored component.",
+                    )),
+                }
             }
             NurbsFrustumWorkflowOperation::PlaneSplit {
                 input,

@@ -44,13 +44,16 @@ slab boundaries and holes, with checked analytic centroids and inertia when
 conditioning permits. Conservative finite-face point queries preserve the hole.
 Finite slab segments retain actual face UVs and up to two material intervals.
 Slab line/ray queries preserve original nonunit parameters and all forward ray
-intervals. Skew planes in parallel-cut APIs and repeated bores
+intervals. Skew planes in parallel-cut APIs and general repeated boring
 and general bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
 [Strictly interior plane splits](docs/nurbs-frustum-interior-plane-splits.md) add actual ordered nonparallel
 plane-bounded children through a separate operation. Existing parallel-cut APIs
 keep their previous restrictions.
+[Retained coaxial drilling and enlargement](docs/nurbs-frustum-retained-bore.md) operate on actual
+plane-bounded material through narrow typed APIs, with closed removed cylinder
+and annular partitions. Older bore domains remain unchanged.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](docs/nurbs-frustum-bore.md) remove an actual

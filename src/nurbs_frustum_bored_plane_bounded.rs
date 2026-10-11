@@ -22,7 +22,7 @@ fn norm(v: Vec3) -> f64 {
     v.x.hypot(v.y).hypot(v.z)
 }
 impl NurbsBoredFrustumPlaneBoundedSolid {
-    fn new(
+    pub(crate) fn new(
         source: &NurbsBoredFrustumSolid,
         outer: NurbsFrustumPlaneBoundedSolid,
         inner: NurbsFrustumPlaneBoundedSolid,

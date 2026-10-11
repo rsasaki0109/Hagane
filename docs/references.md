@@ -1390,3 +1390,12 @@ scaling leaves actual coefficients unchanged. Actual shared-edge display and
 checked common-local centered moment composition reuse the existing original
 implementations. These engineering arithmetic checks introduce no external code,
 dependency or license change.
+
+Retained plane-bounded coaxial drilling restricts an independently checked
+canonical cylinder to the actual lower and upper section planes. Strict
+coaxial enlargement keeps the actual outer body and retains the original inner
+body as the removed annulus's inward boundary. Original-source tolerance,
+global minimum radius, finite world arithmetic and positive partition-volume
+checks bound the domain. Display, local moment composition and queries reuse the
+actual retained coefficients and topology. This original implementation adds no
+external source, dependency or license change.

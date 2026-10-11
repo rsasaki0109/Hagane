@@ -205,7 +205,7 @@ fn body_report(
                 | NurbsFrustumWorkflowComponent::BoredPlaneBounded(_)
         )
     }) {
-        "versioned typed rational frustum graph; actual retained bodies bounded by ordered interior planes; optional analytic metrics and actual point/segment/line/ray queries; separate actual STEP exports"
+        "versioned typed rational frustum graph; actual retained bodies bounded by ordered interior planes with explicit coaxial boring and enlargement; optional analytic metrics and actual point/segment/line/ray queries; separate actual STEP exports"
     } else if shape.components().iter().any(|body| {
         matches!(
             body,

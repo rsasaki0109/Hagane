@@ -55,7 +55,9 @@ choose its interior-plane preset to inspect the resulting middle component.
 
 Planes that intersect an existing boundary, incomplete sections, insufficient
 clearance, unresolved arithmetic and general curved Booleans remain unsupported.
-This operation does not add generic STEP import or continued boring.
+This split operation does not add generic STEP import. Separate
+[typed retained-bore APIs](nurbs-frustum-retained-bore.md) support one coaxial
+opening and strict enlargement on the new plane-bounded types only.
 
 The implementation is original MIT OR Apache-2.0 code using rational sections,
 positive homogeneous ruled patches and checked local moments. No OCCT code or
