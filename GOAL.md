@@ -1,5 +1,18 @@
 # Development goal
 
+## Full regression checkpoint: rational ring torus
+
+The frozen `1e33162` implementation passed the complete native suite:
+332 suites, 1,233 tests, zero failures and zero ignored tests, including two
+documentation tests. The entire `scripts/test-wasm.mjs` runtime script also
+completed with exit zero, including every existing domain and the new torus
+geometry, mesh, mass, STEP and transport checks. Next-milestone development
+remained in an isolated worktree throughout these regressions.
+
+This verifies the documented regular-ring domain; torus STEP import, queries
+and Booleans remain unsupported in this checkpoint. The broad completion
+estimate remains 15–25% toward the standing 80% target.
+
 [Regular ring tori](docs/nurbs-torus.md) extend exact NURBS B-rep topology to
 surfaces curved in both parameter directions. The actual shared solid supplies
 analytic volume and centroidal inertia, bounded conforming display and exact
