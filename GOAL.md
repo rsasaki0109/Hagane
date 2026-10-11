@@ -6,6 +6,16 @@ interval. Forward rays clip inside-origin intervals to zero and retain a second
 interval across the central hole. Accepted-body native/WASM/browser queries
 never use the display mesh as a geometric source.
 
+## Full regression checkpoint: torus line and ray queries
+
+On frozen `87645d0`, the complete native run passed 345 suites with 1,255
+passed tests, zero failures and zero ignored tests, including two documentation
+tests. The entire WASM regression script also exited successfully, including
+all prior modeling/interchange workflows and actual accepted torus point,
+segment, line and ray probes. Horizontal plane splitting developed in a separate
+checkout throughout; it is not part of this checkpoint. The complete expanded
+torus line/ray browser runner had already passed separately.
+
 ## Original-parameter torus line/ray milestone
 
 Original anchor, full-source tolerance, represented frame and world arithmetic
