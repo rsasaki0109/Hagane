@@ -2220,3 +2220,12 @@ shows volume `2911.663`, checked mass, its Inside point, two finite material
 intervals and hole-origin forward ray `[2,20/3]`. Canonical, both oblique sides
 and parallel typed hole/enlargement actions passed native STEP and history tests.
 The broad estimate remains 15–25% toward the standing 80% target.
+
+
+## Full horizontal-split regression checkpoint
+
+Frozen source `bf45057` passed the complete locked native run: 350 suites,
+1,263 tests, no failures or ignored tests, including two documentation tests.
+The entire existing WASM test script also exited successfully against that
+frozen artifact. These results cover the horizontal-split baseline before the
+subsequent cached-child point-query milestone.
