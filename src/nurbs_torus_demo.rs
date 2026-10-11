@@ -1,7 +1,47 @@
 //! Standalone actual rational ring-torus native/WASM report.
 use crate::*;
 /// Major/minor radii, Y rotation, translation XYZ, linear/chord tolerances.
+/// Transactional accepted actual torus. Failed display/model edits leave it intact.
+#[derive(Default)]
+pub struct NurbsTorusDemoSession {
+    accepted: Option<(NurbsTorusSolid, GeometryTolerance)>,
+}
+impl NurbsTorusDemoSession {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn accepted_body(&self) -> Option<&NurbsTorusSolid> {
+        self.accepted.as_ref().map(|v| &v.0)
+    }
+    pub fn apply(&mut self, x: &[f64]) -> Result<String> {
+        let (body, policy) = torus_body(x)?;
+        let report = serialize_torus(&body, policy, x[7])?.to_string();
+        self.accepted = Some((body, policy));
+        Ok(report)
+    }
+    /// Mesh-free, read-only query of the accepted typed B-rep and its policy.
+    pub fn query_point(&self, point: Point3) -> Result<String> {
+        let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus point query requires an accepted body",
+        ))?;
+        let q = body.point_query(point, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let location = match q.location {
+            PointLocation::Inside => "inside",
+            PointLocation::Outside => "outside",
+            PointLocation::Boundary => "boundary",
+        };
+        let boundary=q.boundary.map(|b|serde_json::json!({"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}));
+        Ok(
+            serde_json::json!({"point":xyz(point),"location":location,"boundary":boundary})
+                .to_string(),
+        )
+    }
+}
 pub fn nurbs_torus_demo_json(x: &[f64]) -> Result<String> {
+    NurbsTorusDemoSession::new().apply(x)
+}
+fn torus_body(x: &[f64]) -> Result<(NurbsTorusSolid, GeometryTolerance)> {
     if x.len() != 8 || x.iter().any(|v| !v.is_finite()) {
         return Err(Error::InvalidInput(
             "NURBS torus requires exactly eight finite values",
@@ -19,7 +59,7 @@ pub fn nurbs_torus_demo_json(x: &[f64]) -> Result<String> {
         policy,
     )?;
     let body = NurbsTorusSolid::new(frame, [x[0], x[1]], policy)?;
-    serialize_torus(&body, policy, x[7]).map(|v| v.to_string())
+    Ok((body, policy))
 }
 pub(crate) fn serialize_torus(
     body: &NurbsTorusSolid,
@@ -44,6 +84,6 @@ pub(crate) fn serialize_torus(
         "mesh":{"positions":mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"closed":true,"genus":1,
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","import_supported":false,
-        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; torus import, queries and general Booleans unsupported"}),
+        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point queries; torus import, line queries and general Booleans unsupported"}),
     )
 }

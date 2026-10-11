@@ -2580,6 +2580,7 @@ mod exports {
     pub extern "C" fn hagane_convex_difference_demo(offset: f64) -> i32 {
         generate(crate::convex_difference_demo_json(offset))
     }
+    static NURBS_TORUS_SESSION: Mutex<Option<crate::NurbsTorusDemoSession>> = Mutex::new(None);
     static NURBS_TORUS_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
     #[no_mangle]
     pub extern "C" fn hagane_nurbs_torus_begin() {
@@ -2608,8 +2609,51 @@ mod exports {
                 "NURBS torus transport requires at most eight finite values",
             )))
         } else {
-            generate(crate::nurbs_torus_demo_json(&values))
+            {
+                let mut session = NURBS_TORUS_SESSION.lock().unwrap();
+                generate(
+                    session
+                        .get_or_insert_with(crate::NurbsTorusDemoSession::new)
+                        .apply(&values),
+                )
+            }
         }
+    }
+    static NURBS_TORUS_QUERY_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_query_begin() {
+        let mut input = NURBS_TORUS_QUERY_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_query_push(value: f64) -> i32 {
+        let mut input = NURBS_TORUS_QUERY_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 3 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_query_finish() -> i32 {
+        let (values, bad) = {
+            let mut input = NURBS_TORUS_QUERY_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad || values.len() != 3 {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus query requires exactly three finite values",
+            )));
+        }
+        let session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(match session.as_ref() {
+            Some(s) => s.query_point(crate::Point3::new(values[0], values[1], values[2])),
+            None => Err(crate::Error::InvalidInput(
+                "torus point query requires an accepted body",
+            )),
+        })
     }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {

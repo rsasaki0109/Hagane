@@ -63,4 +63,6 @@ rational control hull, rather than claiming a tight analytic AABB.
 
 `export_step_mm(policy)` exports the actual rational BRep through the bounded
 writer. Generic Solid NURBS operations and generic STEP import remain outside
-this typed scope. This milestone does not add torus Boolean or point-query APIs.
+this typed scope. Mesh-free [point queries](nurbs-torus-classification.md)
+classify the accepted body and return actual face/UV boundary witnesses.
+Torus Boolean and line-query APIs remain unsupported.

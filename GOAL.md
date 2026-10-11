@@ -1,5 +1,46 @@
 # Development goal
 
+[Mesh-free torus point queries](docs/nurbs-torus-classification.md) distinguish
+the tube material, central hole and boundary with actual retained NURBS face/UV
+witnesses. Native and browser queries read the accepted Rust solid; rejected
+edits and query failures preserve geometry, mesh and STEP.
+
+## Accepted torus point-query milestone
+
+The full-body tolerance policy bounds ideal Euclidean tube distance with query
+world-coordinate and represented-frame arithmetic reserves before shortcuts.
+Boundary success requires an actual rational surface point, normal and measured
+distance within the band. Nonfinite, remote and unresolved threshold inputs
+refuse explicitly. The torus axis and tube center circle classify without
+division by zero. No display mesh provides the classification.
+
+The new accepted-body session serializes the complete geometry/display/STEP
+report before committing an edit. Read-only point queries retain that actual
+typed body and its accepted policy. The separate three-value WASM transport
+rejects malformed buffers without changing the model or the eight-value edit
+buffer. Browser dirty fields do not replace the accepted query source.
+
+Formatting, strict all-target Clippy, eight related native suites with fifteen
+tests and the release WASM build passed. Independent tests checked all sixteen
+patches, seams, actual UVs/normals, true normal offsets across poses and three
+scales, full-source relative bands, precision refusal and immutable actual
+B-rep/STEP. The prior model report retained every geometry, mesh, metric, bounds
+and STEP value, excluding the updated scope description. The complete old torus
+and new query WASM blocks passed, including native query parity and a separate
+fresh-instance rejection before model acceptance. The entire expanded torus
+browser script passed with strict geometry/camera/pixel/export preservation,
+and its actual Boundary-witness screenshot was inspected.
+
+An additional unchanged all-pages browser run reached its STEP sample page
+and failed because this isolated checkout lacked generated sample assets.
+Existing build-script fixture copies restored them without changing the tested
+WASM. The full legacy rerun is ongoing separately; it is not counted as passed
+in this milestone's validation above.
+
+Torus line/ray/segment intersections, general closest points, trimming, STEP
+import and Booleans remain unsupported. No new dependency or external code was
+introduced. Broad completion remains 15–25% toward the standing 80% goal.
+
 ## Full regression checkpoint: rational ring torus
 
 The frozen `1e33162` implementation passed the complete native suite:
@@ -17,7 +58,7 @@ estimate remains 15–25% toward the standing 80% target.
 surfaces curved in both parameter directions. The actual shared solid supplies
 analytic volume and centroidal inertia, bounded conforming display and exact
 STEP export in native Rust and the interactive WASM/browser demo. Horn/spindle
-tori, torus STEP import, queries, trimming and Booleans remain unsupported.
+tori, torus STEP import, line queries, trimming and Booleans remain unsupported.
 
 ## Rational ring torus milestone
 

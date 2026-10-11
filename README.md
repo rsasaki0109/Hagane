@@ -23,6 +23,8 @@ See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 patches with shared oriented edges and surface parameter boundaries. The same
 Rust solid supplies analytic volume and inertia, bounded B-rep tessellation,
 exact STEP export and an interactive [torus demo](web/nurbs-torus.html).
+Mesh-free [point queries](docs/nurbs-torus-classification.md) use the accepted
+Rust solid and certify boundary results on its actual NURBS faces.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

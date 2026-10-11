@@ -457,3 +457,6 @@ pub use nurbs_torus_demo::*;
 
 mod nurbs_torus_display;
 mod nurbs_torus_mass;
+
+mod nurbs_torus_classification;
+pub use nurbs_torus_classification::*;

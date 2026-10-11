@@ -1433,3 +1433,12 @@ The display implementation must additionally reserve represented-frame and
 floating-point evaluation errors; this mathematical bound alone does not
 certify rounded world geometry. All new code uses MIT OR Apache-2.0 and adds
 no dependency or third-party source.
+
+Torus point classification uses the distance from a world point to the tube's
+center circle: in local coordinates this is `hypot(hypot(x,y)-R,z)`.
+Subtracting the tube radius gives signed distance for a regular ring torus.
+The azimuth and cross-section angles locate an ideal boundary candidate; the
+implementation then evaluates the actual rational surface and measures its
+world-space residual. The original body tolerance, represented-frame metric
+error and query-coordinate arithmetic bound admission. This independently
+derived point-query implementation adds no source or dependency license.

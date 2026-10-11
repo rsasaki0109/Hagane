@@ -1947,3 +1947,22 @@ for(const bad of [[4,4,0,0,0,0,1e-6,.1],[16,0,0,0,0,0,1e-6,.1],[16,4,0,0,0,0,1e-
 for(const bad of [NaN,Infinity]){k.hagane_nurbs_torus_begin();assert.equal(k.hagane_nurbs_torus_push(bad),1);assert.equal(k.hagane_nurbs_torus_push(16),1);assert.equal(k.hagane_nurbs_torus_finish(),1);}
 k.hagane_nurbs_torus_begin();for(const value of [16,4,0,0,0,0,1e-6,.1])assert.equal(k.hagane_nurbs_torus_push(value),0);assert.equal(k.hagane_nurbs_torus_push(1),1);assert.equal(k.hagane_nurbs_torus_finish(),1);assert.equal(torusDemo([16,4,0,0,0,0,1e-6,.1]).status,0);
 console.log('Standalone rational ring torus: actual closed B-rep/pcurves, independent equation/volume, native report/STEP parity, manifold display and strict eight-value recovery passed.');
+
+// Mesh-free probes read the actual accepted torus, even after rejected edits.
+function torusQuery(point){k.hagane_nurbs_torus_query_begin();for(const value of point)assert.equal(k.hagane_nurbs_torus_query_push(value),0);const status=k.hagane_nurbs_torus_query_finish();return {status,result:JSON.parse(new TextDecoder().decode(new Uint8Array(k.memory.buffer,k.hagane_output_ptr(),k.hagane_output_len())))};}
+const tqModels=[[16,4,0,0,0,0,1e-6,.1],[16,4,.37,12,-5,8,1e-6,.1]];
+for(const model of tqModels){const accepted=torusDemo(model);assert.equal(accepted.status,0);const body=accepted.result,world=q=>body.placement.translation.map((v,j)=>v+q.reduce((s,x,a)=>s+x*body.placement.axes[a][j],0));
+ const witness=polygonSourcePoint(body.brep.surfaces[5],.4,.3),normalLocal=(()=>{const local=body.placement.axes.map(a=>a.reduce((s,v,j)=>s+v*(witness[j]-body.placement.translation[j]),0)),rho=Math.hypot(local[0],local[1]);return [local[0]*(rho-16)/rho/4,local[1]*(rho-16)/rho/4,local[2]/4];})(),normal=body.placement.axes[0].map((_,j)=>normalLocal.reduce((s,v,a)=>s+v*body.placement.axes[a][j],0));
+ for(const [point,expected] of [[world([0,0,0]),'outside'],[world([16,0,0]),'inside'],[world([21,0,0]),'outside'],[witness,'boundary'],[witness.map((v,j)=>v+.5e-6*normal[j]),'boundary'],[witness.map((v,j)=>v+2e-6*normal[j]),'outside']]){
+  const query=torusQuery(point);assert.equal(query.status,0,JSON.stringify(query.result));assert.equal(query.result.location,expected);assert.deepEqual(query.result.point,point);assert.deepEqual(Object.keys(query.result).sort(),['boundary','location','point']);
+  if(expected==='boundary'){const b=query.result.boundary;compareIntersection(b.point,polygonSourcePoint(body.brep.surfaces[b.face],...b.uv));compareIntersection(b.distance,Math.hypot(...b.point.map((v,j)=>v-point[j])));compareIntersection(Math.hypot(...b.normal),1);assert.ok(b.distance<=model[6]);}else assert.equal(query.result.boundary,null);
+  const native=JSON.parse(execFileSync('cargo',['run','--quiet','--example','nurbs_torus_query','--',JSON.stringify([...model,...point])],{encoding:'utf8',maxBuffer:256*1024*1024}));compareBoundedImport(query.result,native);
+ }
+ for(const bad of [[4,4,...model.slice(2)],[...model.slice(0,7),1e-14]]){assert.equal(torusDemo(bad).status,1);assert.equal(torusQuery(world([16,0,0])).result.location,'inside');}
+ assert.equal(torusQuery([1e100,0,0]).status,1);assert.equal(torusQuery(world([16,0,0])).result.location,'inside');
+ k.hagane_nurbs_torus_query_begin();assert.equal(k.hagane_nurbs_torus_query_push(NaN),1);assert.equal(k.hagane_nurbs_torus_query_push(16),1);assert.equal(k.hagane_nurbs_torus_query_finish(),1);
+ k.hagane_nurbs_torus_query_begin();for(const v of [1,2,3])assert.equal(k.hagane_nurbs_torus_query_push(v),0);assert.equal(k.hagane_nurbs_torus_query_push(4),1);assert.equal(k.hagane_nurbs_torus_query_finish(),1);assert.equal(torusQuery([1,2]).status,1);assert.equal(torusQuery(world([16,0,0])).result.location,'inside');
+ k.hagane_nurbs_torus_begin();for(const v of model.slice(0,4))assert.equal(k.hagane_nurbs_torus_push(v),0);assert.equal(torusQuery(world([16,0,0])).result.location,'inside');for(const v of model.slice(4))assert.equal(k.hagane_nurbs_torus_push(v),0);assert.equal(k.hagane_nurbs_torus_finish(),0);
+ const unchanged=torusDemo(model);compareBoundedImport(unchanged.result,body);
+}
+console.log('Accepted torus point probes: actual face/UV witnesses, finite Euclidean bands/native small-report parity, transactional rejected edits and independent three-value transport recovery passed.');
