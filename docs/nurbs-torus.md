@@ -69,4 +69,6 @@ classify the accepted body and return actual face/UV boundary witnesses.
 witnesses and up to two material intervals across the hole. The browser accepts
 world start/end coordinates and reads the retained model; unaccepted edits and
 failed queries preserve the accepted mesh and STEP.
-Torus Boolean and line-query APIs remain unsupported.
+[Line and ray queries](nurbs-torus-line.md) preserve original nonunit parameters
+and forward material intervals from inside origins. Torus Boolean and generic
+closest-point APIs remain unsupported.

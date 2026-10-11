@@ -27,6 +27,8 @@ Mesh-free [point queries](docs/nurbs-torus-classification.md) use the accepted
 Rust solid and certify boundary results on its actual NURBS faces.
 [Finite segment intersections](docs/nurbs-torus-segment.md) return up to four
 actual face/UV hits and two material intervals across the central hole.
+[Line and ray intersections](docs/nurbs-torus-line.md) preserve original nonunit
+parameters and clip forward rays that start inside material.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

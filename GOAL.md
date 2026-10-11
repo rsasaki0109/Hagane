@@ -1,5 +1,50 @@
 # Development goal
 
+[Torus lines and rays](docs/nurbs-torus-line.md) now preserve original nonunit
+parameters and return every resolved actual face/UV crossing and material
+interval. Forward rays clip inside-origin intervals to zero and retain a second
+interval across the central hole. Accepted-body native/WASM/browser queries
+never use the display mesh as a geometric source.
+
+## Original-parameter torus line/ray milestone
+
+Original anchor, full-source tolerance, represented frame and world arithmetic
+checks run before enclosure miss shortcuts. Expanded local ring bounds crop a
+finite supporting segment; both crop endpoints must classify Outside against
+the actual torus. The existing transverse quartic solver supplies all roots.
+Mapping back to the caller's nonunit direction checks physical reconstruction,
+actual surface residuals, interval order and parameter representation.
+
+Rays classify the original origin, reject its boundary band and check interval
+straddling and physical parameter signs before forward clipping. Infinite lines
+can use a transverse boundary anchor. The complete supporting line must resolve:
+backward tangency or unresolved roots also refuse a ray. Zero/nonfinite or
+unrepresentable directions, remote anchors, contact, unresolved crop/mapping
+and world/frame precision return explicit errors.
+
+Separate line and ray session methods and six-value WASM transports read the
+actual accepted body and policy. Browser queries retain point/segment results,
+mesh, camera and STEP after failures or unaccepted edits. Successful model edits
+clear stale probes. Partial query buffers remain independent across query kinds.
+
+Formatting, strict all-target Clippy, seventeen related native suites with
+30 tests and the release WASM build passed. Independent tests checked circle
+section roots, original positive/negative nonunit directions, inside/hole/behind
+ray origins, all material intervals, arbitrary poses and three scales, actual
+UV/normal witnesses and unchanged actual B-rep/STEP on rejection. The prior model
+report retained every geometry, mesh, metric, bounds and STEP value excluding
+updated scope metadata. The entire previous torus/point/segment and new line/ray
+WASM blocks passed with strict native parity, the posed cardinal-seam fixture,
+cross-buffer recovery and fresh-instance refusal before model acceptance.
+The entire expanded browser script passed with actual witnesses, strict pixel,
+camera and private accepted-export preservation, dirty model queries and mobile
+orbit. Its real production screenshot with line/ray results was inspected.
+Temporary dependency linkage and focused harnesses were removed.
+
+General closest points, trimming, torus STEP import and torus Booleans remain
+unsupported. No new dependency or third-party source was introduced. Broad
+completion remains 15–25% toward the standing 80% goal.
+
 [Finite torus segment queries](docs/nurbs-torus-segment.md) return up to four
 ordered actual face/UV hits and two material intervals from the accepted Rust
 B-rep, including inside-endpoint clipping and reversed segments. Meshes do not
@@ -53,7 +98,7 @@ strict camera/pixel/private export preservation and responsive orbit. Its actual
 production screenshot shows the accepted posed torus, four hits and two material
 intervals and was inspected. Temporary dependency linkage was removed.
 
-Line/ray queries, general closest points, trimming, torus STEP import and torus
+General closest points, trimming, torus STEP import and torus
 Booleans remain unsupported. No new dependency or external source was introduced.
 Broad completion remains 15–25% toward the standing 80% goal.
 
@@ -105,7 +150,7 @@ Existing build-script fixture copies restored them without changing the tested
 WASM. The entire unchanged legacy rerun subsequently passed, including its final
 metre-unit STEP page. No assertion or tested artifact was changed.
 
-Torus line/ray intersections, general closest points, trimming, STEP
+General closest points, trimming, STEP
 import and Booleans remain unsupported. No new dependency or external code was
 introduced. Broad completion remains 15–25% toward the standing 80% goal.
 

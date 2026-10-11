@@ -47,6 +47,25 @@ impl NurbsTorusDemoSession {
         let hits=result.hits.into_iter().map(|h| {let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
         Ok(serde_json::json!({"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
+    pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
+        self.line_query(origin, direction, false)
+    }
+    pub fn intersect_ray(&self, origin: Point3, direction: Vec3) -> Result<String> {
+        self.line_query(origin, direction, true)
+    }
+    fn line_query(&self, origin: Point3, direction: Vec3, ray: bool) -> Result<String> {
+        let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus line/ray query requires an accepted body",
+        ))?;
+        let result = if ray {
+            body.intersect_ray(origin, direction, *policy)?
+        } else {
+            body.intersect_line(origin, direction, *policy)?
+        };
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"origin":xyz(origin),"direction":[direction.x,direction.y,direction.z],"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true,"query_kind":if ray {"ray"} else {"line"}}).to_string())
+    }
 }
 pub fn nurbs_torus_demo_json(x: &[f64]) -> Result<String> {
     NurbsTorusDemoSession::new().apply(x)
@@ -94,6 +113,6 @@ pub(crate) fn serialize_torus(
         "mesh":{"positions":mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"closed":true,"genus":1,
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","import_supported":false,
-        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point and finite segment queries; torus import, line queries and general Booleans unsupported"}),
+        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point, finite segment, line and ray queries; torus import and general Booleans unsupported"}),
     )
 }

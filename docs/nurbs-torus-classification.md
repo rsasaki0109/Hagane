@@ -50,5 +50,6 @@ used by `nurbs_torus`, followed by world point XYZ. The browser probe is on
 
 This supports point classification and boundary witnesses on regular ring tori.
 [Finite segment intersections](nurbs-torus-segment.md) are implemented separately.
-Line/ray intersections, general closest points, trimming, torus STEP
+[Line/ray intersections](nurbs-torus-line.md) are also implemented.
+General closest points, trimming, torus STEP
 import and torus Booleans remain unsupported.

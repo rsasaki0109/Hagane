@@ -1451,3 +1451,11 @@ signs; the one-Lipschitz distance to the tube center circle bounds excluded
 critical collars. Guarded sign brackets and actual rational face evaluation
 validate crossings. This implementation adds no dependency or external source;
 original code remains MIT OR Apache-2.0.
+
+Torus line/ray queries independently derive a local Cartesian enclosure from
+`|x|,|y| <= R+r` and `|z| <= r`, expanded for source tolerance and represented
+frame arithmetic. Slab clipping bounds finite supporting-line travel, then the
+checked quartic segment solver supplies actual boundary witnesses. Mapping
+retains the original nonunit parameter; rays classify their original anchor
+and retain every forward material interval. This adds no external source or
+dependency, and original code remains MIT OR Apache-2.0.

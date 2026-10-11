@@ -46,7 +46,8 @@ unresolved crossings, zero/tiny segments, nonfinite coordinates, insufficient
 world/frame precision and exhausted isolation budgets return explicit errors.
 The bounded solver uses at most 4096 subdivision cells and depth 64; its
 bisection budget is 128 iterations. A rejected query leaves the B-rep unchanged.
-Line/ray queries, general trimming, torus STEP import and torus Booleans remain
+[Line/ray queries](nurbs-torus-line.md) use checked finite enclosures.
+General trimming, torus STEP import and torus Booleans remain
 unsupported.
 
 `NurbsTorusDemoSession::intersect_segment` reads the actual accepted body and
