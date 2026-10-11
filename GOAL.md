@@ -5,6 +5,16 @@ the tube material, central hole and boundary with actual retained NURBS face/UV
 witnesses. Native and browser queries read the accepted Rust solid; rejected
 edits and query failures preserve geometry, mesh and STEP.
 
+## Full regression checkpoint: accepted torus point queries
+
+On frozen `e306821`, the complete native run passed 336 suites with 1,240
+passed tests, zero failures and zero ignored tests, including two documentation
+tests. The entire unchanged WASM regression script also exited successfully,
+including all prior workflows and accepted torus point probes. Finite segment
+development remained in a separate checkout throughout these runs.
+The additional all-pages browser rerun described below is still pending and
+is not included in this full native/WASM checkpoint.
+
 ## Accepted torus point-query milestone
 
 The full-body tolerance policy bounds ideal Euclidean tube distance with query
