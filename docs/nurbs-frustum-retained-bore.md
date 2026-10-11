@@ -1,4 +1,4 @@
-# Coaxial holes in retained plane-bounded frusta
+# Coaxial holes and enlargement in retained frusta
 
 `NurbsFrustumPlaneBoundedSolid::bore_coaxial(radius, policy)` adds one coaxial
 through opening to actual retained material. The additive
@@ -32,9 +32,26 @@ bounded display and STEP remain available. Reports never substitute a source
 centroid or a zero tensor. STEP export writes each actual body; generic STEP
 import of these retained shapes remains unsupported.
 
-The schema-1 workflow's existing `coaxial_bore` can now consume one plain
-`PlaneBounded` component. The separate `enlarge_coaxial_bore` operation takes
-`id`, `input` and `radius`, and accepts one `BoredPlaneBounded` component only.
+Checked adapters extend these operations to the retained typed families.
+Plain `NurbsObliqueFrustumSolid` and `NurbsFrustumSlabSolid` provide drilling
+and explicit partition methods returning the new bored plane-bounded type.
+Bored oblique children and bored parallel slabs provide strict enlargement and
+annular partition methods returning that same type. Canonical
+`NurbsBoredFrustumSolid` enlargement retains the canonical bored type, with a
+canonical bored annulus as the explicit removed body. Its
+`partition_coaxial_bore_enlargement` returns
+`NurbsBoredFrustumBoreEnlargement {kept, removed}`.
+
+The adapters validate the complete old body and its source association before
+admitting the actual retained B-rep. They do not recognize an arbitrary `Solid`
+by face counts or replace it with a similar source recipe. The original outer
+geometry and section bounds remain checking witnesses, with the same original
+source tolerance and global minimum radius restrictions.
+
+The schema-1 workflow's `coaxial_bore` can consume one plain canonical,
+oblique, slab or plane-bounded component. The separate `enlarge_coaxial_bore`
+operation takes `id`, `input` and `radius`, and accepts one supported bored
+component from those typed families.
 Multi-component inputs require explicit selection. The accepted component is
 used directly through edits, queries, Undo/Redo and export; failed operations
 preserve accepted state, cache and history.
@@ -42,11 +59,15 @@ preserve accepted state, cache and history.
 The [editable retained-hole fixture](nurbs-frustum-workflow-retained-bore-example.json)
 selects a skew-cut middle component, drills radius 3, then enlarges it to radius
 4. Load the retained-hole preset in the frustum workflow web demo to inspect it.
+The [parallel-hole fixture](nurbs-frustum-workflow-parallel-hole-example.json)
+uses the existing strict parallel-cut operation, then drills and enlarges the
+explicitly selected middle slab. The parallel-hole preset displays that actual
+component with the same radius controls.
 
-Earlier canonical, single-cut oblique and parallel-slab APIs retain their
-previous domains. This does not add off-axis or blind frustum bores, arbitrary
-shell recognition, continued machining of other typed shapes, general curved
-Booleans or generic STEP import.
+The existing parallel-cut restrictions and import APIs keep their previous
+domains. These additive checked bore adapters do not add off-axis or blind
+frustum bores, arbitrary shell recognition, machining of other shape families,
+general curved Booleans or generic STEP import.
 
 This original implementation uses positive homogeneous ruled patches, oriented
 shared topology and checked common-local moment composition. No OCCT code or

@@ -1399,3 +1399,13 @@ global minimum radius, finite world arithmetic and positive partition-volume
 checks bound the domain. Display, local moment composition and queries reuse the
 actual retained coefficients and topology. This original implementation adds no
 external source, dependency or license change.
+
+Checked retained-bore adapters validate the original typed body's complete
+geometry and source association, then admit its actual cloned B-rep through the
+plane-bounded whole-gap certificate. They retain the original outer coefficients
+and cap sections instead of recognizing an arbitrary shell or substituting a
+recipe reconstruction. Canonical enlargement uses the original source's checked
+coaxial radius and annular-width policy. Removed partitions retain actual inner
+boundaries with opposing orientations. Existing mass/display/query algorithms
+operate on the resulting actual typed bodies; no external source, dependency or
+license change is introduced.

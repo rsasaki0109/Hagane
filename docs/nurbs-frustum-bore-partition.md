@@ -35,8 +35,10 @@ connects stock → coaxial bore → four axial parts. Select a part before furth
 partitioning its own local height. Edits retain unchanged graph prefixes and
 Undo/Redo; all displayed outputs are the actual annular children with their own
 STEP exports. [Complete interior plane cuts](nurbs-frustum-bored-oblique.md)
-also retain the hole. Multipart recuts without Select, repeated cuts of oblique
-children, repeated bores and general frustum Booleans remain unsupported.
+also retain the hole. Multipart recuts without Select and general frustum
+Booleans remain unsupported. Separate [interior plane splits](nurbs-frustum-interior-plane-splits.md)
+retain ordered further sections; [checked bore adapters](nurbs-frustum-retained-bore.md)
+provide strict coaxial enlargement of supported bored components.
 
 Original code is MIT OR Apache-2.0. This composes Hagane's independently
 implemented canonical restriction and coaxial cylinder construction; no OCCT

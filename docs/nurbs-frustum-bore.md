@@ -32,8 +32,9 @@ Euler characteristic.
 The tool uses the source's rigid frame, equal radii and full height. The initial
 operation requires a resolved positive hole and positive wall clearance at
 both caps. Touching, oversized or unresolved radii reject explicitly. Off-axis,
-blind, intersecting and repeated bores on the new type remain unsupported,
-as do general frustum Booleans and bored-frustum STEP import. Exact STEP export
+blind, intersecting and general continued bores remain unsupported; strict
+coaxial enlargement uses the separate [checked retained-bore API](nurbs-frustum-retained-bore.md).
+General frustum Booleans and generic bored-frustum STEP import remain unsupported. Exact STEP export
 serializes the kept surfaces, curves and both cap loops.
 
 The radius and smallest cap wall gap must exceed ten source length bands plus
@@ -108,8 +109,9 @@ The [editable workflow](nurbs-frustum-workflow.md) adds `coaxial_bore` to schema
 It retains the actual bored component for radius edits, selection, Undo/Redo,
 bounded display and exact STEP output. A canonical single component is required;
 axial partitions and complete interior plane cuts retain the actual hole
-in every child. Further parallel cuts retain actual typed slabs. Repeated bores
-and skew planes in the parallel-cut API remain explicit errors.
+in every child. Further parallel cuts retain actual typed slabs. General repeated
+boring and skew planes in the parallel-cut API remain explicit errors; strict
+coaxial enlargement has its separate checked typed operation.
 
 ## Exact finite segment intersections
 

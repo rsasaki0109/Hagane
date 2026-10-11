@@ -257,7 +257,8 @@ claiming general rotated STEP import.
 ![Actual general-axis stock and selected partition rendered by WASM](nurbs-frustum-workflow-posed.png)
 
 The separate [retained-bore operation](nurbs-frustum-retained-bore.md) allows
-`coaxial_bore` on one plain `PlaneBounded` component and
-`enlarge_coaxial_bore` on one `BoredPlaneBounded` component. These use actual
-retained section planes and keep the outer body. Older canonical, single-cut
-oblique and parallel-slab bore domains remain unchanged.
+`coaxial_bore` on one supported plain typed component and
+`enlarge_coaxial_bore` on one supported bored typed component. Checked adapters
+cover oblique and slab families; canonical enlargement keeps its canonical type.
+These operations retain actual cap planes and outer geometry. Parallel-cut and
+import restrictions remain unchanged.

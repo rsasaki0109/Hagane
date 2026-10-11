@@ -48,12 +48,31 @@ fn enlargement_clearance(
     policy: GeometryTolerance,
 ) -> Result<()> {
     body.validate(policy)?;
+    enlargement_clearance_for_source(
+        body.source().source(),
+        body.source().radius(),
+        radius,
+        &[
+            body.outer().lower_section().map(|s| s.plane()),
+            body.outer().upper_section().map(|s| s.plane()),
+        ],
+        body.solid(),
+        policy,
+    )
+}
+pub(crate) fn enlargement_clearance_for_source(
+    source: &NurbsFrustumSolid,
+    old_radius: f64,
+    radius: f64,
+    planes: &[Option<&Surface>],
+    solid: &Solid,
+    policy: GeometryTolerance,
+) -> Result<()> {
     if !radius.is_finite() || radius <= 0. {
         return Err(Error::InvalidInput(
             "enlarged coaxial bore radius must be positive and finite",
         ));
     }
-    let source = body.source().source();
     let [a, b] = source.radii();
     let extent = (2. * a.max(b)).hypot(source.height());
     let band = policy.length_at_scale(extent)?;
@@ -62,11 +81,8 @@ fn enlargement_clearance(
         .max(origin.x.abs())
         .max(origin.y.abs())
         .max(origin.z.abs());
-    for section in [body.outer().lower_section(), body.outer().upper_section()]
-        .into_iter()
-        .flatten()
-    {
-        let Surface::Plane { origin, .. } = *section.plane() else {
+    for plane in planes.iter().flatten() {
+        let Surface::Plane { origin, .. } = **plane else {
             return Err(unresolved());
         };
         world = world
@@ -74,7 +90,7 @@ fn enlargement_clearance(
             .max(origin.y.abs())
             .max(origin.z.abs());
     }
-    for edge in &body.solid().edges {
+    for edge in &solid.edges {
         let Curve::Nurbs(curve) = &edge.curve else {
             continue;
         };
@@ -90,7 +106,7 @@ fn enlargement_clearance(
         }
     }
     let arithmetic = 65536. * f64::EPSILON * world + 16. * gram * extent;
-    let gap = radius - body.source().radius();
+    let gap = radius - old_radius;
     if !arithmetic.is_finite()
         || arithmetic >= policy.linear() / 16.
         || !gap.is_finite()
@@ -100,7 +116,7 @@ fn enlargement_clearance(
     }
     Ok(())
 }
-fn conservation(original: f64, kept: f64, removed: f64, full_source: f64) -> Result<()> {
+pub(crate) fn conservation(original: f64, kept: f64, removed: f64, full_source: f64) -> Result<()> {
     let sum = kept / original + removed / original;
     let allowance = 131072. * f64::EPSILON * full_source / original;
     if !original.is_normal()

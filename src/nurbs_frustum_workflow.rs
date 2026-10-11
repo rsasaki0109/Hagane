@@ -557,8 +557,10 @@ impl NurbsFrustumWorkflowDocument {
                 }
                 match &shape.components()[0] {
                     NurbsFrustumWorkflowComponent::Canonical(source) => vec![NurbsFrustumWorkflowComponent::Bored(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
+                    NurbsFrustumWorkflowComponent::Oblique(source) => vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
+                    NurbsFrustumWorkflowComponent::Slab(source) => vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
                     NurbsFrustumWorkflowComponent::PlaneBounded(source) => vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(source.bore_coaxial(*radius,tol).map_err(|e|geometry(e,id))?))],
-                    _ => return Err(diagnostic("unsupported","canonical_required",Some(id),"CoaxialBore requires a canonical or explicitly plane-bounded solid; other retained or already bored bodies are unsupported.")),
+                    _ => return Err(diagnostic("unsupported","canonical_required",Some(id),"CoaxialBore requires one certified unbored frustum component; already bored bodies require explicit enlargement.")),
                 }
             }
             NurbsFrustumWorkflowOperation::EnlargeCoaxialBore { input, radius, .. } => {
@@ -572,6 +574,27 @@ impl NurbsFrustumWorkflowDocument {
                     ));
                 }
                 match &shape.components()[0] {
+                    NurbsFrustumWorkflowComponent::Bored(source) => {
+                        vec![NurbsFrustumWorkflowComponent::Bored(Arc::new(
+                            source
+                                .enlarge_coaxial_bore(*radius, tol)
+                                .map_err(|e| geometry(e, id))?,
+                        ))]
+                    }
+                    NurbsFrustumWorkflowComponent::BoredOblique(source) => {
+                        vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                            source
+                                .enlarge_coaxial_bore(*radius, tol)
+                                .map_err(|e| geometry(e, id))?,
+                        ))]
+                    }
+                    NurbsFrustumWorkflowComponent::BoredSlab(source) => {
+                        vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
+                            source
+                                .enlarge_coaxial_bore(*radius, tol)
+                                .map_err(|e| geometry(e, id))?,
+                        ))]
+                    }
                     NurbsFrustumWorkflowComponent::BoredPlaneBounded(source) => {
                         vec![NurbsFrustumWorkflowComponent::BoredPlaneBounded(Arc::new(
                             source
@@ -579,12 +602,14 @@ impl NurbsFrustumWorkflowDocument {
                                 .map_err(|e| geometry(e, id))?,
                         ))]
                     }
-                    _ => return Err(diagnostic(
-                        "unsupported",
-                        "bored_plane_bounded_required",
-                        Some(id),
-                        "EnlargeCoaxialBore requires an explicitly plane-bounded bored component.",
-                    )),
+                    _ => {
+                        return Err(diagnostic(
+                            "unsupported",
+                            "bored_plane_bounded_required",
+                            Some(id),
+                            "EnlargeCoaxialBore requires one certified bored frustum component.",
+                        ))
+                    }
                 }
             }
             NurbsFrustumWorkflowOperation::PlaneSplit {

@@ -105,8 +105,9 @@ origins, tangencies, coplanar contacts, shared rims and unresolved parameter or
 world precision return explicit errors. Valid misses return empty intervals.
 These mesh-free queries leave accepted geometry, metrics, STEP and session
 history unchanged; they do not perform a modeling cut or general Boolean.
-Skew planes in this parallel-cut API, general curved Booleans, continued boring and slab STEP
-re-import remain unsupported. Existing canonical, bored and single-cut query
+Skew planes in this parallel-cut API, general curved Booleans and slab STEP
+re-import remain unsupported. Separate [checked bore adapters](nurbs-frustum-retained-bore.md)
+provide coaxial drilling of plain slabs and strict enlargement of bored slabs. Existing canonical, bored and single-cut query
 APIs keep their previous domains.
 
 Original code is MIT OR Apache-2.0. This uses independently implemented rational

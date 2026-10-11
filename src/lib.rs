@@ -445,3 +445,6 @@ pub use nurbs_frustum_bored_plane_bounded::*;
 
 mod nurbs_frustum_plane_bounded_bore;
 pub use nurbs_frustum_plane_bounded_bore::*;
+
+mod nurbs_frustum_retained_bore_adapters;
+pub use nurbs_frustum_retained_bore_adapters::*;

@@ -38,6 +38,23 @@ impl NurbsBoredFrustumPlaneBoundedSolid {
         result.volume(policy)?;
         Ok(result)
     }
+    pub(crate) fn from_retained(
+        source: &NurbsBoredFrustumSolid,
+        outer: NurbsFrustumPlaneBoundedSolid,
+        inner: NurbsFrustumPlaneBoundedSolid,
+        solid: Solid,
+        policy: GeometryTolerance,
+    ) -> Result<Self> {
+        let result = Self {
+            source: source.clone(),
+            outer,
+            inner,
+            solid,
+        };
+        result.validate(policy)?;
+        result.volume(policy)?;
+        Ok(result)
+    }
     pub fn source(&self) -> &NurbsBoredFrustumSolid {
         &self.source
     }

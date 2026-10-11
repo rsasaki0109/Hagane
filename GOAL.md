@@ -25,9 +25,10 @@ slab boundaries and holes. [Strictly interior skew cuts](docs/nurbs-frustum-inte
 now retain differently oriented, uniformly ordered plane boundaries and holes
 in separate plane-bounded types. [Retained coaxial drilling and enlargement](docs/nurbs-frustum-retained-bore.md)
 now add holes or strictly enlarge them on these actual plane-bounded bodies,
-with optional closed removed partitions. Intersecting boundary cuts, further
-boring through older retained APIs and general bored-frustum STEP import remain
-unsupported.
+with optional closed removed partitions. Checked adapters also drill after
+single oblique and parallel cuts and enlarge canonical or retained holes.
+Intersecting boundary cuts, off-axis/blind frustum bores and general
+bored-frustum STEP import remain unsupported.
 [Exact cardinal bored STEP import](docs/nurbs-frustum-bored-step-import.md)
 retains actual annular topology and coefficients in its separate bounded domain.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
@@ -1908,4 +1909,35 @@ initial isolated launch stopped before running tests because that package was
 absent. The temporary dependency link was removed. All existing PNG/raw-frame
 guards remained. The inspected actual enlarged-body screenshot shows volume
 `2882.687`, checked mass, successful probes and the new hole-radius controls.
+The broad estimate remains 15–25% toward the standing 80% target.
+
+## Checked bore adapters for canonical and older retained families
+
+Single-cut oblique and parallel-slab plain bodies now expose drilling and
+closed kept/removed partitions through checked adapters. Their bored
+counterparts expose strict enlargement and removed-annulus partitions.
+The factories clone the actual original B-rep and retained bounds, validate
+complete source association and coefficient identity, and apply whole-domain
+ordering before admission. They never reconstruct an external lookalike.
+Canonical bored frusta also expose strict enlargement and an independently
+certified canonical removed annulus; that output stays in the canonical type.
+All paths retain the original full-source tolerance and global minimum radius.
+The workflow accepts these explicit typed domains and retains single-component
+selection, atomic history and actual-body queries/export. Existing strict
+parallel-cut and bounded STEP import APIs retain their previous domains.
+
+Validation: final fmt, strict all-target Clippy, seven relevant native suites
+(ten tests) and WASM build passed. Independent cylindrical disk/annulus moments
+and all nine world inertia components, source/outer coefficients, exact old
+inner ownership, actual UV/orientations, closed topology/display, scaled/posed
+kept/removed conservation and immutable rejection/recovery passed. The complete
+previous accepted workflow report (1,734,880 bytes, including point, segment,
+ray and STEP) remained byte-identical after shared guard extraction. The entire
+new adapter and prior interior/retained-bore WASM blocks passed with native
+geometry/STEP, cache/history, manifold display and genuine domain failures.
+The entire browser workflow suite passed on its first run with all earlier
+strict PNG/raw-frame guards. The inspected actual parallel middle screenshot
+shows volume `2911.663`, checked mass, its Inside point, two finite material
+intervals and hole-origin forward ray `[2,20/3]`. Canonical, both oblique sides
+and parallel typed hole/enlargement actions passed native STEP and history tests.
 The broad estimate remains 15–25% toward the standing 80% target.

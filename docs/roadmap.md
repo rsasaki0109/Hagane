@@ -34,7 +34,9 @@ plane-bounded children through a separate operation. Existing parallel-cut APIs
 keep their previous restrictions.
 [Retained coaxial drilling and enlargement](nurbs-frustum-retained-bore.md) operate on actual
 plane-bounded material through narrow typed APIs, with closed removed cylinder
-and annular partitions. Older bore domains remain unchanged.
+and annular partitions. Checked adapters also cover retained oblique and slab
+components; canonical bored enlargement retains its canonical type. Import and
+parallel-cut restrictions remain unchanged.
 Overall completion remains an engineering estimate of **15–25%**, toward the **80%** goal.
 
 [Coaxial frustum through bores](nurbs-frustum-bore.md) add a supported curved
