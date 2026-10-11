@@ -1,5 +1,38 @@
 # Development goal
 
+[Regular ring tori](docs/nurbs-torus.md) extend exact NURBS B-rep topology to
+surfaces curved in both parameter directions. The actual shared solid supplies
+analytic volume and centroidal inertia, bounded conforming display and exact
+STEP export in native Rust and the interactive WASM/browser demo. Horn/spindle
+tori, torus STEP import, queries, trimming and Booleans remain unsupported.
+
+## Rational ring torus milestone
+
+Sixteen degree-(2,2) rational tensor patches retain sixteen vertices,
+thirty-two shared quadratic edges, oriented affine surface boundaries and a
+closed genus-one shell. The typed certificate rejects modified geometry and
+unresolved tube/ring clearance or world precision. Display evaluates actual
+surfaces and shared edges, uses an interior-triangle error bound with arithmetic
+reserves and refuses requests beyond its 32,768-triangle budget.
+
+Formatting, strict all-target Clippy, four related native suites with eight
+tests, and the release WASM build passed. Independent tests checked actual
+coefficients, dense surface/triangle interiors, bit-identical seam closure,
+posed/scaled volume, all world inertia entries and STEP. Optional inertia
+overflow keeps valid geometry, volume, mesh and STEP with an explicit metric
+error. The combined WASM script passed the entire new torus block and prior
+interior-plane/retained-bore/adapter blocks. The entire new browser script passed
+geometry, metrics, native STEP parity, strict rejected-edit preservation,
+private accepted export, orbit/zoom and mobile layout. The actual production
+screenshot was inspected after restoring the normal backdrop.
+
+Initial browser launch failed because its bundled browser cache was absent;
+the runner now uses the existing system-browser fallback. Preliminary native
+parity runs also detected an older WASM artifact missing new report metadata;
+after a fresh build, final combined WASM and entire browser runs exited zero.
+Assertions were retained. No OCCT code or new dependency was introduced.
+The broad completion estimate remains 15–25% toward the standing 80% target.
+
 ## Full regression checkpoint: certified retained-bore adapters
 
 The frozen `b44614f` implementation passed the complete native suite:

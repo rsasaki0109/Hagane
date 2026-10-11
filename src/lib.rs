@@ -448,3 +448,12 @@ pub use nurbs_frustum_plane_bounded_bore::*;
 
 mod nurbs_frustum_retained_bore_adapters;
 pub use nurbs_frustum_retained_bore_adapters::*;
+
+mod nurbs_torus;
+pub use nurbs_torus::*;
+
+mod nurbs_torus_demo;
+pub use nurbs_torus_demo::*;
+
+mod nurbs_torus_display;
+mod nurbs_torus_mass;

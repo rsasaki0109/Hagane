@@ -1409,3 +1409,27 @@ coaxial radius and annular-width policy. Removed partitions retain actual inner
 boundaries with opposing orientations. Existing mass/display/query algorithms
 operate on the resulting actual typed bodies; no external source, dependency or
 license change is introduced.
+
+### Rational ring torus
+
+The ring-torus parameterization is
+`((R + r cos(v)) cos(u), (R + r cos(v)) sin(u), r sin(v))`, with
+`R > r > 0`. See [MathWorld: Torus](https://mathworld.wolfram.com/Torus.html)
+for the public mathematical surface and volume formulas. Each quarter circle
+uses quadratic rational Bézier weights `(1, 1/sqrt(2), 1)`; taking their tensor
+product gives sixteen exact degree-(2,2) patches. The implementation derives
+its control nets and shared topology independently, without external code.
+
+Uniform-density moments follow by integrating the disk cross-section with
+volume element `(R + x) dx dz du`: volume is `2 pi² R r²`, axial inertia is
+`V (R² + 3r²/4)`, and either transverse inertia is
+`V (R²/2 + 5r²/8)`. World tensors use the represented frame axes.
+
+For equal angular cell widths `h`, separate one-dimensional interpolation
+errors are bounded by `(R + 2r) h²/8`. Replacing the bilinear interpolant with
+its two triangles adds at most `r h²/4`, using the mixed derivative bound.
+Thus the ideal local surface-to-triangle bound is `(R + 4r) h²/8`.
+The display implementation must additionally reserve represented-frame and
+floating-point evaluation errors; this mathematical bound alone does not
+certify rounded world geometry. All new code uses MIT OR Apache-2.0 and adds
+no dependency or third-party source.

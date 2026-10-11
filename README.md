@@ -19,6 +19,12 @@ The standing [development goal](GOAL.md) is a complete end-to-end CAD workflow;
 its acceptance criteria and implementation order guide ongoing development.
 See the [roadmap](docs/roadmap.md) for current milestones and limitations.
 
+[Regular ring tori](docs/nurbs-torus.md) use sixteen exact rational NURBS
+patches with shared oriented edges and surface parameter boundaries. The same
+Rust solid supplies analytic volume and inertia, bounded B-rep tessellation,
+exact STEP export and an interactive [torus demo](web/nurbs-torus.html).
+Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
+
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
 bored solid through hole-radius edits, component selection, incremental rebuilding,
 Undo/Redo and exact STEP export. Mesh-free point classification measures distance

@@ -6,7 +6,8 @@
   "license": "MIT OR Apache-2.0",
   "scripts": {
     "test": "node scripts/browser.mjs",
-    "capture": "node scripts/browser.mjs --capture"
+    "capture": "node scripts/browser.mjs --capture",
+    "test:torus": "node scripts/test-torus-browser.mjs"
   },
   "devDependencies": {"playwright": "1.62.1"}
 }

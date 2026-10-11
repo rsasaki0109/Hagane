@@ -1,5 +1,12 @@
 # Roadmap
 
+[Regular ring tori](nurbs-torus.md) extend exact surface topology to a surface
+curved in both parameter directions. Sixteen rational degree-(2,2) patches
+share 32 exact edges in a closed genus-one B-rep. Checked analytic volume and
+centroidal inertia, bounded conforming display, exact STEP export and a shared
+native/WASM browser demo are implemented. Horn/spindle tori, torus queries,
+torus STEP import, trimming and general torus Booleans remain future work.
+
 [Editable through-bore histories](nurbs-frustum-workflow.md) retain the actual
 bored solid through hole-radius edits, component selection, incremental rebuilding,
 Undo/Redo and exact STEP export. Mesh-free point classification measures distance
