@@ -1471,3 +1471,11 @@ independently from the sine double-angle expansion. Actual angular restricted
 patch display retains the torus Hessian bound and shared annular rim samples.
 This original implementation adds no third-party source or dependency and uses
 MIT OR Apache-2.0.
+
+
+Horizontal torus child classification independently minimizes distance in the
+radial/height meridian plane over a retained circular arc, using its two endpoints
+when the unconstrained radial projection lies outside that arc. Finite annular
+cap distance is `hypot(z-cut, radial_gap)`; actual cap witnesses solve the plane
+basis Gram system. These elementary Euclidean derivations use no OCCT source,
+new dependency or copied implementation. Original code is MIT OR Apache-2.0.

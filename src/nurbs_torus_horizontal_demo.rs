@@ -2,16 +2,11 @@
 use crate::*;
 pub(crate) fn serialize_horizontal_split(
     source: &NurbsTorusSolid,
-    height: f64,
+    split: &NurbsTorusHorizontalSplit,
     chord: f64,
     policy: GeometryTolerance,
 ) -> Result<serde_json::Value> {
-    if !height.is_finite() || !chord.is_finite() {
-        return Err(Error::InvalidInput(
-            "torus horizontal split values must be finite",
-        ));
-    }
-    let split = source.split_by_local_z(height, policy)?;
+    let height = split.lower.cut_height();
     // Serialize both actual children completely before reporting success.
     let lower = serialize_child(&split.lower, policy, chord)?;
     let upper = serialize_child(&split.upper, policy, chord)?;
@@ -19,7 +14,7 @@ pub(crate) fn serialize_horizontal_split(
     let frame = source.frame();
     let axes = frame.axes().map(|v| [v.x, v.y, v.z]);
     Ok(
-        serde_json::json!({"kind":"nurbs_torus_horizontal_split","units":"mm","cut_height":height,"source_volume":source.volume(policy)?,"source_radii":source.radii(),"source_placement":{"translation":xyz(frame.origin()),"axes":axes},"cut_plane":{"point":xyz(frame.point(Point3::new(0.,0.,height))),"normal":axes[2]},"lower":lower,"upper":upper,"scope":"two actual closed horizontally bounded rational torus children; accepted full torus unchanged; child mass and query operations unsupported"}),
+        serde_json::json!({"kind":"nurbs_torus_horizontal_split","units":"mm","cut_height":height,"source_volume":source.volume(policy)?,"source_radii":source.radii(),"source_placement":{"translation":xyz(frame.origin()),"axes":axes},"cut_plane":{"point":xyz(frame.point(Point3::new(0.,0.,height))),"normal":axes[2]},"lower":lower,"upper":upper,"scope":"two actual closed horizontally bounded rational torus children; accepted full torus unchanged; actual cached child point queries; child mass, segment, line and ray operations unsupported"}),
     )
 }
 fn serialize_child(

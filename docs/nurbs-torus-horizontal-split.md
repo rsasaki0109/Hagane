@@ -39,8 +39,8 @@ tiny strips refuse explicitly. The cut must lie strictly inside the tube height;
 top/bottom clearance, annulus width and every retained partial strip must clear
 the original full-body contact band and arithmetic reserves. Nonfinite heights,
 contact, insufficient world precision and unrepresentable child volumes fail.
-General oblique cuts, repeated child cuts and child classification/intersection
-or mass-property APIs remain unsupported.
+General oblique cuts, repeated child cuts, child intersections and child
+mass-property APIs remain unsupported.
 
 For a horizontal slice, the cross-section area is
 `4*pi*R*sqrt(r*r-z*z)`. Integrating gives each child's volume
@@ -79,3 +79,28 @@ The browser can preview either child, download its actual STEP and restore the
 source view. Source queries and the source STEP button still use the accepted
 full torus; the preview identifies that distinction. Failed cuts or display
 requests preserve the last accepted preview and source. See [torus demo setup](nurbs-torus.md).
+
+
+## Mesh-free child point queries
+
+`child.point_query(point, policy)` and `child.classify_point(point, policy)`
+measure Euclidean distance to the retained circular meridian arc and the finite
+annular cap. The cap's hole and plane extensions are not boundary surfaces.
+The original full-source tolerance scale and world/frame arithmetic guards apply
+before shortcuts. Resolved points return `Inside` or `Outside`; boundary witnesses
+are evaluated on actual restricted wall faces in their original UV domains or on
+the actual cap plane with Gram-coordinate UVs and oriented normals. A boundary
+witness must have ten tolerance bands of physical cut-rim clearance. Ambiguous
+trim-rim normals, unresolved thresholds and remote/nonfinite input return errors.
+
+The session now caches the actual pair only after both child reports serialize
+successfully. `query_horizontal_point(is_lower, point)` reads that pair without
+rebuilding geometry, display or STEP. Rejected cuts, queries and source edits
+preserve it; a successful source replacement invalidates it. The independent
+four-value WASM transport accepts `[lower_flag, x, y, z]`, where exactly `1` means
+lower and exactly `0` means upper. Queries before an accepted cut are rejected.
+Run `cargo run --example nurbs_torus_horizontal_query`; optional fourteen-value
+JSON input contains the eight source parameters, cut height, chord error, child
+flag and world point. The browser's **Probe viewed cut part** uses the selected
+accepted child; source point/segment/line/ray probes retain their source meaning.
+Child mass moments and segment/line/ray queries remain unsupported.

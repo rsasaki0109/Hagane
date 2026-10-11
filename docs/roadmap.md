@@ -13,7 +13,10 @@ material intervals with explicit contact and precision refusal.
 clip forward rays from inside the tube.
 [Horizontal plane splits](nurbs-torus-horizontal-split.md) retain actual restricted
 patches and annular caps in two closed genus-one children, with analytic volumes,
-conforming display and exact STEP export. Horn/spindle tori, arbitrary oblique cuts,
+conforming display and exact STEP export. Child point classification uses finite
+retained arcs and annular caps, with actual face/UV witnesses; physical trim-rim
+boundary queries are explicitly refused. Child mass moments and line/segment/ray
+queries remain unsupported. Horn/spindle tori, arbitrary oblique cuts,
 torus STEP import, trimming and general torus Booleans remain future work.
 
 [Editable through-bore histories](nurbs-frustum-workflow.md) retain the actual

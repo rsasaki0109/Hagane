@@ -5,6 +5,7 @@ use crate::*;
 #[derive(Default)]
 pub struct NurbsTorusDemoSession {
     accepted: Option<(NurbsTorusSolid, GeometryTolerance)>,
+    horizontal: Option<(NurbsTorusHorizontalSplit, GeometryTolerance)>,
 }
 impl NurbsTorusDemoSession {
     pub fn new() -> Self {
@@ -17,6 +18,7 @@ impl NurbsTorusDemoSession {
         let (body, policy) = torus_body(x)?;
         let report = serialize_torus(&body, policy, x[7])?.to_string();
         self.accepted = Some((body, policy));
+        self.horizontal = None;
         Ok(report)
     }
     /// Mesh-free, read-only query of the accepted typed B-rep and its policy.
@@ -48,12 +50,40 @@ impl NurbsTorusDemoSession {
         Ok(serde_json::json!({"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
     /// Return two actual closed children without replacing the accepted full torus.
-    pub fn split_horizontal(&self, height: f64, chord: f64) -> Result<String> {
+    pub fn split_horizontal(&mut self, height: f64, chord: f64) -> Result<String> {
+        if !height.is_finite() || !chord.is_finite() {
+            return Err(Error::InvalidInput(
+                "torus horizontal split values must be finite",
+            ));
+        }
         let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
             "torus horizontal split requires an accepted body",
         ))?;
-        crate::nurbs_torus_horizontal_demo::serialize_horizontal_split(body, height, chord, *policy)
-            .map(|v| v.to_string())
+        let split = body.split_by_local_z(height, *policy)?;
+        let report = crate::nurbs_torus_horizontal_demo::serialize_horizontal_split(
+            body, &split, chord, *policy,
+        )?
+        .to_string();
+        self.horizontal = Some((split, *policy));
+        Ok(report)
+    }
+    pub fn accepted_horizontal_split(&self) -> Option<&NurbsTorusHorizontalSplit> {
+        self.horizontal.as_ref().map(|v| &v.0)
+    }
+    pub fn query_horizontal_point(&self, is_lower: bool, point: Point3) -> Result<String> {
+        let (split, policy) = self.horizontal.as_ref().ok_or(Error::InvalidInput(
+            "torus child point query requires an accepted horizontal split",
+        ))?;
+        let body = if is_lower { &split.lower } else { &split.upper };
+        let q = body.point_query(point, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let location = match q.location {
+            PointLocation::Inside => "inside",
+            PointLocation::Outside => "outside",
+            PointLocation::Boundary => "boundary",
+        };
+        let boundary=q.boundary.map(|b|serde_json::json!({"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}));
+        Ok(serde_json::json!({"child":if is_lower {"lower"} else {"upper"},"cut_height":body.cut_height(),"point":xyz(point),"location":location,"boundary":boundary}).to_string())
     }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)

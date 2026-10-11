@@ -2800,11 +2800,48 @@ mod exports {
                 "torus horizontal split requires exactly two finite values",
             )));
         }
-        let session = NURBS_TORUS_SESSION.lock().unwrap();
-        generate(match session.as_ref() {
+        let mut session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(match session.as_mut() {
             Some(s) => s.split_horizontal(v[0], v[1]),
             None => Err(crate::Error::InvalidInput(
                 "torus horizontal split requires an accepted body",
+            )),
+        })
+    }
+    static NURBS_TORUS_HORIZONTAL_QUERY_INPUT: Mutex<(Vec<f64>, bool)> =
+        Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_horizontal_query_begin() {
+        let mut input = NURBS_TORUS_HORIZONTAL_QUERY_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_horizontal_query_push(value: f64) -> i32 {
+        let mut input = NURBS_TORUS_HORIZONTAL_QUERY_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 4 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_horizontal_query_finish() -> i32 {
+        let (v, bad) = {
+            let mut input = NURBS_TORUS_HORIZONTAL_QUERY_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad || v.len() != 4 || !(v[0] == 0. || v[0] == 1.) {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus child point query requires exact mode zero/one and three finite coordinates",
+            )));
+        }
+        let session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(match session.as_ref() {
+            Some(s) => s.query_horizontal_point(v[0] == 1., crate::Point3::new(v[1], v[2], v[3])),
+            None => Err(crate::Error::InvalidInput(
+                "torus child point query requires an accepted horizontal split",
             )),
         })
     }

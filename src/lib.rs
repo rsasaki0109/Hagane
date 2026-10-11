@@ -473,3 +473,5 @@ pub use nurbs_torus_horizontal_split::*;
 mod nurbs_torus_horizontal_display;
 
 mod nurbs_torus_horizontal_demo;
+
+mod nurbs_torus_horizontal_classification;

@@ -1,5 +1,40 @@
 # Development goal
 
+[Horizontal torus child point queries](docs/nurbs-torus-horizontal-split.md#mesh-free-child-point-queries)
+now use the accepted actual split pair with finite annular caps and retained
+NURBS walls. Mesh-free witnesses carry actual child face IDs, original UVs,
+evaluated points, measured distances and oriented normals.
+
+## Actual horizontal torus child-point milestone
+
+Finite Euclidean meridian-arc and annular-cap distances prevent false boundary
+hits on cap holes, plane extensions or discarded walls. The original full-body
+policy and world/frame precision guards precede shortcuts. Physical cut-rim
+boundary ambiguity and unresolved thresholds return explicit errors.
+
+The session builds one actual split pair and commits it only after both reports
+serialize successfully. Failed cuts, display requests, model edits and queries
+preserve the accepted pair and full source; a successful source update invalidates
+the pair. Separate four-value WASM transport and a fourteen-value native example
+query actual cached children. Browser selection chooses the private accepted
+child while full-source point/segment/line/ray probes retain their meaning.
+
+Formatting, strict all-target Clippy, 26 torus native suites with 45 tests and
+release WASM build passed. Independent tests checked both children at zero and
+nonzero heights, arbitrary placements and three scales, actual face/UV/normals,
+physical normal offsets, annular holes and finite-plane extensions, original
+relative tolerance, explicit rim refusal and source/body/STEP immutability.
+The entire previous torus WASM blocks plus child-point transport and strict
+native parity passed. The full-source report remains byte-identical at 3,116,825
+bytes; all previous split geometry, mesh, metrics and STEP values are unchanged
+except the scope description. The entire expanded torus browser runner passed,
+including private child selection, actual cap/wall witnesses, native parity,
+failed edit/query preservation, camera/pixel guards and private STEP export.
+The README-linked screenshot was captured from the actual running child probe.
+Child mass moments and line/segment/ray queries,
+repeated child cuts and arbitrary oblique torus cuts remain unsupported.
+
+
 [Horizontal torus splitting](docs/nurbs-torus-horizontal-split.md) produces two
 actual closed genus-one B-rep solids by restricting the source NURBS patches and
 adding annular plane caps. Each child supports checked volume, conservative
