@@ -1,5 +1,18 @@
 # Development goal
 
+## Full regression checkpoint: certified retained-bore adapters
+
+The frozen `b44614f` implementation passed the complete native suite:
+328 suites, 1,225 tests, zero failures and zero ignored tests, including two
+documentation tests. The entire `scripts/test-wasm.mjs` runtime script also
+completed with exit zero, covering the existing primitives, NURBS, STEP,
+workflows and the new canonical/oblique/slab bore adapters. Development of the
+next milestone used an isolated worktree while these checks ran.
+
+This verifies the implemented bounded domains; general curved Booleans and
+general bored-frustum STEP import remain unsupported. Overall completion
+remains an engineering estimate of 15–25% toward the standing 80% target.
+
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
 bored solid through hole-radius edits, component selection, incremental rebuilding,
 Undo/Redo and exact STEP export. Mesh-free point classification measures distance
