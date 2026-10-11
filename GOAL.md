@@ -1864,3 +1864,15 @@ two material intervals and the hole-origin forward-ray interval `[2,20/3]`.
 This extends the bounded domain; general crossing-plane cuts, repeated bores,
 generic curved Booleans and generic STEP import remain unsupported.
 The broad estimate remains 15–25% toward the standing 80% target.
+
+## Full regression verification after ordered interior planes
+
+On exact implementation commit `6f199bf`, the entire locked native suite passed:
+321 suites, 1,216 tests, zero failures and zero ignored tests, including both
+documentation tests. The entire WASM runtime script also completed with exit
+zero, including all existing primitives, NURBS, STEP, workflows and the new
+ordered interior-plane geometry, optional mass and point/segment/line/ray blocks.
+Source remained unchanged throughout both checks; subsequent retained-bore work
+was isolated in a separate worktree. This is regression evidence for the bounded
+implementation, not a claim of general curved Booleans or generic STEP support.
+The standing broad estimate remains 15–25% toward the 80% target.
