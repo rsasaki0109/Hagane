@@ -1494,3 +1494,14 @@ quadrature. Independent test quadrature checks the implementation rather than
 supplying kernel metrics. Arithmetic reserves are binary64 engineering checks.
 No OCCT code, copied implementation or new dependency was introduced;
 original code remains MIT OR Apache-2.0.
+
+
+Horizontal child finite segment intersections reuse the independently implemented
+source torus quartic solver, then intersect its material intervals with an affine
+local-Z halfspace. The finite cut cap uses actual annular-plane witnesses from the
+validated child, and retained wall witnesses use the restricted original UVs.
+Root travel error is bounded from the boundary residual and the normal component
+of segment direction, with the original full-body tolerance and world/frame
+arithmetic reserves. Conservative source contact refusals are preserved.
+This elementary interval/plane construction introduces no OCCT source, copied
+implementation or new dependency. Original code remains MIT OR Apache-2.0.

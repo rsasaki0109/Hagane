@@ -1,5 +1,52 @@
 # Development goal
 
+## Actual horizontal torus child finite-segment milestone
+
+Actual cached horizontal children now support mesh-free finite segment
+intersections. Certified source torus quartic material intervals are clipped
+against the actual child's finite annular cap and retained halfspace; all
+returned hits carry actual restricted wall or cap face IDs, original UVs,
+evaluated points, measured distances and oriented normals. Parameters stay in
+the original segment's [0,1] range, with at most four hits and two material
+intervals; inside starts/ends and reversal are supported.
+
+Original full-body tolerance and world/frame guards precede shortcuts. Absolute
+forward-error, physical root separation and interval membership checks reject
+shallow crossings, physical trim rims, boundary endpoints and unresolved contact.
+Source solver refusals remain conservative for discarded tangencies or source
+boundary endpoints. Annular holes and plane extensions supply no ghost cap hit.
+
+The read-only session API, independent seven-value WASM buffer and seventeen-value
+native example use the accepted actual split pair. Browser child-segment probes
+use private accepted selection and preserve geometry, camera, source queries,
+child point results and STEP. Successful source replacement invalidates the pair;
+failed edits, cuts and queries preserve it.
+
+Independent tests verified circle roots, horizontal four-hit/two-interval paths,
+vertical cap/wall crossings, reversed and inside-clipped segments, actual face
+UVs/normals, arbitrary placement and three scales, holes/plane extensions and
+removed-side misses, original relative tolerance, contact/tiny/remote/nonfinite
+refusal, and actual geometry/STEP/query/cache immutability. Formatting, strict
+all-target Clippy, 33 torus native suites with 57 tests and release WASM build
+passed. The 3,116,825-byte full-source JSON remains byte-identical; every previous
+split geometry, display, bounds, volume, mass and STEP field is unchanged except
+the scope description. All prior torus WASM blocks and the new cached-child
+segment blocks passed. Geometry/parameter/UV/normal report parity retains the
+original strict 32-EPS comparison; measured residual distance is independently
+verified against each platform's actual serialized points, then compared with
+coordinate error propagated through the norm. No kernel distance rounding or
+existing helper/assertion relaxation was introduced. The final entire expanded
+torus browser runner passed, including the reported residual-rounding case,
+actual child wall/cap witnesses, private selection, rejected edit/query/cut
+preservation, source/child metrics and probes, camera/pixel guards, private STEP
+export and mobile layout. The linked screenshot was captured from the actual
+running lower-child cap/wall segment demo and visually inspected.
+
+Child line/ray queries, repeated child cuts, arbitrary oblique torus cuts and
+general torus Booleans remain unsupported. Overall completion remains an
+engineering estimate of about **20% (15–25%)**, toward the **80%** goal.
+
+
 ## Actual horizontal torus child mass milestone
 
 Actual validated horizontal children now expose uniform-density world centroids
@@ -25,8 +72,8 @@ and child panels, reset and rejected-edit preservation, camera/pixel guards and
 private STEP export. The linked screenshot was recaptured from the actual running
 WASM child metric and cap-query demo and visually inspected.
 
-Child segment/line/ray queries, repeated child cuts, arbitrary oblique torus
-cuts and general torus Booleans remain unsupported. Overall completion remains
+Child line/ray queries, repeated child cuts, arbitrary oblique torus cuts
+and general torus Booleans remain unsupported; finite segments are implemented above. Overall completion remains
 an engineering estimate of about **20% (15–25%)**, toward the **80%** goal.
 
 [Horizontal torus child point queries](docs/nurbs-torus-horizontal-split.md#mesh-free-child-point-queries)
@@ -60,8 +107,8 @@ except the scope description. The entire expanded torus browser runner passed,
 including private child selection, actual cap/wall witnesses, native parity,
 failed edit/query preservation, camera/pixel guards and private STEP export.
 The README-linked screenshot was captured from the actual running child probe.
-Child line/segment/ray queries, repeated child cuts and arbitrary oblique
-torus cuts remain unsupported; child mass moments are implemented above.
+Child line/ray queries, repeated child cuts and arbitrary oblique torus cuts
+remain unsupported; child mass moments and finite segments are implemented above.
 
 
 [Horizontal torus splitting](docs/nurbs-torus-horizontal-split.md) produces two

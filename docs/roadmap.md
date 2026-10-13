@@ -16,8 +16,8 @@ patches and annular caps in two closed genus-one children, with analytic volumes
 conforming display and exact STEP export. Child point classification uses finite
 retained arcs and annular caps, with actual face/UV witnesses; physical trim-rim
 boundary queries are explicitly refused. Checked analytic child centroids and
-world-axis centroidal inertia are implemented. Child line/segment/ray queries
-remain unsupported. Horn/spindle tori, arbitrary oblique cuts,
+world-axis centroidal inertia and finite segment intersections with actual
+wall/cap witnesses are implemented. Child line/ray queries remain unsupported. Horn/spindle tori, arbitrary oblique cuts,
 torus STEP import, trimming and general torus Booleans remain future work.
 
 [Editable through-bore histories](nurbs-frustum-workflow.md) retain the actual

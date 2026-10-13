@@ -477,3 +477,5 @@ mod nurbs_torus_horizontal_demo;
 mod nurbs_torus_horizontal_classification;
 
 mod nurbs_torus_horizontal_mass;
+
+mod nurbs_torus_horizontal_segment;

@@ -85,6 +85,22 @@ impl NurbsTorusDemoSession {
         let boundary=q.boundary.map(|b|serde_json::json!({"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}));
         Ok(serde_json::json!({"child":if is_lower {"lower"} else {"upper"},"cut_height":body.cut_height(),"point":xyz(point),"location":location,"boundary":boundary}).to_string())
     }
+    /// Mesh-free finite segment on the cached actual selected horizontal child.
+    pub fn intersect_horizontal_segment(
+        &self,
+        is_lower: bool,
+        start: Point3,
+        end: Point3,
+    ) -> Result<String> {
+        let (split, policy) = self.horizontal.as_ref().ok_or(Error::InvalidInput(
+            "torus child segment requires an accepted horizontal split",
+        ))?;
+        let body = if is_lower { &split.lower } else { &split.upper };
+        let result = body.intersect_segment(start, end, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"child":if is_lower {"lower"}else{"upper"},"cut_height":body.cut_height(),"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

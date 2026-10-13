@@ -14,7 +14,7 @@ pub(crate) fn serialize_horizontal_split(
     let frame = source.frame();
     let axes = frame.axes().map(|v| [v.x, v.y, v.z]);
     Ok(
-        serde_json::json!({"kind":"nurbs_torus_horizontal_split","units":"mm","cut_height":height,"source_volume":source.volume(policy)?,"source_radii":source.radii(),"source_placement":{"translation":xyz(frame.origin()),"axes":axes},"cut_plane":{"point":xyz(frame.point(Point3::new(0.,0.,height))),"normal":axes[2]},"lower":lower,"upper":upper,"scope":"two actual closed horizontally bounded rational torus children; accepted full torus unchanged; actual cached child point queries; optional analytic child mass and world centroidal inertia; child segment, line and ray operations unsupported"}),
+        serde_json::json!({"kind":"nurbs_torus_horizontal_split","units":"mm","cut_height":height,"source_volume":source.volume(policy)?,"source_radii":source.radii(),"source_placement":{"translation":xyz(frame.origin()),"axes":axes},"cut_plane":{"point":xyz(frame.point(Point3::new(0.,0.,height))),"normal":axes[2]},"lower":lower,"upper":upper,"scope":"two actual closed horizontally bounded rational torus children; accepted full torus unchanged; actual cached child point and finite segment queries; optional analytic child mass and world centroidal inertia; child line and ray operations unsupported"}),
     )
 }
 fn serialize_child(

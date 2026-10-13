@@ -39,7 +39,7 @@ tiny strips refuse explicitly. The cut must lie strictly inside the tube height;
 top/bottom clearance, annulus width and every retained partial strip must clear
 the original full-body contact band and arithmetic reserves. Nonfinite heights,
 contact, insufficient world precision and unrepresentable child volumes fail.
-General oblique cuts, repeated child cuts and child intersections remain unsupported.
+General oblique cuts and repeated child cuts remain unsupported.
 
 For a horizontal slice, the cross-section area is
 `4*pi*R*sqrt(r*r-z*z)`. Integrating gives each child's volume
@@ -102,7 +102,7 @@ Run `cargo run --example nurbs_torus_horizontal_query`; optional fourteen-value
 JSON input contains the eight source parameters, cut height, chord error, child
 flag and world point. The browser's **Probe viewed cut part** uses the selected
 accepted child; source point/segment/line/ray probes retain their source meaning.
-Child segment/line/ray queries remain unsupported.
+Child line/ray queries remain unsupported.
 
 
 ## Checked child mass moments
@@ -139,3 +139,54 @@ The browser displays these child metrics separately from the full-source panel.
 These formulas are independently derived from disk integration and rotational
 symmetry; see the public calculus and parallel-axis references in
 [references](references.md). No OCCT source or new dependency was used.
+
+
+## Mesh-free child finite segments
+
+`child.intersect_segment(start, end, policy)` returns ordered
+`NurbsTorusSegmentHit` values and material intervals in the original segment's
+`[0,1]` parameter. It reads the validated actual child; the display mesh is never
+used. The existing certified source torus quartic solver supplies wall roots and
+material intervals. Intersecting those intervals with the child's local-Z
+halfspace adds the finite annular cut-cap crossing. Every retained wall or cap
+hit is certified again through the actual child's point-query witness, preserving
+its face ID, original surface UV, evaluated point, distance and oriented normal.
+
+Endpoints, root separation and material intervals must resolve at the original
+full-source tolerance scale. A forward-error check rejects shallow crossings.
+Boundary endpoints, physical trim-rim hits, segments coincident with cap material
+and unresolved contacts fail explicitly. Source quartic refusals remain
+conservative even when a tangent or source-boundary endpoint lies in the
+discarded halfspace; this API does not claim a general
+trimmed-surface intersection solver. Accepted inside starts/ends clip material
+intervals to zero/one; reversing a segment preserves geometry and reverses its
+original parameterization. The cap hole and plane extensions carry no invented
+surface hit.
+
+`NurbsTorusDemoSession::intersect_horizontal_segment(is_lower, start, end)`
+queries the cached actual split pair without rebuilding display or STEP. Failed
+queries, cuts and source edits preserve the accepted pair; successful source
+replacement invalidates it. The independent seven-value WASM transport uses
+`hagane_nurbs_torus_horizontal_segment_begin/push/finish` and accepts
+`[lower_flag, start_x, start_y, start_z, end_x, end_y, end_z]`; exactly one selects
+lower and zero selects upper. Its malformed-input latch is independent of all
+source, cut and point-query buffers.
+
+Run `cargo run --example nurbs_torus_horizontal_segment` for a vertical cap/wall
+intersection. Optional seventeen-value JSON input contains the eight source
+parameters, cut height and chord error, child flag and six world coordinates.
+The browser's **Probe viewed cut segment** reads the privately accepted selected
+child. Full-source point, segment, line and ray probes keep their source meaning;
+child probes preserve the rendered geometry, camera, prior point probe and STEP.
+Child line/ray intersections, repeated cuts and arbitrary oblique torus cuts are
+still unsupported.
+
+
+Native/WASM regression compares child-segment geometry, parameters, face IDs,
+UVs and normals with the existing strict 32-EPS numeric checks. The measured
+residual distance is checked independently against each report's actual hit and
+surface-point coordinates. Its cross-platform bound propagates those coordinate
+differences through the Euclidean norm, using the triangle inequality. A tiny
+residual obtained by subtracting world coordinates does not inherit their
+relative precision. This test does not round, replace or waive the kernel's
+measured distance, its absolute physical limit or its forward-error guards.
