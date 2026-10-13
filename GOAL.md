@@ -1,5 +1,44 @@
 # Development goal
 
+## Actual torus slab finite-segment milestone
+
+The actual retained slab now supports mesh-free finite segments with up to four
+ordered actual cap/wall hits and two material intervals. Both finite annular caps
+clip original source intervals; wall witnesses retain original restricted-face
+UV provenance. Boundary endpoints, physical rims, tangencies, cap-coincident
+material and unresolved physical root precision refuse explicitly.
+
+Separate native/session/WASM and viewed-slab browser probes use the actual cached
+body and stored policy. Successful and rejected queries preserve source, split
+children, slab geometry, point queries, section overlays and exact cached STEP.
+Independent analytic tests cover four circle roots, both cap crossings, mixed
+cap/wall crossings, reversed and inside-clipped intervals, ordinary signed bands,
+rigid placement and three scales. The mixed crossing oracle measures physical
+root error rather than assuming a fixed dimensionless parameter tolerance.
+
+Final formatting, strict all-target Clippy, full native regression with 380
+suites and 1,316 passed tests (zero failed/ignored, including two doc tests),
+and release WASM build passed. Source and one-plane split native reports remain
+byte-identical; target and browser WASM artifacts match exactly. Read-only
+precision review found no actionable defect. Every existing torus WASM block
+and the complete new slab-segment block passed against this final artifact.
+Independent analytic roots, intervals, actual UV/normals, signed ordinary bands,
+placement/scales, explicit refusal, isolated transport and immutable cached STEP
+passed; original assertions and 32-EPS helpers remain unchanged. Only the new
+measured residual uses the existing coordinate-propagation comparison.
+The entire browser runner passed existing and new operations, actual mixed
+cap/wall witnesses, reversal/inside endpoints, private selection, refusal and
+state preservation, placement/scales and imported sources. An initial browser
+startup failure exposed a newline escaping mistake in the new result text; only
+that display string was corrected before rerunning the unchanged full suite.
+The separate actual screenshot was captured from the final WASM and visually
+inspected, showing retained slab point data and lower-cap/outer-wall segment hits.
+Older screenshots remain unchanged.
+
+Slab line/ray intersections, slab mass properties, oblique slabs and general torus
+Booleans remain future work. Broad completion remains **20% (15–25%)**, toward
+**80%**. See [slab segment scope](docs/nurbs-torus-slab-segment.md).
+
 ## Actual torus slab point-query milestone
 
 `NurbsTorusHorizontalSlab::point_query` and `classify_point` now inspect the
@@ -52,7 +91,7 @@ captured from the final actual WASM and visually inspected, showing a successful
 upper-cap Boundary witness with face 17, UV, world point and outward normal.
 Earlier screenshots remain unchanged.
 
-Slab segment/line/ray intersections, slab mass properties, oblique slabs and
+Slab line/ray intersections, slab mass properties, oblique slabs and
 general torus Booleans remain future work. Overall completion remains an
 engineering estimate of **20% (15–25%)**, toward the **80%** goal. See
 [slab point-query scope](docs/nurbs-torus-slab-classification.md).

@@ -214,6 +214,16 @@ impl NurbsTorusDemoSession {
         let boundary=result.boundary.map(|b|serde_json::json!({"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}));
         Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_point","heights":body.heights(),"point":xyz(point),"location":location,"boundary":boundary}).to_string())
     }
+    /// Read-only finite segment of the accepted actual slab and stored policy.
+    pub fn intersect_slab_segment(&self, start: Point3, end: Point3) -> Result<String> {
+        let (body, policy) = self.slab.as_ref().ok_or(Error::InvalidInput(
+            "torus slab segment requires an accepted slab",
+        ))?;
+        let result = body.intersect_segment(start, end, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_segment","heights":body.heights(),"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

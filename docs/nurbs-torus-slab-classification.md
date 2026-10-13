@@ -70,7 +70,7 @@ slab_chord, x, y, z]`. In the [torus browser demo](nurbs-torus.md), the separate
 slab point control is enabled only while viewing a privately accepted slab.
 Failed queries preserve the previous result, geometry, camera and exports.
 
-Slab segment, line and ray intersections, slab inertia and general curved-body
-queries remain unsupported. Original implementation is MIT OR Apache-2.0;
+[Slab finite segments](nurbs-torus-slab-segment.md) are implemented. Slab line
+and ray intersections, slab inertia and general curved-body queries remain unsupported. Original implementation is MIT OR Apache-2.0;
 no dependency, OCCT source or copied algorithm is introduced. See the elementary
 Euclidean and rational-geometry derivations in [references](references.md).
