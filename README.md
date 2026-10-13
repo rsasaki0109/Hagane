@@ -37,7 +37,9 @@ centroids and full world-axis centroidal inertia use analytic disk-segment momen
 Child finite segments, lines and rays return actual retained wall and annular cap
 witnesses with material intervals in the original parameter. Rays clip intervals
 that start inside the selected child.
-Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
+[Bounded torus STEP import](docs/nurbs-torus-step-import.md) retains exact canonical
+rational geometry in resolved signed-cardinal placements and millimetres.
+Horn/spindle tori, general torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual
 bored solid through hole-radius edits, component selection, incremental rebuilding,

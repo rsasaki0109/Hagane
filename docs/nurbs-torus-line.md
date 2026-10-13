@@ -53,7 +53,7 @@ or frame precision, tangencies, close roots, unresolved crop/mapping and
 boundary-band ray origins return explicit errors. Rays currently resolve the
 entire supporting line first: an unresolved backward tangency also refuses the
 ray even if its forward part would miss. General torus closest points, trimming,
-STEP import and Booleans remain unsupported.
+General STEP import and Booleans remain unsupported.
 
 `NurbsTorusDemoSession::intersect_line` and `intersect_ray` read the actual
 accepted Rust body and its tolerance policy. Separate six-value WASM transports
@@ -67,3 +67,7 @@ also accepts a fourteen-value JSON array: the eight model parameters followed
 by origin XYZ and direction XYZ. The browser demo has separate line and ray
 buttons with the same world coordinates and nonunit direction inputs; dirty
 model fields do not replace the accepted query source.
+
+
+[Bounded cardinal torus STEP import](nurbs-torus-step-import.md) now retains
+the actual canonical rational B-rep in its separate millimetre representation domain.

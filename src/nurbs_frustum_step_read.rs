@@ -528,25 +528,30 @@ impl Builder<'_> {
 }
 /// Decode bounded actual geometry; canonical frustum recognition is separate.
 pub(crate) fn read_frustum_solid(input: &str, tol: Tolerance) -> Result<ParsedFrustumStep> {
-    read_frustum_solid_mode(input, tol, false, false)
+    read_frustum_solid_mode(input, tol, false, false, false)
 }
 pub(crate) fn read_frustum_cardinal_solid(
     input: &str,
     tol: Tolerance,
 ) -> Result<ParsedFrustumStep> {
-    read_frustum_solid_mode(input, tol, true, false)
+    read_frustum_solid_mode(input, tol, true, false, false)
 }
 pub(crate) fn read_bored_frustum_cardinal_solid(
     input: &str,
     tol: Tolerance,
 ) -> Result<ParsedFrustumStep> {
-    read_frustum_solid_mode(input, tol, true, true)
+    read_frustum_solid_mode(input, tol, true, true, false)
+}
+/// Isolated opt-in torus cardinal reader; every old mode keeps its old counts.
+pub(crate) fn read_torus_cardinal_solid(input: &str, tol: Tolerance) -> Result<ParsedFrustumStep> {
+    read_frustum_solid_mode(input, tol, true, false, true)
 }
 fn read_frustum_solid_mode(
     input: &str,
     tol: Tolerance,
     cardinal: bool,
     bored: bool,
+    torus: bool,
 ) -> Result<ParsedFrustumStep> {
     Tolerance::new(tol.linear)?;
     let db = Parser::new(input)?.document_polygon_graph()?;
@@ -558,7 +563,15 @@ fn read_frustum_solid_mode(
     }
     let shell = db.simple(shell_id, "CLOSED_SHELL", 2)?;
     let faces = list(&shell[1])?;
-    if faces.len() != if bored { 10 } else { 6 } {
+    if faces.len()
+        != if torus {
+            16
+        } else if bored {
+            10
+        } else {
+            6
+        }
+    {
         return Err(unsupported());
     }
     let representation = db.unique("ADVANCED_BREP_SHAPE_REPRESENTATION")?;
@@ -568,9 +581,11 @@ fn read_frustum_solid_mode(
     }
     let scale = db.units(reference(&shape[2])?)?;
     if scale != 1. {
-        return Err(Error::Unsupported(
-            "frustum STEP import supports millimetres only",
-        ));
+        return Err(Error::Unsupported(if torus {
+            "torus STEP import supports millimetres only"
+        } else {
+            "frustum STEP import supports millimetres only"
+        }));
     }
     let mut builder = Builder {
         db: &db,
@@ -597,12 +612,38 @@ fn read_frustum_solid_mode(
         }
         builder.face(id)?;
     }
-    let expected = if bored { (16, 24, 10) } else { (8, 12, 6) };
+    let expected = if torus {
+        (16, 32, 16)
+    } else if bored {
+        (16, 24, 10)
+    } else {
+        (8, 12, 6)
+    };
     if (
         builder.solid.vertices.len(),
         builder.solid.edges.len(),
         builder.solid.shell.faces.len(),
     ) != expected
+    {
+        return Err(unsupported());
+    }
+    if torus
+        && (builder
+            .solid
+            .edges
+            .iter()
+            .any(|e| !matches!(e.curve, Curve::Nurbs(_)))
+            || builder.solid.shell.faces.iter().any(|f| {
+                !matches!(f.surface, Surface::Nurbs(_))
+                    || f.wires.len() != 1
+                    || f.wires[0].coedges.len() != 4
+                    || f.wires[0]
+                        .coedges
+                        .iter()
+                        .any(|c| !matches!(c.pcurve, PCurve::Affine { .. }))
+            })
+            || !builder.lines.is_empty()
+            || builder.affine.len() != 64)
     {
         return Err(unsupported());
     }
@@ -676,9 +717,11 @@ fn read_frustum_solid_mode(
             .any(|(name, _)| GEOMETRY.contains(&name.as_str()))
             && !db.used.borrow().contains(&id)
         {
-            return Err(Error::Unsupported(
-                "STEP frustum contains unused or unrepresented geometry",
-            ));
+            return Err(Error::Unsupported(if torus {
+                "STEP torus contains unused or unrepresented geometry"
+            } else {
+                "STEP frustum contains unused or unrepresented geometry"
+            }));
         }
     }
     Ok(ParsedFrustumStep {

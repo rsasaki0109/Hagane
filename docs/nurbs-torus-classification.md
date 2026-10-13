@@ -53,3 +53,7 @@ This supports point classification and boundary witnesses on regular ring tori.
 [Line/ray intersections](nurbs-torus-line.md) are also implemented.
 General closest points, trimming, torus STEP
 import and torus Booleans remain unsupported.
+
+
+[Bounded cardinal torus STEP import](nurbs-torus-step-import.md) now retains
+the actual canonical rational B-rep in its separate millimetre representation domain.

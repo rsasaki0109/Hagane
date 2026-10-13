@@ -233,4 +233,4 @@ probes and the other line/ray result. Separate full-source probes keep their
 source meaning. Native/WASM geometry comparisons and independently checked,
 coordinate-propagated measured-distance comparisons use the same policy described
 for child segments above. Repeated child cuts, arbitrary oblique torus cuts,
-STEP import and general torus Booleans remain future work.
+horizontal-child STEP import and general torus Booleans remain future work.

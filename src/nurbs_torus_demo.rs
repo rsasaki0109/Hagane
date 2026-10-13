@@ -21,6 +21,24 @@ impl NurbsTorusDemoSession {
         self.horizontal = None;
         Ok(report)
     }
+    /// Import an exact bounded cardinal STEP body transactionally.
+    pub fn import_step_cardinal(
+        &mut self,
+        text: &str,
+        chord: f64,
+        policy: GeometryTolerance,
+    ) -> Result<String> {
+        if !chord.is_finite() || chord <= 0. {
+            return Err(Error::InvalidInput(
+                "torus STEP display chord must be finite and positive",
+            ));
+        }
+        let body = import_step_nurbs_torus_cardinal_mm(text, policy)?;
+        let report = serialize_torus(&body, policy, chord)?.to_string();
+        self.accepted = Some((body, policy));
+        self.horizontal = None;
+        Ok(report)
+    }
     /// Mesh-free, read-only query of the accepted typed B-rep and its policy.
     pub fn query_point(&self, point: Point3) -> Result<String> {
         let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
@@ -203,6 +221,6 @@ pub(crate) fn serialize_torus(
         "mesh":{"positions":mesh.positions.iter().map(|p|xyz(*p)).collect::<Vec<_>>(),"normals":mesh.normals.iter().map(|n|[n.x,n.y,n.z]).collect::<Vec<_>>(),"triangles":mesh.triangles,"face_ids":mesh.face_ids},
         "brep":crate::nurbs_graph_polygon_demo::serialize_graph_brep(body.solid())?,"closed":true,"genus":1,
         "step":body.export_step_mm(policy)?,"step_exact":true,"step_schema":"AUTOMOTIVE_DESIGN","import_supported":false,
-        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point, finite segment, line and ray queries; torus import and general Booleans unsupported"}),
+        "scope":"exact regular ring torus with sixteen rational tensor patches; bounded B-rep display and exact STEP export; mesh-free actual accepted-body point, finite segment, line and ray queries; bounded exact cardinal millimetre STEP import; general torus import and Booleans unsupported"}),
     )
 }

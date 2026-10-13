@@ -1,5 +1,56 @@
 # Development goal
 
+## Bounded exact cardinal torus STEP import milestone
+
+A separate `import_step_nurbs_torus_cardinal_mm` API now reads one actual regular
+ring-torus B-rep in millimetres, with resolved signed-cardinal axes and translation.
+Sixteen exact degree-(2,2) rational patches, sixteen vertices, thirty-two shared
+quadratic edges and sixty-four affine parameter attachments are decoded, then
+verified against a complete exact represented-preimage certificate. All imported
+coefficients/topology are retained through complete bijective reindexing; affine
+primary parameters are reconstructed only after exact raw serialization proof.
+No tolerance fitting, geometry replacement, unit conversion or OCCT code is used.
+
+The first encoded canonical patch anchors parameter phase. Nominal constructor
+radius bits may be lost in translation; deterministic seed-first bounded-neighbor
+recognition finds a complete exact represented preimage without claiming their
+unique recovery. All actual geometry remains unchanged. Arbitrary non-cardinal
+placements, alternate parameter/weight/knots, toroidal analytic proxies, imported
+horizontal children, assemblies and general torus STEP import remain unsupported.
+The new raw reader is opt-in; existing frustum import admission is unchanged.
+
+Transactional native/session import and independent bounded byte WASM transport
+serialize the actual body before commit. Failed STEP, units, policy or display
+requests retain source, child pair, probes and exports. Successful import replaces
+the source and invalidates old children. The browser accepts text/files and keeps
+imported geometry separate from the single-angle parametric editor, with explicit
+restore of its privately remembered model.
+
+Independent tests verify twenty-four signed-cardinal translated frames and three
+scales, exact actual B-rep and STEP retention, masses/points/display, record/ID and
+cyclic-loop reordering, deterministic ambiguous-preimage admission, one-ULP
+coefficient/weight/knots/UV changes and orientation/unit/unused-data/arbitrary-pose/
+child-body/malformed/precision refusal. Core and independent tests plus twelve
+legacy frustum importer tests passed. Formatting, strict all-target Clippy,
+full native regression with 368 suites/1,294 passed tests (zero failed/ignored,
+including two doc tests), and release WASM build passed. Every previous full-source
+report field is unchanged except its capability scope, and the previous split
+report is byte-identical. The shared-reader WASM regression covering the entire
+legacy frustum suffix and all old/new torus blocks passed. A subsequent tighter
+32-EPS synthetic normal oracle was verified by the current new-import block;
+all existing native full-report helpers/assertions remain unchanged. Actual
+coefficients, canonical re-export, unit/UTF-8/budget rejection and accepted
+source/child transaction checks passed. The entire browser runner passed,
+including text/file import, native parity, independent imported-body probes,
+private model restoration, failed-state/camera/pixel preservation, STEP export
+and responsive layout. The linked screenshot was captured from an actual
+imported cardinal source with a successful point probe and visually inspected.
+
+Repeated child cuts, arbitrary oblique torus cuts and general Booleans remain
+future work. Overall completion remains an engineering estimate of about
+**20% (15–25%)**, toward the **80%** goal.
+
+
 ## Actual horizontal torus child line/ray milestone
 
 Actual accepted horizontal children now support mesh-free infinite lines and
@@ -46,8 +97,8 @@ probes/metrics, rejected-state preservation, pixel/camera guards, private STEP
 export and mobile layout. The linked screenshot was captured from the actual
 running lower-child line/ray demo and visually inspected.
 
-Repeated child cuts, arbitrary oblique torus cuts, STEP import and general torus
-Booleans remain future work. Overall completion remains an engineering estimate
+Repeated child cuts, arbitrary oblique torus cuts, general STEP import and torus
+Booleans remain future work; bounded cardinal import is implemented above. Overall completion remains an engineering estimate
 of about **20% (15–25%)**, toward the **80%** goal.
 
 

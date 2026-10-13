@@ -2968,6 +2968,62 @@ mod exports {
             )),
         })
     }
+    static NURBS_TORUS_STEP_IMPORT_INPUT: Mutex<(Vec<u8>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_step_import_begin() {
+        let mut input = NURBS_TORUS_STEP_IMPORT_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_step_import_push_byte(byte: u32) -> i32 {
+        let mut input = NURBS_TORUS_STEP_IMPORT_INPUT.lock().unwrap();
+        if input.1 || byte > 255 || input.0.len() >= 2 * 1024 * 1024 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(byte as u8);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_step_import_finish(chord: f64, linear: f64) -> i32 {
+        let (bytes, bad) = {
+            let mut input = NURBS_TORUS_STEP_IMPORT_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus STEP transport exceeds 2 MiB or has invalid bytes",
+            )));
+        }
+        if !chord.is_finite() || chord <= 0. || !linear.is_finite() || linear <= 0. {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus STEP chord and linear tolerance must be finite and positive",
+            )));
+        }
+        let text = match std::str::from_utf8(&bytes) {
+            Ok(t) => t,
+            Err(_) => {
+                return generate(Err(crate::Error::InvalidInput(
+                    "torus STEP import must be UTF-8",
+                )))
+            }
+        };
+        let policy = match crate::GeometryTolerance::new(
+            linear,
+            crate::GeometryTolerance::default().angular(),
+            0.,
+        ) {
+            Ok(p) => p,
+            Err(e) => return generate(Err(e)),
+        };
+        let mut session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(
+            session
+                .get_or_insert_with(crate::NurbsTorusDemoSession::new)
+                .import_step_cardinal(text, chord, policy),
+        )
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

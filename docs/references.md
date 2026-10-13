@@ -1515,3 +1515,13 @@ error certify each mapped witness. Positive ray intervals are clipped according
 to actual child membership; source contacts behind the origin remain conservative
 refusals. These elementary slab/parameter derivations add no OCCT source, copied
 implementation or dependency. Original code remains MIT OR Apache-2.0.
+
+
+Bounded cardinal torus STEP recognition decodes the existing ISO 10303-21/42
+entities, anchors parameter phase to an actual encoded patch, infers literal
+cardinal axes and tests finite neighboring radius preimages. Admission requires
+complete exact actual control-net, curve, raw affine pcurve and oriented-topology
+agreement; source input radius bits lost in translation cannot be reconstructed
+uniquely. Reindexing retains actual imported data and the full typed torus
+certificate. No approximate fit, OCCT source or new dependency is used.
+Original code remains MIT OR Apache-2.0.

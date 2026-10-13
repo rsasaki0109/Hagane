@@ -47,7 +47,7 @@ world/frame precision and exhausted isolation budgets return explicit errors.
 The bounded solver uses at most 4096 subdivision cells and depth 64; its
 bisection budget is 128 iterations. A rejected query leaves the B-rep unchanged.
 [Line/ray queries](nurbs-torus-line.md) use checked finite enclosures.
-General trimming, torus STEP import and torus Booleans remain
+General trimming, general torus STEP import and torus Booleans remain
 unsupported.
 
 `NurbsTorusDemoSession::intersect_segment` reads the actual accepted body and
@@ -61,3 +61,7 @@ Run `cargo run --example nurbs_torus_segment` for the four-crossing example.
 It also accepts a JSON array of fourteen values: the eight model parameters
 from `nurbs_torus`, followed by start XYZ and end XYZ. Browser instructions are
 in [the torus demo](nurbs-torus.md).
+
+
+[Bounded cardinal torus STEP import](nurbs-torus-step-import.md) now retains
+the actual canonical rational B-rep in its separate millimetre representation domain.
