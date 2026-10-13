@@ -1494,6 +1494,15 @@ caps. Independent quadrature and triangle samples verify these derivations.
 No OCCT source, copied implementation or new dependency is used; original code
 is MIT OR Apache-2.0.
 
+Slab point queries independently minimize meridian distance over the retained
+tube-circle arcs and their four finite rim endpoints. Annular-cap distance is
+the hypotenuse of radial distance to its finite annulus and height distance to
+the cut plane. Actual witnesses map original source UVs to restricted faces or
+solve the represented cap basis Gram system, with original full-body tolerance
+and world/frame arithmetic guards. This elementary Euclidean derivation uses
+no OCCT source, copied algorithm or new dependency; original code is
+MIT OR Apache-2.0.
+
 
 Horizontal torus child classification independently minimizes distance in the
 radial/height meridian plane over a retained circular arc, using its two endpoints

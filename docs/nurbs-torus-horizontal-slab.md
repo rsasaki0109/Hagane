@@ -49,8 +49,10 @@ partial strips, annular widths and world-coordinate precision must resolve the
 original full-body tolerance and arithmetic reserves. Literal zero is allowed;
 near-zero nonzero boundaries never snap to zero. Contacts, unresolved dimensions,
 invalid/nonfinite inputs and insufficient display budgets return explicit errors.
-Oblique slabs, imported slab STEP bodies, slab mass properties, slab geometry
-queries and general torus Booleans remain unsupported.
+Oblique slabs, imported slab STEP bodies, slab mass properties, slab segment/
+line/ray queries and general torus Booleans remain unsupported.
+[Slab point queries](nurbs-torus-slab-classification.md) classify the actual
+retained walls and finite annular caps with checked face/UV witnesses.
 
 The ideal cross-section area is `4*pi*R*sqrt(r*r-z*z)`; integrating between
 the two retained heights gives the slab volume. Independent numerical quadrature
@@ -88,8 +90,9 @@ Run `cargo run --locked --example nurbs_torus_horizontal_slab`. An optional JSON
 array contains `[major, minor, rotation_y_radians, tx, ty, tz, linear, chord,
 lower, upper, slab_chord]`. The existing [torus demo](nurbs-torus.md) can preview
 and download a slab, then switch back to the source or previous split children.
-Source probes continue to query the full source. Child probes are disabled in
-the slab preview because slab queries are not implemented. Rejected operations
+Source probes continue to query the full source. Cut-child probes are disabled in
+the slab preview; separate slab point controls use its actual accepted body.
+Slab segment, line and ray queries remain unsupported. Rejected operations
 preserve the previous preview and export; a source section overlay remains
 associated with the full source and can be shown over the slab.
 

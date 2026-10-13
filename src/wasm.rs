@@ -3106,6 +3106,42 @@ mod exports {
             )),
         })
     }
+    static NURBS_TORUS_SLAB_POINT_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_point_begin() {
+        let mut input = NURBS_TORUS_SLAB_POINT_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_point_push(value: f64) -> i32 {
+        let mut input = NURBS_TORUS_SLAB_POINT_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 3 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_point_finish() -> i32 {
+        let (v, bad) = {
+            let mut input = NURBS_TORUS_SLAB_POINT_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad || v.len() != 3 {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus slab point query requires three finite values",
+            )));
+        }
+        let session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(match session.as_ref() {
+            Some(s) => s.query_slab_point(crate::Point3::new(v[0], v[1], v[2])),
+            None => Err(crate::Error::InvalidInput(
+                "torus slab point query requires an accepted slab",
+            )),
+        })
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

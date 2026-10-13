@@ -1,5 +1,62 @@
 # Development goal
 
+## Actual torus slab point-query milestone
+
+`NurbsTorusHorizontalSlab::point_query` and `classify_point` now inspect the
+actual accepted band with mesh-free finite Euclidean boundary distances. Two
+retained meridian arcs and both finite annular caps prevent ghost boundary
+results in cap holes, plane extensions and discarded source walls. Actual wall
+witnesses map original source UVs into their restricted slab face; cap witnesses
+evaluate the represented plane and check annular material and the other cap.
+Returned face/UV, point, measured distance and outward normal belong to the
+actual accepted B-rep.
+
+Original full-source tolerance, shape/frame/world precision checks precede miss
+shortcuts. Physical trim rims, unresolved tolerance margins and invalid inputs
+refuse explicitly; quarter seams retain deterministic original parameters. No
+mesh substitute, snap or generic closest-point guarantee is introduced.
+
+Read-only native/session/WASM probes use the accepted slab and stored policy.
+They preserve source, one-plane children, slab, section and exact STEP exports
+on success and failure. A separate finite three-value transport isolates malformed
+point input. Browser controls use private slab preview selection and retain the
+previous result after rejection; source/child probes keep their original bodies.
+Slab reports change only their scope text to announce point support.
+
+Independent tests passed actual wall/cap UV and normals with inside/outside band
+offsets, signed ordinary/zero/crossing ranges, rigid placement and three scales,
+finite annular holes/extensions, discarded-source material, diagonal Euclidean
+rim-distance cases, original relative-policy/world refusal and immutable B-rep/
+STEP. Session tests confirm retained pointers, source/child query results and
+cached exports through successful/failed queries and rejected edits.
+
+Final formatting, strict all-target Clippy, full native regression with 377
+suites and 1,311 passed tests (zero failed/ignored, including two doc tests),
+and release WASM build passed. Previous full-source and horizontal-split native
+reports remain byte-identical. Read-only review found no concrete geometry or
+precision defect; original point-query APIs and slab geometry remain unchanged.
+Every existing torus WASM block passed unchanged, including STEP import, sections,
+slab geometry and cached-child queries. The complete current new point block
+passed 336 native comparisons, independent finite Euclidean distances, actual
+UV/normals, immutable cached STEP, isolated transport and source invalidation.
+All existing 32-EPS helpers remain unchanged; the new measured-distance comparison
+independently checks each platform's serialized point-pair norm and limits its
+cross-platform difference by coordinate propagation. Only the new test's initial
+expected kind-label typo was corrected; no kernel or old oracle changed.
+The entire browser runner passed every previous check plus actual cap/wall
+point witnesses, finite inside/outside cases, physical-rim/world/input refusal,
+private slab selection, unchanged pixels/mesh/exports, placement/scale/native
+reports and cardinal imported sources. Original browser 32-EPS comparators
+remained unchanged, including measured distances. The separate screenshot was
+captured from the final actual WASM and visually inspected, showing a successful
+upper-cap Boundary witness with face 17, UV, world point and outward normal.
+Earlier screenshots remain unchanged.
+
+Slab segment/line/ray intersections, slab mass properties, oblique slabs and
+general torus Booleans remain future work. Overall completion remains an
+engineering estimate of **20% (15–25%)**, toward the **80%** goal. See
+[slab point-query scope](docs/nurbs-torus-slab-classification.md).
+
 ## Actual horizontal torus slab milestone
 
 `NurbsTorusSolid::slab_between_local_z` now retains material between two strictly

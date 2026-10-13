@@ -45,6 +45,8 @@ attachments independently of display and without replacing the accepted solid.
 [Horizontal slabs](docs/nurbs-torus-horizontal-slab.md) retain material between
 two local horizontal planes as a closed rational B-rep with two annular caps,
 analytic volume, bounded display and actual STEP export.
+[Slab point queries](docs/nurbs-torus-slab-classification.md) classify the actual
+retained body using finite walls and annular caps, with actual face/UV witnesses.
 Horn/spindle tori, general torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

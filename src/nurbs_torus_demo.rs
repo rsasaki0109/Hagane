@@ -199,6 +199,21 @@ impl NurbsTorusDemoSession {
         let step = body.export_step_mm(*policy)?;
         Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_step","heights":body.heights(),"step":step,"step_exact":true}).to_string())
     }
+    /// Read-only point query of the accepted actual slab and its policy.
+    pub fn query_slab_point(&self, point: Point3) -> Result<String> {
+        let (body, policy) = self.slab.as_ref().ok_or(Error::InvalidInput(
+            "torus slab point query requires an accepted slab",
+        ))?;
+        let result = body.point_query(point, *policy)?;
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let location = match result.location {
+            PointLocation::Inside => "inside",
+            PointLocation::Outside => "outside",
+            PointLocation::Boundary => "boundary",
+        };
+        let boundary=result.boundary.map(|b|serde_json::json!({"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}));
+        Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_point","heights":body.heights(),"point":xyz(point),"location":location,"boundary":boundary}).to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

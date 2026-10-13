@@ -27,6 +27,9 @@ provenance, including both adjacent faces at literal-zero seams.
 [Horizontal slabs](nurbs-torus-horizontal-slab.md) retain two original curved
 wall chains and close them with opposing annular caps, with analytic volume,
 conforming bounded display, transactional preview and actual STEP export.
+[Slab point queries](nurbs-torus-slab-classification.md) use finite Euclidean
+boundary distances and actual restricted-face/cap witnesses without changing
+the source, split pair or accepted slab.
 Horn/spindle tori, arbitrary oblique cuts, general torus STEP import, trimming
 and general torus Booleans remain future work.
 
