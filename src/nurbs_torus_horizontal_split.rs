@@ -23,7 +23,7 @@ fn inverse(x: f64, y: f64) -> f64 {
     let k = y / (1. + x);
     std::f64::consts::SQRT_2 * k / (1. + (std::f64::consts::SQRT_2 - 1.) * k)
 }
-fn ranges(c: f64, r: f64, lower: bool) -> Result<Vec<(usize, [f64; 2])>> {
+pub(crate) fn ranges(c: f64, r: f64, lower: bool) -> Result<Vec<(usize, [f64; 2])>> {
     if c == 0. {
         return Ok(if lower {
             vec![(2, [0., 1.]), (3, [0., 1.])]
@@ -45,7 +45,7 @@ fn ranges(c: f64, r: f64, lower: bool) -> Result<Vec<(usize, [f64; 2])>> {
         (false, false) => vec![(3, [b, 1.]), (0, [0., 1.]), (1, [0., 1.]), (2, [0., a])],
     })
 }
-fn parameters(source: &NurbsTorusSolid, c: f64, p: GeometryTolerance) -> Result<f64> {
+pub(crate) fn parameters(source: &NurbsTorusSolid, c: f64, p: GeometryTolerance) -> Result<f64> {
     source.validate(p)?;
     let [major, minor] = source.radii();
     if !c.is_finite() || c.abs() >= minor {
@@ -85,7 +85,7 @@ fn surface(source: &NurbsTorusSolid, i: usize, q: usize) -> Result<&NurbsSurface
         _ => Err(unresolved()),
     }
 }
-fn cap_curve(curve: &NurbsCurve, plane: &Surface) -> Result<NurbsCurve> {
+pub(crate) fn cap_curve(curve: &NurbsCurve, plane: &Surface) -> Result<NurbsCurve> {
     let Surface::Plane { origin, u, v } = *plane else {
         return Err(unresolved());
     };
@@ -117,10 +117,8 @@ fn cap_curve(curve: &NurbsCurve, plane: &Surface) -> Result<NurbsCurve> {
         curve.weights().to_vec(),
     )
 }
-fn build(
+pub(crate) fn build_strip_walls(
     source: &NurbsTorusSolid,
-    c: f64,
-    lower: bool,
     strips: &[(usize, [f64; 2])],
 ) -> Result<Solid> {
     let n = strips.len();
@@ -180,6 +178,16 @@ fn build(
             });
         }
     }
+    Ok(s)
+}
+fn build(
+    source: &NurbsTorusSolid,
+    c: f64,
+    lower: bool,
+    strips: &[(usize, [f64; 2])],
+) -> Result<Solid> {
+    let n = strips.len();
+    let mut s = build_strip_walls(source, strips)?;
     let frame = source.frame();
     let plane = Surface::Plane {
         origin: frame.point(Point3::new(0., 0., c)),

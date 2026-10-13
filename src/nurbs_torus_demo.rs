@@ -6,6 +6,7 @@ use crate::*;
 pub struct NurbsTorusDemoSession {
     accepted: Option<(NurbsTorusSolid, GeometryTolerance)>,
     horizontal: Option<(NurbsTorusHorizontalSplit, GeometryTolerance)>,
+    slab: Option<(NurbsTorusHorizontalSlab, GeometryTolerance)>,
 }
 impl NurbsTorusDemoSession {
     pub fn new() -> Self {
@@ -19,6 +20,7 @@ impl NurbsTorusDemoSession {
         let report = serialize_torus(&body, policy, x[7])?.to_string();
         self.accepted = Some((body, policy));
         self.horizontal = None;
+        self.slab = None;
         Ok(report)
     }
     /// Import an exact bounded cardinal STEP body transactionally.
@@ -37,6 +39,7 @@ impl NurbsTorusDemoSession {
         let report = serialize_torus(&body, policy, chord)?.to_string();
         self.accepted = Some((body, policy));
         self.horizontal = None;
+        self.slab = None;
         Ok(report)
     }
     /// Mesh-free, read-only query of the accepted typed B-rep and its policy.
@@ -163,6 +166,38 @@ impl NurbsTorusDemoSession {
         ))?;
         crate::nurbs_torus_section_demo::serialize_section(body, height, chord, *policy)
             .map(|v| v.to_string())
+    }
+    /// Create and display an actual slab while retaining source and cut-pair caches.
+    /// Heights and display chord are in source millimetres.
+    pub fn slab_horizontal(&mut self, lo: f64, hi: f64, chord: f64) -> Result<String> {
+        if !lo.is_finite() || !hi.is_finite() || !chord.is_finite() || chord <= 0. {
+            return Err(Error::InvalidInput(
+                "torus slab requires finite bounds and positive finite chord",
+            ));
+        }
+        let (source, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus slab requires an accepted source",
+        ))?;
+        let body = source.slab_between_local_z([lo, hi], *policy)?;
+        let report =
+            crate::nurbs_torus_horizontal_slab_demo::serialize_slab(&body, chord, *policy)?
+                .to_string();
+        self.slab = Some((body, *policy));
+        Ok(report)
+    }
+    pub fn accepted_slab(&self) -> Option<&NurbsTorusHorizontalSlab> {
+        self.slab.as_ref().map(|v| &v.0)
+    }
+    pub fn accepted_slab_policy(&self) -> Option<GeometryTolerance> {
+        self.slab.as_ref().map(|v| v.1)
+    }
+    /// Exact STEP of the accepted actual slab, without display or reconstruction.
+    pub fn slab_step(&self) -> Result<String> {
+        let (body, policy) = self.slab.as_ref().ok_or(Error::InvalidInput(
+            "torus slab STEP requires an accepted slab",
+        ))?;
+        let step = body.export_step_mm(*policy)?;
+        Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_step","heights":body.heights(),"step":step,"step_exact":true}).to_string())
     }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)

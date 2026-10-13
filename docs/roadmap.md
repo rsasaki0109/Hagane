@@ -24,6 +24,9 @@ canonical rational body with complete coefficient and topology checks.
 [Horizontal sections](nurbs-torus-horizontal-section.md) expose actual outer and
 inner closed rational loops with plane parameters and complete original-wall
 provenance, including both adjacent faces at literal-zero seams.
+[Horizontal slabs](nurbs-torus-horizontal-slab.md) retain two original curved
+wall chains and close them with opposing annular caps, with analytic volume,
+conforming bounded display, transactional preview and actual STEP export.
 Horn/spindle tori, arbitrary oblique cuts, general torus STEP import, trimming
 and general torus Booleans remain future work.
 

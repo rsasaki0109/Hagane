@@ -1,5 +1,70 @@
 # Development goal
 
+## Actual horizontal torus slab milestone
+
+`NurbsTorusSolid::slab_between_local_z` now retains material between two strictly
+interior local horizontal planes as an actual closed rational B-rep. Two source
+wall chains preserve their original restricted parameter domains, and opposing
+annular caps share actual rational rims and plane pcurves. Complete coefficient,
+topology and same-parameter certificates validate the body without mesh CSG,
+replacement geometry, snapping or a claim of general Booleans.
+
+Analytic disk-band volume uses a positive angle identity, a small-angle series,
+physical input gaps and checked binary product scaling to avoid cumulative
+volume subtraction and near-tip cancellation. Full-source tolerance, clearances,
+partial strip resolution and world arithmetic admission remain conservative.
+Actual conforming two-chain/two-cap display reuses shared edge samples with the
+existing angular Hessian/reserve budget; exact STEP exports the actual body.
+
+Native/session/WASM slab creation serializes all geometry, display and STEP before
+accepting its separate typed cache. Source and one-plane split pair remain intact.
+A read-only cached STEP API permits direct inspection of the accepted Rust slab.
+Successful source apply/import invalidates both derived caches; rejected model,
+STEP, slab and display operations preserve accepted state. Browser previews and
+private exports distinguish source, split children and slab; unsupported slab
+queries are explicitly labeled and child probes disabled in its preview.
+
+Independent tests cover positive slice quadrature, thin and near-tip intervals,
+arbitrary placement and three scales, two annular caps, hole-aware Euler closure,
+opposed shared-edge uses and original surface/pcurve equations. Dense triangle
+interior samples and bit-welded manifold checks validate actual display. Source
+B-rep/STEP immutability and transactional independent-cache tests pass.
+
+An ordinary `[0.1, 0.3]` audit exposed a one-ULP affine meridian endpoint outside
+the restricted surface domain. Only new slab meridians now retain explicit
+positive degree-one NURBS UV endpoints, preserving all 3D geometry and strict
+domain checks. Existing split and affine APIs remain unchanged. New bounds include
+actual vertices, edge controls, wall controls and plane-projected cap pcurve
+controls. Added signed ordinary-range and near-world-budget cap-hull regressions
+passed without weakening previous checks.
+
+The corrected final source passed formatting, strict all-target Clippy, full
+native regression with 374 suites and 1,306 passed tests (zero failed/ignored,
+including two doc tests), and release WASM build. Previous full-source and
+horizontal-split native reports remain byte-identical after the shared wall
+assembly extraction. Read-only review confirmed source retention, closed cap
+orientation, positive volume arithmetic, endpoint safety and conservative bounds.
+Every existing torus WASM block passed unchanged, including all cached-child
+queries, STEP import and horizontal sections. The complete current new-slab block
+passed 24 ordinary/sign/zero/posed/scaled cases, actual degree-one UV endpoints,
+two cap orientations, manifold/chord checks, full raw native reports at 32 EPS,
+read-only cached STEP retention and successful-source invalidation. An initial
+new dense sampler repeated the affine endpoint rounding mistake; only that new
+test's endpoints were replaced by their literal domain values. Existing helpers,
+strict parity checks and kernel admission remain unchanged by the oracle fix.
+The entire browser runner passed all previous checks and actual slab/native
+parity, ordinary `[0.1, 0.3]` bounds, placement/scale/imported-source cases,
+private STEP export, independent split/section coexistence, failed-state/camera/
+pixel retention and responsive layout. The separate slab screenshot was captured
+from the actual final WASM and visually inspected; earlier screenshots remain
+unchanged. The preview labels the slab, retains full-source metrics/probes and
+explicitly disables unsupported slab geometry queries.
+
+Slab mass properties, slab point/segment/line/ray queries, arbitrary oblique slabs,
+imported slab STEP and general torus Booleans remain future work. Overall completion
+remains an engineering estimate of **20% (15–25%)**, toward the **80%** goal. See
+[horizontal slab scope](docs/nurbs-torus-horizontal-slab.md).
+
 ## Exact horizontal torus intersection-loop milestone
 
 `NurbsTorusSolid::section_by_local_z` now exposes two actual closed rational

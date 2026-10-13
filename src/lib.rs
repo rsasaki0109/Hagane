@@ -489,3 +489,9 @@ mod nurbs_torus_horizontal_section;
 pub use nurbs_torus_horizontal_section::*;
 
 mod nurbs_torus_section_demo;
+
+mod nurbs_torus_horizontal_slab;
+pub use nurbs_torus_horizontal_slab::*;
+
+mod nurbs_torus_horizontal_slab_demo;
+mod nurbs_torus_horizontal_slab_display;

@@ -1482,6 +1482,18 @@ verification, not replacement geometry. Existing rational control-hull subdivisi
 supplies bounded display polylines. This original implementation adds no OCCT
 source, copied code or dependency; its license is MIT OR Apache-2.0.
 
+Horizontal torus slabs retain two source meridian chains between local heights
+and add opposing annular caps. The disk-band integral independently uses
+`F(b)-F(a)`, where `F(t)=asin(t)+t*sqrt(1-t*t)`. Its cancellation-free positive
+form is `(delta-sin(delta)) + ((ca+cb)^2+(a-b)^2)*sin(delta)/2`, derived from
+elementary angle-sum identities; the first term uses the Taylor series of sine
+for small angles. Physical input gaps stabilize close bounds and tip radial
+factors, and binary product scaling checks representability. Display retains
+the existing angular torus Hessian bound and actual shared rim samples for both
+caps. Independent quadrature and triangle samples verify these derivations.
+No OCCT source, copied implementation or new dependency is used; original code
+is MIT OR Apache-2.0.
+
 
 Horizontal torus child classification independently minimizes distance in the
 radial/height meridian plane over a retained circular arc, using its two endpoints
