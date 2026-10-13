@@ -1479,3 +1479,18 @@ when the unconstrained radial projection lies outside that arc. Finite annular
 cap distance is `hypot(z-cut, radial_gap)`; actual cap witnesses solve the plane
 basis Gram system. These elementary Euclidean derivations use no OCCT source,
 new dependency or copied implementation. Original code is MIT OR Apache-2.0.
+
+
+Horizontal torus child mass moments are derived independently by integrating
+polynomials over a circular disk segment and rotating with Jacobian `R+x`.
+The rotational second moment is `R²/2 + 3 E[x²]/2`, and the centered axial
+variance is `E[z²] - E[z]²`. The world tensor uses the standard rigid tensor
+transformation and [parallel-axis theorem](https://en.wikipedia.org/wiki/Parallel_axis_theorem).
+For small caps, substituting `sin(alpha/2) = q t` yields weighted moments
+`Jk = integral[0,1] t^(2+2k) sqrt(1-q²t²) dt`; the analytic
+[binomial series](https://dlmf.nist.gov/1.2.E5) supplies coefficients, with a
+geometric tail bound on `q² <= 1/16`. This is analytic integration, not sampled
+quadrature. Independent test quadrature checks the implementation rather than
+supplying kernel metrics. Arithmetic reserves are binary64 engineering checks.
+No OCCT code, copied implementation or new dependency was introduced;
+original code remains MIT OR Apache-2.0.

@@ -32,7 +32,8 @@ parameters and clip forward rays that start inside material.
 [Horizontal plane splits](docs/nurbs-torus-horizontal-split.md) produce two
 closed solids with retained NURBS patches and annular caps, bounded display and
 actual STEP export. Mesh-free child point probes use the cached actual split
-and return witnesses on retained walls or finite annular caps.
+and return witnesses on retained walls or finite annular caps. Checked child
+centroids and full world-axis centroidal inertia use analytic disk-segment moments.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

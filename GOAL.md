@@ -1,5 +1,34 @@
 # Development goal
 
+## Actual horizontal torus child mass milestone
+
+Actual validated horizontal children now expose uniform-density world centroids
+and full world-axis centroidal inertia tensors. Analytic disk-segment integration
+uses stable bounded binomial series for thin caps, checked positive products and
+explicit conditioning/representability refusal. No mesh integration or source
+solid substitution is used. Optional split reports carry metric errors without
+discarding valid geometry; the browser presents selected-child metrics separately
+from full-source metrics, using its private accepted pair.
+
+Independent tests checked half closed forms, independent moment quadrature,
+positive/negative and thin cuts, arbitrary rigid placement, three scales,
+weighted centroid and full parallel-axis inertia conservation, geometry/STEP
+immutability, unresolved policies and admitted geometry with inertia overflow.
+Formatting, strict all-target Clippy, 29 torus suites with 51 native tests and
+release WASM build passed. The 3,116,825-byte full-source report is byte-identical;
+all previous split geometry, mesh, bounds, volume and STEP fields are unchanged.
+All torus WASM blocks passed with unchanged strict native parity, including
+actual child centroid and world-tensor conservation and previous query/cache
+error-recovery checks. The entire expanded torus browser runner passed, including
+independent child metric conservation, private accepted selection, separate source
+and child panels, reset and rejected-edit preservation, camera/pixel guards and
+private STEP export. The linked screenshot was recaptured from the actual running
+WASM child metric and cap-query demo and visually inspected.
+
+Child segment/line/ray queries, repeated child cuts, arbitrary oblique torus
+cuts and general torus Booleans remain unsupported. Overall completion remains
+an engineering estimate of about **20% (15–25%)**, toward the **80%** goal.
+
 [Horizontal torus child point queries](docs/nurbs-torus-horizontal-split.md#mesh-free-child-point-queries)
 now use the accepted actual split pair with finite annular caps and retained
 NURBS walls. Mesh-free witnesses carry actual child face IDs, original UVs,
@@ -31,8 +60,8 @@ except the scope description. The entire expanded torus browser runner passed,
 including private child selection, actual cap/wall witnesses, native parity,
 failed edit/query preservation, camera/pixel guards and private STEP export.
 The README-linked screenshot was captured from the actual running child probe.
-Child mass moments and line/segment/ray queries,
-repeated child cuts and arbitrary oblique torus cuts remain unsupported.
+Child line/segment/ray queries, repeated child cuts and arbitrary oblique
+torus cuts remain unsupported; child mass moments are implemented above.
 
 
 [Horizontal torus splitting](docs/nurbs-torus-horizontal-split.md) produces two

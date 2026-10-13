@@ -39,8 +39,7 @@ tiny strips refuse explicitly. The cut must lie strictly inside the tube height;
 top/bottom clearance, annulus width and every retained partial strip must clear
 the original full-body contact band and arithmetic reserves. Nonfinite heights,
 contact, insufficient world precision and unrepresentable child volumes fail.
-General oblique cuts, repeated child cuts, child intersections and child
-mass-property APIs remain unsupported.
+General oblique cuts, repeated child cuts and child intersections remain unsupported.
 
 For a horizontal slice, the cross-section area is
 `4*pi*R*sqrt(r*r-z*z)`. Integrating gives each child's volume
@@ -103,4 +102,40 @@ Run `cargo run --example nurbs_torus_horizontal_query`; optional fourteen-value
 JSON input contains the eight source parameters, cut height, chord error, child
 flag and world point. The browser's **Probe viewed cut part** uses the selected
 accepted child; source point/segment/line/ray probes retain their source meaning.
-Child mass moments and segment/line/ray queries remain unsupported.
+Child segment/line/ray queries remain unsupported.
+
+
+## Checked child mass moments
+
+`child.mass_properties(policy)` returns uniform-density volume and world
+centroid. `child.inertia_properties(policy)` additionally returns the full
+symmetric inertia tensor about that centroid, expressed in world axes. The
+actual restricted B-rep is validated before computing these metrics. No mesh
+integration or source-body substitution is used.
+
+Integrate the circular meridian disk segment about its local center. With
+positive cap angle `theta`, its area is `A = r²(theta − sin(theta)cos(theta))`,
+its signed first Z moment is `±2r³sin³(theta)/3`, and its raw second moments are
+`Mx² = r⁴(theta/4 − sin(2theta)/6 + sin(4theta)/48)` and
+`Mz² = r⁴(theta/4 − sin(4theta)/16)`. The sign is negative for a lower child.
+Rotating this segment around the torus axis gives centroidal moments
+`Ix = Iy = V(R²/2 + 3Mx²/(2A) + Mz²/A − zbar²)` and
+`Iz = V(R² + 3Mx²/A)`. A rigid frame transforms the centroid and complete tensor.
+
+For thin caps, the implementation evaluates normalized analytic binomial series
+in `q² = sin²(theta/2)` instead of subtracting nearly equal raw Z moments.
+The centered variance uses `4r²q⁴(E2 − E1²)`, where `Ek = Jk/J0` and
+`Jk = integral[0,1] t^(2+2k) sqrt(1−q²t²) dt`. A bounded series tail and arithmetic
+reserves guard positivity and conditioning. Checked binary products reject
+unrepresentable moments without avoidable intermediate overflow. These checks
+are binary64 engineering guards, not formal interval certificates.
+
+The existing native split example and WASM split transport include optional
+`mass_properties` reports for both actual children, with density, units and
+centroid/world-axis conventions. Unavailable moments carry an explicit error;
+optional metric failure does not turn a valid geometric split into failure.
+The browser displays these child metrics separately from the full-source panel.
+
+These formulas are independently derived from disk integration and rotational
+symmetry; see the public calculus and parallel-axis references in
+[references](references.md). No OCCT source or new dependency was used.
