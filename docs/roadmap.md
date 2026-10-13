@@ -31,8 +31,10 @@ conforming bounded display, transactional preview and actual STEP export.
 boundary distances and actual restricted-face/cap witnesses without changing
 the source, split pair or accepted slab.
 [Slab finite segments](nurbs-torus-slab-segment.md) clip original torus intervals
-against both actual caps and retain restricted-wall UV provenance. Slab line/ray
-queries and mass properties remain future work.
+against both actual caps and retain restricted-wall UV provenance.
+[Slab lines and rays](nurbs-torus-slab-line.md) use the original source enclosure
+and actual slab segment solver, retaining nonunit parameters and inside-ray
+clipping. Slab mass properties remain future work.
 Horn/spindle tori, arbitrary oblique cuts, general torus STEP import, trimming
 and general torus Booleans remain future work.
 

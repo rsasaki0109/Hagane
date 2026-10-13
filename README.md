@@ -49,6 +49,8 @@ analytic volume, bounded display and actual STEP export.
 retained body using finite walls and annular caps, with actual face/UV witnesses.
 [Slab finite segments](docs/nurbs-torus-slab-segment.md) return actual cap/wall
 face witnesses and up to two material intervals in the original segment parameter.
+[Slab lines and rays](docs/nurbs-torus-slab-line.md) retain original nonunit
+parameters and clip forward rays starting inside the actual material.
 Horn/spindle tori, general torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

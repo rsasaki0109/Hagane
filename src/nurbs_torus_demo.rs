@@ -224,6 +224,25 @@ impl NurbsTorusDemoSession {
         let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
         Ok(serde_json::json!({"kind":"nurbs_torus_horizontal_slab_segment","heights":body.heights(),"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
+    pub fn intersect_slab_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
+        self.slab_line_query(origin, direction, false)
+    }
+    pub fn intersect_slab_ray(&self, origin: Point3, direction: Vec3) -> Result<String> {
+        self.slab_line_query(origin, direction, true)
+    }
+    fn slab_line_query(&self, origin: Point3, direction: Vec3, ray: bool) -> Result<String> {
+        let (body, policy) = self.slab.as_ref().ok_or(Error::InvalidInput(
+            "torus slab line/ray requires an accepted slab",
+        ))?;
+        let result = if ray {
+            body.intersect_ray(origin, direction, *policy)?
+        } else {
+            body.intersect_line(origin, direction, *policy)?
+        };
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"kind":if ray{"nurbs_torus_horizontal_slab_ray"}else{"nurbs_torus_horizontal_slab_line"},"heights":body.heights(),"origin":xyz(origin),"direction":[direction.x,direction.y,direction.z],"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

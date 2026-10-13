@@ -3182,6 +3182,50 @@ mod exports {
             )),
         })
     }
+    static NURBS_TORUS_SLAB_LINE_INPUT: Mutex<(Vec<f64>, bool)> = Mutex::new((Vec::new(), false));
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_line_begin() {
+        let mut input = NURBS_TORUS_SLAB_LINE_INPUT.lock().unwrap();
+        input.0.clear();
+        input.1 = false;
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_line_push(value: f64) -> i32 {
+        let mut input = NURBS_TORUS_SLAB_LINE_INPUT.lock().unwrap();
+        if input.1 || !value.is_finite() || input.0.len() >= 6 {
+            input.1 = true;
+            return 1;
+        }
+        input.0.push(value);
+        0
+    }
+    #[no_mangle]
+    pub extern "C" fn hagane_nurbs_torus_slab_line_finish(mode: i32) -> i32 {
+        let (v, bad) = {
+            let mut input = NURBS_TORUS_SLAB_LINE_INPUT.lock().unwrap();
+            (std::mem::take(&mut input.0), std::mem::take(&mut input.1))
+        };
+        if bad || v.len() != 6 || !(mode == 0 || mode == 1) {
+            return generate(Err(crate::Error::InvalidInput(
+                "torus slab line/ray requires six finite values and mode zero/one",
+            )));
+        }
+        let session = NURBS_TORUS_SESSION.lock().unwrap();
+        generate(match session.as_ref() {
+            Some(s) => {
+                let o = crate::Point3::new(v[0], v[1], v[2]);
+                let d = crate::Vec3::new(v[3], v[4], v[5]);
+                if mode == 1 {
+                    s.intersect_slab_ray(o, d)
+                } else {
+                    s.intersect_slab_line(o, d)
+                }
+            }
+            None => Err(crate::Error::InvalidInput(
+                "torus slab line/ray requires an accepted slab",
+            )),
+        })
+    }
     fn generate(result: crate::Result<String>) -> i32 {
         let (status, text) = match result {
             Ok(s) => (0, s),

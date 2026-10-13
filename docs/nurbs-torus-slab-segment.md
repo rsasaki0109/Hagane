@@ -44,8 +44,8 @@ physical root error and normal conditioning are checked against the linear
 policy, independently of the segment's length. Discarded-source contacts can
 conservatively refuse even when their location is outside retained material.
 This API does not promise arbitrary curved-solid intersections or a generic
-closest-point solver. Slab line/ray intersections, inertia, oblique slabs and
-general torus Booleans remain future work.
+closest-point solver. [Slab lines and rays](nurbs-torus-slab-line.md) are implemented.
+Slab inertia, oblique slabs and general torus Booleans remain future work.
 
 ## Native, WASM and browser
 

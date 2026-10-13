@@ -499,3 +499,5 @@ mod nurbs_torus_horizontal_slab_display;
 mod nurbs_torus_slab_classification;
 
 mod nurbs_torus_slab_segment;
+
+mod nurbs_torus_slab_line;

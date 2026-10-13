@@ -1,5 +1,46 @@
 # Development goal
 
+## Actual torus slab line/ray milestone
+
+The actual cached torus slab now supports infinite lines and forward rays,
+returning actual cap/restricted-wall UV witnesses with original nonunit direction
+parameters. A conservative original-source enclosure supplies the checked actual
+slab segment solver; full anchor/world/tolerance guards precede miss shortcuts.
+Mapping retains physical reconstruction and normal-conditioned absolute root
+error checks. Rays clip material intervals to zero when starting strictly inside
+and preserve a second forward interval across the central hole. Boundary origins,
+physical rims, contacts and unresolved crossings refuse explicitly.
+
+Final formatting, strict all-target Clippy, full native regression with 383
+suites and 1,321 passed tests (zero failed/ignored, including two doc tests),
+and release WASM build passed. The final target/browser artifacts match exactly;
+source and one-plane split native reports remain byte-identical. Independent
+analytic tests cover wall/cap/mixed roots, reversed and nonunit directions, all
+forward intervals, signed bands, placement/scales, original precision guards and
+actual B-rep/STEP immutability. New analytic assertions measure physical root
+error instead of requiring exact floating-point literals. Read-only review found
+no actionable defect. All previous torus WASM blocks and the complete new
+line/ray block passed against this final artifact, including 320 native
+comparisons, independent analytic roots, actual face/UV/normals, original
+parameters, inside-ray clipping, refusal, transport isolation and immutable
+source/child/slab query results and cached STEP. Original assertions and
+32-EPS helpers remain unchanged; only the new measured residual uses the
+existing coordinate-propagation comparison. The entire browser runner passed
+all previous and new operations, including actual wall/cap/mixed witnesses,
+nonunit and reversed directions, Inside-ray zero clipping, independent private
+line/ray state, refusal and unchanged pixels/exports, placement/scales and
+cardinal imported sources. No old assertion or comparator was changed.
+The separate compact screenshot was captured from actual final WASM and visually
+inspected, showing both cap line witnesses and the successful inside-ray interval
+[0, approximately 0.625]. Capture-only presentation hid unrelated controls;
+no data or image was fabricated, and production UI/older screenshots are unchanged.
+
+Read-only session/native/WASM and privately viewed-slab browser probes retain
+geometry, section overlays, point/segment results and exact cached STEP. Slab
+mass properties, oblique torus slabs and general curved Booleans remain future
+work. Broad completion remains **20% (15–25%)**, toward **80%**. See
+[slab line/ray scope](docs/nurbs-torus-slab-line.md).
+
 ## Actual torus slab finite-segment milestone
 
 The actual retained slab now supports mesh-free finite segments with up to four
@@ -35,8 +76,8 @@ The separate actual screenshot was captured from the final WASM and visually
 inspected, showing retained slab point data and lower-cap/outer-wall segment hits.
 Older screenshots remain unchanged.
 
-Slab line/ray intersections, slab mass properties, oblique slabs and general torus
-Booleans remain future work. Broad completion remains **20% (15–25%)**, toward
+Slab line/ray intersections are implemented above. Slab mass properties,
+oblique slabs and general torus Booleans remain future work. Broad completion remains **20% (15–25%)**, toward
 **80%**. See [slab segment scope](docs/nurbs-torus-slab-segment.md).
 
 ## Actual torus slab point-query milestone
