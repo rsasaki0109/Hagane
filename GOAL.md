@@ -1,5 +1,56 @@
 # Development goal
 
+## Actual horizontal torus child line/ray milestone
+
+Actual accepted horizontal children now support mesh-free infinite lines and
+forward rays with original nonunit parameters. The expanded full-source
+local enclosure supplies outside endpoints to the checked actual-child segment
+solver. Every mapped hit re-evaluates its actual restricted wall/cap face and UV,
+measured distance and absolute normal-conditioned forward error. Ordered original
+parameters, reconstructed points, physical interval widths/gaps and actual-child
+membership are checked. At most four hits and two material intervals are returned.
+
+Original full-body tolerance and anchor/world/frame guards precede cropping or
+miss shortcuts. Ray origins inside the selected child clip their containing
+interval to zero; other forward intervals remain. Lines can hit at parameter
+zero; ray origins in the boundary band are refused. Zero/nonfinite directions,
+remote or unrepresentable mappings, physical rims, contacts and unresolved
+crossings fail explicitly. Source contacts remain conservative even behind a
+ray or in the discarded halfspace.
+
+The cached read-only session APIs, separate seven-value line/ray WASM buffers
+and seventeen-value native examples use the actual selected component. Browser
+child probes use private accepted selection and retain geometry, camera, STEP,
+point/segment probes, source queries and the other line/ray result. Failed edits,
+cuts and queries preserve accepted state; successful source replacement and child
+selection changes clear stale browser results.
+
+Independent tests verified circle-section roots, four hits/two intervals,
+vertical wall/cap crossings, nonunit and reversed directions, hole/material/away
+ray origins, positive interval clipping, actual face UVs and oriented normals,
+arbitrary placement and three scales, cap/hole/extension/removed-side misses,
+contact/backward-tangent/rim/boundary-origin/remote/nonfinite/zero refusal,
+original relative tolerance and actual geometry/STEP/cache/query immutability.
+Formatting, strict all-target Clippy, 37 torus native suites with 63 tests and
+release WASM build passed. The full-source report remains byte-identical at
+3,116,825 bytes, and every previous split geometry, mesh, volume, mass, bounds
+and STEP field is unchanged except the scope description. All previous torus
+WASM blocks and 216 new line/ray native-comparison cases passed on the first run.
+Geometry/parameter/face/UV/normal fields retain strict 32-EPS comparisons; the
+existing independently norm-checked, coordinate-propagated residual comparator
+remains unchanged. Separate transport error recovery, accepted-cache retention
+and successful source invalidation passed. The final entire expanded torus
+browser runner passed, including selected-child line/ray original parameters,
+actual wall/cap witnesses, inside-ray clipping, private selection, all prior
+probes/metrics, rejected-state preservation, pixel/camera guards, private STEP
+export and mobile layout. The linked screenshot was captured from the actual
+running lower-child line/ray demo and visually inspected.
+
+Repeated child cuts, arbitrary oblique torus cuts, STEP import and general torus
+Booleans remain future work. Overall completion remains an engineering estimate
+of about **20% (15–25%)**, toward the **80%** goal.
+
+
 ## Actual horizontal torus child finite-segment milestone
 
 Actual cached horizontal children now support mesh-free finite segment
@@ -42,8 +93,8 @@ preservation, source/child metrics and probes, camera/pixel guards, private STEP
 export and mobile layout. The linked screenshot was captured from the actual
 running lower-child cap/wall segment demo and visually inspected.
 
-Child line/ray queries, repeated child cuts, arbitrary oblique torus cuts and
-general torus Booleans remain unsupported. Overall completion remains an
+Repeated child cuts, arbitrary oblique torus cuts and general torus Booleans
+remain unsupported; child line/ray queries are implemented above. Overall completion remains an
 engineering estimate of about **20% (15–25%)**, toward the **80%** goal.
 
 
@@ -72,8 +123,8 @@ and child panels, reset and rejected-edit preservation, camera/pixel guards and
 private STEP export. The linked screenshot was recaptured from the actual running
 WASM child metric and cap-query demo and visually inspected.
 
-Child line/ray queries, repeated child cuts, arbitrary oblique torus cuts
-and general torus Booleans remain unsupported; finite segments are implemented above. Overall completion remains
+Repeated child cuts, arbitrary oblique torus cuts and general torus Booleans
+remain unsupported; child finite segment/line/ray queries are implemented above. Overall completion remains
 an engineering estimate of about **20% (15–25%)**, toward the **80%** goal.
 
 [Horizontal torus child point queries](docs/nurbs-torus-horizontal-split.md#mesh-free-child-point-queries)
@@ -107,8 +158,8 @@ except the scope description. The entire expanded torus browser runner passed,
 including private child selection, actual cap/wall witnesses, native parity,
 failed edit/query preservation, camera/pixel guards and private STEP export.
 The README-linked screenshot was captured from the actual running child probe.
-Child line/ray queries, repeated child cuts and arbitrary oblique torus cuts
-remain unsupported; child mass moments and finite segments are implemented above.
+Repeated child cuts and arbitrary oblique torus cuts remain unsupported;
+child mass moments and segment/line/ray queries are implemented above.
 
 
 [Horizontal torus splitting](docs/nurbs-torus-horizontal-split.md) produces two

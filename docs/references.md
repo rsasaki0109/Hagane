@@ -1505,3 +1505,13 @@ of segment direction, with the original full-body tolerance and world/frame
 arithmetic reserves. Conservative source contact refusals are preserved.
 This elementary interval/plane construction introduces no OCCT source, copied
 implementation or new dependency. Original code remains MIT OR Apache-2.0.
+
+
+Horizontal torus child lines/rays crop against the expanded source enclosure,
+then query the checked actual child segment. The signed unit-speed travel is
+mapped back to the original nonunit parameter with checked reconstruction.
+Actual face/UV evaluation, residual and absolute normal-conditioned forward
+error certify each mapped witness. Positive ray intervals are clipped according
+to actual child membership; source contacts behind the origin remain conservative
+refusals. These elementary slab/parameter derivations add no OCCT source, copied
+implementation or dependency. Original code remains MIT OR Apache-2.0.

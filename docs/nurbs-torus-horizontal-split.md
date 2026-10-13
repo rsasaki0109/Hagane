@@ -102,7 +102,7 @@ Run `cargo run --example nurbs_torus_horizontal_query`; optional fourteen-value
 JSON input contains the eight source parameters, cut height, chord error, child
 flag and world point. The browser's **Probe viewed cut part** uses the selected
 accepted child; source point/segment/line/ray probes retain their source meaning.
-Child line/ray queries remain unsupported.
+Child line/ray queries are implemented below.
 
 
 ## Checked child mass moments
@@ -178,8 +178,8 @@ parameters, cut height and chord error, child flag and six world coordinates.
 The browser's **Probe viewed cut segment** reads the privately accepted selected
 child. Full-source point, segment, line and ray probes keep their source meaning;
 child probes preserve the rendered geometry, camera, prior point probe and STEP.
-Child line/ray intersections, repeated cuts and arbitrary oblique torus cuts are
-still unsupported.
+Repeated cuts and arbitrary oblique torus cuts remain unsupported; child lines
+and rays are implemented below.
 
 
 Native/WASM regression compares child-segment geometry, parameters, face IDs,
@@ -190,3 +190,47 @@ differences through the Euclidean norm, using the triangle inequality. A tiny
 residual obtained by subtracting world coordinates does not inherit their
 relative precision. This test does not round, replace or waive the kernel's
 measured distance, its absolute physical limit or its forward-error guards.
+
+
+## Mesh-free child lines and rays
+
+`child.intersect_line(origin, direction, policy)` and
+`child.intersect_ray(origin, direction, policy)` use the actual validated child
+and preserve the original nonunit direction parameter in
+`point = origin + direction * t`. Results reuse `NurbsTorusLineIntersection`:
+ordered actual wall/cap witnesses and up to two material intervals, with at most
+four hits. Ray intervals have `t >= 0`, and an origin inside this child clips its
+containing interval to literal zero. Membership is that of the selected child,
+not the original full torus. Lines can have a resolved boundary hit at `t = 0`;
+ray origins in the boundary band explicitly fail.
+
+The original anchor's full-source tolerance and world/frame arithmetic guards
+run before cropping or a miss shortcut. An expanded full-source local enclosure
+supplies outside endpoints; cropping at the child's cap would create boundary
+endpoints and is deliberately avoided. The checked actual-child segment solver
+supplies the intersections. Mapping back to the original parameter re-evaluates
+the actual face/UV witness and checks reconstruction, measured residual,
+absolute forward error, ordered intervals and physical widths/gaps. Nonfinite
+or zero directions, unrepresentable mappings, physical cut rims, contacts and
+unresolved shallow crossings return errors. Conservative source contacts remain
+unsupported even in the discarded halfspace or behind a ray's origin.
+
+`NurbsTorusDemoSession::intersect_horizontal_line(is_lower, origin, direction)`
+and `intersect_horizontal_ray` query the accepted actual pair read-only. Separate
+seven-value `hagane_nurbs_torus_horizontal_line_begin/push/finish` and
+`hagane_nurbs_torus_horizontal_ray_begin/push/finish` buffers take
+`[lower_flag, origin_x, origin_y, origin_z, direction_x, direction_y, direction_z]`.
+Exactly one selects lower and zero selects upper. Each buffer has its own finite
+input validation and malformed-input latch. Rejected queries, cuts and model
+edits retain the pair; successful source replacement invalidates it.
+
+Run `cargo run --example nurbs_torus_horizontal_line` or
+`cargo run --example nurbs_torus_horizontal_ray`. Optional seventeen-value JSON
+input contains eight source parameters, cut height/chord error, child flag,
+world origin and direction. The browser's viewed-child line/ray probes use its
+private accepted selection and preserve camera, mesh, STEP, prior point/segment
+probes and the other line/ray result. Separate full-source probes keep their
+source meaning. Native/WASM geometry comparisons and independently checked,
+coordinate-propagated measured-distance comparisons use the same policy described
+for child segments above. Repeated child cuts, arbitrary oblique torus cuts,
+STEP import and general torus Booleans remain future work.

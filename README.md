@@ -34,8 +34,9 @@ closed solids with retained NURBS patches and annular caps, bounded display and
 actual STEP export. Mesh-free child point probes use the cached actual split
 and return witnesses on retained walls or finite annular caps. Checked child
 centroids and full world-axis centroidal inertia use analytic disk-segment moments.
-Child finite segments return actual retained wall and annular cap witnesses with
-material intervals in the original segment parameter.
+Child finite segments, lines and rays return actual retained wall and annular cap
+witnesses with material intervals in the original parameter. Rays clip intervals
+that start inside the selected child.
 Horn/spindle tori, torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

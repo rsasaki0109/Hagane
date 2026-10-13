@@ -101,6 +101,42 @@ impl NurbsTorusDemoSession {
         let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
         Ok(serde_json::json!({"child":if is_lower {"lower"}else{"upper"},"cut_height":body.cut_height(),"start":xyz(start),"end":xyz(end),"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
+    pub fn intersect_horizontal_line(
+        &self,
+        is_lower: bool,
+        origin: Point3,
+        direction: Vec3,
+    ) -> Result<String> {
+        self.horizontal_line_query(is_lower, origin, direction, false)
+    }
+    pub fn intersect_horizontal_ray(
+        &self,
+        is_lower: bool,
+        origin: Point3,
+        direction: Vec3,
+    ) -> Result<String> {
+        self.horizontal_line_query(is_lower, origin, direction, true)
+    }
+    fn horizontal_line_query(
+        &self,
+        is_lower: bool,
+        origin: Point3,
+        direction: Vec3,
+        ray: bool,
+    ) -> Result<String> {
+        let (split, policy) = self.horizontal.as_ref().ok_or(Error::InvalidInput(
+            "torus child line/ray requires an accepted horizontal split",
+        ))?;
+        let body = if is_lower { &split.lower } else { &split.upper };
+        let result = if ray {
+            body.intersect_ray(origin, direction, *policy)?
+        } else {
+            body.intersect_line(origin, direction, *policy)?
+        };
+        let xyz = |p: Point3| [p.x, p.y, p.z];
+        let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
+        Ok(serde_json::json!({"child":if is_lower {"lower"}else{"upper"},"cut_height":body.cut_height(),"query_kind":if ray {"ray"}else{"line"},"origin":xyz(origin),"direction":[direction.x,direction.y,direction.z],"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }
