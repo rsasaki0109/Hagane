@@ -39,6 +39,9 @@ witnesses with material intervals in the original parameter. Rays clip intervals
 that start inside the selected child.
 [Bounded torus STEP import](docs/nurbs-torus-step-import.md) retains exact canonical
 rational geometry in resolved signed-cardinal placements and millimetres.
+[Horizontal sections](docs/nurbs-torus-horizontal-section.md) expose two closed
+exact rational intersection loops, plane pcurves and original source-face UV
+attachments independently of display and without replacing the accepted solid.
 Horn/spindle tori, general torus STEP import and torus Booleans remain unsupported.
 
 [Editable through-bore histories](docs/nurbs-frustum-workflow.md) retain the actual

@@ -484,3 +484,8 @@ mod nurbs_torus_horizontal_line;
 
 mod nurbs_torus_step_import;
 pub use nurbs_torus_step_import::*;
+
+mod nurbs_torus_horizontal_section;
+pub use nurbs_torus_horizontal_section::*;
+
+mod nurbs_torus_section_demo;

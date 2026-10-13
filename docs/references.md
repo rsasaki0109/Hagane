@@ -1472,6 +1472,16 @@ patch display retains the torus Hessian bound and shared annular rim samples.
 This original implementation adds no third-party source or dependency and uses
 MIT OR Apache-2.0.
 
+Horizontal torus sections retain the actual checked split rims as two intersection
+loops. Original isoparametric wall attachments map each edge back to its original
+source face; literal-zero minor seams retain both adjacent faces. Increasing major
+parameter fixes traversal on both loops independently of annular face orientation.
+The expected radii `R +/- sqrt(r*r-height*height)` follow by intersecting the
+meridian circle with a horizontal line. These formulas provide independent
+verification, not replacement geometry. Existing rational control-hull subdivision
+supplies bounded display polylines. This original implementation adds no OCCT
+source, copied code or dependency; its license is MIT OR Apache-2.0.
+
 
 Horizontal torus child classification independently minimizes distance in the
 radial/height meridian plane over a retained circular arc, using its two endpoints

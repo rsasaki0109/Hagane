@@ -21,6 +21,9 @@ wall/cap witnesses are implemented. Child line/ray queries preserve original
 nonunit parameters and clip rays from inside the actual selected component.
 [Bounded cardinal STEP import](nurbs-torus-step-import.md) retains the actual
 canonical rational body with complete coefficient and topology checks.
+[Horizontal sections](nurbs-torus-horizontal-section.md) expose actual outer and
+inner closed rational loops with plane parameters and complete original-wall
+provenance, including both adjacent faces at literal-zero seams.
 Horn/spindle tori, arbitrary oblique cuts, general torus STEP import, trimming
 and general torus Booleans remain future work.
 

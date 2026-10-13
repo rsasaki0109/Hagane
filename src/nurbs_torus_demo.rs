@@ -155,6 +155,15 @@ impl NurbsTorusDemoSession {
         let hits=result.hits.into_iter().map(|h|{let b=h.boundary;serde_json::json!({"parameter":h.parameter,"point":xyz(h.point),"boundary":{"face":b.face,"uv":b.uv,"point":xyz(b.point),"distance":b.distance,"normal":[b.normal.x,b.normal.y,b.normal.z]}})}).collect::<Vec<_>>();
         Ok(serde_json::json!({"child":if is_lower {"lower"}else{"upper"},"cut_height":body.cut_height(),"query_kind":if ray {"ray"}else{"line"},"origin":xyz(origin),"direction":[direction.x,direction.y,direction.z],"hits":hits,"material_intervals":result.material_intervals,"mesh_free":true}).to_string())
     }
+    /// Exact section and bounded curve display without modifying accepted state.
+    /// Local height and display chord are in source millimetres.
+    pub fn section_horizontal(&self, height: f64, chord: f64) -> Result<String> {
+        let (body, policy) = self.accepted.as_ref().ok_or(Error::InvalidInput(
+            "torus section requires an accepted body",
+        ))?;
+        crate::nurbs_torus_section_demo::serialize_section(body, height, chord, *policy)
+            .map(|v| v.to_string())
+    }
     pub fn intersect_line(&self, origin: Point3, direction: Vec3) -> Result<String> {
         self.line_query(origin, direction, false)
     }

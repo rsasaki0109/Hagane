@@ -1,5 +1,54 @@
 # Development goal
 
+## Exact horizontal torus intersection-loop milestone
+
+`NurbsTorusSolid::section_by_local_z` now exposes two actual closed rational
+intersection loops without replacing the source solid. Eight exact shared split
+rim curves retain plane pcurves and complete original wall-face UV provenance.
+Literal-zero seams retain both adjacent original faces; nonzero resolved heights
+retain one face per edge. Both loops traverse increasing major U and are explicitly
+intersection boundaries, not annular face wires or a solid Boolean result.
+
+The complete coefficient/topology certificate retains actual split curves rather
+than claiming original cached source-edge bit identity: surface parameter-curve
+decoding can differ by one ULP under placement. Original source surface attachments
+remain checked within the inherited arithmetic budget. Horizontal split contact,
+near-zero, tip clearance, world precision and finite-volume admission remain
+conservative; no snapping or fallback geometry is used.
+
+A read-only native/session/WASM report includes actual coefficients and bounded
+curve polylines. Browser controls draw those two loops over the current preview
+while preserving accepted source, cached split children, probes and STEP exports.
+Rejected queries preserve the previous overlay; new accepted sources clear it.
+Independent tests cover analytic radii and planes, closed traversal, exact actual
+split-rim retention, complete seam provenance, arbitrary placement, three scales,
+invalid/contact/near-zero/precision refusal and immutable original B-rep/STEP.
+
+Formatting, strict all-target Clippy, full native regression with 371 suites and
+1,299 passed tests (zero failed/ignored, including two doc tests), and release
+WASM build passed. Previous full-source and horizontal-split native reports
+remain byte-identical. Independent review confirmed the complete represented
+certificate and correctly scoped actual-split coefficient identity.
+Every existing torus WASM block passed unchanged, including full-source/child
+queries and STEP import. The complete current new-section block then passed
+actual geometry/UV/chord checks, full raw native/WASM report parity at 32 EPS,
+immutable accepted source/children and isolated transport/error recovery. Its
+initial test incorrectly assumed normalized raw quarter-circle weights; only
+that new oracle was corrected to positive weights and scale-invariant ratios.
+Actual retained raw coefficients still undergo the unchanged strict native
+comparison. No kernel or existing parity helper was changed by this correction.
+The entire browser runner passed with all previous checks and new zero/nonzero,
+posed, scaled and cardinal-imported section checks. Actual curve/plane/source-UV
+geometry, bounded polylines, strict native parity, private overlay preservation,
+failed-state/camera/pixel retention and responsive layout passed. The separate
+section screenshot was captured from the actual final WASM and visually inspected;
+the previous imported-source screenshot remains unchanged.
+
+General oblique torus sections, repeated child cuts and general Booleans remain
+future work. Overall completion remains an engineering estimate of about
+**20% (15–25%)**, toward the **80%** goal. See
+[horizontal section scope](docs/nurbs-torus-horizontal-section.md).
+
 ## Bounded exact cardinal torus STEP import milestone
 
 A separate `import_step_nurbs_torus_cardinal_mm` API now reads one actual regular
